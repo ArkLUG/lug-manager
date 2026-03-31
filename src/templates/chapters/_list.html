@@ -1,0 +1,58 @@
+<div class="space-y-6">
+  {{#is_admin}}
+  <div class="mb-6">
+    <button hx-get="/chapters/new" hx-target="#modal" hx-swap="innerHTML"
+            class="inline-flex items-center gap-2 px-4 py-2 bg-yellow-400 text-gray-900 rounded-lg text-sm font-medium hover:bg-yellow-300 transition-colors">
+      <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
+      </svg>
+      New Chapter
+    </button>
+  </div>
+  {{/is_admin}}
+
+  <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+    {{#chapters}}
+    <a href="/chapters/{{id}}" hx-get="/chapters/{{id}}" hx-target="#main-content" hx-swap="innerHTML" hx-push-url="true"
+       class="bg-white rounded-xl border border-gray-200 p-6 hover:border-yellow-400 hover:shadow-md transition-all cursor-pointer flex flex-col gap-3">
+      <div>
+        <h3 class="font-semibold text-gray-900">{{name}}</h3>
+        {{#description}}<p class="text-sm text-gray-500 mt-1">{{description}}</p>{{/description}}
+      </div>
+
+      <!-- Stats row -->
+      <div class="flex items-center gap-3 text-xs text-gray-500">
+        <!-- Members -->
+        <span class="flex items-center gap-1">
+          <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                  d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7
+                     20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0
+                     019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z"/>
+          </svg>
+          {{member_count}} members
+        </span>
+        <!-- Paid -->
+        <span class="flex items-center gap-1 text-green-600">
+          <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                  d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
+          </svg>
+          {{paid_count}} paid
+        </span>
+      </div>
+
+      <!-- Leads -->
+      {{#has_leads}}
+      <div class="flex items-center gap-1.5 text-xs">
+        <span class="text-purple-500 font-medium whitespace-nowrap">Lead:</span>
+        <span class="text-gray-700">{{leads_str}}</span>
+      </div>
+      {{/has_leads}}
+      {{^has_leads}}
+      <div class="text-xs text-gray-400 italic">No lead assigned</div>
+      {{/has_leads}}
+    </a>
+    {{/chapters}}
+  </div>
+</div>

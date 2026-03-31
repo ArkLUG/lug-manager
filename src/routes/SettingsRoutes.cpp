@@ -1,0 +1,325 @@
+#include "routes/SettingsRoutes.hpp"
+#include <crow/mustache.h>
+#include <sstream>
+
+void register_settings_routes(LugApp& app, SettingsRepository& settings,
+                               DiscordClient& discord, MemberSyncService& member_sync,
+                               CalendarGenerator& calendar) {
+
+    // GET /api/discord/channel-options
+    // Returns <option> elements for all text channels in the configured guild.
+    // Query param: selected=<channel_id>  (optional, marks that option as selected)
+    // Query param: guild_id=<id>          (optional, uses this guild instead of the stored one)
+    CROW_ROUTE(app, "/api/discord/channel-options")(
+        [&](const crow::request& req) {
+        crow::response res;
+        auto& ctx = app.get_context<AuthMiddleware>(req);
+        if (ctx.auth.role != "admin") {
+            res.code = 403;
+            return res;
+        }
+
+        std::string selected;
+        std::string override_guild;
+        {
+            auto qs = crow::query_string(req.url_params);
+            const char* s = qs.get("selected");
+            if (s) selected = s;
+            const char* g = qs.get("guild_id");
+            if (g) override_guild = g;
+        }
+
+        // Temporarily use an override guild_id if provided (for live preview when user types)
+        std::string saved_guild = discord.get_guild_id();
+        if (!override_guild.empty() && override_guild != saved_guild) {
+            discord.reconfigure(override_guild, "");
+        }
+
+        auto channels = discord.fetch_text_channels();
+
+        // Restore original guild if we overrode it
+        if (!override_guild.empty() && override_guild != saved_guild) {
+            discord.reconfigure(saved_guild, "");
+        }
+
+        std::ostringstream html;
+        html << "<option value=\"\">-- Select a channel --</option>\n";
+        for (auto& ch : channels) {
+            html << "<option value=\"" << ch.id << "\"";
+            if (ch.id == selected) html << " selected";
+            html << ">#" << ch.name << "</option>\n";
+        }
+
+        if (channels.empty()) {
+            html.str("");
+            html << "<option value=\"\">No text channels found (check guild ID &amp; bot permissions)</option>";
+        }
+
+        res.add_header("Content-Type", "text/html; charset=utf-8");
+        res.write(html.str());
+        return res;
+    });
+
+    // GET /api/discord/forum-options?selected=<channel_id>
+    // Returns <option> elements for all forum channels in the configured guild.
+    CROW_ROUTE(app, "/api/discord/forum-options")(
+        [&](const crow::request& req) {
+        crow::response res;
+        auto& ctx = app.get_context<AuthMiddleware>(req);
+        if (ctx.auth.role != "admin") { res.code = 403; return res; }
+
+        std::string selected;
+        {
+            auto qs = crow::query_string(req.url_params);
+            const char* s = qs.get("selected");
+            if (s) selected = s;
+        }
+
+        auto channels = discord.fetch_forum_channels();
+        std::ostringstream html;
+        html << "<option value=\"\">-- Select a forum channel --</option>\n";
+        for (auto& ch : channels) {
+            html << "<option value=\"" << ch.id << "\"";
+            if (ch.id == selected) html << " selected";
+            html << ">#" << ch.name << "</option>\n";
+        }
+        if (channels.empty()) {
+            html.str("");
+            html << "<option value=\"\">No forum channels found (check guild ID &amp; bot permissions)</option>";
+        }
+
+        res.add_header("Content-Type", "text/html; charset=utf-8");
+        res.write(html.str());
+        return res;
+    });
+
+    // POST /api/discord/test-announcement - send a test message to the LUG-wide channel
+    CROW_ROUTE(app, "/api/discord/test-announcement").methods("POST"_method)(
+        [&](const crow::request& req) {
+        crow::response res;
+        auto& ctx = app.get_context<AuthMiddleware>(req);
+        if (ctx.auth.role != "admin") {
+            res.code = 403;
+            res.write(R"(<span class="text-red-600">Forbidden</span>)");
+            return res;
+        }
+
+        std::string channel_id = discord.get_lug_channel_id();
+        if (channel_id.empty()) {
+            res.write(R"(<span class="text-red-600">No announcements channel configured.</span>)");
+            return res;
+        }
+
+        try {
+            discord.post_message(channel_id, "🧱 **LUG Manager test announcement** — bot is connected and posting correctly!");
+            res.write(R"(<span class="text-green-600 font-medium">✓ Test message sent successfully!</span>)");
+        } catch (const std::exception& e) {
+            res.write("<span class=\"text-red-600\">Error: " + std::string(e.what()) + "</span>");
+        }
+        res.add_header("Content-Type", "text/html; charset=utf-8");
+        return res;
+    });
+
+    // GET /api/discord/role-options - returns <option> elements for all guild roles
+    CROW_ROUTE(app, "/api/discord/role-options")(
+        [&](const crow::request& req) {
+        crow::response res;
+        auto& ctx = app.get_context<AuthMiddleware>(req);
+        if (ctx.auth.role != "admin") { res.code = 403; return res; }
+
+        std::string selected;
+        {
+            auto qs = crow::query_string(req.url_params);
+            const char* s = qs.get("selected"); if (s) selected = s;
+        }
+
+        auto roles = discord.fetch_guild_roles();
+        std::ostringstream html;
+        html << "<option value=\"\">-- No role --</option>\n";
+        for (auto& r : roles)
+            html << "<option value=\"" << r.id << "\""
+                 << (r.id == selected ? " selected" : "") << ">@" << r.name << "</option>\n";
+        if (roles.empty())
+            html.str("<option value=\"\">No roles found (check guild ID &amp; bot permissions)</option>");
+
+        res.add_header("Content-Type", "text/html; charset=utf-8");
+        res.write(html.str());
+        return res;
+    });
+
+    // POST /api/discord/sync-members - import guild members that have a mapped LUG role
+    CROW_ROUTE(app, "/api/discord/sync-members").methods("POST"_method)(
+        [&](const crow::request& req) {
+        crow::response res;
+        auto& ctx = app.get_context<AuthMiddleware>(req);
+        if (ctx.auth.role != "admin") {
+            res.code = 403;
+            res.write(R"(<span class="text-red-600">Forbidden</span>)");
+            return res;
+        }
+
+        SyncResult r = member_sync.sync_from_guild();
+
+        std::ostringstream html;
+        if (!r.error_message.empty()) {
+            html << "<span class=\"text-red-600 font-medium\">Error: "
+                 << r.error_message << "</span>";
+        } else {
+            html << "<span class=\"text-green-700 font-medium\">"
+                 << "Sync complete &mdash; "
+                 << r.imported << " imported, "
+                 << r.updated  << " updated, "
+                 << r.skipped  << " skipped";
+            if (r.errors > 0)
+                html << ", <span class=\"text-red-600\">" << r.errors << " errors</span>";
+            html << "</span>";
+        }
+
+        res.add_header("Content-Type", "text/html; charset=utf-8");
+        res.write(html.str());
+        return res;
+    });
+
+    // GET /settings - admin settings page
+    CROW_ROUTE(app, "/settings")([&](const crow::request& req) {
+        crow::response res;
+        auto& ctx = app.get_context<AuthMiddleware>(req);
+        if (ctx.auth.role != "admin") {
+            res.redirect("/dashboard");
+            return res;
+        }
+
+        std::string guild_id           = settings.get("discord_guild_id",    discord.get_guild_id());
+        std::string lug_channel        = settings.get("discord_announcements_channel_id",
+                                                       discord.get_lug_channel_id());
+        std::string forum_channel      = settings.get("discord_events_forum_channel_id",
+                                                       discord.get_events_forum_channel_id());
+        std::string announce_role_id   = settings.get("discord_announcement_role_id",
+                                                       discord.get_announcement_role_id());
+        std::string non_lug_role_id    = settings.get("discord_non_lug_event_role_id",
+                                                       discord.get_non_lug_event_role_id());
+        std::string timezone           = settings.get("lug_timezone", discord.get_timezone());
+        std::string calendar_name     = settings.get("ical_calendar_name", "LUG Events");
+
+        auto build_options = [](const std::vector<DiscordChannel>& channels,
+                                const std::string& selected,
+                                const std::string& empty_label,
+                                const std::string& none_msg) -> std::string {
+            std::ostringstream oss;
+            oss << "<option value=\"\">" << empty_label << "</option>\n";
+            for (auto& ch : channels) {
+                oss << "<option value=\"" << ch.id << "\"";
+                if (ch.id == selected) oss << " selected";
+                oss << ">#" << ch.name << "</option>\n";
+            }
+            if (channels.empty()) { oss.str(""); oss << "<option value=\"\">" << none_msg << "</option>"; }
+            return oss.str();
+        };
+
+        auto build_role_options = [](const std::vector<DiscordRole>& roles,
+                                     const std::string& selected) -> std::string {
+            std::ostringstream oss;
+            oss << "<option value=\"\">-- No role --</option>\n";
+            for (auto& r : roles)
+                oss << "<option value=\"" << r.id << "\""
+                    << (r.id == selected ? " selected" : "") << ">@" << r.name << "</option>\n";
+            if (roles.empty())
+                return "<option value=\"\">No roles found (check guild ID &amp; bot permissions)</option>";
+            return oss.str();
+        };
+
+        std::string no_guild = "Enter a Guild ID first, then refresh";
+        std::string channel_options = guild_id.empty() ? "<option value=\"\">" + no_guild + "</option>"
+            : build_options(discord.fetch_text_channels(), lug_channel,
+                            "-- Select a channel --",
+                            "No text channels found (check guild ID &amp; bot permissions)");
+        std::string forum_options = guild_id.empty() ? "<option value=\"\">" + no_guild + "</option>"
+            : build_options(discord.fetch_forum_channels(), forum_channel,
+                            "-- Select a forum channel --",
+                            "No forum channels found (check guild ID &amp; bot permissions)");
+        auto all_roles = guild_id.empty() ? std::vector<DiscordRole>{} : discord.fetch_guild_roles();
+        std::string role_options = guild_id.empty()
+            ? "<option value=\"\">" + no_guild + "</option>"
+            : build_role_options(all_roles, announce_role_id);
+        std::string non_lug_role_options = guild_id.empty()
+            ? "<option value=\"\">" + no_guild + "</option>"
+            : build_role_options(all_roles, non_lug_role_id);
+
+        crow::mustache::context mctx;
+        mctx["guild_id"]              = guild_id;
+        mctx["lug_channel_id"]        = lug_channel;
+        mctx["forum_channel_id"]      = forum_channel;
+        mctx["channel_options"]       = channel_options;
+        mctx["forum_options"]         = forum_options;
+        mctx["role_options"]          = role_options;
+        mctx["non_lug_role_options"]  = non_lug_role_options;
+        mctx["timezone"]              = timezone;
+        mctx["calendar_name"]        = calendar_name;
+
+        bool is_htmx = req.get_header_value("HX-Request") == "true";
+        if (is_htmx) {
+            auto tmpl = crow::mustache::load("settings/_content.html");
+            res.add_header("Content-Type", "text/html; charset=utf-8");
+            res.write(tmpl.render(mctx).dump());
+        } else {
+            auto content_tmpl = crow::mustache::load("settings/_content.html");
+            std::string content = content_tmpl.render(mctx).dump();
+            crow::mustache::context layout_ctx;
+            layout_ctx["content"]         = content;
+            layout_ctx["page_title"]      = "Settings";
+            layout_ctx["active_settings"] = true;
+            layout_ctx["is_admin"]        = true;
+            auto layout = crow::mustache::load("layout.html");
+            res.add_header("Content-Type", "text/html; charset=utf-8");
+            res.write(layout.render(layout_ctx).dump());
+        }
+        return res;
+    });
+
+    // POST /settings - save guild and LUG-wide channel
+    CROW_ROUTE(app, "/settings").methods("POST"_method)(
+        [&](const crow::request& req) {
+        crow::response res;
+        auto& ctx = app.get_context<AuthMiddleware>(req);
+        if (ctx.auth.role != "admin") {
+            res.code = 403;
+            res.write("Forbidden");
+            return res;
+        }
+
+        auto params = crow::query_string("?" + req.body);
+        auto get_param = [&](const char* k) -> std::string {
+            const char* v = params.get(k);
+            return v ? std::string(v) : "";
+        };
+
+        std::string guild_id       = get_param("discord_guild_id");
+        std::string lug_channel    = get_param("discord_announcements_channel_id");
+        std::string forum_channel  = get_param("discord_events_forum_channel_id");
+        std::string announce_role  = get_param("discord_announcement_role_id");
+        std::string non_lug_role   = get_param("discord_non_lug_event_role_id");
+        std::string timezone       = get_param("lug_timezone");
+        std::string cal_name       = get_param("ical_calendar_name");
+
+        if (!guild_id.empty())    settings.set("discord_guild_id",    guild_id);
+        if (!lug_channel.empty()) settings.set("discord_announcements_channel_id", lug_channel);
+        settings.set("discord_events_forum_channel_id", forum_channel); // allow clearing
+        settings.set("discord_announcement_role_id",    announce_role); // allow clearing
+        settings.set("discord_non_lug_event_role_id",   non_lug_role);  // allow clearing
+        if (!timezone.empty())    settings.set("lug_timezone",         timezone);
+        if (!cal_name.empty())    settings.set("ical_calendar_name",   cal_name);
+
+        // Apply immediately so Discord calls use the new values
+        discord.reconfigure(guild_id, lug_channel, forum_channel, announce_role, non_lug_role, timezone);
+        if (!timezone.empty()) calendar.set_timezone(timezone);
+
+        bool is_htmx = req.get_header_value("HX-Request") == "true";
+        if (is_htmx) {
+            res.add_header("HX-Redirect", "/settings");
+            res.code = 200;
+        } else {
+            res.redirect("/settings");
+        }
+        return res;
+    });
+}

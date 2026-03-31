@@ -1,0 +1,41 @@
+# Build artifacts
+/build/
+/dist/
+*.o
+*.a
+*.so
+*.dylib
+
+# CMake
+CMakeFiles/
+CMakeCache.txt
+*.cmake
+Makefile
+
+# Environment variables
+.env
+.env.local
+.env.*.local
+
+# Database
+*.db
+*.db-shm
+*.db-wal
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+
+# Temporary files
+*.tmp
+test_output.txt
+
+# Generated CSS (built by scripts/build_css.sh or Dockerfile)
+/src/static/tailwind.min.css
+
+# Tailwind CLI binary cache
+/.tailwind/

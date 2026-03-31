@@ -1,0 +1,115 @@
+#include "routes/AuthRoutes.hpp"
+#include <crow.h>
+#include <iostream>
+
+void register_auth_routes(LugApp& app, AuthService& auth, DiscordOAuth& oauth) {
+
+    // GET /login - show login page
+    CROW_ROUTE(app, "/login")([&](const crow::request& req) {
+        // If already authenticated, redirect to dashboard
+        auto& ctx = app.get_context<AuthMiddleware>(req);
+        if (ctx.auth.authenticated) {
+            crow::response res;
+            res.redirect("/dashboard");
+            return res;
+        }
+
+        // Check for error query param
+        auto params = crow::query_string(req.url_params);
+        const char* error_raw = params.get("error");
+        std::string error = error_raw ? std::string(error_raw) : "";
+
+        auto tmpl = crow::mustache::load("login.html");
+        crow::mustache::context mctx;
+        if (error == "not_member")      mctx["error_not_member"]     = true;
+        if (error == "discord_denied")  mctx["error_discord_denied"] = true;
+        if (error == "failed")          mctx["error_failed"]         = true;
+        if (error == "no_code")         mctx["error_failed"]         = true;
+
+        crow::response res;
+        res.add_header("Content-Type", "text/html; charset=utf-8");
+        res.write(tmpl.render(mctx).dump());
+        return res;
+    });
+
+    // GET /auth/login - redirect to Discord OAuth2
+    CROW_ROUTE(app, "/auth/login")([&](const crow::request& /*req*/) {
+        // Use a simple fixed state for now (in production, use random state per session)
+        std::string url = oauth.get_auth_url("lug-state");
+        crow::response res;
+        res.redirect(url);
+        return res;
+    });
+
+    // GET /auth/callback - handle OAuth2 callback
+    CROW_ROUTE(app, "/auth/callback")([&](const crow::request& req) {
+        auto params = crow::query_string(req.url_params);
+        const char* code_raw  = params.get("code");
+        const char* error_raw = params.get("error");
+
+        if (error_raw) {
+            crow::response res;
+            res.redirect("/login?error=discord_denied");
+            return res;
+        }
+
+        if (!code_raw) {
+            crow::response res;
+            res.redirect("/login?error=no_code");
+            return res;
+        }
+
+        std::string code(code_raw);
+        try {
+            std::string token = auth.login_with_discord(code);
+            crow::response res;
+            res.add_header("Set-Cookie",
+                "session=" + token + "; HttpOnly; Path=/; Max-Age=86400");
+            res.redirect("/dashboard");
+            return res;
+        } catch (const std::exception& e) {
+            std::string err = e.what();
+            crow::response res;
+            if (err == "not_authorized") {
+                res.redirect("/login?error=not_member");
+            } else {
+                std::cerr << "[auth] Login error: " << err << "\n";
+                res.redirect("/login?error=failed");
+            }
+            return res;
+        }
+    });
+
+    // POST /auth/logout
+    CROW_ROUTE(app, "/auth/logout").methods("POST"_method)(
+        [&](const crow::request& req) {
+        // Extract session cookie and destroy it
+        std::string cookie_header = req.get_header_value("Cookie");
+        std::string token;
+        size_t pos = cookie_header.find("session=");
+        if (pos != std::string::npos) {
+            pos += 8;
+            size_t end = cookie_header.find(';', pos);
+            token = cookie_header.substr(
+                pos, end == std::string::npos ? std::string::npos : end - pos);
+        }
+        if (!token.empty()) auth.logout(token);
+
+        crow::response res;
+        res.add_header("Set-Cookie", "session=; HttpOnly; Path=/; Max-Age=0");
+        res.redirect("/login");
+        return res;
+    });
+
+    // GET / - redirect based on auth status
+    CROW_ROUTE(app, "/")([&](const crow::request& req) {
+        auto& ctx = app.get_context<AuthMiddleware>(req);
+        crow::response res;
+        if (ctx.auth.authenticated) {
+            res.redirect("/dashboard");
+        } else {
+            res.redirect("/login");
+        }
+        return res;
+    });
+}

@@ -1,0 +1,114 @@
+<div class="p-6">
+  <div class="flex items-center justify-between mb-5">
+    <h2 class="text-lg font-bold text-gray-900">
+      {{#is_edit}}Edit Chapter{{/is_edit}}
+      {{^is_edit}}New Chapter{{/is_edit}}
+    </h2>
+    <button onclick="closeModal()" class="text-gray-400 hover:text-gray-600 transition-colors">
+      <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+      </svg>
+    </button>
+  </div>
+
+  {{#is_edit}}
+  <form hx-put="/chapters/{{id}}"
+        hx-target="#main-content"
+        hx-swap="innerHTML"
+        hx-on::after-request="if(event.detail.successful){ closeModal(); htmx.ajax('GET','/chapters',{target:'#main-content',swap:'innerHTML'}); }"
+        class="space-y-4">
+  {{/is_edit}}
+  {{^is_edit}}
+  <form hx-post="/chapters"
+        hx-encoding="application/x-www-form-urlencoded"
+        hx-on::after-request="if(event.detail.successful){ closeModal(); htmx.ajax('GET','/chapters',{target:'#main-content',swap:'innerHTML'}); }"
+        class="space-y-4">
+  {{/is_edit}}
+
+    <div>
+      <label class="block text-sm font-medium text-gray-700 mb-1">Chapter Name</label>
+      <input type="text" name="name" value="{{name}}" required
+             placeholder="e.g. East Coast Chapter"
+             class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-yellow-400 focus:border-transparent">
+    </div>
+
+    <div>
+      <label class="block text-sm font-medium text-gray-700 mb-1">Description</label>
+      <textarea name="description" rows="2"
+                placeholder="Brief description of this chapter"
+                class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-yellow-400 focus:border-transparent resize-none">{{description}}</textarea>
+    </div>
+
+    <div>
+      <label class="block text-sm font-medium text-gray-700 mb-1">Announcements Channel</label>
+      <div class="flex gap-2">
+        <select name="discord_announcement_channel_id" id="chapter-channel-select"
+                class="ts-channel flex-1 px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-yellow-400 focus:border-transparent">
+          {{{channel_options}}}
+        </select>
+        <button type="button"
+                hx-get="/api/discord/channel-options"
+                hx-target="#chapter-channel-select"
+                hx-swap="innerHTML"
+                hx-on::before-request="destroyChannelSelect('chapter-channel-select')"
+                hx-on::after-settle="initChannelSelects()"
+                class="px-3 py-2 bg-gray-100 text-gray-700 rounded-lg text-sm hover:bg-gray-200 transition-colors whitespace-nowrap">
+          Refresh
+        </button>
+      </div>
+      <p class="text-xs text-gray-400 mt-1">Events and meetings for this chapter will post to this channel.</p>
+    </div>
+
+    <div>
+      <label class="block text-sm font-medium text-gray-700 mb-1">Chapter Lead Discord Role</label>
+      <div class="flex gap-2">
+        <select name="discord_lead_role_id" id="chapter-role-select"
+                class="ts-search flex-1 px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-yellow-400 focus:border-transparent">
+          {{{role_options}}}
+        </select>
+        <button type="button"
+                hx-get="/api/discord/role-options"
+                hx-target="#chapter-role-select"
+                hx-swap="innerHTML"
+                hx-on::before-request="destroyChannelSelect('chapter-role-select')"
+                hx-on::after-settle="initChannelSelects()"
+                class="px-3 py-2 bg-gray-100 text-gray-700 rounded-lg text-sm hover:bg-gray-200 transition-colors whitespace-nowrap">
+          Refresh
+        </button>
+      </div>
+      <p class="text-xs text-gray-400 mt-1">Members assigned as chapter lead will receive this Discord role automatically.</p>
+    </div>
+
+    <div>
+      <label class="block text-sm font-medium text-gray-700 mb-1">Chapter Member Discord Role</label>
+      <div class="flex gap-2">
+        <select name="discord_member_role_id" id="chapter-member-role-select"
+                class="ts-search flex-1 px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-yellow-400 focus:border-transparent">
+          {{{member_role_options}}}
+        </select>
+        <button type="button"
+                hx-get="/api/discord/role-options"
+                hx-target="#chapter-member-role-select"
+                hx-swap="innerHTML"
+                hx-on::before-request="destroyChannelSelect('chapter-member-role-select')"
+                hx-on::after-settle="initChannelSelects()"
+                class="px-3 py-2 bg-gray-100 text-gray-700 rounded-lg text-sm hover:bg-gray-200 transition-colors whitespace-nowrap">
+          Refresh
+        </button>
+      </div>
+      <p class="text-xs text-gray-400 mt-1">Members of this chapter will receive this Discord role automatically.</p>
+    </div>
+
+    <div class="flex justify-end gap-3 pt-2">
+      <button type="button" onclick="closeModal()"
+              class="px-4 py-2 text-sm text-gray-600 hover:text-gray-800 transition-colors">
+        Cancel
+      </button>
+      <button type="submit"
+              class="px-5 py-2 bg-yellow-400 text-gray-900 rounded-lg text-sm font-semibold hover:bg-yellow-300 transition-colors">
+        {{#is_edit}}Save Changes{{/is_edit}}{{^is_edit}}Create Chapter{{/is_edit}}
+      </button>
+    </div>
+
+  </form>
+</div>

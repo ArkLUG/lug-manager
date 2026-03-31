@@ -1,0 +1,100 @@
+<div class="space-y-6">
+  <div class="bg-white rounded-xl border border-gray-200 p-6">
+    <div class="flex items-start justify-between">
+      <div>
+        <h2 class="text-2xl font-bold text-gray-900">{{name}}</h2>
+        <p class="text-gray-600 mt-2">{{description}}</p>
+        <div class="mt-4 bg-gray-50 rounded-lg p-3 font-mono text-sm text-gray-700 border border-gray-200">
+          <span class="text-gray-500">Discord Channel ID: </span>{{discord_channel}}
+        </div>
+      </div>
+      <div class="flex gap-2">
+        {{#can_manage}}
+        <a hx-get="/chapters/{{id}}/members" hx-target="#main-content" hx-push-url="true" hx-swap="innerHTML"
+           class="inline-flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-500 transition-colors cursor-pointer">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z"/>
+          </svg>
+          Members
+        </a>
+        {{/can_manage}}
+        {{#is_admin}}
+        <button hx-get="/chapters/{{id}}/edit" hx-target="#modal" hx-swap="innerHTML"
+                class="inline-flex items-center gap-2 px-4 py-2 bg-gray-800 text-white rounded-lg text-sm font-medium hover:bg-gray-700 transition-colors">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/>
+          </svg>
+          Edit
+        </button>
+        {{/is_admin}}
+      </div>
+    </div>
+  </div>
+
+  <!-- Chapter Leads -->
+  <div class="bg-white rounded-xl border border-gray-200 p-6">
+    <h3 class="text-lg font-semibold text-gray-900 mb-4">Chapter Leads</h3>
+
+    {{#has_leads}}
+    <div class="space-y-2 mb-4">
+      {{#leads}}
+      <div class="flex items-center justify-between py-2 px-3 bg-purple-50 border border-purple-200 rounded-lg">
+        <div>
+          <span class="text-sm font-medium text-purple-900">{{display_name}}</span>
+          <span class="text-xs text-purple-500 ml-1">@{{discord_username}}</span>
+        </div>
+        {{#can_manage}}
+        <form hx-post="/chapters/{{chapter_id}}/lead/{{member_id}}/demote"
+              hx-target="#main-content" hx-swap="innerHTML" hx-push-url="true">
+          <button type="submit" class="text-xs text-purple-600 hover:text-red-600 transition-colors px-2 py-1 rounded hover:bg-red-50">
+            Remove Lead
+          </button>
+        </form>
+        {{/can_manage}}
+      </div>
+      {{/leads}}
+    </div>
+    {{/has_leads}}
+    {{^has_leads}}
+    <p class="text-sm text-gray-400 mb-4">No leads assigned yet.</p>
+    {{/has_leads}}
+
+    {{#can_manage}}
+    {{#has_non_leads}}
+    <form hx-post="/chapters/{{id}}/lead" hx-target="#main-content" hx-swap="innerHTML" hx-push-url="true"
+          class="flex gap-2 items-center border-t border-gray-100 pt-4">
+      <select name="member_id" required
+              class="ts-search flex-1 px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-yellow-400">
+        {{{add_lead_options}}}
+      </select>
+      <button type="submit" class="px-4 py-2 bg-yellow-400 text-gray-900 rounded-lg text-sm font-semibold hover:bg-yellow-300 transition-colors whitespace-nowrap">
+        Add Lead
+      </button>
+    </form>
+    {{/has_non_leads}}
+    {{^has_non_leads}}
+    {{^has_leads}}
+    <p class="text-xs text-gray-400 border-t border-gray-100 pt-4">Add members to this chapter first.</p>
+    {{/has_leads}}
+    {{/has_non_leads}}
+    {{/can_manage}}
+  </div>
+
+  <div class="bg-white rounded-xl border border-gray-200 p-6">
+    <h3 class="text-lg font-semibold text-gray-900 mb-4">Quick Links</h3>
+    <div class="flex flex-wrap gap-3">
+      <a href="/meetings?chapter={{id}}" class="inline-flex items-center gap-2 px-4 py-2 bg-blue-100 text-blue-700 rounded-lg text-sm font-medium hover:bg-blue-200 transition-colors">
+        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/>
+        </svg>
+        View Meetings
+      </a>
+      <a href="/events?chapter={{id}}" class="inline-flex items-center gap-2 px-4 py-2 bg-purple-100 text-purple-700 rounded-lg text-sm font-medium hover:bg-purple-200 transition-colors">
+        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"/>
+        </svg>
+        View Events
+      </a>
+    </div>
+  </div>
+</div>

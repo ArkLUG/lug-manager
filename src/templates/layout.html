@@ -1,0 +1,391 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>{{page_title}} — LUG Manager</title>
+  <link rel="stylesheet" href="/static/tailwind.min.css" id="tw-local">
+  <script>
+    // Fall back to play CDN in local dev when CSS hasn't been generated yet
+    document.getElementById('tw-local').addEventListener('error', function() {
+      var s = document.createElement('script'); s.src = 'https://cdn.tailwindcss.com';
+      document.head.appendChild(s);
+    });
+  </script>
+  <script src="https://unpkg.com/htmx.org@1.9.12"></script>
+  <link href="https://cdn.jsdelivr.net/npm/tom-select@2/dist/css/tom-select.default.min.css" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/tom-select@2/dist/js/tom-select.complete.min.js"></script>
+  <link rel="stylesheet" href="/static/dataTables.min.css">
+  <script src="/static/jquery.min.js"></script>
+  <script src="/static/dataTables.min.js"></script>
+  <style>
+    /* HTMX loading indicator */
+    .htmx-indicator          { opacity: 0; transition: opacity 200ms ease-in; }
+    .htmx-request .htmx-indicator { opacity: 1; }
+    .htmx-request.htmx-indicator  { opacity: 1; }
+
+    /* Smooth nav transitions */
+    #sidebar { transition: transform 200ms ease-in-out; }
+
+    /* Stud pattern for LEGO branding */
+    .stud-pattern {
+      background-image: radial-gradient(circle, rgba(0,0,0,0.15) 2px, transparent 2px);
+      background-size: 12px 12px;
+    }
+
+    /* Modal backdrop */
+    #modal-backdrop {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,0.5);
+      z-index: 50;
+      align-items: center;
+      justify-content: center;
+      padding: 1rem;
+    }
+    #modal-backdrop.open { display: flex; }
+
+    /* Active nav pill */
+    .nav-active {
+      background-color: #FFD700;
+      color: #111827;
+      font-weight: 600;
+    }
+    .nav-inactive {
+      color: #D1D5DB;
+    }
+    .nav-inactive:hover {
+      background-color: #374151;
+      color: #ffffff;
+    }
+  </style>
+</head>
+<body class="bg-gray-100 min-h-screen flex" hx-boost="false">
+
+  <!-- ===== SIDEBAR ===== -->
+  <aside id="sidebar"
+         class="w-64 bg-gray-900 text-white min-h-screen flex flex-col fixed inset-y-0 left-0
+                -translate-x-full md:translate-x-0 z-40">
+
+    <!-- Brand / Logo -->
+    <div class="flex items-center gap-3 px-5 py-4 bg-gray-800 border-b border-gray-700 stud-pattern">
+      <div class="w-10 h-10 bg-yellow-400 rounded-lg flex items-center justify-center
+                  font-black text-gray-900 text-lg shadow-inner flex-shrink-0">L</div>
+      <div class="min-w-0">
+        <div class="font-bold text-white text-sm leading-tight">LUG Manager</div>
+        <div class="text-yellow-400 text-xs font-medium truncate">LEGO User Group</div>
+      </div>
+    </div>
+
+    <!-- Navigation Links -->
+    <nav class="flex-1 px-3 py-5 space-y-1 overflow-y-auto">
+
+      <!-- Dashboard -->
+      <a hx-get="/dashboard"
+         hx-target="#main-content"
+         hx-push-url="true"
+         hx-swap="innerHTML"
+         hx-indicator="#nav-spinner"
+         class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm cursor-pointer transition-colors
+                {{#active_dashboard}}nav-active{{/active_dashboard}}
+                {{^active_dashboard}}nav-inactive{{/active_dashboard}}">
+        <svg class="w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1
+                   1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"/>
+        </svg>
+        Dashboard
+      </a>
+
+      <!-- Meetings -->
+      <a hx-get="/meetings"
+         hx-target="#main-content"
+         hx-push-url="true"
+         hx-swap="innerHTML"
+         hx-indicator="#nav-spinner"
+         class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm cursor-pointer transition-colors
+                {{#active_meetings}}nav-active{{/active_meetings}}
+                {{^active_meetings}}nav-inactive{{/active_meetings}}">
+        <svg class="w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/>
+        </svg>
+        Meetings
+      </a>
+
+      <!-- Events -->
+      <a hx-get="/events"
+         hx-target="#main-content"
+         hx-push-url="true"
+         hx-swap="innerHTML"
+         hx-indicator="#nav-spinner"
+         class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm cursor-pointer transition-colors
+                {{#active_events}}nav-active{{/active_events}}
+                {{^active_events}}nav-inactive{{/active_events}}">
+        <svg class="w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2
+                   2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"/>
+        </svg>
+        Events
+      </a>
+
+      <!-- Members -->
+      <a hx-get="/members"
+         hx-target="#main-content"
+         hx-push-url="true"
+         hx-swap="innerHTML"
+         hx-indicator="#nav-spinner"
+         class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm cursor-pointer transition-colors
+                {{#active_members}}nav-active{{/active_members}}
+                {{^active_members}}nav-inactive{{/active_members}}">
+        <svg class="w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7
+                   20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0
+                   019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z"/>
+        </svg>
+        Members
+      </a>
+
+      <!-- My Attendance -->
+      <a hx-get="/attendance"
+         hx-target="#main-content"
+         hx-push-url="true"
+         hx-swap="innerHTML"
+         hx-indicator="#nav-spinner"
+         class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm cursor-pointer transition-colors
+                {{#active_attendance}}nav-active{{/active_attendance}}
+                {{^active_attendance}}nav-inactive{{/active_attendance}}">
+        <svg class="w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9
+                   5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4"/>
+        </svg>
+        My Attendance
+      </a>
+
+      {{#is_admin}}
+      <!-- Chapters (admin) -->
+      <a hx-get="/chapters"
+         hx-target="#main-content"
+         hx-push-url="true"
+         hx-swap="innerHTML"
+         hx-indicator="#nav-spinner"
+         class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm cursor-pointer transition-colors
+                {{#active_chapters}}nav-active{{/active_chapters}}
+                {{^active_chapters}}nav-inactive{{/active_chapters}}">
+        <svg class="w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"/>
+        </svg>
+        Chapters
+      </a>
+
+      <!-- Settings (admin) -->
+      <a hx-get="/settings"
+         hx-target="#main-content"
+         hx-push-url="true"
+         hx-swap="innerHTML"
+         hx-indicator="#nav-spinner"
+         class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm cursor-pointer transition-colors
+                {{#active_settings}}nav-active{{/active_settings}}
+                {{^active_settings}}nav-inactive{{/active_settings}}">
+        <svg class="w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/>
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
+        </svg>
+        Settings
+      </a>
+      {{/is_admin}}
+
+    </nav>
+
+    <!-- Bottom section: calendar link + logout -->
+    <div class="px-4 py-4 border-t border-gray-700 space-y-1">
+      <a href="/calendar.ics" target="_blank"
+         class="flex items-center gap-2 px-3 py-2 text-xs text-gray-400
+                hover:text-yellow-400 hover:bg-gray-800 rounded-lg transition-colors">
+        <svg class="w-4 h-4 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/>
+        </svg>
+        Subscribe to Calendar (.ics)
+      </a>
+      <form action="/auth/logout" method="post">
+        <button type="submit"
+                class="w-full flex items-center gap-2 px-3 py-2 text-sm text-gray-400
+                       hover:text-white hover:bg-gray-700 rounded-lg transition-colors text-left">
+          <svg class="w-4 h-4 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                  d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3
+                     3 0 013-3h4a3 3 0 013 3v1"/>
+          </svg>
+          Sign Out
+        </button>
+      </form>
+    </div>
+  </aside>
+
+  <!-- Mobile sidebar overlay -->
+  <div id="sidebar-overlay"
+       class="fixed inset-0 bg-black/60 z-30 hidden md:hidden"
+       onclick="closeSidebar()"></div>
+
+  <!-- ===== MAIN AREA ===== -->
+  <div class="flex-1 flex flex-col md:ml-64 min-w-0">
+
+    <!-- Top bar -->
+    <header class="bg-white border-b border-gray-200 px-4 py-3 flex items-center gap-3
+                   sticky top-0 z-20 shadow-sm">
+      <!-- Mobile hamburger -->
+      <button onclick="toggleSidebar()"
+              class="md:hidden p-2 rounded-lg text-gray-500 hover:bg-gray-100 transition-colors"
+              aria-label="Toggle menu">
+        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                d="M4 6h16M4 12h16M4 18h16"/>
+        </svg>
+      </button>
+
+      <!-- Page title -->
+      <h1 id="page-title" class="text-base font-semibold text-gray-800 flex-1 truncate">{{page_title}}</h1>
+
+      <!-- HTMX loading spinner -->
+      <div id="nav-spinner" class="htmx-indicator flex items-center">
+        <div class="w-5 h-5 border-2 border-yellow-400 border-t-transparent
+                    rounded-full animate-spin"></div>
+      </div>
+
+      <!-- LEGO brick accent -->
+      <div class="hidden sm:flex items-center gap-1">
+        <div class="w-3 h-3 bg-yellow-400 rounded-sm"></div>
+        <div class="w-3 h-3 bg-red-500 rounded-sm"></div>
+        <div class="w-3 h-3 bg-blue-500 rounded-sm"></div>
+      </div>
+    </header>
+
+    <!-- Page content -->
+    <main id="main-content"
+          class="flex-1 p-4 md:p-6 overflow-auto"
+          hx-indicator="#nav-spinner">
+      {{{content}}}
+    </main>
+  </div>
+
+  <!-- ===== MODAL ===== -->
+  <div id="modal-backdrop" onclick="closeModalOnBackdrop(event)">
+    <div id="modal"
+         class="bg-white rounded-xl shadow-2xl w-full max-w-lg max-h-[90vh] overflow-y-auto
+                relative"
+         onclick="event.stopPropagation()">
+      <!-- Modal content loaded via HTMX -->
+    </div>
+  </div>
+
+  <script>
+    // Tom Select: searchable channel dropdowns
+    function initChannelSelects(root) {
+      (root || document).querySelectorAll('select.ts-channel, select.ts-search, select.ts-member').forEach(function(el) {
+        if (!el.tomselect) {
+          new TomSelect(el, { maxOptions: null });
+        }
+      });
+      (root || document).querySelectorAll('select.ts-multi').forEach(function(el) {
+        if (!el.tomselect) {
+          new TomSelect(el, { maxOptions: null, plugins: ['remove_button'] });
+        }
+      });
+    }
+    function destroyChannelSelect(id) {
+      var el = document.getElementById(id);
+      if (el && el.tomselect) el.tomselect.destroy();
+    }
+    document.addEventListener('DOMContentLoaded', function() { initChannelSelects(); });
+    document.addEventListener('htmx:afterSwap', function() { initChannelSelects(); });
+
+    // Update visible page title from data-page-title on #main-content
+    document.addEventListener('htmx:afterSettle', function() {
+      var mc = document.getElementById('main-content');
+      if (mc) {
+        var t = mc.getAttribute('data-page-title');
+        if (t) {
+          var h1 = document.getElementById('page-title');
+          if (h1) h1.textContent = t;
+          document.title = t + ' — LUG Manager';
+        }
+      }
+    });
+
+    // Sidebar toggle (mobile)
+    function toggleSidebar() {
+      const sidebar = document.getElementById('sidebar');
+      const overlay = document.getElementById('sidebar-overlay');
+      sidebar.classList.toggle('-translate-x-full');
+      overlay.classList.toggle('hidden');
+    }
+    function closeSidebar() {
+      document.getElementById('sidebar').classList.add('-translate-x-full');
+      document.getElementById('sidebar-overlay').classList.add('hidden');
+    }
+
+    // Modal open/close
+    function openModal() {
+      document.getElementById('modal-backdrop').classList.add('open');
+      document.body.style.overflow = 'hidden';
+    }
+    function closeModal() {
+      document.getElementById('modal-backdrop').classList.remove('open');
+      document.getElementById('modal').innerHTML = '';
+      document.body.style.overflow = '';
+    }
+    function closeModalOnBackdrop(e) {
+      if (e.target === document.getElementById('modal-backdrop')) closeModal();
+    }
+
+    // Update active nav link based on current URL
+    function updateActiveNav() {
+      var path = window.location.pathname;
+      document.querySelectorAll('nav a[hx-get]').forEach(function(a) {
+        var target = a.getAttribute('hx-get');
+        // Match exact path or sub-path (e.g. /chapters/5 highlights /chapters)
+        var isActive = path === target || path.startsWith(target + '/');
+        a.classList.toggle('nav-active', isActive);
+        a.classList.toggle('nav-inactive', !isActive);
+      });
+    }
+    document.addEventListener('DOMContentLoaded', updateActiveNav);
+    document.addEventListener('htmx:pushedIntoHistory', updateActiveNav);
+    document.addEventListener('htmx:replacedInHistory', updateActiveNav);
+
+    // HTMX event handlers
+    document.addEventListener('htmx:afterRequest', function(evt) {
+      // Close sidebar on mobile after navigation
+      if (window.innerWidth < 768) closeSidebar();
+    });
+
+    // Close modal on HX-Trigger: closeModal; reload DataTable if present
+    document.addEventListener('htmx:afterRequest', function(evt) {
+      const trigger = evt.detail.xhr ? evt.detail.xhr.getResponseHeader('HX-Trigger') : null;
+      if (trigger && trigger.includes('closeModal')) {
+        closeModal();
+        if (window.membersTable) window.membersTable.ajax.reload(null, false);
+      }
+    });
+
+    // Auto-open modal when content is loaded into #modal
+    document.addEventListener('htmx:afterSwap', function(evt) {
+      if (evt.detail.target && evt.detail.target.id === 'modal') {
+        openModal();
+      }
+    });
+
+    // Keyboard: Escape closes modal
+    document.addEventListener('keydown', function(e) {
+      if (e.key === 'Escape') closeModal();
+    });
+  </script>
+</body>
+</html>

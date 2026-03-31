@@ -1,0 +1,91 @@
+<div class="max-w-2xl space-y-6">
+
+  <div class="flex items-center gap-3">
+    <a hx-get="/settings" hx-target="#main-content" hx-push-url="true" hx-swap="innerHTML"
+       class="text-sm text-gray-500 hover:text-gray-700 transition-colors cursor-pointer">← Settings</a>
+    <span class="text-gray-300">/</span>
+    <span class="text-sm font-medium text-gray-700">Role Mappings</span>
+  </div>
+
+  {{^guild_configured}}
+  <div class="bg-yellow-50 border border-yellow-200 rounded-xl p-4 text-sm text-yellow-800">
+    <strong>Guild ID not configured.</strong> Go to
+    <a hx-get="/settings" hx-target="#main-content" hx-push-url="true" hx-swap="innerHTML"
+       class="underline cursor-pointer">Settings</a> and enter your Discord Server ID first.
+  </div>
+  {{/guild_configured}}
+
+  {{#guild_configured}}
+  <div class="bg-white rounded-xl border border-gray-200 p-6">
+    <h2 class="text-xl font-bold text-gray-900 mb-1">Role Mappings</h2>
+    <p class="text-sm text-gray-500 mb-6">
+      Select which Discord roles grant each LUG role. On login, the member's highest-privilege match is applied.
+      Multiple Discord roles can map to the same LUG role.
+    </p>
+
+    {{^has_discord_roles}}
+    <div class="text-sm text-gray-500 py-4 text-center">
+      No Discord roles found — make sure the bot is in the server and the Guild ID is correct in
+      <a hx-get="/settings" hx-target="#main-content" hx-push-url="true" hx-swap="innerHTML"
+         class="underline cursor-pointer">Settings</a>.
+    </div>
+    {{/has_discord_roles}}
+
+    {{#has_discord_roles}}
+    <form hx-post="/settings/roles" hx-target="#roles-feedback" hx-swap="innerHTML" class="space-y-6">
+
+      <!-- Admin -->
+      <div class="space-y-2">
+        <div class="flex items-start gap-3">
+          <div class="w-2 h-2 rounded-full bg-red-500 mt-2 flex-shrink-0"></div>
+          <div class="flex-1 min-w-0">
+            <label class="block text-sm font-semibold text-gray-800 mb-0.5">Admin</label>
+            <p class="text-xs text-gray-400 mb-2">Full access — manage members, chapters, settings</p>
+            <select name="lug_admin" multiple
+                    class="ts-multi w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-yellow-400">
+              {{#admin_roles}}
+              <option value="{{id}}" {{#selected}}selected{{/selected}}>{{name}}</option>
+              {{/admin_roles}}
+            </select>
+          </div>
+        </div>
+      </div>
+
+      <!-- Member -->
+      <div class="space-y-2">
+        <div class="flex items-start gap-3">
+          <div class="w-2 h-2 rounded-full bg-green-500 mt-2 flex-shrink-0"></div>
+          <div class="flex-1 min-w-0">
+            <label class="block text-sm font-semibold text-gray-800 mb-0.5">Member</label>
+            <p class="text-xs text-gray-400 mb-2">Paid member — can sign up for events, view meetings</p>
+            <select name="lug_member" multiple
+                    class="ts-multi w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-yellow-400">
+              {{#member_roles}}
+              <option value="{{id}}" {{#selected}}selected{{/selected}}>{{name}}</option>
+              {{/member_roles}}
+            </select>
+          </div>
+        </div>
+      </div>
+
+      <div class="flex items-center gap-3 pt-2 border-t border-gray-100">
+        <button type="submit"
+                class="px-5 py-2 bg-yellow-400 text-gray-900 rounded-lg text-sm font-semibold hover:bg-yellow-300 transition-colors">
+          Save Mappings
+        </button>
+        <div id="roles-feedback" class="text-sm text-gray-600"></div>
+      </div>
+
+    </form>
+    {{/has_discord_roles}}
+  </div>
+
+  <div class="bg-blue-50 border border-blue-200 rounded-xl p-4 text-sm text-blue-800">
+    <strong>How it works:</strong> On every login, the member's Discord guild roles are fetched and checked against these mappings.
+    If multiple roles match, the highest-privilege one wins (Admin &gt; Member).
+    The bootstrap admin always retains admin access regardless of Discord roles.
+    Discord roles not mapped here will be denied login.
+  </div>
+  {{/guild_configured}}
+
+</div>

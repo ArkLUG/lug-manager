@@ -1,0 +1,1 @@
+ALTER TABLE lug_events ADD COLUMN event_lead_id INTEGER REFERENCES members(id) ON DELETE SET NULL;

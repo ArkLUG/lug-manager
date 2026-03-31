@@ -1,0 +1,154 @@
+<div class="space-y-6" data-page-title="Dashboard">
+  <!-- Welcome banner -->
+  <div class="bg-gradient-to-r from-gray-800 to-gray-700 rounded-xl p-6 text-white">
+    <div class="flex items-center gap-4">
+      <div class="w-12 h-12 bg-yellow-400 rounded-xl flex items-center justify-center text-gray-900 font-bold text-xl">L</div>
+      <div>
+        <h2 class="text-2xl font-bold">Welcome to LUG Manager</h2>
+        <p class="text-gray-300 text-sm mt-1">Your LEGO User Group hub — members, meetings, and events in one place.</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- Quick stats row -->
+  <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+    <a hx-get="/members" hx-target="#main-content" hx-push-url="true" hx-swap="innerHTML"
+       class="bg-white rounded-xl p-5 border border-gray-200 hover:border-yellow-400 hover:shadow-md transition-all cursor-pointer group">
+      <div class="flex items-center gap-3">
+        <div class="w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center group-hover:bg-yellow-100 transition-colors">
+          <svg class="w-5 h-5 text-blue-600 group-hover:text-yellow-600 transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z"/>
+          </svg>
+        </div>
+        <div>
+          <div class="text-sm text-gray-500">Members</div>
+          <div class="font-semibold text-gray-800">View All</div>
+        </div>
+      </div>
+    </a>
+    <a hx-get="/meetings" hx-target="#main-content" hx-push-url="true" hx-swap="innerHTML"
+       class="bg-white rounded-xl p-5 border border-gray-200 hover:border-yellow-400 hover:shadow-md transition-all cursor-pointer group">
+      <div class="flex items-center gap-3">
+        <div class="w-10 h-10 bg-green-100 rounded-lg flex items-center justify-center group-hover:bg-yellow-100 transition-colors">
+          <svg class="w-5 h-5 text-green-600 group-hover:text-yellow-600 transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/>
+          </svg>
+        </div>
+        <div>
+          <div class="text-sm text-gray-500">Meetings</div>
+          <div class="font-semibold text-gray-800">Upcoming</div>
+        </div>
+      </div>
+    </a>
+    <a hx-get="/events" hx-target="#main-content" hx-push-url="true" hx-swap="innerHTML"
+       class="bg-white rounded-xl p-5 border border-gray-200 hover:border-yellow-400 hover:shadow-md transition-all cursor-pointer group">
+      <div class="flex items-center gap-3">
+        <div class="w-10 h-10 bg-purple-100 rounded-lg flex items-center justify-center group-hover:bg-yellow-100 transition-colors">
+          <svg class="w-5 h-5 text-purple-600 group-hover:text-yellow-600 transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"/>
+          </svg>
+        </div>
+        <div>
+          <div class="text-sm text-gray-500">Events</div>
+          <div class="font-semibold text-gray-800">Upcoming</div>
+        </div>
+      </div>
+    </a>
+  </div>
+
+  <!-- Calendar subscription card -->
+  <div class="bg-white rounded-xl border border-gray-200 p-6">
+    <div class="flex items-start gap-4">
+      <div class="w-12 h-12 bg-yellow-400 rounded-xl flex items-center justify-center flex-shrink-0">
+        <svg class="w-6 h-6 text-gray-900" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/>
+        </svg>
+      </div>
+      <div class="flex-1">
+        <h3 class="font-semibold text-gray-800 text-lg">Subscribe to LUG Calendar</h3>
+        <p class="text-gray-500 text-sm mt-1">All meetings and events sync automatically to your calendar app. Copy the URL below and add it as a subscription — your calendar will stay up to date.</p>
+
+        <div class="mt-4 space-y-2">
+          <label class="block text-xs font-medium text-gray-500">Calendar URL</label>
+          <div class="flex items-center gap-2">
+            <input type="text" id="ical-url" readonly
+                   class="flex-1 bg-gray-50 rounded-lg px-3 py-2 font-mono text-sm text-gray-700 border border-gray-200 select-all"
+                   value="Loading...">
+            <button onclick="navigator.clipboard.writeText(document.getElementById('ical-url').value);this.textContent='Copied!';setTimeout(()=>this.textContent='Copy',1500)"
+                    class="px-3 py-2 text-sm font-medium text-gray-600 border border-gray-300 rounded-lg hover:bg-gray-50 whitespace-nowrap">
+              Copy
+            </button>
+          </div>
+        </div>
+
+        <div class="mt-4 grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div class="rounded-lg border border-gray-200 p-4">
+            <div class="font-medium text-gray-700 text-sm mb-2">Apple Calendar</div>
+            <ol class="text-xs text-gray-500 space-y-1 list-decimal list-inside">
+              <li>Open Calendar app</li>
+              <li>File → New Calendar Subscription</li>
+              <li>Paste the URL above</li>
+              <li>Click Subscribe</li>
+            </ol>
+          </div>
+          <div class="rounded-lg border border-gray-200 p-4">
+            <div class="font-medium text-gray-700 text-sm mb-2">Google Calendar</div>
+            <ol class="text-xs text-gray-500 space-y-1 list-decimal list-inside">
+              <li>Open Google Calendar</li>
+              <li>Click "+" next to "Other calendars"</li>
+              <li>Choose "From URL"</li>
+              <li>Paste the URL above</li>
+              <li>Click "Add calendar"</li>
+            </ol>
+          </div>
+          <div class="rounded-lg border border-gray-200 p-4">
+            <div class="font-medium text-gray-700 text-sm mb-2">Outlook</div>
+            <ol class="text-xs text-gray-500 space-y-1 list-decimal list-inside">
+              <li>Open Outlook Calendar</li>
+              <li>Add calendar → Subscribe from web</li>
+              <li>Paste the URL above</li>
+              <li>Click Import</li>
+            </ol>
+          </div>
+        </div>
+
+        <a href="/calendar.ics" target="_blank"
+           class="inline-flex items-center gap-2 mt-4 px-4 py-2 bg-yellow-400 text-gray-900 rounded-lg text-sm font-medium hover:bg-yellow-300 transition-colors">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/></svg>
+          Download .ics file
+        </a>
+      </div>
+    </div>
+  </div>
+  <script>
+  (function() {
+    var loc = window.location;
+    var url = loc.protocol + '//' + loc.host + '/calendar.ics';
+    document.getElementById('ical-url').value = url;
+  })();
+  </script>
+
+  {{#is_admin}}
+  <!-- Admin quick actions -->
+  <div class="bg-white rounded-xl border border-gray-200 p-6">
+    <h3 class="font-semibold text-gray-800 mb-4">Admin Actions</h3>
+    <div class="flex flex-wrap gap-3">
+      <button hx-get="/meetings/new" hx-target="#modal" hx-swap="innerHTML"
+              class="inline-flex items-center gap-2 px-4 py-2 bg-gray-800 text-white rounded-lg text-sm font-medium hover:bg-gray-700 transition-colors">
+        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
+        New Meeting
+      </button>
+      <button hx-get="/events/new" hx-target="#modal" hx-swap="innerHTML"
+              class="inline-flex items-center gap-2 px-4 py-2 bg-gray-800 text-white rounded-lg text-sm font-medium hover:bg-gray-700 transition-colors">
+        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
+        New Event
+      </button>
+      <button hx-get="/members/new" hx-target="#modal" hx-swap="innerHTML"
+              class="inline-flex items-center gap-2 px-4 py-2 bg-gray-800 text-white rounded-lg text-sm font-medium hover:bg-gray-700 transition-colors">
+        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
+        Add Member
+      </button>
+    </div>
+  </div>
+  {{/is_admin}}
+</div>

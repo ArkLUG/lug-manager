@@ -1,0 +1,206 @@
+<div class="max-w-2xl space-y-6" data-page-title="Settings">
+
+  <div class="bg-white rounded-xl border border-gray-200 p-6">
+    <h2 class="text-xl font-bold text-gray-900 mb-1">Discord Settings</h2>
+    <p class="text-sm text-gray-500 mb-6">Configure which Discord server and channels the LUG Manager posts to. Changes take effect immediately.</p>
+
+    <form hx-post="/settings" hx-target="#settings-feedback" hx-swap="innerHTML" class="space-y-5">
+
+      <!-- Guild ID -->
+      <div>
+        <label class="block text-sm font-medium text-gray-700 mb-1">Discord Server (Guild) ID</label>
+        <div class="flex gap-2">
+          <input type="text" name="discord_guild_id" id="guild-id-input"
+                 value="{{guild_id}}"
+                 placeholder="e.g. 123456789012345678"
+                 class="flex-1 px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-yellow-400 focus:border-transparent font-mono">
+          <button type="button"
+                  hx-get="/api/discord/channel-options"
+                  hx-vals='js:{"guild_id": document.getElementById("guild-id-input").value}'
+                  hx-target="#lug-channel-select"
+                  hx-swap="innerHTML"
+                  hx-on::before-request="destroyChannelSelect('lug-channel-select')"
+                  hx-on::after-settle="initChannelSelects()"
+                  class="px-3 py-2 bg-gray-100 text-gray-700 rounded-lg text-sm font-medium hover:bg-gray-200 transition-colors whitespace-nowrap">
+            Refresh Channels
+          </button>
+          <button type="button"
+                  hx-get="/api/discord/forum-options"
+                  hx-vals='js:{"guild_id": document.getElementById("guild-id-input").value}'
+                  hx-target="#forum-channel-select"
+                  hx-swap="innerHTML"
+                  hx-on::before-request="destroyChannelSelect('forum-channel-select')"
+                  hx-on::after-settle="initChannelSelects()"
+                  class="px-3 py-2 bg-gray-100 text-gray-700 rounded-lg text-sm font-medium hover:bg-gray-200 transition-colors whitespace-nowrap">
+            Refresh Forums
+          </button>
+        </div>
+        <p class="text-xs text-gray-400 mt-1">Enable Developer Mode in Discord settings, then right-click the server icon → Copy Server ID.</p>
+      </div>
+
+      <!-- LUG-wide Announcements Channel -->
+      <div>
+        <label class="block text-sm font-medium text-gray-700 mb-1">LUG-wide Announcements Channel</label>
+        <select name="discord_announcements_channel_id" id="lug-channel-select"
+                class="ts-channel w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-yellow-400 focus:border-transparent">
+          {{{channel_options}}}
+        </select>
+        <p class="text-xs text-gray-400 mt-1">New LUG-wide events will create announcement threads in this channel.</p>
+      </div>
+
+      <!-- Event Announcement Role -->
+      <div>
+        <label class="block text-sm font-medium text-gray-700 mb-1">Event Announcement Role</label>
+        <div class="flex gap-2">
+          <select name="discord_announcement_role_id" id="announcement-role-select"
+                  class="ts-channel flex-1 px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-yellow-400 focus:border-transparent">
+            {{{role_options}}}
+          </select>
+          <button type="button"
+                  hx-get="/api/discord/role-options"
+                  hx-vals='js:{"selected": ""}'
+                  hx-target="#announcement-role-select"
+                  hx-swap="innerHTML"
+                  hx-on::before-request="destroyChannelSelect('announcement-role-select')"
+                  hx-on::after-settle="initChannelSelects()"
+                  class="px-3 py-2 bg-gray-100 text-gray-700 rounded-lg text-sm font-medium hover:bg-gray-200 transition-colors whitespace-nowrap">
+            Refresh Roles
+          </button>
+        </div>
+        <p class="text-xs text-gray-400 mt-1">This role will be @mentioned in the Discord announcement when a new LUG or chapter event is posted.</p>
+      </div>
+
+      <!-- Non-LUG Event Role -->
+      <div>
+        <label class="block text-sm font-medium text-gray-700 mb-1">Non-LUG Event Role</label>
+        <div class="flex gap-2">
+          <select name="discord_non_lug_event_role_id" id="non-lug-role-select"
+                  class="ts-channel flex-1 px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-yellow-400 focus:border-transparent">
+            {{{non_lug_role_options}}}
+          </select>
+          <button type="button"
+                  hx-get="/api/discord/role-options"
+                  hx-vals='js:{"selected": ""}'
+                  hx-target="#non-lug-role-select"
+                  hx-swap="innerHTML"
+                  hx-on::before-request="destroyChannelSelect('non-lug-role-select')"
+                  hx-on::after-settle="initChannelSelects()"
+                  class="px-3 py-2 bg-gray-100 text-gray-700 rounded-lg text-sm font-medium hover:bg-gray-200 transition-colors whitespace-nowrap">
+            Refresh Roles
+          </button>
+        </div>
+        <p class="text-xs text-gray-400 mt-1">This role will be @mentioned when a Non-LUG event is announced. Leave empty to use no ping.</p>
+      </div>
+
+      <!-- Calendar Name -->
+      <div>
+        <label class="block text-sm font-medium text-gray-700 mb-1">Calendar Name</label>
+        <input type="text" name="ical_calendar_name" value="{{calendar_name}}"
+               placeholder="LUG Events"
+               class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-yellow-400 focus:border-transparent">
+        <p class="text-xs text-gray-400 mt-1">Display name shown in calendar apps when subscribing to the iCal feed.</p>
+      </div>
+
+      <!-- Timezone -->
+      <div>
+        <label class="block text-sm font-medium text-gray-700 mb-1">Timezone</label>
+        <input type="text" name="lug_timezone" value="{{timezone}}"
+               list="tz-suggestions"
+               placeholder="America/Chicago"
+               class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-yellow-400 focus:border-transparent font-mono">
+        <datalist id="tz-suggestions">
+          <option value="America/New_York">
+          <option value="America/Chicago">
+          <option value="America/Denver">
+          <option value="America/Los_Angeles">
+          <option value="America/Phoenix">
+          <option value="America/Anchorage">
+          <option value="Pacific/Honolulu">
+          <option value="Europe/London">
+          <option value="Europe/Paris">
+          <option value="Europe/Berlin">
+          <option value="Europe/Moscow">
+          <option value="Asia/Tokyo">
+          <option value="Asia/Shanghai">
+          <option value="Asia/Kolkata">
+          <option value="Australia/Sydney">
+          <option value="UTC">
+        </datalist>
+        <p class="text-xs text-gray-400 mt-1">IANA timezone name used for Discord scheduled events and meeting announcements. DST is applied automatically.</p>
+      </div>
+
+      <!-- Event Thread Forum Channel -->
+      <div>
+        <label class="block text-sm font-medium text-gray-700 mb-1">Event Thread Forum Channel</label>
+        <select name="discord_events_forum_channel_id" id="forum-channel-select"
+                class="ts-channel w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-yellow-400 focus:border-transparent">
+          {{{forum_options}}}
+        </select>
+        <p class="text-xs text-gray-400 mt-1">Events will create a thread post in this Discord forum channel. Must be a Forum channel (type 15), not a text channel.</p>
+      </div>
+
+      <div class="flex items-center gap-3 pt-2">
+        <button type="submit"
+                class="px-5 py-2 bg-yellow-400 text-gray-900 rounded-lg text-sm font-semibold hover:bg-yellow-300 transition-colors">
+          Save Settings
+        </button>
+        <button type="button"
+                hx-post="/api/discord/test-announcement"
+                hx-target="#announcement-test-result"
+                hx-swap="innerHTML"
+                class="px-4 py-2 bg-gray-100 text-gray-700 rounded-lg text-sm font-medium hover:bg-gray-200 transition-colors">
+          Test Announcement
+        </button>
+        <div id="settings-feedback" class="text-sm text-gray-600"></div>
+        <div id="announcement-test-result" class="text-sm"></div>
+      </div>
+
+    </form>
+  </div>
+
+  <div class="bg-white rounded-xl border border-gray-200 p-6">
+    <h2 class="text-xl font-bold text-gray-900 mb-1">Role Management</h2>
+    <p class="text-sm text-gray-500 mb-4">Map Discord roles to LUG app roles so members can log in automatically.</p>
+    <a hx-get="/settings/roles" hx-target="#main-content" hx-push-url="true" hx-swap="innerHTML"
+       class="inline-flex items-center gap-2 px-4 py-2 bg-gray-800 text-white rounded-lg text-sm font-medium hover:bg-gray-700 transition-colors cursor-pointer">
+      <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"/>
+      </svg>
+      Manage Role Mappings
+    </a>
+  </div>
+
+  <div class="bg-white rounded-xl border border-gray-200 p-6">
+    <h2 class="text-xl font-bold text-gray-900 mb-1">Member Import</h2>
+    <p class="text-sm text-gray-500 mb-4">
+      Pull all members from the Discord server and automatically create accounts for anyone
+      whose Discord roles map to a LUG role. Existing members get their display name and role
+      updated. Dues and paid status are never overwritten. The sync also runs automatically
+      every 6 hours in the background.
+    </p>
+    <div class="flex items-center gap-3">
+      <button hx-post="/api/discord/sync-members"
+              hx-target="#sync-result"
+              hx-swap="innerHTML"
+              hx-indicator="#sync-spinner"
+              class="inline-flex items-center gap-2 px-4 py-2 bg-indigo-600 text-white rounded-lg
+                     text-sm font-medium hover:bg-indigo-500 transition-colors">
+        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003
+                   8.003 0 01-15.357-2m15.357 2H15"/>
+        </svg>
+        Sync Now
+      </button>
+      <div id="sync-spinner" class="htmx-indicator">
+        <div class="w-4 h-4 border-2 border-indigo-500 border-t-transparent rounded-full animate-spin"></div>
+      </div>
+      <div id="sync-result" class="text-sm"></div>
+    </div>
+  </div>
+
+  <div class="bg-blue-50 border border-blue-200 rounded-xl p-4 text-sm text-blue-800">
+    <strong>Note:</strong> The Discord bot token is set via the <code class="bg-blue-100 px-1 rounded">DISCORD_BOT_TOKEN</code> environment variable and cannot be changed here. Each chapter has its own announcements channel configured on the chapter's settings page.
+  </div>
+
+</div>

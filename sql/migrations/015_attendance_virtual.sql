@@ -1,0 +1,1 @@
+ALTER TABLE attendance ADD COLUMN is_virtual INTEGER NOT NULL DEFAULT 0;
