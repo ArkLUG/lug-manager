@@ -24,6 +24,7 @@
 #include "integrations/DiscordClient.hpp"
 #include "integrations/DiscordOAuth.hpp"
 #include "integrations/CalendarGenerator.hpp"
+#include "integrations/GoogleCalendarClient.hpp"
 #include "async/ThreadPool.hpp"
 #include "auth/AuthService.hpp"
 #include "auth/SessionStore.hpp"
@@ -63,9 +64,10 @@ int main() {
         ThreadPool pool(4);
 
         // Integrations
-        DiscordOAuth      discord_oauth(config);
-        DiscordClient     discord_client(config, pool);
-        CalendarGenerator calendar(meeting_repo, event_repo, config);
+        DiscordOAuth            discord_oauth(config);
+        DiscordClient           discord_client(config, pool);
+        CalendarGenerator       calendar(meeting_repo, event_repo, config, &chapter_repo);
+        GoogleCalendarClient    gcal_client;
 
         // Seed settings from env on first run, then apply stored values
         {
@@ -94,7 +96,16 @@ int main() {
                 settings_repo.set("ical_calendar_name", config.ical_calendar_name);
             }
             discord_client.reconfigure(guild, channel, forum_channel, announce_role, non_lug_role, timezone);
+            discord_client.set_suppress_pings(settings_repo.get("discord_suppress_pings") == "1");
+            discord_client.set_suppress_updates(settings_repo.get("discord_suppress_updates") == "1");
             calendar.set_timezone(timezone);
+
+            // Google Calendar
+            std::string gcal_sa_path = settings_repo.get("google_service_account_json_path");
+            std::string gcal_cal_id  = settings_repo.get("google_calendar_id");
+            if (!gcal_sa_path.empty() && !gcal_cal_id.empty())
+                gcal_client.reconfigure(gcal_sa_path, gcal_cal_id, timezone);
+
             std::cout << "[lug-manager] Discord config:"
                       << " guild='" << guild << "'"
                       << " lug_channel='" << channel << "'"
@@ -112,11 +123,11 @@ int main() {
 
         // Application services
         ChapterService    chapter_service(chapter_repo);
-        MemberService     member_service(member_repo);
+        MemberService     member_service(member_repo, &discord_client);
         MemberSyncService member_sync_service(discord_client, member_repo, role_mapping_repo,
                                               chapter_repo, chapter_member_repo);
-        MeetingService    meeting_service(meeting_repo, discord_client, calendar, &chapter_repo);
-        EventService      event_service(event_repo, discord_client, calendar, &chapter_repo);
+        MeetingService    meeting_service(meeting_repo, discord_client, calendar, &chapter_repo, &gcal_client);
+        EventService      event_service(event_repo, discord_client, calendar, &chapter_repo, &gcal_client);
         AttendanceService attendance_service(attendance_repo, member_repo);
 
         // Build the Crow app with AuthMiddleware
@@ -137,7 +148,8 @@ int main() {
             settings_repo,
             role_mapping_repo,
             chapter_member_repo,
-            member_sync_service
+            member_sync_service,
+            gcal_client
         };
         register_all_routes(app, svc);
 

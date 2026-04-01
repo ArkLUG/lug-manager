@@ -1,0 +1,6 @@
+build/
+.git/
+*.db
+.env
+data/
+node_modules/

@@ -8,13 +8,15 @@
   </div>
 
   {{#is_edit}}
-  <form hx-put="{{action}}" hx-target="#main-content" hx-swap="innerHTML"
-        hx-push-url="/events" class="space-y-4">
+  <form hx-put="{{action}}" hx-target="#event-form-errors" hx-swap="innerHTML"
+        class="space-y-4">
   {{/is_edit}}
   {{^is_edit}}
-  <form hx-post="{{action}}" hx-target="#main-content" hx-swap="innerHTML"
-        hx-push-url="/events" class="space-y-4">
+  <form hx-post="{{action}}" hx-target="#event-form-errors" hx-swap="innerHTML"
+        class="space-y-4">
   {{/is_edit}}
+
+    <div id="event-form-errors"></div>
 
     <div>
       <label class="block text-sm font-medium text-gray-700 mb-1">Event Title <span class="text-red-500">*</span></label>
@@ -24,7 +26,7 @@
     </div>
 
     <div>
-      <label class="block text-sm font-medium text-gray-700 mb-1">Event Lead <span class="text-red-500">*</span></label>
+      <label class="block text-sm font-medium text-gray-700 mb-1">Event Lead <span class="text-gray-400">(optional)</span></label>
       <select name="event_lead_id" id="event-lead-select"
               class="ts-member w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-yellow-400">
         {{{member_options}}}
@@ -86,9 +88,8 @@
     <div id="event-chapter-row">
       <label class="block text-sm font-medium text-gray-700 mb-1">Chapter <span class="text-gray-400">(optional for admins)</span></label>
       <select name="chapter_id" id="event-chapter-select"
-              hx-get="/api/chapter-options?selected={{chapter_id_str}}" hx-trigger="load" hx-target="this" hx-swap="innerHTML"
               class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-yellow-400">
-        <option value="">Loading chapters…</option>
+        {{{chapter_options}}}
       </select>
     </div>
 
@@ -104,15 +105,37 @@
     })();
     </script>
 
-    {{^is_edit}}{{#has_forum_channel}}
+    {{#has_forum_channel}}
     <div id="event-thread-section">
       <label class="block text-sm font-medium text-gray-700 mb-2">Discord Thread</label>
-      <div class="flex gap-4 mb-2">
+      {{#is_edit}}
+      {{#has_thread}}
+      <p class="text-xs text-gray-500 mb-2">Current thread: <code class="bg-gray-100 px-1 rounded">{{discord_thread_id}}</code></p>
+      {{/has_thread}}
+      {{^has_thread}}
+      <p class="text-xs text-gray-500 mb-2">No thread linked.</p>
+      {{/has_thread}}
+      {{/is_edit}}
+      <div class="flex flex-wrap gap-3 mb-2">
+        {{^is_edit}}
         <label class="flex items-center gap-2 text-sm text-gray-700 cursor-pointer">
           <input type="radio" name="thread_mode" value="new" id="thread-mode-new" checked
                  class="accent-yellow-400">
           Create new thread
         </label>
+        {{/is_edit}}
+        {{#is_edit}}
+        <label class="flex items-center gap-2 text-sm text-gray-700 cursor-pointer">
+          <input type="radio" name="thread_mode" value="keep" id="thread-mode-keep" checked
+                 class="accent-yellow-400">
+          Keep current
+        </label>
+        <label class="flex items-center gap-2 text-sm text-gray-700 cursor-pointer">
+          <input type="radio" name="thread_mode" value="new" id="thread-mode-new"
+                 class="accent-yellow-400">
+          Create new thread
+        </label>
+        {{/is_edit}}
         <label class="flex items-center gap-2 text-sm text-gray-700 cursor-pointer">
           <input type="radio" name="thread_mode" value="existing" id="thread-mode-existing"
                  class="accent-yellow-400">
@@ -128,16 +151,15 @@
     </div>
     <script>
     (function() {
-      var newRadio      = document.getElementById('thread-mode-new');
       var existingRadio = document.getElementById('thread-mode-existing');
       var existingRow   = document.getElementById('existing-thread-row');
+      var allRadios     = document.querySelectorAll('input[name="thread_mode"]');
       var tsInited      = false;
       function toggleThread() {
         var useExisting = existingRadio.checked;
         existingRow.style.display = useExisting ? '' : 'none';
         if (useExisting && !tsInited) {
           tsInited = true;
-          // Load threads then init TomSelect
           fetch('/api/discord/forum-threads')
             .then(function(r) { return r.text(); })
             .then(function(html) {
@@ -148,11 +170,10 @@
             });
         }
       }
-      newRadio.addEventListener('change', toggleThread);
-      existingRadio.addEventListener('change', toggleThread);
+      allRadios.forEach(function(r) { r.addEventListener('change', toggleThread); });
     })();
     </script>
-    {{/has_forum_channel}}{{/is_edit}}
+    {{/has_forum_channel}}
 
     <div class="flex gap-3 pt-2">
       <button type="submit"

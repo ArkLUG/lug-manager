@@ -1,6 +1,38 @@
 #include "services/MemberService.hpp"
+#include <algorithm>
+#include <iostream>
 
-MemberService::MemberService(MemberRepository& repo) : repo_(repo) {}
+MemberService::MemberService(MemberRepository& repo, DiscordClient* discord)
+    : repo_(repo), discord_(discord) {}
+
+// Generate a nickname like "Aaron K." from first/last name.
+// If another member would have the same nickname, add more letters from the last name.
+std::string MemberService::generate_nickname(const std::string& first_name,
+                                              const std::string& last_name,
+                                              int64_t exclude_id) {
+    if (first_name.empty()) return last_name.empty() ? "" : last_name;
+    if (last_name.empty())  return first_name;
+
+    auto all = repo_.find_all();
+
+    // Try increasing lengths of last name initial: "K.", "Ki.", "Kim.", etc.
+    for (size_t len = 1; len <= last_name.size(); ++len) {
+        std::string candidate = first_name + " " + last_name.substr(0, len) + ".";
+
+        bool conflict = false;
+        for (auto& m : all) {
+            if (m.id == exclude_id) continue;
+            if (m.display_name == candidate) {
+                conflict = true;
+                break;
+            }
+        }
+        if (!conflict) return candidate;
+    }
+
+    // All prefixes conflict — use full name
+    return first_name + " " + last_name;
+}
 
 std::optional<Member> MemberService::get(int64_t id) {
     return repo_.find_by_id(id);
@@ -22,10 +54,16 @@ Member MemberService::create(const Member& m) {
     if (m.discord_user_id.empty()) {
         throw std::invalid_argument("discord_user_id required");
     }
-    if (m.display_name.empty()) {
-        throw std::invalid_argument("display_name required");
+    Member to_create = m;
+    // Auto-generate display_name from first/last if both are set
+    if (!to_create.first_name.empty() && !to_create.last_name.empty()) {
+        to_create.display_name = generate_nickname(to_create.first_name, to_create.last_name, 0);
     }
-    return repo_.create(m);
+    if (to_create.display_name.empty()) {
+        to_create.display_name = to_create.discord_username.empty()
+            ? to_create.discord_user_id : to_create.discord_username;
+    }
+    return repo_.create(to_create);
 }
 
 Member MemberService::update(int64_t id, const Member& updates) {
@@ -34,17 +72,36 @@ Member MemberService::update(int64_t id, const Member& updates) {
         throw std::runtime_error("Member not found: " + std::to_string(id));
     }
     Member m = *existing;
-    if (!updates.display_name.empty()) m.display_name = updates.display_name;
     if (!updates.discord_username.empty()) m.discord_username = updates.discord_username;
-    if (!updates.email.empty()) m.email = updates.email;
-    if (!updates.role.empty()) m.role = updates.role;
-    if (!updates.paid_until.empty()) m.paid_until = updates.paid_until;
+    if (!updates.first_name.empty())       m.first_name       = updates.first_name;
+    if (!updates.last_name.empty())        m.last_name        = updates.last_name;
+    if (!updates.email.empty())            m.email            = updates.email;
+    if (!updates.role.empty())             m.role             = updates.role;
+    if (!updates.paid_until.empty())       m.paid_until       = updates.paid_until;
     m.is_paid = updates.is_paid;
+
+    // Regenerate display_name if first/last names are set
+    if (!m.first_name.empty() && !m.last_name.empty()) {
+        m.display_name = generate_nickname(m.first_name, m.last_name, m.id);
+    } else if (!updates.display_name.empty()) {
+        m.display_name = updates.display_name;
+    }
+
     repo_.update(m);
     return repo_.find_by_id(id).value_or(m);
 }
 
 void MemberService::delete_member(int64_t id) {
+    if (discord_) {
+        auto member = repo_.find_by_id(id);
+        if (member && !member->discord_user_id.empty()) {
+            try {
+                discord_->kick_member(member->discord_user_id);
+            } catch (const std::exception& ex) {
+                std::cerr << "[MemberService] Warning: failed to kick Discord member: " << ex.what() << "\n";
+            }
+        }
+    }
     repo_.delete_by_id(id);
 }
 
@@ -59,6 +116,28 @@ std::vector<Member> MemberService::search(const std::string& q) {
 
 void MemberService::set_chapter(int64_t id, int64_t chapter_id) {
     repo_.set_chapter(id, chapter_id);
+}
+
+MemberService::SyncResult MemberService::sync_nicknames_to_discord() {
+    SyncResult result;
+    if (!discord_) return result;
+
+    auto all = repo_.find_all();
+    for (auto& m : all) {
+        if (m.discord_user_id.empty() || m.display_name.empty()) {
+            ++result.skipped;
+            continue;
+        }
+        try {
+            discord_->set_member_nickname(m.discord_user_id, m.display_name);
+            ++result.synced;
+        } catch (const std::exception& ex) {
+            std::cerr << "[MemberService] Nickname sync error for member " << m.id
+                      << ": " << ex.what() << "\n";
+            ++result.errors;
+        }
+    }
+    return result;
 }
 
 DatatableResult MemberService::datatable(const DatatableParams& p) {

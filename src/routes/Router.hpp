@@ -18,6 +18,7 @@
 #include "integrations/DiscordOAuth.hpp"
 #include "integrations/DiscordClient.hpp"
 #include "integrations/CalendarGenerator.hpp"
+#include "integrations/GoogleCalendarClient.hpp"
 #include "repositories/SettingsRepository.hpp"
 #include "repositories/RoleMappingRepository.hpp"
 #include "repositories/ChapterMemberRepository.hpp"
@@ -36,6 +37,7 @@ struct Services {
     RoleMappingRepository&  role_mappings;
     ChapterMemberRepository& chapter_members;
     MemberSyncService&      member_sync;
+    GoogleCalendarClient&   gcal;
 };
 
 void register_all_routes(LugApp& app, Services& svc);

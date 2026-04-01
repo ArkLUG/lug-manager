@@ -21,6 +21,7 @@ public:
     bool   set_virtual(int64_t attendance_id, bool is_virtual);
     bool   remove_by_id(int64_t attendance_id);
     std::vector<Attendance> get_member_history(int64_t member_id);
+    std::vector<AttendanceRepository::MemberAttendanceSummary> get_all_member_summaries();
 
 private:
     AttendanceRepository& repo_;

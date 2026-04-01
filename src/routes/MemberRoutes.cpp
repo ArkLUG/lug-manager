@@ -19,6 +19,8 @@ static crow::mustache::context member_to_ctx(const Member& m) {
     ctx["id"]               = m.id;
     ctx["discord_user_id"]  = m.discord_user_id;
     ctx["discord_username"] = m.discord_username;
+    ctx["first_name"]       = m.first_name;
+    ctx["last_name"]        = m.last_name;
     ctx["display_name"]     = m.display_name;
     ctx["email"]            = m.email;
     ctx["is_paid"]          = m.is_paid;
@@ -194,7 +196,8 @@ void register_member_routes(LugApp& app, MemberService& members) {
         Member m;
         m.discord_user_id  = get_param("discord_user_id");
         m.discord_username = get_param("discord_username");
-        m.display_name     = get_param("display_name");
+        m.first_name       = get_param("first_name");
+        m.last_name        = get_param("last_name");
         m.email            = get_param("email");
         m.role             = get_param("role").empty() ? "member" : get_param("role");
 
@@ -225,7 +228,8 @@ void register_member_routes(LugApp& app, MemberService& members) {
         };
 
         Member updates;
-        updates.display_name     = get_param("display_name");
+        updates.first_name       = get_param("first_name");
+        updates.last_name        = get_param("last_name");
         updates.discord_username = get_param("discord_username");
         updates.email            = get_param("email");
         updates.role             = get_param("role");
@@ -296,13 +300,13 @@ void register_member_routes(LugApp& app, MemberService& members) {
 
         try {
             members.delete_member(static_cast<int64_t>(id));
+            res.add_header("HX-Trigger", "membersUpdated");
             res.code = 200;
-            res.write(R"({"success":true})");
         } catch (const std::exception& e) {
             res.code = 400;
             res.write(std::string(R"({"error":")") + e.what() + "\"}");
+            res.add_header("Content-Type", "application/json");
         }
-        res.add_header("Content-Type", "application/json");
         return res;
     });
 

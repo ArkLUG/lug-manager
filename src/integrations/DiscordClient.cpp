@@ -234,14 +234,43 @@ std::string DiscordClient::build_lug_event_json(const LugEvent& e) const {
     return j.dump();
 }
 
+// Extract city/state from full address for thread titles
+static std::string shorten_location_dc(const std::string& loc) {
+    std::vector<std::string> parts;
+    std::istringstream ss(loc);
+    std::string part;
+    while (std::getline(ss, part, ',')) {
+        size_t s = part.find_first_not_of(" \t");
+        size_t e = part.find_last_not_of(" \t");
+        if (s != std::string::npos) parts.push_back(part.substr(s, e - s + 1));
+    }
+    if (parts.size() < 3) return loc;
+
+    auto is_country = [](const std::string& s) {
+        if (s.size() <= 2) return false;
+        for (char c : s) if (std::isdigit(static_cast<unsigned char>(c))) return false;
+        return true;
+    };
+
+    size_t last = parts.size() - 1;
+    if (is_country(parts[last]) && parts.size() >= 4) last--;
+
+    std::string state = parts[last];
+    std::string city  = parts[last - 1];
+    size_t sp = state.find(' ');
+    if (sp != std::string::npos) state = state.substr(0, sp);
+    return city + ", " + state;
+}
+
 static std::string format_lug_event_thread_name(const LugEvent& e) {
     auto fmt_date = [](const std::string& iso) -> std::string {
         if (iso.size() < 10) return iso;
         try {
             int month = std::stoi(iso.substr(5, 2));
             int day   = std::stoi(iso.substr(8, 2));
+            std::string year = iso.substr(2, 2);
             if (month >= 1 && month <= 12)
-                return std::to_string(month) + "/" + std::to_string(day);
+                return std::to_string(month) + "/" + std::to_string(day) + "/" + year;
         } catch (...) {}
         return iso.substr(0, 10);
     };
@@ -250,7 +279,7 @@ static std::string format_lug_event_thread_name(const LugEvent& e) {
     std::string date_part = (d0 == d1 || d1.empty()) ? d0 : d0 + "-" + d1;
 
     std::string name = e.title;
-    if (!e.location.empty())   name += " | " + e.location;
+    if (!e.location.empty())   name += " | " + shorten_location_dc(e.location);
     if (!date_part.empty())    name += " | " + date_part;
 
     // Discord thread names max 100 characters
@@ -261,7 +290,8 @@ static std::string format_lug_event_thread_name(const LugEvent& e) {
 // static
 std::string DiscordClient::build_event_announcement_content(const LugEvent& e,
                                                               const std::string& role_id,
-                                                              const std::string& thread_url) {
+                                                              const std::string& thread_url,
+                                                              bool suppress_pings) {
     auto fmt_date = [](const std::string& iso) -> std::string {
         if (iso.size() < 10) return iso;
         try {
@@ -273,17 +303,20 @@ std::string DiscordClient::build_event_announcement_content(const LugEvent& e,
         return iso.substr(0, 10);
     };
 
-    // Role pings
+    // Role pings (suppressed if setting is on)
     std::string out;
-    if (!role_id.empty()) out += "<@&" + role_id + "> ";
-    if (!e.discord_ping_role_ids.empty()) {
-        std::istringstream ss(e.discord_ping_role_ids);
-        std::string rid;
-        while (std::getline(ss, rid, ','))
-            if (!rid.empty()) out += "<@&" + rid + "> ";
+    if (!suppress_pings) {
+        if (!role_id.empty()) out += "<@&" + role_id + "> ";
+        if (!e.discord_ping_role_ids.empty()) {
+            std::istringstream ss(e.discord_ping_role_ids);
+            std::string rid;
+            while (std::getline(ss, rid, ','))
+                if (!rid.empty()) out += "<@&" + rid + "> ";
+        }
+        if (!role_id.empty() || !e.discord_ping_role_ids.empty()) out += "\n";
     }
-    if (!role_id.empty() || !e.discord_ping_role_ids.empty()) out += "\n";
 
+    if (e.scope == "non_lug") out += "[Non-LUG] ";
     out += "**" + e.title + "**\n";
 
     std::string d0 = fmt_date(e.start_time);
@@ -297,7 +330,8 @@ std::string DiscordClient::build_event_announcement_content(const LugEvent& e,
 
 // static
 std::string DiscordClient::build_thread_starter_content(const LugEvent& e,
-                                                          const std::string& role_id) {
+                                                          const std::string& role_id,
+                                                          bool suppress_pings) {
     auto fmt_date = [](const std::string& iso) -> std::string {
         if (iso.size() < 10) return iso;
         try {
@@ -309,9 +343,9 @@ std::string DiscordClient::build_thread_starter_content(const LugEvent& e,
         return iso.substr(0, 10);
     };
 
-    // Ping custom roles at the top; announcement role is for the channel post only
+    // Ping custom roles at the top (suppressed if setting is on)
     std::string out;
-    if (!e.discord_ping_role_ids.empty()) {
+    if (!suppress_pings && !e.discord_ping_role_ids.empty()) {
         std::istringstream ss(e.discord_ping_role_ids);
         std::string rid;
         while (std::getline(ss, rid, ','))
@@ -319,6 +353,7 @@ std::string DiscordClient::build_thread_starter_content(const LugEvent& e,
     }
     if (!out.empty()) out += "\n";
 
+    if (e.scope == "non_lug") out += "[Non-LUG] ";
     out += "**" + e.title + "**\n";
 
     std::string d0 = fmt_date(e.start_time);
@@ -327,8 +362,8 @@ std::string DiscordClient::build_thread_starter_content(const LugEvent& e,
     if (!date_str.empty()) out += "Dates: " + date_str + "\n";
     if (!e.location.empty()) out += "Location: " + e.location + "\n";
 
-    // Lead field: Discord mention if available, otherwise display name
-    if (!e.event_lead_discord_id.empty())
+    // Lead field: Discord mention if available (unless pings suppressed), otherwise display name
+    if (!suppress_pings && !e.event_lead_discord_id.empty())
         out += "Lead: <@" + e.event_lead_discord_id + ">\n";
     else if (!e.event_lead_name.empty())
         out += "Lead: " + e.event_lead_name + "\n";
@@ -345,7 +380,8 @@ std::string DiscordClient::build_thread_starter_content(const LugEvent& e,
 // static
 std::string DiscordClient::build_meeting_announcement_content(const Meeting& m,
                                                                const std::string& role_id,
-                                                               const std::string& tz_name) {
+                                                               const std::string& tz_name,
+                                                               bool suppress_pings) {
     // Format datetime as "M/D H:MM AM/PM TZ" using DST-aware abbreviation
     auto fmt_datetime = [&tz_name](const std::string& iso) -> std::string {
         if (iso.size() < 16) return iso;
@@ -372,7 +408,7 @@ std::string DiscordClient::build_meeting_announcement_content(const Meeting& m,
     };
 
     std::string out;
-    if (!role_id.empty()) out += "<@&" + role_id + "> ";
+    if (!suppress_pings && !role_id.empty()) out += "<@&" + role_id + "> ";
     if (!out.empty()) out += "\n";
 
     out += "**" + m.title + "**\n";
@@ -394,7 +430,7 @@ std::string DiscordClient::sync_post_meeting_announcement(const std::string& cha
                                                            const std::string& role_id) {
     if (channel_id.empty()) return "";
     json body;
-    body["content"] = build_meeting_announcement_content(m, role_id, timezone_);
+    body["content"] = build_meeting_announcement_content(m, role_id, timezone_, suppress_pings_);
     std::string resp = discord_api_request("POST", "/channels/" + channel_id + "/messages",
                                            body.dump());
     try {
@@ -414,7 +450,7 @@ std::string DiscordClient::sync_create_forum_thread_for_event(const std::string&
     json body;
     body["name"]                  = title;
     body["auto_archive_duration"] = 10080; // 7 days
-    body["message"]["content"]    = build_thread_starter_content(e, role_id);
+    body["message"]["content"]    = build_thread_starter_content(e, role_id, suppress_pings_);
     std::string resp = discord_api_request(
         "POST", "/channels/" + events_forum_channel_id_ + "/threads", body.dump());
     try {
@@ -433,7 +469,7 @@ std::string DiscordClient::sync_create_text_thread_for_event(const std::string& 
     std::string role_id = (e.scope == "non_lug") ? non_lug_event_role_id_ : announcement_role_id_;
     // Step 1: post announcement message
     json msg_body;
-    msg_body["content"] = build_event_announcement_content(e, role_id);
+    msg_body["content"] = build_event_announcement_content(e, role_id, "", suppress_pings_);
     std::string msg_resp = discord_api_request("POST",
                                                "/channels/" + lug_channel_id_ + "/messages",
                                                msg_body.dump());
@@ -476,7 +512,7 @@ std::string DiscordClient::sync_post_event_announcement(const std::string& chann
                                                           const std::string& thread_url) {
     if (channel_id.empty()) return "";
     json body;
-    body["content"] = build_event_announcement_content(e, role_id, thread_url);
+    body["content"] = build_event_announcement_content(e, role_id, thread_url, suppress_pings_);
     std::string resp = discord_api_request("POST", "/channels/" + channel_id + "/messages",
                                            body.dump());
     try {
@@ -576,8 +612,9 @@ std::string DiscordClient::sync_create_event_thread(const std::string& channel_i
                                                      const std::string& description) {
     // Step 1: Post a message to the channel
     json msg_body;
-    std::string msg_content = announcement_role_id_.empty()
-        ? "" : "<@&" + announcement_role_id_ + "> ";
+    std::string msg_content;
+    if (!suppress_pings_ && !announcement_role_id_.empty())
+        msg_content = "<@&" + announcement_role_id_ + "> ";
     msg_content += "**" + title + "**\n" + description;
     msg_body["content"] = msg_content;
     std::string msg_resp = discord_api_request("POST",
@@ -648,8 +685,9 @@ std::string DiscordClient::sync_create_forum_thread(const std::string& title,
     json body;
     body["name"]                  = title;
     body["auto_archive_duration"] = 10080; // 7 days
-    std::string content = announcement_role_id_.empty()
-        ? "" : "<@&" + announcement_role_id_ + "> ";
+    std::string content;
+    if (!suppress_pings_ && !announcement_role_id_.empty())
+        content = "<@&" + announcement_role_id_ + "> ";
     content += "**" + title + "**\n" + description;
     body["message"]["content"]    = content;
     std::string resp = discord_api_request(
@@ -732,6 +770,38 @@ void DiscordClient::remove_member_role(const std::string& discord_user_id,
     if (!resp.empty()) {
         std::cerr << "[DiscordClient] remove_member_role failed (user=" << discord_user_id
                   << " role=" << role_id << "): " << resp << "\n";
+    }
+}
+
+void DiscordClient::set_member_nickname(const std::string& discord_user_id,
+                                        const std::string& nickname) {
+    if (guild_id_.empty() || discord_user_id.empty()) return;
+    json body;
+    body["nick"] = nickname;
+    auto resp = discord_api_request("PATCH",
+        "/guilds/" + guild_id_ + "/members/" + discord_user_id, body.dump());
+    // PATCH returns the updated member object on success; errors have "message" field
+    try {
+        auto j = json::parse(resp);
+        if (j.contains("message")) {
+            std::cerr << "[DiscordClient] set_member_nickname failed (user=" << discord_user_id
+                      << "): " << resp << "\n";
+        }
+    } catch (...) {}
+}
+
+void DiscordClient::kick_member(const std::string& discord_user_id) {
+    if (guild_id_.empty() || discord_user_id.empty()) return;
+    auto resp = discord_api_request("DELETE",
+        "/guilds/" + guild_id_ + "/members/" + discord_user_id);
+    if (!resp.empty()) {
+        try {
+            auto j = json::parse(resp);
+            if (j.contains("message")) {
+                std::cerr << "[DiscordClient] kick_member failed (user=" << discord_user_id
+                          << "): " << resp << "\n";
+            }
+        } catch (...) {}
     }
 }
 
@@ -941,7 +1011,7 @@ void DiscordClient::update_event(const LugEvent& e) {
                 // For forum threads the starter message ID == thread ID; try to edit it.
                 // For text channel threads this will fail — fall back to a new update post.
                 std::string role = (e.scope == "non_lug") ? non_lug_event_role_id_ : announcement_role_id_;
-                std::string new_content = build_thread_starter_content(e, role);
+                std::string new_content = build_thread_starter_content(e, role, suppress_pings_);
                 json patch_body;
                 patch_body["content"] = new_content;
                 std::string patch_resp = discord_api_request(
@@ -954,7 +1024,7 @@ void DiscordClient::update_event(const LugEvent& e) {
                     patched = j.contains("id");
                 } catch (...) {}
 
-                if (!patched) {
+                if (!patched && !suppress_updates_) {
                     // Fallback: post an update message to the thread
                     json msg;
                     msg["content"] = "**Event Updated**\n" + new_content;

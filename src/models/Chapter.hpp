@@ -6,6 +6,7 @@
 struct Chapter {
     int64_t id = 0;
     std::string name;
+    std::string shorthand;  // e.g. "NWA" for "Northwest Arkansas Chapter"
     std::string description;
     std::string discord_announcement_channel_id;
     std::string discord_lead_role_id;

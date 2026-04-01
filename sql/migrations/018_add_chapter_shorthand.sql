@@ -1,0 +1,1 @@
+ALTER TABLE chapters ADD COLUMN shorthand TEXT NOT NULL DEFAULT '';

@@ -5,7 +5,8 @@ static const char* kSelectAllCols =
     "SELECT m.id, m.discord_user_id, m.discord_username, m.display_name, m.email, "
     "m.is_paid, m.paid_until, m.role, "
     "COALESCE((SELECT chapter_id FROM chapter_members WHERE member_id=m.id LIMIT 1),0), "
-    "m.created_at, m.updated_at FROM members m";
+    "m.created_at, m.updated_at, COALESCE(m.first_name,''), COALESCE(m.last_name,'') "
+    "FROM members m";
 
 MemberRepository::MemberRepository(SqliteDatabase& db) : db_(db) {}
 
@@ -22,6 +23,8 @@ Member MemberRepository::row_to_member(Statement& stmt) {
     m.chapter_id       = stmt.col_int(8); // from chapter_members subquery, 0 if none
     m.created_at       = stmt.col_text(9);
     m.updated_at       = stmt.col_text(10);
+    m.first_name       = stmt.col_text(11);
+    m.last_name        = stmt.col_text(12);
     return m;
 }
 
@@ -92,23 +95,25 @@ std::vector<Member> MemberRepository::find_by_chapter(int64_t chapter_id) {
 
 Member MemberRepository::create(const Member& m) {
     auto stmt = db_.prepare(
-        "INSERT INTO members (discord_user_id, discord_username, display_name, "
-        "email, is_paid, paid_until, role) VALUES (?,?,?,?,?,?,?)");
+        "INSERT INTO members (discord_user_id, discord_username, first_name, last_name, display_name, "
+        "email, is_paid, paid_until, role) VALUES (?,?,?,?,?,?,?,?,?)");
     stmt.bind(1, m.discord_user_id);
     stmt.bind(2, m.discord_username);
-    stmt.bind(3, m.display_name);
+    stmt.bind(3, m.first_name);
+    stmt.bind(4, m.last_name);
+    stmt.bind(5, m.display_name);
     if (m.email.empty()) {
-        stmt.bind_null(4);
-    } else {
-        stmt.bind(4, m.email);
-    }
-    stmt.bind(5, m.is_paid);
-    if (m.paid_until.empty()) {
         stmt.bind_null(6);
     } else {
-        stmt.bind(6, m.paid_until);
+        stmt.bind(6, m.email);
     }
-    stmt.bind(7, m.role.empty() ? std::string("member") : m.role);
+    stmt.bind(7, m.is_paid);
+    if (m.paid_until.empty()) {
+        stmt.bind_null(8);
+    } else {
+        stmt.bind(8, m.paid_until);
+    }
+    stmt.bind(9, m.role.empty() ? std::string("member") : m.role);
     stmt.step();
 
     int64_t new_id = db_.last_insert_rowid();
@@ -121,24 +126,26 @@ Member MemberRepository::create(const Member& m) {
 
 bool MemberRepository::update(const Member& m) {
     auto stmt = db_.prepare(
-        "UPDATE members SET discord_username=?, display_name=?, email=?, "
+        "UPDATE members SET discord_username=?, first_name=?, last_name=?, display_name=?, email=?, "
         "is_paid=?, paid_until=?, role=?, updated_at=datetime('now') "
         "WHERE id=?");
     stmt.bind(1, m.discord_username);
-    stmt.bind(2, m.display_name);
+    stmt.bind(2, m.first_name);
+    stmt.bind(3, m.last_name);
+    stmt.bind(4, m.display_name);
     if (m.email.empty()) {
-        stmt.bind_null(3);
-    } else {
-        stmt.bind(3, m.email);
-    }
-    stmt.bind(4, m.is_paid);
-    if (m.paid_until.empty()) {
         stmt.bind_null(5);
     } else {
-        stmt.bind(5, m.paid_until);
+        stmt.bind(5, m.email);
     }
-    stmt.bind(6, m.role);
-    stmt.bind(7, m.id);
+    stmt.bind(6, m.is_paid);
+    if (m.paid_until.empty()) {
+        stmt.bind_null(7);
+    } else {
+        stmt.bind(7, m.paid_until);
+    }
+    stmt.bind(8, m.role);
+    stmt.bind(9, m.id);
     stmt.step();
 
     // Check if any row was actually updated by querying it back

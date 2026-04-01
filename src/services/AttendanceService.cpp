@@ -39,3 +39,7 @@ bool AttendanceService::remove_by_id(int64_t attendance_id) {
 std::vector<Attendance> AttendanceService::get_member_history(int64_t member_id) {
     return repo_.find_by_member(member_id);
 }
+
+std::vector<AttendanceRepository::MemberAttendanceSummary> AttendanceService::get_all_member_summaries() {
+    return repo_.get_all_member_summaries();
+}

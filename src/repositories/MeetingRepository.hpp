@@ -26,6 +26,8 @@ public:
     bool    update_discord_event_id(int64_t id, const std::string& discord_event_id);
     bool    update_lug_message_id(int64_t id, const std::string& message_id);
     bool    update_chapter_message_id(int64_t id, const std::string& message_id);
+    bool    update_google_calendar_event_id(int64_t id, const std::string& gcal_event_id);
+    bool    exists_by_google_calendar_id(const std::string& gcal_event_id);
 
 private:
     SqliteDatabase& db_;

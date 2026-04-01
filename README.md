@@ -1,103 +1,203 @@
 # LUG Manager
 
-A modern web application for managing LEGO User Groups (LUGs). Built with **C++ (CrowCPP)**, **SQLite**, **Discord**, and **iCal** integration.
+> **Notice:** This project was built entirely using AI (Claude Code by Anthropic). All code, documentation, templates, and configuration were generated through AI-assisted development.
+
+A modern web application for managing LEGO User Groups (LUGs). Built with **C++ (CrowCPP)**, **SQLite**, **Discord**, **Google Calendar**, and **iCal** integration.
 
 ## Features
 
-- **Member Management**: Track paid vs. non-paid members, manage dues
-- **Meeting Management**: Schedule meetings, create Discord events automatically, sync to shared calendar
-- **Event Management**: Organize LEGO events (showcases, swap meets, conventions) with Discord threads
-- **Attendance Tracking**: Check-in system for meetings and events
-- **Discord Integration**: OAuth2 authentication, automatic scheduled events, thread creation
-- **Shared Calendar**: RFC 5545 iCal/webcal feed for Google Calendar, Outlook auto-sync
-- **Responsive UI**: HTMX + Tailwind CSS (no build step, CDN-based)
+- **Member Management**: Track paid vs. non-paid members, manage dues, Discord role sync
+- **Chapter System**: Organize members into chapters with their own leads, channels, and roles
+- **Meeting Management**: Schedule meetings, create Discord events, sync to Google Calendar
+- **Event Management**: Organize events with Discord threads, forum posts, announcements, and convert to meetings
+- **Attendance Tracking**: Admin/event lead managed attendance with virtual attendance support for meetings
+- **Google Calendar Import**: Pull existing events from a shared Google Calendar into LUG Manager
+- **Discord Integration**: OAuth2 login, automatic scheduled events, forum threads, announcement messages, role sync
+- **Google Calendar Integration**: Push events directly to a shared Google Calendar via service account
+- **iCal Feed**: RFC 5545 calendar subscription for individual members (Google Calendar, Outlook, Apple Calendar)
+- **Responsive UI**: Mobile-friendly HTMX + Tailwind CSS interface with search and pagination
 
 ## Technology Stack
 
-- **Backend**: C++ with CrowCPP v1.2.0 (header-only HTTP server)
-- **Database**: SQLite with WAL mode
-- **Frontend**: HTMX + Tailwind CSS (CDN)
-- **External APIs**: Discord OAuth2, Discord REST API
+- **Backend**: C++20 with CrowCPP v1.2.0 (header-only HTTP server)
+- **Database**: SQLite with WAL mode and automatic migrations
+- **Frontend**: HTMX + Tailwind CSS (CDN, no build step)
+- **External APIs**: Discord OAuth2 + REST, Google Calendar API v3
 - **Dependencies**: asio, nlohmann/json, libcurl, OpenSSL
 
 ## Prerequisites
 
-- CMake 3.24+
-- C++17 compiler (GCC, Clang)
+- CMake 3.20+
+- C++20 compiler (GCC 10+, Clang 12+)
 - libcurl, sqlite3, OpenSSL (development headers)
+- pkg-config
 - Linux, macOS, or Windows (with WSL)
 
-### On Ubuntu/Debian:
+### Ubuntu/Debian:
 ```bash
-sudo apt-get install cmake g++ libcurl4-openssl-dev sqlite3 libsqlite3-dev libssl-dev
+sudo apt-get install cmake g++ pkg-config libcurl4-openssl-dev sqlite3 libsqlite3-dev libssl-dev
 ```
 
-### On macOS:
+### Arch/Manjaro:
 ```bash
-brew install cmake curl sqlite openssl
+sudo pacman -S cmake gcc pkgconf curl sqlite openssl
 ```
 
-## Setup
+### macOS:
+```bash
+brew install cmake curl sqlite openssl pkg-config
+```
 
-1. **Clone the repository**:
+## Quick Start
+
+1. **Clone and build**:
    ```bash
-   git clone https://github.com/yourusername/LUG-Manager.git
-   cd LUG-Manager
+   git clone https://github.com/ArkLUG/lug-manager.git
+   cd lug-manager
+   cmake -B build -S .
+   cmake --build build -j$(nproc)
    ```
 
-2. **Initialize the build directory**:
-   ```bash
-   cmake --preset=debug
-   ```
-
-3. **Build the project**:
-   ```bash
-   cmake --build build/debug
-   ```
-
-4. **Configure environment variables**:
-   Copy `.env.example` to `.env` and fill in your values:
+2. **Configure**:
    ```bash
    cp .env.example .env
+   # Edit .env with your Discord credentials
    ```
 
-   Required variables:
-   - `DISCORD_CLIENT_ID`: Your Discord app client ID
-   - `DISCORD_CLIENT_SECRET`: Your Discord app client secret
-   - `DISCORD_BOT_TOKEN`: Your Discord bot token
-   - `DISCORD_GUILD_ID`: Your Discord server ID
-   - `DISCORD_REDIRECT_URI`: OAuth2 callback URL (e.g., `http://localhost:8080/auth/callback`)
+   Required environment variables:
+   | Variable | Description |
+   |----------|-------------|
+   | `DISCORD_BOT_TOKEN` | Discord bot token (from Developer Portal) |
+   | `DISCORD_CLIENT_ID` | Discord OAuth2 application client ID |
+   | `DISCORD_CLIENT_SECRET` | Discord OAuth2 application client secret |
+   | `DISCORD_REDIRECT_URI` | OAuth2 callback URL (e.g. `http://localhost:8080/auth/callback`) |
+   | `BOOTSTRAP_ADMIN_DISCORD_ID` | Your Discord user ID (creates admin account on first login) |
 
-5. **Run the application**:
+   Optional defaults (can also be set from the Settings page after first login):
+   | Variable | Description | Default |
+   |----------|-------------|---------|
+   | `ICAL_TIMEZONE` | IANA timezone name | `America/New_York` |
+   | `ICAL_CALENDAR_NAME` | Calendar display name | `LUG Events` |
+   | `DISCORD_GUILD_ID` | Discord server ID | *(set in Settings)* |
+
+3. **Run**:
    ```bash
-   ./build/debug/lug_manager
+   ./build/lug_manager
    ```
-
-   The server listens on `http://localhost:8080` by default.
+   Open `http://localhost:8080` and log in with Discord. The first user matching `BOOTSTRAP_ADMIN_DISCORD_ID` is automatically made admin.
 
 ## Discord Setup
 
-1. Create a Discord application at [discord.com/developers](https://discord.com/developers/applications)
-2. Under **OAuth2 > General**:
-   - Set Redirect URI to your callback URL (e.g., `http://localhost:8080/auth/callback`)
-   - Copy Client ID and Client Secret
-3. Under **Bot** (create a bot if needed):
-   - Copy the token
-   - Ensure these **scopes** are enabled: `identify`, `guilds`, `bot`
-   - Required **permissions**: `create_events`, `manage_threads`
-4. Add the bot to your Discord server using the OAuth2 > URL Generator
+1. Go to [discord.com/developers/applications](https://discord.com/developers/applications) and create a new application.
+
+2. **OAuth2** tab:
+   - Add redirect URI: `http://your-server:8080/auth/callback`
+   - Copy **Client ID** and **Client Secret** to `.env`
+
+3. **Bot** tab:
+   - Create a bot and copy the **Token** to `.env`
+   - Enable the **Server Members Intent** (required for role sync)
+
+4. **Invite the bot** to your server using OAuth2 URL Generator:
+   - Scopes: `bot`, `identify`, `guilds`
+   - Bot permissions: `Manage Events`, `Create Public Threads`, `Send Messages`, `Manage Roles`, `Manage Channels`
+
+5. **Important**: In your Discord server's role settings, drag the bot's role **above** any roles it needs to manage (chapter lead roles, etc.). Discord requires the bot role to be higher in the hierarchy.
+
+6. After first login, go to **Settings** in the web UI to configure:
+   - Guild ID (Discord server ID)
+   - Announcements channel
+   - Event forum channel
+   - Announcement roles
+   - Timezone
+
+## Google Calendar Integration
+
+LUG Manager can push meetings and events directly to a shared Google Calendar, so they appear instantly (unlike iCal which polls every few hours).
+
+### Setup
+
+1. **Create a Google Cloud project**:
+   - Go to [console.cloud.google.com](https://console.cloud.google.com)
+   - Create a new project (or use an existing one)
+   - Enable the **Google Calendar API**: APIs & Services > Library > search "Calendar" > Enable
+
+2. **Create a service account**:
+   - Go to APIs & Services > Credentials
+   - Create Credentials > Service Account
+   - Give it a name (e.g. "LUG Manager")
+   - **Skip** the "Grant this service account access" step (no project roles needed — access is granted by sharing the calendar directly)
+   - Click Done, then click into the new service account
+   - Keys tab > Add Key > Create new key > JSON
+   - Download the JSON key file and place it on your server (e.g. `/etc/lug-manager/service-account.json`)
+   - Note the `client_email` field in the JSON — you'll need it in the next step
+
+3. **Create or choose a Google Calendar**:
+   - In Google Calendar, create a new calendar for your LUG (or use an existing one)
+   - Go to Calendar Settings > Share with specific people
+   - Add the service account's email (found in the JSON file as `client_email`, looks like `name@project.iam.gserviceaccount.com`)
+   - Set permission to **Make changes to events**
+   - Copy the **Calendar ID** from the Calendar Settings page (looks like `abc123@group.calendar.google.com`)
+
+4. **Configure in LUG Manager**:
+   - Go to Settings in the web UI
+   - Under "Google Calendar", enter:
+     - **Service Account JSON Path**: absolute path to the key file on the server
+     - **Google Calendar ID**: the calendar ID from step 3
+   - Click Save Settings
+   - The green "Connected" indicator confirms the integration is working
+
+5. **Import existing events** (optional):
+   - Once connected, click "Import Events from Google Calendar" to pull in upcoming events
+   - Imported events appear as LUG-wide events and won't be re-imported on subsequent imports
+
+### How it works
+
+- When you **create** a meeting or event, it's automatically added to Google Calendar
+- When you **edit** a meeting or event, the Google Calendar entry is updated
+- When you **delete** a meeting or event, the Google Calendar entry is removed
+- If Google Calendar is not configured, all Google Calendar operations are silently skipped
+
+## Calendar Subscription (iCal)
+
+Members can subscribe to the LUG calendar in their personal calendar app. The subscription URL is shown on the Dashboard after login.
+
+- **URL**: `https://your-server/calendar.ics` (public, no auth required)
+- **Google Calendar**: Other calendars (+) > From URL > paste the URL
+- **Apple Calendar**: File > New Calendar Subscription > paste the URL
+- **Outlook**: Add calendar > Subscribe from web > paste the URL
+
+The feed includes all meetings and events with proper timezone handling (`DTSTART;TZID=...`) and updates within 5 minutes of any change.
+
+## Chapters
+
+Chapters allow you to organize your LUG into sub-groups (e.g. by city, theme, or age group). Each chapter can have:
+
+- **Chapter leads** with a mapped Discord role (automatically synced)
+- **Event managers** who can create events for their chapter
+- **A Discord announcement channel** for chapter-specific announcements
+- **Members** assigned via the member management page
+
+Chapter leads and event managers can create meetings and events scoped to their chapter. Admins can create LUG-wide events.
+
+## Attendance
+
+Attendance is managed by admins, chapter leads, and event leads (for their events):
+
+- **Add members**: Searchable multi-select dropdown to check in one or more members at once
+- **Virtual attendance**: Meetings support marking attendees as virtual (in-person vs. remote)
+- **Toggle**: Admins can switch between virtual and in-person for any attendee
+- **Remove**: Remove attendees with confirmation
+- **Counts**: Live-updating attendance counts on meeting and event cards
 
 ## Database
 
-The application uses SQLite with:
-- **WAL mode** for better concurrency
-- **Foreign key constraints** enabled
-- **Automatic migrations** from `sql/migrations/` directory
+SQLite with WAL mode for concurrent reads. Migrations are applied automatically on startup from `sql/migrations/`.
 
-On first run, migrations are applied automatically. To reset the database:
+To reset the database:
 ```bash
 rm lug.db
-./build/debug/lug_manager
+./build/lug_manager
 ```
 
 ## Project Structure
@@ -105,116 +205,137 @@ rm lug.db
 ```
 .
 ├── src/
-│   ├── main.cpp                 # Entry point, server configuration
-│   ├── middleware/
-│   │   └── AuthMiddleware.hpp   # Discord session authentication
-│   ├── routes/                  # HTTP endpoint handlers
-│   ├── db/                      # Database abstractions
-│   ├── services/                # Business logic (Members, Meetings, Events, etc.)
-│   ├── integrations/            # Discord API, Calendar generation
-│   └── templates/               # Mustache HTML templates
+│   ├── main.cpp                 # Entry point, server setup
+│   ├── config/                  # Configuration (env vars, .env loading)
+│   ├── middleware/               # Auth middleware (Discord session)
+│   ├── routes/                  # HTTP route handlers
+│   ├── services/                # Business logic
+│   ├── repositories/            # Database access layer
+│   ├── models/                  # Data structs (Member, Meeting, LugEvent, etc.)
+│   ├── integrations/            # Discord, Google Calendar, iCal
+│   ├── auth/                    # OAuth2 service
+│   ├── async/                   # Thread pool for async Discord calls
+│   ├── db/                      # SQLite abstraction
+│   ├── templates/               # Mustache HTML templates
+│   └── static/                  # CSS, JS assets
 ├── sql/
-│   └── migrations/              # Database schema migration files
-├── CMakeLists.txt               # Build configuration
-├── CMakePresets.json            # CMake presets
-├── .env.example                 # Environment variable template
-└── README.md                    # This file
+│   └── migrations/              # Auto-applied database migrations
+├── CMakeLists.txt
+├── CMakePresets.json
+├── Dockerfile
+├── docker-compose.yml
+├── .env.example
+└── README.md
 ```
 
-## Calendar Subscription
+## Settings (Admin)
 
-Users can subscribe to the shared LUG calendar in their calendar app:
+All runtime configuration is managed from the Settings page (`/settings`):
 
-**Webcal URL**: `webcal://your-server/calendar.ics`
+| Setting | Description |
+|---------|-------------|
+| Discord Guild ID | Your Discord server ID |
+| Announcements Channel | Channel for LUG-wide event/meeting announcements |
+| Event Forum Channel | Forum channel for event discussion threads |
+| Event Announcement Role | Role @mentioned in announcements |
+| Non-LUG Event Role | Role @mentioned for non-LUG events |
+| Timezone | IANA timezone (e.g. `America/Chicago`) — used for Discord, Google Calendar, and iCal |
+| Calendar Name | Display name in calendar apps |
+| Suppress Pings | Disable all @mentions in Discord announcements |
+| Google Calendar SA Path | Path to Google service account JSON key |
+| Google Calendar ID | Target Google Calendar ID |
 
-- **Google Calendar**: Settings → Add by URL
-- **Outlook**: Add calendar → From internet
-- Auto-syncs every 5 minutes (client-side polling)
+Settings are seeded from environment variables on first run, then managed exclusively from the web UI.
+
+## Docker
+
+Pre-built images are available on GitHub Container Registry:
+
+```bash
+docker pull ghcr.io/arklug/lug-manager:latest
+```
+
+Or run with docker compose:
+```bash
+cp .env.example .env
+# Edit .env with your Discord credentials
+docker compose up -d
+```
+
+See [DOCKER.md](DOCKER.md) for detailed deployment instructions including Google Calendar service account mounting, reverse proxy setup, and Kubernetes examples.
 
 ## API Endpoints
 
 ### Authentication
 - `GET /login` – Login page
 - `GET /auth/login` – Redirect to Discord OAuth
-- `GET /auth/callback?code=...` – OAuth callback
+- `GET /auth/callback` – OAuth callback
 - `POST /auth/logout` – Logout
 
-### Dashboard
-- `GET /dashboard` – Main dashboard
-
-### Members
-- `GET /members` – List all members
-- `POST /members` – Create member (admin only)
-- `GET /members/<id>` – Get member details
-- `PUT /members/<id>` – Update member (admin only)
-- `DELETE /members/<id>` – Delete member (admin only)
-- `POST /members/<id>/paid` – Set paid status
-
 ### Meetings
-- `GET /meetings` – List upcoming meetings
-- `GET /meetings/<id>` – Meeting details
-- `POST /meetings` – Create meeting (admin only)
-- `PUT /meetings/<id>` – Update meeting (admin only)
-- `POST /meetings/<id>/cancel` – Cancel meeting
-- `POST /meetings/<id>/complete` – Mark complete
-- `POST /meetings/<id>/checkin` – Check in to meeting
+- `GET /meetings` – List meetings (paginated, searchable)
+- `POST /meetings` – Create meeting
+- `GET /meetings/<id>/edit` – Edit form
+- `PUT /meetings/<id>` – Update meeting
+- `POST /meetings/<id>/cancel` – Delete meeting
+- `POST /meetings/<id>/discord-sync` – Force sync to Discord
 
 ### Events
-- `GET /events` – List upcoming events
-- `GET /events/<id>` – Event details
-- `POST /events` – Create event (admin only)
-- `PUT /events/<id>` – Update event (admin only)
-- `POST /events/<id>/checkin` – Check in to event
+- `GET /events` – List upcoming events (paginated, searchable)
+- `GET /events/all` – List all events
+- `POST /events` – Create event
+- `GET /events/<id>/edit` – Edit form
+- `PUT /events/<id>` – Update event
+- `POST /events/<id>/cancel` – Delete event
+- `POST /events/<id>/discord-sync` – Force sync to Discord
+- `POST /events/<id>/status` – Change event status (open/closed)
+- `POST /events/<id>/convert-to-meeting` – Convert event to meeting
+
+### Attendance
+- `GET /attendance` – Personal attendance history
+- `GET /attendance/count/<type>/<id>` – Live count
+- `GET /attendance/list/<type>/<id>` – Attendee list with admin controls
+- `POST /attendance/admin/checkin` – Admin add members
+- `POST /attendance/admin/<id>/remove` – Admin remove attendee
+- `POST /attendance/admin/<id>/toggle-virtual` – Toggle virtual status
+
+### Members
+- `GET /members` – Member list (DataTables, searchable)
+- `POST /members` – Create member
+- `POST /members/<id>` – Update member
+- `DELETE /members/<id>` – Delete member
+- `POST /members/<id>/paid` – Set dues status
 
 ### Calendar
-- `GET /calendar.ics` – iCal feed (public, no auth required)
+- `GET /calendar.ics` – iCal feed (public, no auth)
 
-## Development
-
-### Building in Debug Mode (default):
-```bash
-cmake --preset=debug
-cmake --build build/debug
-```
-
-### Building in Release Mode:
-```bash
-cmake --preset=release
-cmake --build build/release
-```
-
-### Running Tests:
-Currently, tests are run manually. Automated test framework coming soon.
-
-### Code Style:
-- C++17 standard
-- Prefer clarity over cleverness
-- Use RAII for resource management
-- Async Discord calls via ThreadPool
+### Settings (Admin)
+- `GET /settings` – Settings page
+- `POST /settings` – Save settings
+- `POST /api/google-calendar/import` – Import events from Google Calendar
+- `POST /api/discord/sync-members` – Sync members from Discord
+- `POST /api/discord/test-announcement` – Send test announcement
 
 ## Troubleshooting
 
-### Template not found error
-Ensure the templates directory path is correctly configured in `.env` and the working directory is the project root when running the binary.
+### Template not found
+Ensure `LUG_TEMPLATES_DIR` points to the templates directory and the working directory is the project root.
 
 ### Discord OAuth fails
-- Verify `DISCORD_CLIENT_ID` and `DISCORD_CLIENT_SECRET` are correct
-- Ensure redirect URI matches Discord app settings exactly
-- Check your Discord server ID in `DISCORD_GUILD_ID`
+- Verify `DISCORD_CLIENT_ID` and `DISCORD_CLIENT_SECRET`
+- Ensure redirect URI matches exactly (including trailing slash or lack thereof)
+- Check that the bot has been added to the server
 
-### Database locked error
-The application uses SQLite WAL mode. Ensure no other processes have the database open.
+### Discord "Missing Permissions" (50013)
+The bot's role must be **higher** in the Discord role hierarchy than any roles it tries to manage. Drag it up in Server Settings > Roles.
 
-## Docker
+### Google Calendar not creating events
+- Verify the service account JSON file path is correct and readable by the app
+- Ensure the service account email has been shared as an editor on the target calendar
+- Check the Calendar ID (should look like `abc123@group.calendar.google.com`, not the calendar name)
 
-Build and run with Docker:
-
-```bash
-docker build -t lug-manager .
-docker run -p 8080:8080 --env-file .env lug-manager
-```
-
-See `.github/workflows/docker.yml` for automated Docker builds on GitHub.
+### Database locked
+SQLite WAL mode supports concurrent reads but only one writer. Ensure no other process has the database open.
 
 ## License
 
@@ -222,8 +343,4 @@ See `.github/workflows/docker.yml` for automated Docker builds on GitHub.
 
 ## Contributing
 
-Pull requests welcome! Please ensure code compiles without warnings and follows the existing style.
-
-## Support
-
-For issues, questions, or suggestions, please open a GitHub issue.
+Pull requests welcome! Please ensure code compiles cleanly with `-Wall -Wextra` and follows the existing patterns.

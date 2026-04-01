@@ -140,7 +140,7 @@ static std::string render_meeting_page(const crow::request& req,
 }
 
 void register_meeting_routes(LugApp& app, MeetingService& meetings, AttendanceService& attendance,
-                              ChapterMemberRepository& chapter_members) {
+                              ChapterMemberRepository& chapter_members, ChapterService& chapters) {
 
     // GET /meetings - list meetings (paginated + searchable)
     CROW_ROUTE(app, "/meetings")([&](const crow::request& req) {
@@ -173,6 +173,14 @@ void register_meeting_routes(LugApp& app, MeetingService& meetings, AttendanceSe
         res.add_header("Content-Type", "text/html; charset=utf-8");
         auto tmpl = crow::mustache::load("meetings/_form.html");
         crow::mustache::context mctx;
+        {
+            auto ch_list = chapters.list_all();
+            std::ostringstream opts;
+            opts << "<option value=\"\">-- Select chapter --</option>\n";
+            for (auto& ch : ch_list)
+                opts << "<option value=\"" << ch.id << "\">" << ch.name << "</option>\n";
+            mctx["chapter_options"] = opts.str();
+        }
         mctx["action"]        = "/meetings";
         mctx["title"]         = "Schedule New Meeting";
         mctx["is_new"]        = true;
@@ -211,6 +219,16 @@ void register_meeting_routes(LugApp& app, MeetingService& meetings, AttendanceSe
         mctx["start_time_input"]  = trim_dt(m->start_time);
         mctx["end_time_input"]    = trim_dt(m->end_time);
         mctx["chapter_id_str"]    = m->chapter_id > 0 ? std::to_string(m->chapter_id) : "";
+        {
+            auto ch_list = chapters.list_all();
+            std::ostringstream opts;
+            opts << "<option value=\"\">-- Select chapter --</option>\n";
+            for (auto& ch : ch_list)
+                opts << "<option value=\"" << ch.id << "\""
+                     << (ch.id == m->chapter_id ? " selected" : "")
+                     << ">" << ch.name << "</option>\n";
+            mctx["chapter_options"] = opts.str();
+        }
         mctx["scope_chapter"]     = (m->scope == "chapter" || m->scope.empty());
         mctx["scope_lug_wide"]    = (m->scope == "lug_wide");
         mctx["scope_non_lug"]     = (m->scope == "non_lug");
@@ -375,6 +393,8 @@ void register_meeting_routes(LugApp& app, MeetingService& meetings, AttendanceSe
             if (!et.empty())          updates.end_time    = normalize_datetime(et);
             std::string scope = gp("scope");
             if (!scope.empty())       updates.scope       = scope;
+            std::string ch = gp("chapter_id");
+            if (!ch.empty()) try { updates.chapter_id = std::stoll(ch); } catch (...) {}
 
             res.add_header("Content-Type", "text/html; charset=utf-8");
             if (updates.title.empty()) {

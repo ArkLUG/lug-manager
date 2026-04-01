@@ -1,5 +1,6 @@
 #pragma once
 #include "repositories/MemberRepository.hpp"
+#include "integrations/DiscordClient.hpp"
 #include "models/Member.hpp"
 #include <vector>
 #include <optional>
@@ -24,7 +25,7 @@ struct DatatableResult {
 
 class MemberService {
 public:
-    explicit MemberService(MemberRepository& repo);
+    MemberService(MemberRepository& repo, DiscordClient* discord = nullptr);
 
     std::optional<Member> get(int64_t id);
     std::optional<Member> get_by_discord_id(const std::string& discord_id);
@@ -39,6 +40,15 @@ public:
     void   set_paid(int64_t id, bool paid, const std::string& paid_until);
     void   set_chapter(int64_t id, int64_t chapter_id);
 
+    // Generate nickname: "Aaron K." — adds more last name letters if conflicts exist
+    std::string generate_nickname(const std::string& first_name, const std::string& last_name,
+                                   int64_t exclude_id = 0);
+
+    // Sync all member nicknames to Discord
+    struct SyncResult { int synced = 0; int skipped = 0; int errors = 0; };
+    SyncResult sync_nicknames_to_discord();
+
 private:
     MemberRepository& repo_;
+    DiscordClient*    discord_;
 };

@@ -1,0 +1,83 @@
+<div class="space-y-4" data-page-title="Attendance Overview">
+  <!-- Header -->
+  <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+    <div>
+      <h2 class="text-xl font-semibold text-gray-800">Attendance Overview</h2>
+      <p class="text-sm text-gray-500 mt-0.5">{{member_count}} members</p>
+    </div>
+  </div>
+
+  <!-- Table -->
+  <div class="bg-white rounded-xl border border-gray-200 overflow-hidden">
+    <div class="overflow-x-auto">
+      <table class="w-full text-sm">
+        <thead>
+          <tr class="bg-gray-50 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+            <th class="px-4 py-3">Member</th>
+            <th class="px-4 py-3 text-center">Meetings</th>
+            <th class="px-4 py-3 text-center hidden sm:table-cell">In-Person</th>
+            <th class="px-4 py-3 text-center hidden sm:table-cell">Virtual</th>
+            <th class="px-4 py-3 text-center">Events</th>
+            <th class="px-4 py-3 text-center">Total</th>
+          </tr>
+        </thead>
+        <tbody class="divide-y divide-gray-100">
+          {{#members}}
+          <tr class="hover:bg-gray-50 transition-colors">
+            <td class="px-4 py-3">
+              <div class="font-medium text-gray-800">{{display_name}}</div>
+              <div class="text-xs text-gray-400">@{{discord_username}}</div>
+            </td>
+            <td class="px-4 py-3 text-center">
+              {{#meeting_count}}
+              <span class="inline-flex items-center justify-center min-w-[1.5rem] px-1.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-700">{{meeting_count}}</span>
+              {{/meeting_count}}
+              {{^meeting_count}}
+              <span class="text-gray-300">0</span>
+              {{/meeting_count}}
+            </td>
+            <td class="px-4 py-3 text-center hidden sm:table-cell">
+              {{#meeting_in_person}}
+              <span class="text-green-600 text-xs font-medium">{{meeting_in_person}}</span>
+              {{/meeting_in_person}}
+              {{^meeting_in_person}}
+              <span class="text-gray-300">0</span>
+              {{/meeting_in_person}}
+            </td>
+            <td class="px-4 py-3 text-center hidden sm:table-cell">
+              {{#meeting_virtual_count}}
+              <span class="text-indigo-600 text-xs font-medium">{{meeting_virtual_count}}</span>
+              {{/meeting_virtual_count}}
+              {{^meeting_virtual_count}}
+              <span class="text-gray-300">0</span>
+              {{/meeting_virtual_count}}
+            </td>
+            <td class="px-4 py-3 text-center">
+              {{#event_count}}
+              <span class="inline-flex items-center justify-center min-w-[1.5rem] px-1.5 py-0.5 rounded-full text-xs font-medium bg-purple-100 text-purple-700">{{event_count}}</span>
+              {{/event_count}}
+              {{^event_count}}
+              <span class="text-gray-300">0</span>
+              {{/event_count}}
+            </td>
+            <td class="px-4 py-3 text-center">
+              {{#total}}
+              <span class="inline-flex items-center justify-center min-w-[1.5rem] px-1.5 py-0.5 rounded-full text-xs font-semibold bg-gray-800 text-white">{{total}}</span>
+              {{/total}}
+              {{^total}}
+              <span class="text-gray-300">0</span>
+              {{/total}}
+            </td>
+          </tr>
+          {{/members}}
+        </tbody>
+      </table>
+    </div>
+
+    {{^members}}
+    <div class="p-12 text-center text-gray-400">
+      <p class="font-medium">No members found</p>
+    </div>
+    {{/members}}
+  </div>
+</div>

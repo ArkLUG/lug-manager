@@ -2,13 +2,15 @@
 #include "config/Config.hpp"
 #include "repositories/MeetingRepository.hpp"
 #include "repositories/EventRepository.hpp"
+#include "repositories/ChapterRepository.hpp"
 #include <string>
 #include <mutex>
 #include <chrono>
 
 class CalendarGenerator {
 public:
-    CalendarGenerator(MeetingRepository& meetings, EventRepository& events, const Config& config);
+    CalendarGenerator(MeetingRepository& meetings, EventRepository& events, const Config& config,
+                      ChapterRepository* chapters = nullptr);
 
     // Returns ICS string (cached for up to 5 minutes)
     std::string get_ics();
@@ -20,11 +22,12 @@ public:
     void set_timezone(const std::string& tz);
 
 private:
-    MeetingRepository& meetings_;
-    EventRepository&   events_;
-    const Config&      config_;
-    std::string        timezone_;
-    std::string        calendar_name_;
+    MeetingRepository&  meetings_;
+    EventRepository&    events_;
+    const Config&       config_;
+    ChapterRepository*  chapters_;
+    std::string         timezone_;
+    std::string         calendar_name_;
 
     std::string                           cached_ics_;
     std::chrono::steady_clock::time_point cache_time_;
@@ -43,5 +46,6 @@ private:
                                    const std::string& end,
                                    const std::string& status,
                                    const std::string& last_modified,
-                                   const std::string& timezone);
+                                   const std::string& timezone,
+                                   bool all_day = false);
 };

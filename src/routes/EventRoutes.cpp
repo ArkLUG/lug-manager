@@ -17,6 +17,7 @@ static const char* kEvMonthNames[] = {
 };
 
 static std::string event_status_color(const std::string& status) {
+    if (status == "tentative") return "yellow";
     if (status == "open")      return "green";
     if (status == "closed")    return "yellow";
     if (status == "cancelled") return "red";
@@ -55,7 +56,7 @@ static crow::mustache::context build_event_list_ctx(
         }
         arr[i]["status"]           = e.status;
         arr[i]["status_color"]     = event_status_color(e.status);
-        arr[i]["signup_deadline"]  = e.signup_deadline;
+        if (!e.signup_deadline.empty()) arr[i]["signup_deadline"] = e.signup_deadline;
         arr[i]["max_attendees"]    = e.max_attendees;
         arr[i]["discord_thread_id"]= e.discord_thread_id;
         arr[i]["scope"]            = e.scope;
@@ -64,9 +65,13 @@ static crow::mustache::context build_event_list_ctx(
         arr[i]["event_lead_id"]    = e.event_lead_id;
         arr[i]["event_lead_name"]  = e.event_lead_name;
         arr[i]["has_event_lead"]   = (e.event_lead_id > 0);
+        arr[i]["is_tentative"]     = (e.status == "tentative");
+        arr[i]["is_confirmed"]     = (e.status == "confirmed");
         arr[i]["is_cancelled"]     = (e.status == "cancelled");
         arr[i]["is_open"]          = (e.status == "open");
+        arr[i]["is_closed"]        = (e.status == "closed");
         arr[i]["has_discord_thread"]= !e.discord_thread_id.empty();
+        arr[i]["is_admin"]         = is_admin;
 
         int count = attendance.get_count("event", e.id);
         arr[i]["attendance_count"] = count;
@@ -147,7 +152,8 @@ static std::string render_event_page(const crow::request& req,
 
 void register_event_routes(LugApp& app, EventService& events, AttendanceService& attendance,
                             ChapterMemberRepository& chapter_members, DiscordClient& discord,
-                            MemberService& members) {
+                            MemberService& members, MeetingService& meetings,
+                            ChapterService& chapters) {
 
     // GET /api/discord/forum-threads - returns <option> elements for active forum threads
     CROW_ROUTE(app, "/api/discord/forum-threads")(
@@ -256,6 +262,14 @@ void register_event_routes(LugApp& app, EventService& events, AttendanceService&
                 opts << "<option value=\"" << r.id << "\">@" << r.name << "</option>\n";
             mctx["role_ping_options"] = opts.str();
         }
+        {
+            auto ch_list = chapters.list_all();
+            std::ostringstream opts;
+            opts << "<option value=\"\">-- Select chapter --</option>\n";
+            for (auto& ch : ch_list)
+                opts << "<option value=\"" << ch.id << "\">" << ch.name << "</option>\n";
+            mctx["chapter_options"] = opts.str();
+        }
         mctx["action"]            = "/events";
         mctx["method"]            = "POST";
         mctx["title"]             = "Create New Event";
@@ -329,9 +343,22 @@ void register_event_routes(LugApp& app, EventService& events, AttendanceService&
         mctx["end_time_input"]     = trim_date(ev->end_time);
         mctx["signup_deadline_input"] = trim_date(ev->signup_deadline);
         mctx["chapter_id_str"]     = ev->chapter_id > 0 ? std::to_string(ev->chapter_id) : "";
+        {
+            auto ch_list = chapters.list_all();
+            std::ostringstream opts;
+            opts << "<option value=\"\">-- Select chapter --</option>\n";
+            for (auto& ch : ch_list)
+                opts << "<option value=\"" << ch.id << "\""
+                     << (ch.id == ev->chapter_id ? " selected" : "")
+                     << ">" << ch.name << "</option>\n";
+            mctx["chapter_options"] = opts.str();
+        }
         mctx["scope_chapter"]      = (ev->scope == "chapter" || ev->scope.empty());
         mctx["scope_lug_wide"]     = (ev->scope == "lug_wide");
         mctx["scope_non_lug"]      = (ev->scope == "non_lug");
+        mctx["has_forum_channel"]  = !discord.get_events_forum_channel_id().empty();
+        mctx["has_thread"]         = !ev->discord_thread_id.empty();
+        mctx["discord_thread_id"]  = ev->discord_thread_id;
 
         res.write(tmpl.render(mctx).dump());
         return res;
@@ -368,11 +395,14 @@ void register_event_routes(LugApp& app, EventService& events, AttendanceService&
         ctx["end_time"]         = ev->end_time;
         ctx["status"]           = ev->status;
         ctx["status_color"]     = event_status_color(ev->status);
-        ctx["signup_deadline"]  = ev->signup_deadline;
+        if (!ev->signup_deadline.empty()) ctx["signup_deadline"] = ev->signup_deadline;
         ctx["max_attendees"]    = ev->max_attendees;
         ctx["discord_thread_id"]= ev->discord_thread_id;
+        ctx["is_tentative"]     = (ev->status == "tentative");
+        ctx["is_confirmed"]     = (ev->status == "confirmed");
         ctx["is_cancelled"]     = (ev->status == "cancelled");
         ctx["is_open"]          = (ev->status == "open");
+        ctx["is_closed"]        = (ev->status == "closed");
         ctx["is_admin"]         = is_admin;
         ctx["is_checked_in"]    = checked_in;
         ctx["member_id"]        = mbr_id;
@@ -479,11 +509,7 @@ void register_event_routes(LugApp& app, EventService& events, AttendanceService&
             res.write(R"(<div class="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded">Title is required.</div>)");
             return res;
         }
-        if (e.event_lead_id <= 0) {
-            res.code = 400;
-            res.write(R"(<div class="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded">Event lead is required.</div>)");
-            return res;
-        }
+
 
         try {
             events.create(e);
@@ -531,6 +557,8 @@ void register_event_routes(LugApp& app, EventService& events, AttendanceService&
             if (!sd.empty())                   updates.signup_deadline = ev_normalize_datetime(sd);
             std::string scope = gp("scope");
             if (!scope.empty())                updates.scope           = scope;
+            std::string ch = gp("chapter_id");
+            if (!ch.empty()) try { updates.chapter_id = std::stoll(ch); } catch (...) {}
             std::string lead = gp("event_lead_id");
             if (!lead.empty()) try { updates.event_lead_id = std::stoll(lead); } catch (...) {}
             {
@@ -541,16 +569,32 @@ void register_event_routes(LugApp& app, EventService& events, AttendanceService&
                     if (r && r[0]) { if (!csv.empty()) csv += ","; csv += r; }
                 updates.discord_ping_role_ids = csv;
             }
+            // Thread selection on edit
+            { std::string mode = gp("thread_mode");
+              if (mode == "existing") {
+                  std::string tid = gp("existing_thread_id");
+                  if (!tid.empty()) updates.discord_thread_id = tid;
+              } else if (mode == "new") {
+                  // Fetch current event to build thread name
+                  auto cur = events.get(static_cast<int64_t>(id));
+                  if (cur) {
+                      LugEvent merged = *cur;
+                      if (!updates.title.empty()) merged.title = updates.title;
+                      if (!updates.location.empty()) merged.location = updates.location;
+                      if (!updates.start_time.empty()) merged.start_time = updates.start_time;
+                      if (!updates.end_time.empty()) merged.end_time = updates.end_time;
+                      std::string thread_name = merged.title;
+                      std::string new_tid = discord.sync_create_forum_thread_for_event(thread_name, merged);
+                      if (!new_tid.empty()) updates.discord_thread_id = new_tid;
+                  }
+              }
+            }
 
             res.add_header("Content-Type", "text/html; charset=utf-8");
             if (updates.title.empty()) {
                 res.code = 400;
+                std::cerr << "[EventRoutes] PUT /events/" << id << " failed: title empty\n";
                 res.write(R"(<div class="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded">Title is required.</div>)");
-                return res;
-            }
-            if (updates.event_lead_id <= 0) {
-                res.code = 400;
-                res.write(R"(<div class="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded">Event lead is required.</div>)");
                 return res;
             }
             try {
@@ -561,6 +605,7 @@ void register_event_routes(LugApp& app, EventService& events, AttendanceService&
                 res.write(render_event_page(req, app, events, attendance, false));
             } catch (const std::exception& ex) {
                 res.code = 400;
+                std::cerr << "[EventRoutes] PUT /events/" << id << " error: " << ex.what() << "\n";
                 res.write(std::string(
                     R"(<div class="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded">Error: )")
                     + ex.what() + "</div>");
@@ -651,38 +696,30 @@ void register_event_routes(LugApp& app, EventService& events, AttendanceService&
 
         auto params = crow::query_string("?" + req.body);
         const char* status_raw = params.get("status");
-        if (!status_raw) {
-            // Try JSON body
-            auto body = crow::json::load(req.body);
-            if (!body || !body.has("status")) {
-                res.code = 400;
-                res.write(R"({"error":"status required"})");
-                res.add_header("Content-Type", "application/json");
-                return res;
-            }
-            std::string status = body["status"].s();
-            try {
-                events.update_status(static_cast<int64_t>(id), status);
-                res.add_header("HX-Trigger", "eventsUpdated");
-                res.code = 200;
-                res.write(R"({"success":true})");
-            } catch (const std::exception& ex) {
-                res.code = 400;
-                res.write(std::string(R"({"error":")") + ex.what() + "\"}");
-            }
+        std::string status;
+        if (status_raw) {
+            status = status_raw;
         } else {
-            std::string status(status_raw);
-            try {
-                events.update_status(static_cast<int64_t>(id), status);
-                res.add_header("HX-Trigger", "eventsUpdated");
-                res.code = 200;
-                res.write(R"({"success":true})");
-            } catch (const std::exception& ex) {
-                res.code = 400;
-                res.write(std::string(R"({"error":")") + ex.what() + "\"}");
-            }
+            auto body = crow::json::load(req.body);
+            if (body && body.has("status")) status = body["status"].s();
         }
-        res.add_header("Content-Type", "application/json");
+
+        if (status.empty()) {
+            res.code = 400;
+            res.write(R"({"error":"status required"})");
+            res.add_header("Content-Type", "application/json");
+            return res;
+        }
+
+        try {
+            events.update_status(static_cast<int64_t>(id), status);
+            res.add_header("HX-Redirect", "/events");
+            res.code = 200;
+        } catch (const std::exception& ex) {
+            res.code = 400;
+            res.write(std::string(R"({"error":")") + ex.what() + "\"}");
+            res.add_header("Content-Type", "application/json");
+        }
         return res;
     });
 
@@ -721,6 +758,52 @@ void register_event_routes(LugApp& app, EventService& events, AttendanceService&
         }
         res.add_header("HX-Trigger", "attendanceUpdated");
         res.add_header("Content-Type", "text/html");
+        return res;
+    });
+
+    // POST /events/<id>/convert-to-meeting - convert event to meeting (admin only)
+    CROW_ROUTE(app, "/events/<int>/convert-to-meeting").methods("POST"_method)(
+        [&](const crow::request& req, int id) {
+        crow::response res;
+        if (!require_auth(req, res, app, "admin")) return res;
+
+        auto ev = events.get(static_cast<int64_t>(id));
+        if (!ev) {
+            res.code = 404;
+            res.add_header("Content-Type", "text/html; charset=utf-8");
+            res.write(R"(<span class="text-red-500 text-sm">Event not found</span>)");
+            return res;
+        }
+
+        try {
+            // Create a meeting from the event data
+            Meeting m;
+            m.title       = ev->title;
+            m.description = ev->description;
+            m.location    = ev->location;
+            m.start_time  = ev->start_time;
+            m.end_time    = ev->end_time;
+            m.status      = "scheduled";
+            m.scope       = ev->scope;
+            m.chapter_id  = ev->chapter_id;
+
+            Meeting created = meetings.create(m);
+
+            // Copy attendance records from event to meeting
+            auto attendees = attendance.get_attendees("event", static_cast<int64_t>(id));
+            for (auto& a : attendees) {
+                attendance.check_in(a.member_id, "meeting", created.id, a.notes, a.is_virtual);
+            }
+
+            // Delete the event (cleans up Discord, Google Calendar, attendance)
+            events.cancel(static_cast<int64_t>(id));
+
+            res.add_header("HX-Redirect", "/meetings");
+            res.code = 200;
+        } catch (const std::exception& ex) {
+            res.add_header("Content-Type", "text/html; charset=utf-8");
+            res.write(std::string(R"(<span class="text-red-500 text-sm">Error: )") + ex.what() + "</span>");
+        }
         return res;
     });
 }

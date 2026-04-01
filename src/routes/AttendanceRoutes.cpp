@@ -50,6 +50,58 @@ static std::string render_attendance_list(AttendanceService& attendance,
 void register_attendance_routes(LugApp& app, AttendanceService& attendance,
                                 EventService& events, MeetingService& meetings) {
 
+    // GET /attendance/overview - admin/lead attendance overview for all members
+    CROW_ROUTE(app, "/attendance/overview")([&](const crow::request& req) {
+        crow::response res;
+        if (!require_auth(req, res, app)) return res;
+
+        auto& auth = app.get_context<AuthMiddleware>(req);
+        if (auth.auth.role != "admin") {
+            res.code = 403;
+            res.write("Forbidden");
+            return res;
+        }
+
+        auto summaries = attendance.get_all_member_summaries();
+
+        crow::mustache::context ctx;
+        ctx["is_admin"] = true;
+
+        crow::json::wvalue arr;
+        for (size_t i = 0; i < summaries.size(); ++i) {
+            auto& s = summaries[i];
+            arr[i]["member_id"]             = s.member_id;
+            arr[i]["display_name"]          = s.display_name;
+            arr[i]["discord_username"]      = s.discord_username;
+            arr[i]["meeting_count"]         = s.meeting_count;
+            arr[i]["meeting_virtual_count"] = s.meeting_virtual_count;
+            arr[i]["meeting_in_person"]     = s.meeting_count - s.meeting_virtual_count;
+            arr[i]["event_count"]           = s.event_count;
+            arr[i]["total"]                 = s.meeting_count + s.event_count;
+            arr[i]["has_attendance"]        = (s.meeting_count + s.event_count) > 0;
+        }
+        ctx["members"]      = std::move(arr);
+        ctx["member_count"] = static_cast<int>(summaries.size());
+
+        bool is_htmx = req.get_header_value("HX-Request") == "true";
+        if (is_htmx) {
+            auto tmpl = crow::mustache::load("attendance/_overview.html");
+            res.write(tmpl.render(ctx).dump());
+        } else {
+            auto content_tmpl = crow::mustache::load("attendance/_overview.html");
+            std::string content = content_tmpl.render(ctx).dump();
+            crow::mustache::context layout_ctx;
+            layout_ctx["content"]           = content;
+            layout_ctx["page_title"]        = "Attendance Overview";
+            layout_ctx["active_attendance"] = true;
+            layout_ctx["is_admin"]          = true;
+            auto layout = crow::mustache::load("layout.html");
+            res.write(layout.render(layout_ctx).dump());
+        }
+        res.add_header("Content-Type", "text/html");
+        return res;
+    });
+
     // GET /attendance - personal attendance history for current user
     CROW_ROUTE(app, "/attendance")([&](const crow::request& req) {
         crow::response res;

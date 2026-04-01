@@ -10,6 +10,7 @@ public:
     explicit EventRepository(SqliteDatabase& db);
 
     std::optional<LugEvent> find_by_id(int64_t id);
+    bool                    exists_by_google_calendar_id(const std::string& gcal_event_id);
     std::vector<LugEvent>   find_all();
     std::vector<LugEvent>   find_upcoming();  // start_time >= now - 1 hour, sorted ASC
     std::vector<LugEvent>   find_by_status(const std::string& status);
@@ -28,6 +29,7 @@ public:
                                 const std::string& discord_event_id);
     bool     update_lug_message_id(int64_t id, const std::string& message_id);
     bool     update_chapter_message_id(int64_t id, const std::string& message_id);
+    bool     update_google_calendar_event_id(int64_t id, const std::string& gcal_event_id);
 
 private:
     SqliteDatabase& db_;

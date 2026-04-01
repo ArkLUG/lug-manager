@@ -8,7 +8,8 @@ static const char* kSelectAllCols =
     "COALESCE(e.discord_chapter_message_id,''), "
     "COALESCE(e.discord_lug_message_id,''), "
     "COALESCE(e.discord_ping_role_ids,''), "
-    "COALESCE(m.discord_user_id,'') "
+    "COALESCE(m.discord_user_id,''), "
+    "COALESCE(e.google_calendar_event_id,'') "
     "FROM lug_events e LEFT JOIN members m ON m.id = e.event_lead_id";
 
 EventRepository::EventRepository(SqliteDatabase& db) : db_(db) {}
@@ -37,6 +38,7 @@ LugEvent EventRepository::row_to_event(Statement& stmt) {
     e.discord_lug_message_id     = stmt.col_text(19);
     e.discord_ping_role_ids      = stmt.col_text(20);
     e.event_lead_discord_id      = stmt.col_text(21);
+    e.google_calendar_event_id   = stmt.col_text(22);
     return e;
 }
 
@@ -48,6 +50,14 @@ std::optional<LugEvent> EventRepository::find_by_id(int64_t id) {
         return row_to_event(stmt);
     }
     return std::nullopt;
+}
+
+bool EventRepository::exists_by_google_calendar_id(const std::string& gcal_event_id) {
+    if (gcal_event_id.empty()) return false;
+    auto stmt = db_.prepare("SELECT COUNT(*) FROM lug_events WHERE google_calendar_event_id=?");
+    stmt.bind(1, gcal_event_id);
+    if (stmt.step()) return stmt.col_int(0) > 0;
+    return false;
 }
 
 std::vector<LugEvent> EventRepository::find_all() {
@@ -160,7 +170,7 @@ LugEvent EventRepository::create(const LugEvent& e) {
     stmt.bind(3, e.location);
     stmt.bind(4, e.start_time);
     stmt.bind(5, e.end_time);
-    stmt.bind(6, e.status.empty() ? std::string("announced") : e.status);
+    stmt.bind(6, e.status.empty() ? std::string("confirmed") : e.status);
     if (e.discord_thread_id.empty()) {
         stmt.bind_null(7);
     } else {
@@ -208,7 +218,7 @@ bool EventRepository::update(const LugEvent& e) {
     auto stmt = db_.prepare(
         "UPDATE lug_events SET title=?, description=?, location=?, "
         "start_time=?, end_time=?, status=?, discord_thread_id=?, discord_event_id=?, "
-        "signup_deadline=?, max_attendees=?, scope=?, event_lead_id=?, "
+        "signup_deadline=?, max_attendees=?, scope=?, chapter_id=?, event_lead_id=?, "
         "discord_ping_role_ids=?, updated_at=datetime('now') WHERE id=?");
     stmt.bind(1, e.title);
     stmt.bind(2, e.description);
@@ -233,17 +243,22 @@ bool EventRepository::update(const LugEvent& e) {
     }
     stmt.bind(10, static_cast<int64_t>(e.max_attendees));
     stmt.bind(11, e.scope.empty() ? std::string("chapter") : e.scope);
-    if (e.event_lead_id <= 0) {
+    if (e.chapter_id <= 0) {
         stmt.bind_null(12);
     } else {
-        stmt.bind(12, e.event_lead_id);
+        stmt.bind(12, e.chapter_id);
     }
-    if (e.discord_ping_role_ids.empty()) {
+    if (e.event_lead_id <= 0) {
         stmt.bind_null(13);
     } else {
-        stmt.bind(13, e.discord_ping_role_ids);
+        stmt.bind(13, e.event_lead_id);
     }
-    stmt.bind(14, e.id);
+    if (e.discord_ping_role_ids.empty()) {
+        stmt.bind_null(14);
+    } else {
+        stmt.bind(14, e.discord_ping_role_ids);
+    }
+    stmt.bind(15, e.id);
     stmt.step();
 
     auto existing = find_by_id(e.id);
@@ -277,6 +292,16 @@ bool EventRepository::update_chapter_message_id(int64_t id,
         "UPDATE lug_events SET discord_chapter_message_id=? WHERE id=?");
     if (message_id.empty()) stmt.bind_null(1);
     else                    stmt.bind(1, message_id);
+    stmt.bind(2, id);
+    stmt.step();
+    return true;
+}
+
+bool EventRepository::update_google_calendar_event_id(int64_t id, const std::string& gcal_event_id) {
+    auto stmt = db_.prepare(
+        "UPDATE lug_events SET google_calendar_event_id=? WHERE id=?");
+    if (gcal_event_id.empty()) stmt.bind_null(1);
+    else                       stmt.bind(1, gcal_event_id);
     stmt.bind(2, id);
     stmt.step();
     return true;

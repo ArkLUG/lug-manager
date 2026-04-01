@@ -25,6 +25,16 @@ public:
     bool remove_by_id(int64_t attendance_id);
     void delete_by_entity(const std::string& entity_type, int64_t entity_id);
 
+    struct MemberAttendanceSummary {
+        int64_t     member_id = 0;
+        std::string display_name;
+        std::string discord_username;
+        int         meeting_count = 0;
+        int         meeting_virtual_count = 0;
+        int         event_count = 0;
+    };
+    std::vector<MemberAttendanceSummary> get_all_member_summaries();
+
 private:
     SqliteDatabase& db_;
 };

@@ -8,13 +8,15 @@
   </div>
 
   {{#is_edit}}
-  <form hx-put="{{action}}" hx-target="#main-content" hx-swap="innerHTML"
-        hx-push-url="/meetings" class="space-y-4">
+  <form hx-put="{{action}}" hx-target="#meeting-form-errors" hx-swap="innerHTML"
+        class="space-y-4">
   {{/is_edit}}
   {{^is_edit}}
-  <form hx-post="{{action}}" hx-target="#main-content" hx-swap="innerHTML"
-        hx-push-url="/meetings" class="space-y-4">
+  <form hx-post="{{action}}" hx-target="#meeting-form-errors" hx-swap="innerHTML"
+        class="space-y-4">
   {{/is_edit}}
+
+    <div id="meeting-form-errors"></div>
 
     <div>
       <label class="block text-sm font-medium text-gray-700 mb-1">Title <span class="text-red-500">*</span></label>
@@ -63,9 +65,8 @@
     <div id="meeting-chapter-row">
       <label class="block text-sm font-medium text-gray-700 mb-1">Chapter <span class="text-gray-400">(optional for admins)</span></label>
       <select name="chapter_id" id="meeting-chapter-select"
-              hx-get="/api/chapter-options?selected={{chapter_id_str}}" hx-trigger="load" hx-target="this" hx-swap="innerHTML"
               class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-yellow-400">
-        <option value="">Loading chapters…</option>
+        {{{chapter_options}}}
       </select>
     </div>
 

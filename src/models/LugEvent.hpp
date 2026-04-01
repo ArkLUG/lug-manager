@@ -9,9 +9,10 @@ struct LugEvent {
     std::string location;
     std::string start_time;
     std::string end_time;
-    std::string status           = "announced"; // "announced"|"open"|"closed"|"cancelled"
+    std::string status           = "confirmed"; // "tentative"|"confirmed"|"open"|"closed"|"cancelled"
     std::string discord_thread_id;
     std::string discord_event_id;
+    std::string google_calendar_event_id;    // Google Calendar event ID
     std::string discord_chapter_message_id; // message ID in chapter announcement channel
     std::string discord_lug_message_id;     // message ID in lug_channel announcement
     std::string discord_ping_role_ids = "\x01"; // comma-separated extra role IDs to ping; "\x01" = not-set sentinel

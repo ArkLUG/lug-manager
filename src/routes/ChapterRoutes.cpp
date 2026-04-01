@@ -64,6 +64,8 @@ void register_chapter_routes(LugApp& app, ChapterService& chapters,
             const auto& ch = all_chapters[i];
             arr[i]["id"]          = ch.id;
             arr[i]["name"]        = ch.name;
+            arr[i]["shorthand"]   = ch.shorthand;
+            arr[i]["has_shorthand"] = !ch.shorthand.empty();
             arr[i]["description"] = ch.description;
 
             auto it = stats.find(ch.id);
@@ -127,6 +129,7 @@ void register_chapter_routes(LugApp& app, ChapterService& chapters,
 
         Chapter ch;
         ch.name = get_param("name");
+        ch.shorthand = get_param("shorthand");
         ch.description = get_param("description");
         ch.discord_announcement_channel_id = get_param("discord_announcement_channel_id");
         ch.discord_lead_role_id            = get_param("discord_lead_role_id");
@@ -195,6 +198,8 @@ void register_chapter_routes(LugApp& app, ChapterService& chapters,
         crow::mustache::context mctx;
         mctx["id"]              = ch->id;
         mctx["name"]            = ch->name;
+        mctx["shorthand"]       = ch->shorthand;
+        mctx["has_shorthand"]   = !ch->shorthand.empty();
         mctx["description"]     = ch->description;
         mctx["discord_channel"] = ch->discord_announcement_channel_id;
         mctx["is_admin"]        = is_admin;
@@ -323,6 +328,7 @@ void register_chapter_routes(LugApp& app, ChapterService& chapters,
                 return res;
             }
             if (body.has("name")) updates.name = body["name"].s();
+            if (body.has("shorthand")) updates.shorthand = body["shorthand"].s();
             if (body.has("description")) updates.description = body["description"].s();
             if (body.has("discord_announcement_channel_id"))
                 updates.discord_announcement_channel_id = body["discord_announcement_channel_id"].s();
@@ -336,6 +342,7 @@ void register_chapter_routes(LugApp& app, ChapterService& chapters,
                 const char* v = params.get(k); return v ? std::string(v) : "";
             };
             updates.name = gp("name");
+            updates.shorthand = gp("shorthand");
             updates.description = gp("description");
             updates.discord_announcement_channel_id = gp("discord_announcement_channel_id");
             updates.discord_lead_role_id   = gp("discord_lead_role_id");
@@ -368,13 +375,13 @@ void register_chapter_routes(LugApp& app, ChapterService& chapters,
 
         try {
             chapters.delete_chapter(static_cast<int64_t>(id));
+            res.add_header("HX-Redirect", "/chapters");
             res.code = 200;
-            res.write("{\"success\":true}");
         } catch (const std::exception& e) {
             res.code = 400;
             res.write(std::string("{\"error\":\"") + e.what() + "\"}");
+            res.add_header("Content-Type", "application/json");
         }
-        res.add_header("Content-Type", "application/json");
         return res;
     });
 
@@ -582,6 +589,7 @@ void register_chapter_routes(LugApp& app, ChapterService& chapters,
         crow::mustache::context mctx;
         mctx["id"]              = ch->id;
         mctx["name"]            = ch->name;
+        mctx["shorthand"]       = ch->shorthand;
         mctx["description"]     = ch->description;
         mctx["channel_options"]     = build_channel_options(discord, ch->discord_announcement_channel_id);
         mctx["role_options"]        = build_role_options(discord, ch->discord_lead_role_id);

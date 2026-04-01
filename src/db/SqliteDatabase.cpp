@@ -42,7 +42,11 @@ bool Statement::step() {
     int rc = sqlite3_step(stmt_);
     if (rc == SQLITE_ROW) return true;
     if (rc == SQLITE_DONE) return false;
-    throw DbError(std::string("Step failed: rc=") + std::to_string(rc));
+    // Include SQLite error message for better debugging
+    sqlite3* db = sqlite3_db_handle(stmt_);
+    std::string msg = "Step failed: rc=" + std::to_string(rc);
+    if (db) msg += " — " + std::string(sqlite3_errmsg(db));
+    throw DbError(msg);
 }
 
 int64_t Statement::col_int(int idx) const {

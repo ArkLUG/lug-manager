@@ -27,6 +27,7 @@ Chapter ChapterService::update(int64_t id, const Chapter& updates) {
     }
     Chapter ch = *existing;
     if (!updates.name.empty()) ch.name = updates.name;
+    ch.shorthand = updates.shorthand; // always apply (empty = clear)
     if (!updates.description.empty()) ch.description = updates.description;
     if (!updates.discord_announcement_channel_id.empty()) {
         ch.discord_announcement_channel_id = updates.discord_announcement_channel_id;

@@ -6,8 +6,9 @@
 
 CalendarGenerator::CalendarGenerator(MeetingRepository& meetings,
                                      EventRepository& events,
-                                     const Config& config)
-    : meetings_(meetings), events_(events), config_(config),
+                                     const Config& config,
+                                     ChapterRepository* chapters)
+    : meetings_(meetings), events_(events), config_(config), chapters_(chapters),
       timezone_(config.ical_timezone),
       calendar_name_(config.ical_calendar_name) {}
 
@@ -110,7 +111,8 @@ std::string CalendarGenerator::make_vevent(const std::string& uid,
                                             const std::string& end,
                                             const std::string& status,
                                             const std::string& last_modified,
-                                            const std::string& timezone) {
+                                            const std::string& timezone,
+                                            bool all_day) {
     std::string block;
     block += "BEGIN:VEVENT\r\n";
     block += fold_line("UID", uid);
@@ -121,23 +123,52 @@ std::string CalendarGenerator::make_vevent(const std::string& uid,
     if (!location.empty())
         block += fold_line("LOCATION", escape_ical(location));
 
-    // Emit DTSTART/DTEND with TZID for proper timezone handling
-    std::string ical_start = iso_to_ical_dt(start);
-    if (!timezone.empty() && timezone != "UTC") {
-        block += fold_line("DTSTART;TZID=" + timezone, ical_start);
+    if (all_day) {
+        // All-day: VALUE=DATE with YYYYMMDD format, no time, no timezone
+        auto to_ical_date = [](const std::string& iso) -> std::string {
+            if (iso.size() < 10) return iso;
+            return iso.substr(0, 4) + iso.substr(5, 2) + iso.substr(8, 2);
+        };
+        // iCal DTEND for all-day is exclusive (same as Google Calendar)
+        auto next_day = [](const std::string& iso) -> std::string {
+            if (iso.size() < 10) return iso;
+            try {
+                struct tm t = {};
+                t.tm_year = std::stoi(iso.substr(0, 4)) - 1900;
+                t.tm_mon  = std::stoi(iso.substr(5, 2)) - 1;
+                t.tm_mday = std::stoi(iso.substr(8, 2)) + 1;
+                t.tm_isdst = -1;
+                mktime(&t);
+                char buf[9];
+                strftime(buf, sizeof(buf), "%Y%m%d", &t);
+                return buf;
+            } catch (...) {}
+            return iso.substr(0, 4) + iso.substr(5, 2) + iso.substr(8, 2);
+        };
+        block += fold_line("DTSTART;VALUE=DATE", to_ical_date(start));
+        std::string end_dt = end.empty() ? start : end;
+        block += fold_line("DTEND;VALUE=DATE", next_day(end_dt));
     } else {
-        block += fold_line("DTSTART", ical_start);
-    }
-    if (!end.empty()) {
-        std::string ical_end = iso_to_ical_dt(end);
+        // Timed event with TZID
+        std::string ical_start = iso_to_ical_dt(start);
         if (!timezone.empty() && timezone != "UTC") {
-            block += fold_line("DTEND;TZID=" + timezone, ical_end);
+            block += fold_line("DTSTART;TZID=" + timezone, ical_start);
         } else {
-            block += fold_line("DTEND", ical_end);
+            block += fold_line("DTSTART", ical_start);
+        }
+        if (!end.empty()) {
+            std::string ical_end = iso_to_ical_dt(end);
+            if (!timezone.empty() && timezone != "UTC") {
+                block += fold_line("DTEND;TZID=" + timezone, ical_end);
+            } else {
+                block += fold_line("DTEND", ical_end);
+            }
         }
     }
 
-    std::string ical_status = (status == "cancelled") ? "CANCELLED" : "CONFIRMED";
+    std::string ical_status = (status == "cancelled") ? "CANCELLED"
+                            : (status == "tentative") ? "TENTATIVE"
+                            : "CONFIRMED";
     block += fold_line("STATUS", ical_status);
     if (!last_modified.empty())
         block += fold_line("LAST-MODIFIED", iso_to_ical_dt(last_modified));
@@ -156,13 +187,28 @@ std::string CalendarGenerator::generate_ics() const {
     oss << "CALSCALE:GREGORIAN\r\n";
     oss << "METHOD:PUBLISH\r\n";
 
+    // Helper to build prefixed calendar title
+    auto cal_title = [this](const std::string& title, const std::string& scope,
+                            int64_t chapter_id, const std::string& status = "") -> std::string {
+        std::string prefix;
+        if (status == "tentative") prefix += "[Tentative] ";
+        if (scope == "non_lug")        prefix += "[Non-LUG] ";
+        else if (scope == "lug_wide")  prefix += "[LUG Wide] ";
+        if (chapter_id > 0 && chapters_) {
+            auto ch = chapters_->find_by_id(chapter_id);
+            if (ch && !ch->shorthand.empty()) prefix = "[" + ch->shorthand + "] " + prefix;
+        }
+        return prefix + title;
+    };
+
     // Add meetings
     auto meetings = meetings_.find_all();
     for (const auto& m : meetings) {
         std::string uid = m.ical_uid.empty()
             ? ("meeting-" + std::to_string(m.id) + "@lug-manager")
             : m.ical_uid;
-        oss << make_vevent(uid, m.title, m.description, m.location,
+        oss << make_vevent(uid, cal_title(m.title, m.scope, m.chapter_id),
+                           m.description, m.location,
                            m.start_time, m.end_time, m.status, m.updated_at,
                            timezone_);
     }
@@ -173,9 +219,10 @@ std::string CalendarGenerator::generate_ics() const {
         std::string uid = e.ical_uid.empty()
             ? ("event-" + std::to_string(e.id) + "@lug-manager")
             : e.ical_uid;
-        oss << make_vevent(uid, e.title, e.description, e.location,
+        oss << make_vevent(uid, cal_title(e.title, e.scope, e.chapter_id, e.status),
+                           e.description, e.location,
                            e.start_time, e.end_time, e.status, e.updated_at,
-                           timezone_);
+                           timezone_, true);
     }
 
     oss << "END:VCALENDAR\r\n";

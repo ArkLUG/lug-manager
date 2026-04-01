@@ -16,7 +16,10 @@
     <a href="/chapters/{{id}}" hx-get="/chapters/{{id}}" hx-target="#main-content" hx-swap="innerHTML" hx-push-url="true"
        class="bg-white rounded-xl border border-gray-200 p-6 hover:border-yellow-400 hover:shadow-md transition-all cursor-pointer flex flex-col gap-3">
       <div>
-        <h3 class="font-semibold text-gray-900">{{name}}</h3>
+        <div class="flex items-center gap-2">
+          <h3 class="font-semibold text-gray-900">{{name}}</h3>
+          {{#has_shorthand}}<span class="px-1.5 py-0.5 rounded text-xs font-medium bg-gray-100 text-gray-600">{{shorthand}}</span>{{/has_shorthand}}
+        </div>
         {{#description}}<p class="text-sm text-gray-500 mt-1">{{description}}</p>{{/description}}
       </div>
 

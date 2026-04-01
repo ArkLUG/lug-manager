@@ -4,7 +4,9 @@
 
 void register_settings_routes(LugApp& app, SettingsRepository& settings,
                                DiscordClient& discord, MemberSyncService& member_sync,
-                               CalendarGenerator& calendar) {
+                               CalendarGenerator& calendar, GoogleCalendarClient& gcal,
+                               EventService& events, MeetingService& meetings,
+                               MemberService& members) {
 
     // GET /api/discord/channel-options
     // Returns <option> elements for all text channels in the configured guild.
@@ -200,6 +202,10 @@ void register_settings_routes(LugApp& app, SettingsRepository& settings,
                                                        discord.get_non_lug_event_role_id());
         std::string timezone           = settings.get("lug_timezone", discord.get_timezone());
         std::string calendar_name     = settings.get("ical_calendar_name", "LUG Events");
+        std::string suppress_pings    = settings.get("discord_suppress_pings");
+        std::string suppress_updates  = settings.get("discord_suppress_updates");
+        std::string gcal_sa_path      = settings.get("google_service_account_json_path");
+        std::string gcal_cal_id       = settings.get("google_calendar_id");
 
         auto build_options = [](const std::vector<DiscordChannel>& channels,
                                 const std::string& selected,
@@ -255,6 +261,11 @@ void register_settings_routes(LugApp& app, SettingsRepository& settings,
         mctx["non_lug_role_options"]  = non_lug_role_options;
         mctx["timezone"]              = timezone;
         mctx["calendar_name"]        = calendar_name;
+        mctx["google_sa_path"]       = gcal_sa_path;
+        mctx["google_calendar_id"]   = gcal_cal_id;
+        mctx["suppress_pings"]       = (suppress_pings == "1");
+        mctx["suppress_updates"]     = (suppress_updates == "1");
+        mctx["gcal_configured"]      = gcal.is_configured();
 
         bool is_htmx = req.get_header_value("HX-Request") == "true";
         if (is_htmx) {
@@ -300,6 +311,10 @@ void register_settings_routes(LugApp& app, SettingsRepository& settings,
         std::string non_lug_role   = get_param("discord_non_lug_event_role_id");
         std::string timezone       = get_param("lug_timezone");
         std::string cal_name       = get_param("ical_calendar_name");
+        std::string suppress_pings   = get_param("discord_suppress_pings");
+        std::string suppress_updates = get_param("discord_suppress_updates");
+        std::string gcal_sa_path   = get_param("google_service_account_json_path");
+        std::string gcal_cal_id    = get_param("google_calendar_id");
 
         if (!guild_id.empty())    settings.set("discord_guild_id",    guild_id);
         if (!lug_channel.empty()) settings.set("discord_announcements_channel_id", lug_channel);
@@ -309,9 +324,19 @@ void register_settings_routes(LugApp& app, SettingsRepository& settings,
         if (!timezone.empty())    settings.set("lug_timezone",         timezone);
         if (!cal_name.empty())    settings.set("ical_calendar_name",   cal_name);
 
+        // Checkboxes: absent from form = unchecked = "0"
+        settings.set("discord_suppress_pings", suppress_pings == "1" ? "1" : "0");
+        settings.set("discord_suppress_updates", suppress_updates == "1" ? "1" : "0");
+
         // Apply immediately so Discord calls use the new values
         discord.reconfigure(guild_id, lug_channel, forum_channel, announce_role, non_lug_role, timezone);
+        discord.set_suppress_pings(suppress_pings == "1");
+        discord.set_suppress_updates(suppress_updates == "1");
         if (!timezone.empty()) calendar.set_timezone(timezone);
+        settings.set("google_service_account_json_path", gcal_sa_path);
+        settings.set("google_calendar_id",               gcal_cal_id);
+        if (!gcal_sa_path.empty() && !gcal_cal_id.empty())
+            gcal.reconfigure(gcal_sa_path, gcal_cal_id, timezone);
 
         bool is_htmx = req.get_header_value("HX-Request") == "true";
         if (is_htmx) {
@@ -320,6 +345,144 @@ void register_settings_routes(LugApp& app, SettingsRepository& settings,
         } else {
             res.redirect("/settings");
         }
+        return res;
+    });
+
+    // POST /api/google-calendar/import - import upcoming events from Google Calendar
+    CROW_ROUTE(app, "/api/google-calendar/import").methods("POST"_method)(
+        [&](const crow::request& req) {
+        crow::response res;
+        auto& ctx = app.get_context<AuthMiddleware>(req);
+        if (ctx.auth.role != "admin") {
+            res.code = 403;
+            res.write(R"(<span class="text-red-600">Forbidden</span>)");
+            res.add_header("Content-Type", "text/html; charset=utf-8");
+            return res;
+        }
+
+        if (!gcal.is_configured()) {
+            res.write(R"(<span class="text-red-600">Google Calendar not configured.</span>)");
+            res.add_header("Content-Type", "text/html; charset=utf-8");
+            return res;
+        }
+
+        try {
+            auto gcal_events = gcal.fetch_upcoming_events(100);
+            int ev_imported = 0, mtg_imported = 0, skipped = 0;
+            for (auto& ge : gcal_events) {
+                if (events.exists_by_google_calendar_id(ge.google_id) ||
+                    meetings.exists_by_google_calendar_id(ge.google_id)) {
+                    ++skipped;
+                    continue;
+                }
+                if (ge.is_all_day) {
+                    // All-day → Event
+                    LugEvent ev;
+                    ev.title       = ge.title;
+                    ev.description = ge.description;
+                    ev.location    = ge.location;
+                    ev.start_time  = ge.start_time;
+                    ev.end_time    = ge.end_time;
+                    ev.status      = "confirmed";
+                    ev.scope       = "lug_wide";
+                    ev.google_calendar_event_id = ge.google_id;
+                    events.create_imported(ev);
+                    ++ev_imported;
+                } else {
+                    // Timed → Meeting
+                    Meeting m;
+                    m.title       = ge.title;
+                    m.description = ge.description;
+                    m.location    = ge.location;
+                    m.start_time  = ge.start_time;
+                    m.end_time    = ge.end_time;
+                    m.status      = "scheduled";
+                    m.scope       = "lug_wide";
+                    m.google_calendar_event_id = ge.google_id;
+                    meetings.create_imported(m);
+                    ++mtg_imported;
+                }
+            }
+            std::ostringstream html;
+            html << "<span class=\"text-green-700 font-medium\">"
+                 << ev_imported << " events, " << mtg_imported << " meetings imported, "
+                 << skipped << " already existed</span>";
+            res.write(html.str());
+        } catch (const std::exception& ex) {
+            res.write("<span class=\"text-red-600\">Error: " + std::string(ex.what()) + "</span>");
+        }
+        res.add_header("Content-Type", "text/html; charset=utf-8");
+        return res;
+    });
+
+    // POST /api/google-calendar/sync-all - push all events and meetings to Google Calendar
+    CROW_ROUTE(app, "/api/google-calendar/sync-all").methods("POST"_method)(
+        [&](const crow::request& req) {
+        crow::response res;
+        auto& ctx = app.get_context<AuthMiddleware>(req);
+        if (ctx.auth.role != "admin") {
+            res.code = 403;
+            res.write(R"(<span class="text-red-600">Forbidden</span>)");
+            res.add_header("Content-Type", "text/html; charset=utf-8");
+            return res;
+        }
+
+        if (!gcal.is_configured()) {
+            res.write(R"(<span class="text-red-600">Google Calendar not configured.</span>)");
+            res.add_header("Content-Type", "text/html; charset=utf-8");
+            return res;
+        }
+
+        try {
+            auto ev_result  = events.sync_all_to_google_calendar();
+            auto mtg_result = meetings.sync_all_to_google_calendar();
+
+            std::ostringstream html;
+            html << "<span class=\"text-green-700 font-medium\">"
+                 << "Events: " << ev_result.created << " created, " << ev_result.synced << " updated"
+                 << (ev_result.errors > 0 ? ", <span class=\"text-red-600\">" + std::to_string(ev_result.errors) + " errors</span>" : "")
+                 << " · Meetings: " << mtg_result.created << " created, " << mtg_result.synced << " updated"
+                 << (mtg_result.errors > 0 ? ", <span class=\"text-red-600\">" + std::to_string(mtg_result.errors) + " errors</span>" : "")
+                 << "</span>";
+            res.write(html.str());
+        } catch (const std::exception& ex) {
+            res.write("<span class=\"text-red-600\">Error: " + std::string(ex.what()) + "</span>");
+        }
+        res.add_header("Content-Type", "text/html; charset=utf-8");
+        return res;
+    });
+
+    // POST /api/discord/sync-all - force-push all events and meetings to Discord
+    CROW_ROUTE(app, "/api/discord/sync-all").methods("POST"_method)(
+        [&](const crow::request& req) {
+        crow::response res;
+        auto& ctx = app.get_context<AuthMiddleware>(req);
+        if (ctx.auth.role != "admin") {
+            res.code = 403;
+            res.write(R"(<span class="text-red-600">Forbidden</span>)");
+            res.add_header("Content-Type", "text/html; charset=utf-8");
+            return res;
+        }
+
+        try {
+            auto ev_result  = events.sync_all_to_discord();
+            auto mtg_result = meetings.sync_all_to_discord();
+            auto nick_result = members.sync_nicknames_to_discord();
+
+            std::ostringstream html;
+            html << "<span class=\"text-green-700 font-medium\">"
+                 << "Events: " << ev_result.synced << " synced"
+                 << (ev_result.errors > 0 ? ", <span class=\"text-red-600\">" + std::to_string(ev_result.errors) + " errors</span>" : "")
+                 << " · Meetings: " << mtg_result.synced << " synced"
+                 << (mtg_result.errors > 0 ? ", <span class=\"text-red-600\">" + std::to_string(mtg_result.errors) + " errors</span>" : "")
+                 << " · Nicknames: " << nick_result.synced << " updated"
+                 << (nick_result.errors > 0 ? ", <span class=\"text-red-600\">" + std::to_string(nick_result.errors) + " errors</span>" : "")
+                 << "</span>";
+            res.write(html.str());
+        } catch (const std::exception& ex) {
+            res.write("<span class=\"text-red-600\">Error: " + std::string(ex.what()) + "</span>");
+        }
+        res.add_header("Content-Type", "text/html; charset=utf-8");
         return res;
     });
 }

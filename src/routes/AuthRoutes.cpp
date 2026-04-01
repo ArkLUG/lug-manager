@@ -80,8 +80,8 @@ void register_auth_routes(LugApp& app, AuthService& auth, DiscordOAuth& oauth) {
         }
     });
 
-    // POST /auth/logout
-    CROW_ROUTE(app, "/auth/logout").methods("POST"_method)(
+    // POST or GET /auth/logout
+    CROW_ROUTE(app, "/auth/logout").methods("POST"_method, "GET"_method)(
         [&](const crow::request& req) {
         // Extract session cookie and destroy it
         std::string cookie_header = req.get_header_value("Cookie");

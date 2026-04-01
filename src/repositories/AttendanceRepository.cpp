@@ -120,6 +120,32 @@ void AttendanceRepository::delete_by_entity(const std::string& entity_type, int6
     stmt.step();
 }
 
+std::vector<AttendanceRepository::MemberAttendanceSummary>
+AttendanceRepository::get_all_member_summaries() {
+    auto stmt = db_.prepare(
+        "SELECT m.id, m.display_name, m.discord_username, "
+        "SUM(CASE WHEN a.entity_type='meeting' THEN 1 ELSE 0 END), "
+        "SUM(CASE WHEN a.entity_type='meeting' AND a.is_virtual=1 THEN 1 ELSE 0 END), "
+        "SUM(CASE WHEN a.entity_type='event' THEN 1 ELSE 0 END) "
+        "FROM members m "
+        "LEFT JOIN attendance a ON a.member_id = m.id "
+        "GROUP BY m.id "
+        "ORDER BY m.display_name ASC");
+
+    std::vector<MemberAttendanceSummary> result;
+    while (stmt.step()) {
+        MemberAttendanceSummary s;
+        s.member_id             = stmt.col_int(0);
+        s.display_name          = stmt.col_text(1);
+        s.discord_username      = stmt.col_text(2);
+        s.meeting_count         = static_cast<int>(stmt.col_int(3));
+        s.meeting_virtual_count = static_cast<int>(stmt.col_int(4));
+        s.event_count           = static_cast<int>(stmt.col_int(5));
+        result.push_back(s);
+    }
+    return result;
+}
+
 bool AttendanceRepository::is_checked_in(int64_t member_id, const std::string& entity_type,
                                           int64_t entity_id) {
     auto stmt = db_.prepare(

@@ -50,6 +50,10 @@ public:
     std::string get_announcement_role_id()      const { return announcement_role_id_; }
     std::string get_non_lug_event_role_id()     const { return non_lug_event_role_id_; }
     std::string get_timezone()                  const { return timezone_; }
+    bool        get_suppress_pings()            const { return suppress_pings_; }
+    void        set_suppress_pings(bool v)            { suppress_pings_ = v; }
+    bool        get_suppress_updates()          const { return suppress_updates_; }
+    void        set_suppress_updates(bool v)          { suppress_updates_ = v; }
 
     // Fetch text channels (type 0/5) or forum channels (type 15) from the configured guild
     std::vector<DiscordChannel> fetch_text_channels()  const;
@@ -101,6 +105,12 @@ public:
     void add_member_role(const std::string& discord_user_id, const std::string& role_id);
     void remove_member_role(const std::string& discord_user_id, const std::string& role_id);
 
+    // Set a member's server nickname (synchronous)
+    void set_member_nickname(const std::string& discord_user_id, const std::string& nickname);
+
+    // Remove (kick) a member from the guild (synchronous)
+    void kick_member(const std::string& discord_user_id);
+
     // Fetch active threads in the configured forum channel
     std::vector<DiscordThread> fetch_forum_threads() const;
 
@@ -114,16 +124,18 @@ public:
     // Brief announcement: title, dates, location, thread link + role pings
     static std::string build_event_announcement_content(const LugEvent& e,
                                                          const std::string& role_id,
-                                                         const std::string& thread_url = "");
+                                                         const std::string& thread_url = "",
+                                                         bool suppress_pings = false);
     // Full thread starter: all details + pings the event lead by Discord mention
     static std::string build_thread_starter_content(const LugEvent& e,
-                                                     const std::string& role_id);
+                                                     const std::string& role_id,
+                                                     bool suppress_pings = false);
 
     // Meeting announcement: title, date/time, location + role ping
-    // tz_name: IANA timezone name (e.g. "America/Chicago"); used for display + DST-aware abbrev
     static std::string build_meeting_announcement_content(const Meeting& m,
                                                            const std::string& role_id,
-                                                           const std::string& tz_name = "UTC");
+                                                           const std::string& tz_name = "UTC",
+                                                           bool suppress_pings = false);
     // Posts a meeting announcement to a channel; returns the message ID (sync)
     std::string sync_post_meeting_announcement(const std::string& channel_id, const Meeting& m,
                                                const std::string& role_id);
@@ -137,6 +149,8 @@ private:
     std::string   announcement_role_id_;
     std::string   non_lug_event_role_id_;
     std::string   timezone_              = "UTC";
+    bool          suppress_pings_        = false;
+    bool          suppress_updates_      = false;
 
     static size_t write_cb(void* contents, size_t size, size_t nmemb, std::string* s);
     std::string discord_api_request(const std::string& method, const std::string& endpoint,

@@ -6,7 +6,9 @@ struct Member {
     int64_t     id               = 0;
     std::string discord_user_id;
     std::string discord_username;
-    std::string display_name;
+    std::string first_name;
+    std::string last_name;
+    std::string display_name;       // auto-generated: "Aaron K." style nickname
     std::string email;
     bool        is_paid          = false;
     std::string paid_until;       // ISO 8601 date "2026-12-31", may be empty

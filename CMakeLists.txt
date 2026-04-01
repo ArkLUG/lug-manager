@@ -75,3 +75,59 @@ target_compile_options(lug_manager PRIVATE -Wall -Wextra -O2)
 
 # Tell Crow where to find static files (served at /static/<path>)
 target_compile_definitions(lug_manager PRIVATE CROW_STATIC_DIRECTORY="src/static/")
+
+# ─── Tests ──────────────────────────────────────────────────────────────────
+option(BUILD_TESTS "Build unit and integration tests" ON)
+if(BUILD_TESTS)
+  enable_testing()
+
+  FetchContent_Declare(googletest
+    GIT_REPOSITORY https://github.com/google/googletest.git
+    GIT_TAG        v1.14.0
+    GIT_SHALLOW    TRUE
+  )
+  set(BUILD_GMOCK OFF CACHE BOOL "" FORCE)
+  set(INSTALL_GTEST OFF CACHE BOOL "" FORCE)
+  FetchContent_MakeAvailable(googletest)
+
+  # Collect all source files EXCEPT main.cpp (tests provide their own main)
+  file(GLOB_RECURSE LIB_SOURCES
+    src/config/*.cpp
+    src/db/*.cpp
+    src/models/*.cpp
+    src/repositories/*.cpp
+    src/services/*.cpp
+    src/integrations/*.cpp
+    src/async/*.cpp
+    src/auth/*.cpp
+  )
+
+  # Shared test helper library (app code without main/routes)
+  add_library(lug_lib STATIC ${LIB_SOURCES})
+  target_include_directories(lug_lib PUBLIC
+    ${CMAKE_SOURCE_DIR}/src
+    ${CURL_INCLUDE_DIRS}
+    ${SQLITE3_INCLUDE_DIRS}
+    ${ASIO_INCLUDE_DIR}
+  )
+  target_link_libraries(lug_lib PUBLIC
+    Crow::Crow
+    nlohmann_json::nlohmann_json
+    ${CURL_LIBRARIES}
+    ${SQLITE3_LIBRARIES}
+    OpenSSL::SSL
+    OpenSSL::Crypto
+    pthread
+  )
+
+  # Test executables
+  file(GLOB TEST_SOURCES tests/*.cpp)
+  foreach(test_file ${TEST_SOURCES})
+    get_filename_component(test_name ${test_file} NAME_WE)
+    add_executable(${test_name} ${test_file})
+    target_link_libraries(${test_name} PRIVATE lug_lib gtest gtest_main)
+    target_include_directories(${test_name} PRIVATE ${CMAKE_SOURCE_DIR}/src)
+    add_test(NAME ${test_name} COMMAND ${test_name}
+             WORKING_DIRECTORY ${CMAKE_SOURCE_DIR})
+  endforeach()
+endif()

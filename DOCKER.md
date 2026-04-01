@@ -1,81 +1,160 @@
 # Docker Guide
 
-## Quick Start
+## Quick Start with Pre-built Image
 
-### Using docker-compose (Recommended)
+The easiest way to run LUG Manager — pull directly from GitHub Container Registry:
 
-1. **Set up environment variables**:
+```bash
+# Create your .env file
+cp .env.example .env
+# Edit .env with your Discord credentials
+
+# Run with docker compose
+docker compose up -d
+```
+
+The image is automatically built and pushed to `ghcr.io/arklug/lug-manager` on every push to `main`.
+
+## Pull the Image
+
+```bash
+docker pull ghcr.io/arklug/lug-manager:latest
+```
+
+Available tags:
+- `latest` — latest build from main branch
+- `main` — same as latest
+- `v1.0.0`, `v1.0` — semver release tags
+- `<sha>` — specific commit builds
+
+## Using docker compose (Recommended)
+
+1. **Configure environment**:
    ```bash
    cp .env.example .env
-   # Edit .env with your Discord credentials
+   # Edit .env — only secrets are required:
+   #   DISCORD_BOT_TOKEN
+   #   DISCORD_CLIENT_ID
+   #   DISCORD_CLIENT_SECRET
+   #   DISCORD_REDIRECT_URI
+   #   BOOTSTRAP_ADMIN_DISCORD_ID (for first-time setup)
    ```
 
-2. **Build and run**:
+2. **Start**:
    ```bash
-   docker-compose up --build
+   docker compose up -d
    ```
 
-   The application will be available at `http://localhost:8080`
+3. **Access**: Open `http://localhost:8080` and log in with Discord.
 
-3. **Access the application**:
-   - Open your browser and navigate to `http://localhost:8080`
-   - Login with Discord OAuth
-
-### Using Docker directly
-
-1. **Build the image**:
+4. **View logs**:
    ```bash
-   docker build -t lug-manager .
+   docker compose logs -f
    ```
 
-2. **Run the container**:
+5. **Stop**:
    ```bash
-   docker run -p 8080:8080 \
-     --env-file .env \
-     -v $(pwd)/lug.db:/app/lug.db \
-     lug-manager
+   docker compose down
    ```
 
-## Building for Different Architectures
+Data is persisted in a Docker volume (`lug-data`). The database, migrations, and all settings survive container restarts and upgrades.
 
-### Multi-platform build (arm64, amd64):
+## Using Docker Directly
+
 ```bash
-docker buildx build \
-  --platform linux/amd64,linux/arm64 \
-  -t lug-manager:latest \
-  .
+docker run -d \
+  --name lug-manager \
+  -p 8080:8080 \
+  -v lug-data:/app/data \
+  --env-file .env \
+  ghcr.io/arklug/lug-manager:latest
 ```
 
-## Pushing to a Registry
+## Environment Variables
 
-### Docker Hub
+Only secrets need to be in `.env` — everything else is configured from the Settings page after first login.
+
+| Variable | Required | Description |
+|----------|----------|-------------|
+| `DISCORD_BOT_TOKEN` | Yes | Discord bot token |
+| `DISCORD_CLIENT_ID` | Yes | Discord OAuth2 client ID |
+| `DISCORD_CLIENT_SECRET` | Yes | Discord OAuth2 client secret |
+| `DISCORD_REDIRECT_URI` | Yes | OAuth2 callback URL (e.g. `https://lug.example.com/auth/callback`) |
+| `BOOTSTRAP_ADMIN_DISCORD_ID` | First run | Your Discord user ID — auto-creates admin account |
+| `LUG_PORT` | No | Server port (default: `8080`) |
+| `LUG_DB_PATH` | No | Database path (default: `/app/data/lug.db`) |
+| `LUG_TEMPLATES_DIR` | No | Templates path (default: `/app/src/templates`) |
+
+## Data Persistence
+
+The container uses `/app/data` as its data directory (SQLite database). This is declared as a Docker `VOLUME`.
+
+- **docker compose**: uses a named volume `lug-data`
+- **docker run**: mount a volume or bind mount to `/app/data`
+
+### Backup the database:
 ```bash
-docker tag lug-manager:latest yourusername/lug-manager:latest
-docker push yourusername/lug-manager:latest
+# docker compose
+docker compose exec lug-manager sqlite3 /app/data/lug.db ".backup '/app/data/backup.db'"
+docker compose cp lug-manager:/app/data/backup.db ./backup.db
+
+# docker run
+docker cp lug-manager:/app/data/lug.db ./lug-backup.db
 ```
 
-### GitHub Container Registry (ghcr.io)
+## Google Calendar Integration
+
+If using Google Calendar, mount the service account JSON file into the container:
+
 ```bash
-docker tag lug-manager:latest ghcr.io/yourusername/lug-manager:latest
-docker push ghcr.io/yourusername/lug-manager:latest
+docker run -d \
+  --name lug-manager \
+  -p 8080:8080 \
+  -v lug-data:/app/data \
+  -v /path/to/service-account.json:/app/data/service-account.json:ro \
+  --env-file .env \
+  ghcr.io/arklug/lug-manager:latest
+```
+
+Or with docker compose, add to the volumes:
+```yaml
+volumes:
+  - lug-data:/app/data
+  - /path/to/service-account.json:/app/data/service-account.json:ro
+```
+
+Then in the Settings page, set the Service Account JSON Path to `/app/data/service-account.json`.
+
+## Building Locally
+
+```bash
+docker build -t lug-manager .
+docker run -p 8080:8080 -v lug-data:/app/data --env-file .env lug-manager
 ```
 
 ## Production Deployment
 
-### Environment Setup
-Make sure to set these environment variables in your production environment:
+### Reverse Proxy (nginx)
 
-```bash
-DISCORD_CLIENT_ID=your_client_id
-DISCORD_CLIENT_SECRET=your_client_secret
-DISCORD_BOT_TOKEN=your_bot_token
-DISCORD_GUILD_ID=your_guild_id
-DISCORD_REDIRECT_URI=https://your-domain.com/auth/callback
-DATABASE_PATH=/app/lug.db
-TEMPLATES_DIR=/app/src/templates
+```nginx
+server {
+    listen 443 ssl;
+    server_name lug.example.com;
+
+    ssl_certificate     /etc/letsencrypt/live/lug.example.com/fullchain.pem;
+    ssl_certificate_key /etc/letsencrypt/live/lug.example.com/privkey.pem;
+
+    location / {
+        proxy_pass http://127.0.0.1:8080;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+    }
+}
 ```
 
-### Kubernetes Deployment Example
+### Kubernetes
 
 ```yaml
 apiVersion: apps/v1
@@ -94,7 +173,7 @@ spec:
     spec:
       containers:
       - name: lug-manager
-        image: ghcr.io/yourusername/lug-manager:latest
+        image: ghcr.io/arklug/lug-manager:latest
         ports:
         - containerPort: 8080
         env:
@@ -113,24 +192,24 @@ spec:
             secretKeyRef:
               name: discord-secrets
               key: bot_token
-        - name: DISCORD_GUILD_ID
-          value: "your_guild_id"
         - name: DISCORD_REDIRECT_URI
-          value: "https://your-domain.com/auth/callback"
+          value: "https://lug.example.com/auth/callback"
+        - name: BOOTSTRAP_ADMIN_DISCORD_ID
+          value: ""
         volumeMounts:
-        - name: database
-          mountPath: /app/lug.db
+        - name: data
+          mountPath: /app/data
       volumes:
-      - name: database
+      - name: data
         persistentVolumeClaim:
           claimName: lug-manager-pvc
 ---
 apiVersion: v1
 kind: Service
 metadata:
-  name: lug-manager-service
+  name: lug-manager
 spec:
-  type: LoadBalancer
+  type: ClusterIP
   ports:
   - port: 80
     targetPort: 8080
@@ -138,50 +217,28 @@ spec:
     app: lug-manager
 ```
 
-## Volume Management
+## CI/CD
 
-### Persist the database across container restarts:
-```bash
-docker volume create lug-manager-db
+The GitHub Actions workflow (`.github/workflows/docker.yml`) automatically:
+- Builds on push to `main`
+- Builds on pull requests (without pushing)
+- Pushes to `ghcr.io/arklug/lug-manager` with tags: `latest`, `main`, semver, and commit SHA
+- Uses GitHub Actions cache for faster builds
 
-docker run -p 8080:8080 \
-  --env-file .env \
-  -v lug-manager-db:/app/lug.db \
-  lug-manager
-```
+No additional setup needed — it uses the built-in `GITHUB_TOKEN` for ghcr.io authentication.
 
 ## Troubleshooting
 
-### Container exits immediately
-Check logs:
+### Container won't start
 ```bash
-docker logs <container_id>
+docker compose logs lug-manager
 ```
 
-### Port already in use
-```bash
-# Use a different port
-docker run -p 9000:8080 lug-manager
+### Database locked
+Only one instance can write to SQLite at a time. Don't run multiple containers pointing at the same database file.
 
-# Or find what's using port 8080
-lsof -i :8080
-```
+### Discord OAuth fails
+Make sure `DISCORD_REDIRECT_URI` matches exactly what's configured in your Discord application settings (including `http` vs `https`).
 
-### Database connection issues
-Ensure the database file has proper permissions:
-```bash
-chmod 666 lug.db
-```
-
-### Template not found
-Verify that templates are being copied correctly in the Dockerfile and the `TEMPLATES_DIR` environment variable matches.
-
-## GitHub Actions CI/CD
-
-The `.github/workflows/docker.yml` workflow automatically:
-- Builds on push to `main` and `develop` branches
-- Builds on pull requests (without pushing)
-- Pushes images on tags (v*)
-- Tags images with branch name, version, and SHA
-
-No additional setup needed - it uses GitHub Container Registry (ghcr.io) by default with built-in GitHub token authentication.
+### Templates not found
+The `LUG_TEMPLATES_DIR` should be `/app/src/templates` (the default). Don't change it unless you're mounting custom templates.

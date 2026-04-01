@@ -167,6 +167,20 @@
       </a>
 
       {{#is_admin}}
+      <!-- Attendance Overview (admin) -->
+      <a hx-get="/attendance/overview"
+         hx-target="#main-content"
+         hx-push-url="true"
+         hx-swap="innerHTML"
+         hx-indicator="#nav-spinner"
+         class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm cursor-pointer transition-colors nav-inactive">
+        <svg class="w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/>
+        </svg>
+        Attendance Overview
+      </a>
+
       <!-- Chapters (admin) -->
       <a hx-get="/chapters"
          hx-target="#main-content"
@@ -214,18 +228,16 @@
         </svg>
         Subscribe to Calendar (.ics)
       </a>
-      <form action="/auth/logout" method="post">
-        <button type="submit"
-                class="w-full flex items-center gap-2 px-3 py-2 text-sm text-gray-400
-                       hover:text-white hover:bg-gray-700 rounded-lg transition-colors text-left">
+      <a href="/auth/logout"
+         class="w-full flex items-center gap-2 px-3 py-2 text-sm text-gray-400
+                hover:text-white hover:bg-gray-700 rounded-lg transition-colors text-left">
           <svg class="w-4 h-4 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                   d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3
                      3 0 013-3h4a3 3 0 013 3v1"/>
           </svg>
           Sign Out
-        </button>
-      </form>
+      </a>
     </div>
   </aside>
 

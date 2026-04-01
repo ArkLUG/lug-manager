@@ -13,6 +13,7 @@ struct Meeting {
     std::string discord_event_id;            // Discord scheduled event snowflake
     std::string discord_lug_message_id;      // message ID in lug announcement channel
     std::string discord_chapter_message_id;  // message ID in chapter announcement channel
+    std::string google_calendar_event_id;    // Google Calendar event ID
     std::string ical_uid;         // UUID v4, generated on creation, NEVER changes
     std::string scope             = "chapter"; // "lug_wide" | "chapter" | "non_lug"
     int64_t     chapter_id        = 0;         // FK to chapters

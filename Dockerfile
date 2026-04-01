@@ -1,14 +1,17 @@
-FROM ubuntu:22.04 as builder
+FROM ubuntu:24.04 AS builder
 
-RUN apt-get update && apt-get install -y \
+RUN apt-get update && apt-get install -y --no-install-recommends \
     cmake \
     g++ \
+    make \
+    pkg-config \
     libcurl4-openssl-dev \
     sqlite3 \
     libsqlite3-dev \
     libssl-dev \
     git \
     curl \
+    ca-certificates \
     && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /build
@@ -25,25 +28,30 @@ RUN mkdir -p src/static && \
       -o src/static/tailwind.min.css \
       --minify
 
-RUN cmake --preset=release && cmake --build build/release
+RUN cmake -B build -S . -DCMAKE_BUILD_TYPE=Release && cmake --build build -j$(nproc)
 
-FROM ubuntu:22.04
+# --- Runtime stage ---
+FROM ubuntu:24.04
 
-RUN apt-get update && apt-get install -y \
-    libcurl4 \
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    libcurl4t64 \
     sqlite3 \
-    libssl3 \
+    libssl3t64 \
+    ca-certificates \
     && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app
 
-COPY --from=builder /build/build/release/lug_manager /app/lug_manager
-COPY --from=builder /build/src/templates /app/src/templates
-COPY --from=builder /build/src/static /app/src/static
-COPY --from=builder /build/sql /app/sql
+COPY --from=builder /build/build/lug_manager /app/lug_manager
+COPY --from=builder /build/src/templates     /app/src/templates
+COPY --from=builder /build/src/static        /app/src/static
+COPY --from=builder /build/sql               /app/sql
 
-ENV TEMPLATES_DIR=/app/src/templates
-ENV DATABASE_PATH=/app/lug.db
+ENV LUG_TEMPLATES_DIR=/app/src/templates
+ENV LUG_DB_PATH=/app/data/lug.db
+ENV LUG_PORT=8080
+
+VOLUME /app/data
 
 EXPOSE 8080
 

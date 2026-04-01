@@ -4,8 +4,9 @@
 #include <cstdio>
 
 MeetingService::MeetingService(MeetingRepository& repo, DiscordClient& discord,
-                                CalendarGenerator& cal, ChapterRepository* chapter_repo)
-    : repo_(repo), discord_(discord), cal_(cal), chapter_repo_(chapter_repo) {}
+                                CalendarGenerator& cal,
+                                ChapterRepository* chapter_repo, GoogleCalendarClient* gcal)
+    : repo_(repo), discord_(discord), cal_(cal), chapter_repo_(chapter_repo), gcal_(gcal) {}
 
 // static
 std::string MeetingService::generate_uuid() {
@@ -41,8 +42,38 @@ std::vector<Meeting> MeetingService::list_paginated(const std::string& search, i
 int MeetingService::count_filtered(const std::string& search) { return repo_.count_filtered(search); }
 int MeetingService::count_all() { return repo_.count_all(); }
 
+bool MeetingService::exists_by_google_calendar_id(const std::string& gcal_event_id) {
+    return repo_.exists_by_google_calendar_id(gcal_event_id);
+}
+
+// Build a calendar-friendly title: [NWA] [Non-LUG] Title
+Meeting MeetingService::with_calendar_title(const Meeting& m) const {
+    Meeting copy = m;
+    std::string prefix;
+    if (m.scope == "non_lug")        prefix += "[Non-LUG] ";
+    else if (m.scope == "lug_wide")  prefix += "[LUG Wide] ";
+    if (m.chapter_id > 0 && chapter_repo_) {
+        auto ch = chapter_repo_->find_by_id(m.chapter_id);
+        if (ch && !ch->shorthand.empty()) prefix = "[" + ch->shorthand + "] " + prefix;
+    }
+    if (!prefix.empty()) copy.title = prefix + copy.title;
+    return copy;
+}
+
 std::optional<Meeting> MeetingService::get(int64_t id) {
     return repo_.find_by_id(id);
+}
+
+Meeting MeetingService::create_imported(const Meeting& m) {
+    Meeting to_create = m;
+    to_create.ical_uid = generate_uuid();
+    Meeting created = repo_.create(to_create);
+    if (!to_create.google_calendar_event_id.empty()) {
+        repo_.update_google_calendar_event_id(created.id, to_create.google_calendar_event_id);
+        created.google_calendar_event_id = to_create.google_calendar_event_id;
+    }
+    cal_.invalidate();
+    return created;
 }
 
 Meeting MeetingService::create(const Meeting& m) {
@@ -110,6 +141,20 @@ Meeting MeetingService::create(const Meeting& m) {
         }
     }
 
+    // Google Calendar event
+    if (gcal_ && gcal_->is_configured()) {
+        try {
+            std::string gcal_id = gcal_->create_event(with_calendar_title(created));
+            if (!gcal_id.empty()) {
+                repo_.update_google_calendar_event_id(created.id, gcal_id);
+                created.google_calendar_event_id = gcal_id;
+                std::cout << "[MeetingService]   Google Calendar event created, id=" << gcal_id << "\n";
+            }
+        } catch (const std::exception& ex) {
+            std::cerr << "[MeetingService] Warning: failed to create Google Calendar event: " << ex.what() << "\n";
+        }
+    }
+
     cal_.invalidate();
     return created;
 }
@@ -127,6 +172,10 @@ Meeting MeetingService::update(int64_t id, const Meeting& updates) {
     if (!updates.start_time.empty())  updated.start_time  = updates.start_time;
     if (!updates.end_time.empty())    updated.end_time    = updates.end_time;
     if (!updates.status.empty())      updated.status      = updates.status;
+    if (!updates.scope.empty())       updated.scope       = updates.scope;
+    if (updates.chapter_id > 0)       updated.chapter_id  = updates.chapter_id;
+    else if (updates.scope == "lug_wide" || updates.scope == "non_lug")
+                                      updated.chapter_id  = 0; // clear chapter when switching to non-chapter scope
 
     repo_.update(updated);
 
@@ -140,36 +189,97 @@ Meeting MeetingService::update(int64_t id, const Meeting& updates) {
         }
     }
 
-    // Edit lug channel announcement if it exists
-    if (!updated.discord_lug_message_id.empty() && !discord_.get_lug_channel_id().empty()) {
-        try {
-            std::string role = (updated.scope == "non_lug")
-                ? discord_.get_non_lug_event_role_id()
-                : discord_.get_announcement_role_id();
-            std::string new_content = DiscordClient::build_meeting_announcement_content(updated, role, discord_.get_timezone());
-            discord_.update_channel_message(discord_.get_lug_channel_id(),
-                                            updated.discord_lug_message_id, new_content);
-        } catch (const std::exception& ex) {
-            std::cerr << "[MeetingService] Warning: failed to update lug announcement for meeting "
-                      << updated.id << ": " << ex.what() << "\n";
+    // Detect scope change — need to move announcements between channels
+    bool scope_changed = existing->scope != updated.scope || existing->chapter_id != updated.chapter_id;
+
+    if (scope_changed) {
+        // Delete old announcements
+        if (!existing->discord_lug_message_id.empty() && !discord_.get_lug_channel_id().empty())
+            discord_.delete_channel_message(discord_.get_lug_channel_id(), existing->discord_lug_message_id);
+        if (!existing->discord_chapter_message_id.empty() && existing->chapter_id > 0 && chapter_repo_) {
+            auto old_ch = chapter_repo_->find_by_id(existing->chapter_id);
+            if (old_ch && !old_ch->discord_announcement_channel_id.empty())
+                discord_.delete_channel_message(old_ch->discord_announcement_channel_id, existing->discord_chapter_message_id);
+        }
+        updated.discord_lug_message_id.clear();
+        updated.discord_chapter_message_id.clear();
+        repo_.update_lug_message_id(updated.id, "");
+        repo_.update_chapter_message_id(updated.id, "");
+
+        // Post new announcement in the correct channel
+        if (updated.scope == "lug_wide" || updated.scope == "non_lug") {
+            if (!discord_.get_lug_channel_id().empty()) {
+                try {
+                    std::string role = (updated.scope == "non_lug")
+                        ? discord_.get_non_lug_event_role_id()
+                        : discord_.get_announcement_role_id();
+                    std::string msg_id = discord_.sync_post_meeting_announcement(
+                        discord_.get_lug_channel_id(), updated, role);
+                    if (!msg_id.empty()) {
+                        repo_.update_lug_message_id(updated.id, msg_id);
+                        updated.discord_lug_message_id = msg_id;
+                    }
+                } catch (const std::exception& ex) {
+                    std::cerr << "[MeetingService] Warning: failed to post lug announcement: " << ex.what() << "\n";
+                }
+            }
+        } else if (updated.scope == "chapter" && updated.chapter_id > 0 && chapter_repo_) {
+            try {
+                auto ch = chapter_repo_->find_by_id(updated.chapter_id);
+                if (ch && !ch->discord_announcement_channel_id.empty()) {
+                    std::string ch_role = ch->discord_member_role_id.empty()
+                        ? discord_.get_announcement_role_id()
+                        : ch->discord_member_role_id;
+                    std::string msg_id = discord_.sync_post_meeting_announcement(
+                        ch->discord_announcement_channel_id, updated, ch_role);
+                    if (!msg_id.empty()) {
+                        repo_.update_chapter_message_id(updated.id, msg_id);
+                        updated.discord_chapter_message_id = msg_id;
+                    }
+                }
+            } catch (const std::exception& ex) {
+                std::cerr << "[MeetingService] Warning: failed to post chapter announcement: " << ex.what() << "\n";
+            }
+        }
+    } else {
+        // Same scope — just edit existing announcements in place
+        if (!updated.discord_lug_message_id.empty() && !discord_.get_lug_channel_id().empty()) {
+            try {
+                std::string role = (updated.scope == "non_lug")
+                    ? discord_.get_non_lug_event_role_id()
+                    : discord_.get_announcement_role_id();
+                std::string new_content = DiscordClient::build_meeting_announcement_content(
+                    updated, role, discord_.get_timezone(), discord_.get_suppress_pings());
+                discord_.update_channel_message(discord_.get_lug_channel_id(),
+                                                updated.discord_lug_message_id, new_content);
+            } catch (const std::exception& ex) {
+                std::cerr << "[MeetingService] Warning: failed to update lug announcement: " << ex.what() << "\n";
+            }
+        }
+        if (!updated.discord_chapter_message_id.empty() && updated.chapter_id > 0 && chapter_repo_) {
+            try {
+                auto ch = chapter_repo_->find_by_id(updated.chapter_id);
+                if (ch && !ch->discord_announcement_channel_id.empty()) {
+                    std::string ch_role = ch->discord_member_role_id.empty()
+                        ? discord_.get_announcement_role_id()
+                        : ch->discord_member_role_id;
+                    std::string new_content = DiscordClient::build_meeting_announcement_content(
+                        updated, ch_role, discord_.get_timezone(), discord_.get_suppress_pings());
+                    discord_.update_channel_message(ch->discord_announcement_channel_id,
+                                                    updated.discord_chapter_message_id, new_content);
+                }
+            } catch (const std::exception& ex) {
+                std::cerr << "[MeetingService] Warning: failed to update chapter announcement: " << ex.what() << "\n";
+            }
         }
     }
 
-    // Edit chapter channel announcement if it exists
-    if (!updated.discord_chapter_message_id.empty() && updated.chapter_id > 0 && chapter_repo_) {
+    // Google Calendar update
+    if (gcal_ && gcal_->is_configured() && !updated.google_calendar_event_id.empty()) {
         try {
-            auto ch = chapter_repo_->find_by_id(updated.chapter_id);
-            if (ch && !ch->discord_announcement_channel_id.empty()) {
-                std::string ch_role = ch->discord_member_role_id.empty()
-                    ? discord_.get_announcement_role_id()
-                    : ch->discord_member_role_id;
-                std::string new_content = DiscordClient::build_meeting_announcement_content(updated, ch_role);
-                discord_.update_channel_message(ch->discord_announcement_channel_id,
-                                                updated.discord_chapter_message_id, new_content);
-            }
+            gcal_->update_event(updated.google_calendar_event_id, with_calendar_title(updated));
         } catch (const std::exception& ex) {
-            std::cerr << "[MeetingService] Warning: failed to update chapter announcement for meeting "
-                      << updated.id << ": " << ex.what() << "\n";
+            std::cerr << "[MeetingService] Warning: failed to update Google Calendar event: " << ex.what() << "\n";
         }
     }
 
@@ -209,10 +319,60 @@ void MeetingService::cancel(int64_t id) {
         }
     }
 
+    // Google Calendar delete
+    if (gcal_ && gcal_->is_configured() && !existing->google_calendar_event_id.empty()) {
+        try {
+            gcal_->delete_event(existing->google_calendar_event_id);
+        } catch (const std::exception& ex) {
+            std::cerr << "[MeetingService] Warning: failed to delete Google Calendar event: " << ex.what() << "\n";
+        }
+    }
+
     // Delete from DB
     repo_.delete_by_id(existing->id);
 
     cal_.invalidate();
+}
+
+MeetingService::SyncResult MeetingService::sync_all_to_google_calendar() {
+    SyncResult result;
+    if (!gcal_ || !gcal_->is_configured()) return result;
+
+    auto all = repo_.find_all();
+    for (auto& m : all) {
+        try {
+            auto cal_m = with_calendar_title(m);
+            if (m.google_calendar_event_id.empty()) {
+                std::string gcal_id = gcal_->create_event(cal_m);
+                if (!gcal_id.empty()) {
+                    repo_.update_google_calendar_event_id(m.id, gcal_id);
+                    ++result.created;
+                }
+            } else {
+                gcal_->update_event(m.google_calendar_event_id, cal_m);
+                ++result.synced;
+            }
+        } catch (const std::exception& ex) {
+            std::cerr << "[MeetingService] Sync error for meeting " << m.id << ": " << ex.what() << "\n";
+            ++result.errors;
+        }
+    }
+    return result;
+}
+
+MeetingService::SyncResult MeetingService::sync_all_to_discord() {
+    SyncResult result;
+    auto all = repo_.find_all();
+    for (auto& m : all) {
+        try {
+            update(m.id, m);
+            ++result.synced;
+        } catch (const std::exception& ex) {
+            std::cerr << "[MeetingService] Discord sync error for meeting " << m.id << ": " << ex.what() << "\n";
+            ++result.errors;
+        }
+    }
+    return result;
 }
 
 void MeetingService::complete(int64_t id) {
