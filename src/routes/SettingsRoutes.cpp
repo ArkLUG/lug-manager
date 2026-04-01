@@ -485,4 +485,32 @@ void register_settings_routes(LugApp& app, SettingsRepository& settings,
         res.add_header("Content-Type", "text/html; charset=utf-8");
         return res;
     });
+
+    // POST /api/discord/sync-nicknames - sync all member nicknames to Discord
+    CROW_ROUTE(app, "/api/discord/sync-nicknames").methods("POST"_method)(
+        [&](const crow::request& req) {
+        crow::response res;
+        auto& ctx = app.get_context<AuthMiddleware>(req);
+        if (ctx.auth.role != "admin") {
+            res.code = 403;
+            res.write(R"(<span class="text-red-600">Forbidden</span>)");
+            res.add_header("Content-Type", "text/html; charset=utf-8");
+            return res;
+        }
+
+        try {
+            auto result = members.sync_nicknames_to_discord();
+            std::ostringstream html;
+            html << "<span class=\"text-green-700 font-medium\">"
+                 << "Nicknames: " << result.synced << " updated, "
+                 << result.skipped << " skipped"
+                 << (result.errors > 0 ? ", <span class=\"text-red-600\">" + std::to_string(result.errors) + " errors</span>" : "")
+                 << "</span>";
+            res.write(html.str());
+        } catch (const std::exception& ex) {
+            res.write("<span class=\"text-red-600\">Error: " + std::string(ex.what()) + "</span>");
+        }
+        res.add_header("Content-Type", "text/html; charset=utf-8");
+        return res;
+    });
 }
