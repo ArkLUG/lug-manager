@@ -27,10 +27,11 @@ std::string DiscordOAuth::url_encode(const std::string& str) {
     return oss.str();
 }
 
-std::string DiscordOAuth::get_auth_url(const std::string& state) const {
+std::string DiscordOAuth::get_auth_url(const std::string& state, const std::string& redirect_uri) const {
+    const std::string& uri = redirect_uri.empty() ? config_.discord_redirect_uri : redirect_uri;
     return "https://discord.com/oauth2/authorize"
            "?client_id=" + url_encode(config_.discord_client_id) +
-           "&redirect_uri=" + url_encode(config_.discord_redirect_uri) +
+           "&redirect_uri=" + url_encode(uri) +
            "&response_type=code"
            "&scope=identify"
            "&state=" + url_encode(state);
@@ -69,13 +70,14 @@ std::string DiscordOAuth::http_get(const std::string& url, const std::string& au
     return response;
 }
 
-std::string DiscordOAuth::exchange_code(const std::string& code) const {
+std::string DiscordOAuth::exchange_code(const std::string& code, const std::string& redirect_uri) const {
+    const std::string& uri = redirect_uri.empty() ? config_.discord_redirect_uri : redirect_uri;
     std::string body =
         "client_id=" + url_encode(config_.discord_client_id) +
         "&client_secret=" + url_encode(config_.discord_client_secret) +
         "&grant_type=authorization_code" +
         "&code=" + url_encode(code) +
-        "&redirect_uri=" + url_encode(config_.discord_redirect_uri);
+        "&redirect_uri=" + url_encode(uri);
     std::string resp = http_post_form("https://discord.com/api/oauth2/token", body);
     try {
         auto j = json::parse(resp);

@@ -23,9 +23,9 @@ std::string AuthService::resolve_role_from_discord(const std::string& discord_us
     }
 }
 
-std::string AuthService::login_with_discord(const std::string& code) {
+std::string AuthService::login_with_discord(const std::string& code, const std::string& redirect_uri) {
     // 1. Exchange code for access token
-    std::string access_token = oauth_.exchange_code(code);
+    std::string access_token = oauth_.exchange_code(code, redirect_uri);
 
     // 2. Get Discord user info
     auto user_info = oauth_.get_user_info(access_token);

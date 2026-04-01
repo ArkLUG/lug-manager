@@ -14,11 +14,11 @@ public:
     explicit DiscordOAuth(const Config& config);
 
     // Build the Discord OAuth2 authorization URL
-    std::string get_auth_url(const std::string& state) const;
+    std::string get_auth_url(const std::string& state, const std::string& redirect_uri = "") const;
 
     // Exchange authorization code for access token
     // Returns access token string
-    std::string exchange_code(const std::string& code) const;
+    std::string exchange_code(const std::string& code, const std::string& redirect_uri = "") const;
 
     // Fetch Discord user info using access token
     DiscordUserInfo get_user_info(const std::string& access_token) const;
