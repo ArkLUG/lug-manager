@@ -486,6 +486,29 @@ void register_settings_routes(LugApp& app, SettingsRepository& settings,
         return res;
     });
 
+    // POST /api/members/regenerate-nicknames - regenerate display names from first/last
+    CROW_ROUTE(app, "/api/members/regenerate-nicknames").methods("POST"_method)(
+        [&](const crow::request& req) {
+        crow::response res;
+        auto& ctx = app.get_context<AuthMiddleware>(req);
+        if (ctx.auth.role != "admin") {
+            res.code = 403;
+            res.write(R"(<span class="text-red-600">Forbidden</span>)");
+            res.add_header("Content-Type", "text/html; charset=utf-8");
+            return res;
+        }
+
+        auto result = members.regenerate_all_nicknames();
+        std::ostringstream html;
+        html << "<span class=\"text-green-700 font-medium\">"
+             << result.updated << " nicknames regenerated, "
+             << result.skipped << " skipped (no first/last name or unchanged)"
+             << "</span>";
+        res.write(html.str());
+        res.add_header("Content-Type", "text/html; charset=utf-8");
+        return res;
+    });
+
     // POST /api/discord/sync-nicknames - sync all member nicknames to Discord
     CROW_ROUTE(app, "/api/discord/sync-nicknames").methods("POST"_method)(
         [&](const crow::request& req) {

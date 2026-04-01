@@ -44,6 +44,10 @@ public:
     std::string generate_nickname(const std::string& first_name, const std::string& last_name,
                                    int64_t exclude_id = 0);
 
+    // Regenerate all display names from first/last name and save to DB
+    struct NicknameResult { int updated = 0; int skipped = 0; };
+    NicknameResult regenerate_all_nicknames();
+
     // Sync all member nicknames to Discord
     struct SyncResult { int synced = 0; int skipped = 0; int errors = 0; };
     SyncResult sync_nicknames_to_discord();

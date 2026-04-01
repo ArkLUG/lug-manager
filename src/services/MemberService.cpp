@@ -118,24 +118,35 @@ void MemberService::set_chapter(int64_t id, int64_t chapter_id) {
     repo_.set_chapter(id, chapter_id);
 }
 
+MemberService::NicknameResult MemberService::regenerate_all_nicknames() {
+    NicknameResult result;
+    auto all = repo_.find_all();
+    for (auto& m : all) {
+        if (m.first_name.empty() || m.last_name.empty()) {
+            ++result.skipped;
+            continue;
+        }
+        std::string new_nick = generate_nickname(m.first_name, m.last_name, m.id);
+        if (new_nick != m.display_name) {
+            m.display_name = new_nick;
+            repo_.update(m);
+            ++result.updated;
+        } else {
+            ++result.skipped;
+        }
+    }
+    return result;
+}
+
 MemberService::SyncResult MemberService::sync_nicknames_to_discord() {
     SyncResult result;
     if (!discord_) return result;
 
-    // First pass: regenerate all nicknames from first/last names
-    auto all = repo_.find_all();
-    for (auto& m : all) {
-        if (!m.first_name.empty() && !m.last_name.empty()) {
-            std::string new_nick = generate_nickname(m.first_name, m.last_name, m.id);
-            if (new_nick != m.display_name) {
-                m.display_name = new_nick;
-                repo_.update(m);
-            }
-        }
-    }
+    // Regenerate all nicknames first
+    regenerate_all_nicknames();
 
-    // Second pass: push to Discord
-    all = repo_.find_all(); // refresh after updates
+    // Push to Discord
+    auto all = repo_.find_all();
     for (auto& m : all) {
         if (m.discord_user_id.empty() || m.display_name.empty()) {
             ++result.skipped;
