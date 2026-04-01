@@ -780,12 +780,15 @@ void DiscordClient::set_member_nickname(const std::string& discord_user_id,
     body["nick"] = nickname;
     auto resp = discord_api_request("PATCH",
         "/guilds/" + guild_id_ + "/members/" + discord_user_id, body.dump());
-    // PATCH returns the updated member object on success; errors have "message" field
     try {
         auto j = json::parse(resp);
-        if (j.contains("message")) {
-            std::cerr << "[DiscordClient] set_member_nickname failed (user=" << discord_user_id
-                      << "): " << resp << "\n";
+        if (j.contains("code")) {
+            int code = j["code"].get<int>();
+            // 50013 = Missing Permissions (server owner or higher-role member — skip silently)
+            if (code != 50013) {
+                std::cerr << "[DiscordClient] set_member_nickname failed (user=" << discord_user_id
+                          << "): " << resp << "\n";
+            }
         }
     } catch (...) {}
 }
