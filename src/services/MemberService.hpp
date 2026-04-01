@@ -49,7 +49,12 @@ public:
     NicknameResult regenerate_all_nicknames();
 
     // Sync all member nicknames to Discord
-    struct SyncResult { int synced = 0; int skipped = 0; int errors = 0; };
+    struct SyncResult {
+        int synced = 0;
+        int skipped = 0;
+        int errors = 0;
+        std::vector<std::string> error_details;
+    };
     SyncResult sync_nicknames_to_discord();
 
 private:

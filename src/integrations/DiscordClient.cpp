@@ -773,9 +773,9 @@ void DiscordClient::remove_member_role(const std::string& discord_user_id,
     }
 }
 
-void DiscordClient::set_member_nickname(const std::string& discord_user_id,
-                                        const std::string& nickname) {
-    if (guild_id_.empty() || discord_user_id.empty()) return;
+std::string DiscordClient::set_member_nickname(const std::string& discord_user_id,
+                                                const std::string& nickname) {
+    if (guild_id_.empty() || discord_user_id.empty()) return "skipped: empty id";
     json body;
     body["nick"] = nickname;
     auto resp = discord_api_request("PATCH",
@@ -784,13 +784,13 @@ void DiscordClient::set_member_nickname(const std::string& discord_user_id,
         auto j = json::parse(resp);
         if (j.contains("code")) {
             int code = j["code"].get<int>();
-            // 50013 = Missing Permissions (server owner or higher-role member — skip silently)
-            if (code != 50013) {
-                std::cerr << "[DiscordClient] set_member_nickname failed (user=" << discord_user_id
-                          << "): " << resp << "\n";
-            }
+            std::string msg = j.value("message", "unknown error");
+            std::cerr << "[DiscordClient] set_member_nickname failed (user=" << discord_user_id
+                      << " nick=" << nickname << "): " << msg << " (code " << code << ")\n";
+            return msg + " (code " + std::to_string(code) + ")";
         }
     } catch (...) {}
+    return ""; // empty = success
 }
 
 void DiscordClient::kick_member(const std::string& discord_user_id) {

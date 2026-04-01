@@ -524,11 +524,18 @@ void register_settings_routes(LugApp& app, SettingsRepository& settings,
         try {
             auto result = members.sync_nicknames_to_discord();
             std::ostringstream html;
-            html << "<span class=\"text-green-700 font-medium\">"
+            html << "<div><span class=\"text-green-700 font-medium\">"
                  << "Nicknames: " << result.synced << " updated, "
                  << result.skipped << " skipped"
                  << (result.errors > 0 ? ", <span class=\"text-red-600\">" + std::to_string(result.errors) + " errors</span>" : "")
                  << "</span>";
+            if (!result.error_details.empty()) {
+                html << "<ul class=\"mt-2 text-xs text-red-600 list-disc list-inside\">";
+                for (auto& e : result.error_details)
+                    html << "<li>" << e << "</li>";
+                html << "</ul>";
+            }
+            html << "</div>";
             res.write(html.str());
         } catch (const std::exception& ex) {
             res.write("<span class=\"text-red-600\">Error: " + std::string(ex.what()) + "</span>");

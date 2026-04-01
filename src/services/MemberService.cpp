@@ -153,12 +153,16 @@ MemberService::SyncResult MemberService::sync_nicknames_to_discord() {
             continue;
         }
         try {
-            discord_->set_member_nickname(m.discord_user_id, m.display_name);
-            ++result.synced;
+            std::string err = discord_->set_member_nickname(m.discord_user_id, m.display_name);
+            if (err.empty()) {
+                ++result.synced;
+            } else {
+                ++result.errors;
+                result.error_details.push_back(m.display_name + ": " + err);
+            }
         } catch (const std::exception& ex) {
-            std::cerr << "[MemberService] Nickname sync error for member " << m.id
-                      << ": " << ex.what() << "\n";
             ++result.errors;
+            result.error_details.push_back(m.display_name + ": " + ex.what());
         }
     }
     return result;

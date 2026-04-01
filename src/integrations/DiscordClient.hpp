@@ -105,8 +105,8 @@ public:
     void add_member_role(const std::string& discord_user_id, const std::string& role_id);
     void remove_member_role(const std::string& discord_user_id, const std::string& role_id);
 
-    // Set a member's server nickname (synchronous)
-    void set_member_nickname(const std::string& discord_user_id, const std::string& nickname);
+    // Set a member's server nickname (synchronous). Returns empty on success, error message on failure.
+    std::string set_member_nickname(const std::string& discord_user_id, const std::string& nickname);
 
     // Remove (kick) a member from the guild (synchronous)
     void kick_member(const std::string& discord_user_id);
