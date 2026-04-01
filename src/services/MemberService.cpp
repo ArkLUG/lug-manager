@@ -122,7 +122,20 @@ MemberService::SyncResult MemberService::sync_nicknames_to_discord() {
     SyncResult result;
     if (!discord_) return result;
 
+    // First pass: regenerate all nicknames from first/last names
     auto all = repo_.find_all();
+    for (auto& m : all) {
+        if (!m.first_name.empty() && !m.last_name.empty()) {
+            std::string new_nick = generate_nickname(m.first_name, m.last_name, m.id);
+            if (new_nick != m.display_name) {
+                m.display_name = new_nick;
+                repo_.update(m);
+            }
+        }
+    }
+
+    // Second pass: push to Discord
+    all = repo_.find_all(); // refresh after updates
     for (auto& m : all) {
         if (m.discord_user_id.empty() || m.display_name.empty()) {
             ++result.skipped;
