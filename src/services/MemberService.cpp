@@ -1,6 +1,8 @@
 #include "services/MemberService.hpp"
 #include <algorithm>
 #include <iostream>
+#include <thread>
+#include <chrono>
 
 MemberService::MemberService(MemberRepository& repo, DiscordClient* discord)
     : repo_(repo), discord_(discord) {}
@@ -145,13 +147,19 @@ MemberService::SyncResult MemberService::sync_nicknames_to_discord() {
     // Regenerate all nicknames first
     regenerate_all_nicknames();
 
-    // Push to Discord
+    // Push to Discord (with rate limit spacing — ~10s per nickname change)
     auto all = repo_.find_all();
+    bool first = true;
     for (auto& m : all) {
         if (m.discord_user_id.empty() || m.display_name.empty()) {
             ++result.skipped;
             continue;
         }
+        // Wait between requests to respect Discord's rate limit
+        if (!first) {
+            std::this_thread::sleep_for(std::chrono::seconds(10));
+        }
+        first = false;
         try {
             std::string err = discord_->set_member_nickname(m.discord_user_id, m.display_name);
             if (err.empty()) {

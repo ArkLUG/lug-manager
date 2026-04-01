@@ -778,19 +778,32 @@ std::string DiscordClient::set_member_nickname(const std::string& discord_user_i
     if (guild_id_.empty() || discord_user_id.empty()) return "skipped: empty id";
     json body;
     body["nick"] = nickname;
-    auto resp = discord_api_request("PATCH",
-        "/guilds/" + guild_id_ + "/members/" + discord_user_id, body.dump());
-    try {
-        auto j = json::parse(resp);
-        if (j.contains("code")) {
-            int code = j["code"].get<int>();
-            std::string msg = j.value("message", "unknown error");
-            std::cerr << "[DiscordClient] set_member_nickname failed (user=" << discord_user_id
-                      << " nick=" << nickname << "): " << msg << " (code " << code << ")\n";
-            return msg + " (code " + std::to_string(code) + ")";
-        }
-    } catch (...) {}
-    return ""; // empty = success
+
+    for (int attempt = 0; attempt < 3; ++attempt) {
+        auto resp = discord_api_request("PATCH",
+            "/guilds/" + guild_id_ + "/members/" + discord_user_id, body.dump());
+        try {
+            auto j = json::parse(resp);
+            if (j.contains("retry_after")) {
+                // Rate limited — wait and retry
+                double wait = j["retry_after"].get<double>();
+                std::cerr << "[DiscordClient] set_member_nickname rate-limited (user=" << discord_user_id
+                          << "), waiting " << wait << "s\n";
+                std::this_thread::sleep_for(
+                    std::chrono::milliseconds(static_cast<int>(wait * 1000) + 100));
+                continue;
+            }
+            if (j.contains("code")) {
+                int code = j["code"].get<int>();
+                std::string msg = j.value("message", "unknown error");
+                std::cerr << "[DiscordClient] set_member_nickname failed (user=" << discord_user_id
+                          << " nick=" << nickname << "): " << msg << " (code " << code << ")\n";
+                return msg + " (code " + std::to_string(code) + ")";
+            }
+        } catch (...) {}
+        return ""; // success
+    }
+    return "rate limit exceeded after retries";
 }
 
 void DiscordClient::kick_member(const std::string& discord_user_id) {
