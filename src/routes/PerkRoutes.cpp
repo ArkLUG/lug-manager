@@ -168,7 +168,6 @@ void register_perk_routes(LugApp& app, PerkLevelRepository& perks,
             for (const auto& lvl : levels) {
                 if (lvl.discord_role_id.empty() || m.discord_user_id.empty()) continue;
 
-                bool qualifies = (achieved && achieved->sort_order >= lvl.sort_order);
                 // Compute if member meets THIS specific tier
                 bool meets_tier = meeting_count >= lvl.meeting_attendance_required &&
                                   event_count >= lvl.event_attendance_required &&

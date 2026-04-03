@@ -69,6 +69,7 @@ target_include_directories(lug_manager PRIVATE
   ${CURL_INCLUDE_DIRS}
   ${SQLITE3_INCLUDE_DIRS}
   ${ASIO_INCLUDE_DIR}
+  ${md4c_SOURCE_DIR}/src
 )
 
 target_link_libraries(lug_manager PRIVATE
@@ -122,6 +123,7 @@ if(BUILD_TESTS)
     ${CURL_INCLUDE_DIRS}
     ${SQLITE3_INCLUDE_DIRS}
     ${ASIO_INCLUDE_DIR}
+    ${md4c_SOURCE_DIR}/src
   )
   target_link_libraries(lug_lib PUBLIC
     Crow::Crow
