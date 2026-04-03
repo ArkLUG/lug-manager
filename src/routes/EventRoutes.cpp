@@ -397,6 +397,12 @@ void register_event_routes(LugApp& app, EventService& events, AttendanceService&
         mctx["suppress_discord"]   = ev->suppress_discord;
         mctx["suppress_calendar"]  = ev->suppress_calendar;
         mctx["notes"]              = ev->notes;
+        mctx["entrance_fee"]       = ev->entrance_fee;
+        mctx["public_kids"]        = ev->public_kids;
+        mctx["public_teens"]       = ev->public_teens;
+        mctx["public_adults"]      = ev->public_adults;
+        mctx["social_media_links"] = ev->social_media_links;
+        mctx["event_feedback"]     = ev->event_feedback;
 
         res.write(tmpl.render(mctx).dump());
         return res;
@@ -543,6 +549,12 @@ void register_event_routes(LugApp& app, EventService& events, AttendanceService&
         e.suppress_discord  = (get_param("suppress_discord") == "on" || get_param("suppress_discord") == "1");
         e.suppress_calendar = (get_param("suppress_calendar") == "on" || get_param("suppress_calendar") == "1");
         e.notes             = get_param("notes");
+        e.entrance_fee      = get_param("entrance_fee");
+        try { e.public_kids   = std::stoi(get_param("public_kids")); } catch (...) {}
+        try { e.public_teens  = std::stoi(get_param("public_teens")); } catch (...) {}
+        try { e.public_adults = std::stoi(get_param("public_adults")); } catch (...) {}
+        e.social_media_links = get_param("social_media_links");
+        e.event_feedback     = get_param("event_feedback");
 
         res.add_header("Content-Type", "text/html; charset=utf-8");
         if (e.title.empty()) {
@@ -618,6 +630,12 @@ void register_event_routes(LugApp& app, EventService& events, AttendanceService&
             updates.suppress_discord  = (gp("suppress_discord") == "on" || gp("suppress_discord") == "1");
             updates.suppress_calendar = (gp("suppress_calendar") == "on" || gp("suppress_calendar") == "1");
             updates.notes             = gp("notes");
+            updates.entrance_fee      = gp("entrance_fee");
+            try { updates.public_kids   = std::stoi(gp("public_kids")); } catch (...) {}
+            try { updates.public_teens  = std::stoi(gp("public_teens")); } catch (...) {}
+            try { updates.public_adults = std::stoi(gp("public_adults")); } catch (...) {}
+            updates.social_media_links = gp("social_media_links");
+            updates.event_feedback     = gp("event_feedback");
             // Thread selection on edit
             { std::string mode = gp("thread_mode");
               if (mode == "existing") {
@@ -876,22 +894,59 @@ void register_event_routes(LugApp& app, EventService& events, AttendanceService&
         if (!ev) { res.code = 404; res.write("Not found"); return res; }
         if (!can_manage_chapter_content(req, res, app, ev->chapter_id, chapter_members)) return res;
 
-        // Build report content
+        // Build report in required format
         auto attendees = attendance.get_attendees("event", ev->id);
+
+        // Get chapter name
+        std::string chapter_name;
+        if (ev->chapter_id > 0) {
+            auto ch = chapters.get(ev->chapter_id);
+            if (ch) chapter_name = ch->name;
+        }
+
+        // Group attendees by date (day portion of checked_in_at)
+        std::map<std::string, std::vector<std::string>> by_day;
+        for (const auto& a : attendees) {
+            std::string day = a.checked_in_at.size() >= 10 ? a.checked_in_at.substr(0, 10) : a.checked_in_at;
+            by_day[day].push_back(a.member_display_name);
+        }
+
         std::ostringstream report;
-        report << "# Event Report: " << ev->title << "\n";
-        report << "**Date:** " << ev->start_time << " - " << ev->end_time << "\n";
-        if (!ev->location.empty()) report << "**Location:** " << ev->location << "\n";
-        report << "**Attendance:** " << attendees.size() << " attendees\n\n";
-        if (!attendees.empty()) {
-            report << "## Attendees\n";
-            for (const auto& a : attendees)
-                report << "- " << a.member_display_name << "\n";
+        report << "**Event name:** " << ev->title << "\n";
+        report << "**Start date:** " << ev->start_time.substr(0, 10) << "\n";
+        report << "**End date:** " << ev->end_time.substr(0, 10) << "\n";
+        if (!ev->entrance_fee.empty())
+            report << "**Entrance fee:** " << ev->entrance_fee << "\n";
+
+        // Multi-day attendance
+        int day_num = 1;
+        for (const auto& [day, names] : by_day) {
+            report << "**Member names day" << day_num << " (" << day << "):** ";
+            for (size_t i = 0; i < names.size(); ++i) {
+                if (i > 0) report << ", ";
+                report << names[i];
+            }
+            report << "\n";
+            ++day_num;
+        }
+        if (by_day.empty() && !attendees.empty()) {
+            report << "**Members:** ";
+            for (size_t i = 0; i < attendees.size(); ++i) {
+                if (i > 0) report << ", ";
+                report << attendees[i].member_display_name;
+            }
             report << "\n";
         }
-        if (!ev->notes.empty()) {
-            report << "## Notes\n" << ev->notes << "\n";
-        }
+
+        report << "**Public kids:** " << ev->public_kids << "\n";
+        report << "**Public teens:** " << ev->public_teens << "\n";
+        report << "**Public adults:** " << ev->public_adults << "\n";
+        if (!ev->social_media_links.empty())
+            report << "**Social media links, ArkLUG mentions, announcements for show:** " << ev->social_media_links << "\n";
+        if (!ev->event_feedback.empty())
+            report << "**What you liked best about event:** " << ev->event_feedback << "\n";
+        if (!ev->notes.empty())
+            report << "\n## Notes\n" << ev->notes << "\n";
 
         // Use dedicated event reports forum, fall back to events forum
         std::string forum_id = discord.get_event_reports_forum_id();

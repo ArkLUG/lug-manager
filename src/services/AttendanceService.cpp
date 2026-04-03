@@ -43,3 +43,11 @@ std::vector<Attendance> AttendanceService::get_member_history(int64_t member_id)
 std::vector<AttendanceRepository::MemberAttendanceSummary> AttendanceService::get_all_member_summaries() {
     return repo_.get_all_member_summaries();
 }
+
+std::vector<AttendanceRepository::MemberAttendanceSummary> AttendanceService::get_all_member_summaries_by_year(int year) {
+    return repo_.get_all_member_summaries_by_year(year);
+}
+
+std::vector<int> AttendanceService::get_attendance_years() {
+    return repo_.get_attendance_years();
+}

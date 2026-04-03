@@ -1,6 +1,10 @@
 #include <gtest/gtest.h>
 #include "db/SqliteDatabase.hpp"
 #include "db/Migrations.hpp"
+#include <filesystem>
+#include <fstream>
+#include <algorithm>
+#include <vector>
 
 // ═══════════════════════════════════════════════════════════════════════════
 // SQLite Database
@@ -166,4 +170,270 @@ TEST(Migrations, GoogleCalendarEventIdColumns) {
     auto sel2 = db.prepare("SELECT google_calendar_event_id FROM lug_events WHERE ical_uid='uid2'");
     EXPECT_TRUE(sel2.step());
     EXPECT_EQ(sel2.col_text(0), "gcal2");
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// Migration 021 — verify dependent data survives member table recreation
+// ═══════════════════════════════════════════════════════════════════════════
+
+// Helper: apply migrations up to (but not including) a given version
+static void apply_migrations_up_to(SqliteDatabase& db, int max_version) {
+    namespace fs = std::filesystem;
+    db.execute(R"(
+        CREATE TABLE IF NOT EXISTS _schema_migrations (
+            version INTEGER PRIMARY KEY,
+            applied_at TEXT NOT NULL DEFAULT (datetime('now'))
+        )
+    )");
+
+    std::vector<std::pair<int, std::string>> pending;
+    for (const auto& entry : fs::directory_iterator("sql/migrations")) {
+        if (entry.path().extension() != ".sql") continue;
+        std::string stem = entry.path().stem().string();
+        try {
+            int ver = std::stoi(stem.substr(0, 3));
+            if (ver < max_version) pending.emplace_back(ver, entry.path().string());
+        } catch (...) {}
+    }
+    std::sort(pending.begin(), pending.end());
+    for (auto& [ver, path] : pending) {
+        std::ifstream f(path);
+        std::stringstream ss; ss << f.rdbuf();
+        db.execute("PRAGMA foreign_keys=OFF");
+        db.execute("BEGIN");
+        db.execute(ss.str());
+        auto stmt = db.prepare("INSERT INTO _schema_migrations(version) VALUES(?)");
+        stmt.bind(1, static_cast<int64_t>(ver));
+        stmt.step();
+        db.execute("COMMIT");
+        db.execute("PRAGMA foreign_keys=ON");
+    }
+}
+
+static void apply_single_migration(SqliteDatabase& db, int version) {
+    namespace fs = std::filesystem;
+    for (const auto& entry : fs::directory_iterator("sql/migrations")) {
+        if (entry.path().extension() != ".sql") continue;
+        std::string stem = entry.path().stem().string();
+        try {
+            int ver = std::stoi(stem.substr(0, 3));
+            if (ver == version) {
+                std::ifstream f(entry.path());
+                std::stringstream ss; ss << f.rdbuf();
+                // Mirror the real migration runner: disable FK before, re-enable after
+                db.execute("PRAGMA foreign_keys=OFF");
+                db.execute("BEGIN");
+                db.execute(ss.str());
+                auto stmt = db.prepare("INSERT INTO _schema_migrations(version) VALUES(?)");
+                stmt.bind(1, static_cast<int64_t>(ver));
+                stmt.step();
+                db.execute("COMMIT");
+                db.execute("PRAGMA foreign_keys=ON");
+                return;
+            }
+        } catch (...) {}
+    }
+}
+
+TEST(Migrations, Migration021PreservesAttendance) {
+    SqliteDatabase db(":memory:");
+
+    // Apply migrations 001-020 (everything before our changes)
+    apply_migrations_up_to(db, 21);
+
+    // Insert test data: a member, a meeting, and an attendance record
+    db.execute("INSERT INTO members (discord_user_id, discord_username, display_name, role, first_name, last_name) "
+               "VALUES ('user123', 'testuser', 'Test U.', 'member', 'Test', 'User')");
+    db.execute("INSERT INTO meetings (title, start_time, end_time, ical_uid, scope) "
+               "VALUES ('Pre-migration Meeting', '2026-03-01T19:00:00', '2026-03-01T21:00:00', 'pre-mig-uid', 'chapter')");
+    db.execute("INSERT INTO attendance (member_id, entity_type, entity_id, notes) "
+               "VALUES (1, 'meeting', 1, 'was here')");
+    db.execute("INSERT INTO sessions (token, member_id, role, expires_at) "
+               "VALUES ('tok123', 1, 'member', '2099-01-01')");
+    db.execute("INSERT INTO chapters (name, shorthand, discord_announcement_channel_id) "
+               "VALUES ('Test Chapter', 'TC', '')");
+    db.execute("INSERT INTO chapter_members (member_id, chapter_id, chapter_role) "
+               "VALUES (1, 1, 'lead')");
+
+    // Verify data exists before migration
+    { auto s = db.prepare("SELECT COUNT(*) FROM attendance"); s.step();
+      EXPECT_EQ(s.col_int(0), 1); }
+    { auto s = db.prepare("SELECT COUNT(*) FROM sessions"); s.step();
+      EXPECT_EQ(s.col_int(0), 1); }
+    { auto s = db.prepare("SELECT COUNT(*) FROM chapter_members"); s.step();
+      EXPECT_EQ(s.col_int(0), 1); }
+
+    // Apply migration 021 (recreates members table)
+    apply_single_migration(db, 21);
+
+    // Verify member was migrated
+    { auto s = db.prepare("SELECT display_name, role FROM members WHERE id=1");
+      ASSERT_TRUE(s.step());
+      EXPECT_EQ(s.col_text(0), "Test U.");
+      EXPECT_EQ(s.col_text(1), "member"); }
+
+    // Verify attendance survived
+    { auto s = db.prepare("SELECT COUNT(*) FROM attendance"); s.step();
+      EXPECT_EQ(s.col_int(0), 1) << "Attendance records should survive migration 021"; }
+    { auto s = db.prepare("SELECT notes FROM attendance WHERE member_id=1 AND entity_type='meeting'");
+      ASSERT_TRUE(s.step());
+      EXPECT_EQ(s.col_text(0), "was here"); }
+
+    // Verify sessions survived
+    { auto s = db.prepare("SELECT COUNT(*) FROM sessions"); s.step();
+      EXPECT_EQ(s.col_int(0), 1) << "Sessions should survive migration 021"; }
+    { auto s = db.prepare("SELECT token FROM sessions WHERE member_id=1");
+      ASSERT_TRUE(s.step());
+      EXPECT_EQ(s.col_text(0), "tok123"); }
+
+    // Verify chapter_members survived
+    { auto s = db.prepare("SELECT COUNT(*) FROM chapter_members"); s.step();
+      EXPECT_EQ(s.col_int(0), 1) << "Chapter members should survive migration 021"; }
+    { auto s = db.prepare("SELECT chapter_role FROM chapter_members WHERE member_id=1");
+      ASSERT_TRUE(s.step());
+      EXPECT_EQ(s.col_text(0), "lead"); }
+
+    // Verify new columns exist
+    { auto s = db.prepare("SELECT birthday, fol_status FROM members WHERE id=1");
+      ASSERT_TRUE(s.step());
+      EXPECT_EQ(s.col_text(0), "");
+      EXPECT_EQ(s.col_text(1), "afol"); }
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// Data persistence across database close/reopen (simulates app restart)
+// ═══════════════════════════════════════════════════════════════════════════
+
+TEST(Persistence, AllDataSurvivesRestart) {
+    namespace fs = std::filesystem;
+    // Use a temp file, not :memory:, so we can close and reopen
+    std::string db_path = "/tmp/lug_test_persistence_" +
+        std::to_string(::testing::UnitTest::GetInstance()->random_seed()) + ".db";
+
+    // Phase 1: create database, run migrations, insert data
+    {
+        SqliteDatabase db(db_path);
+        Migrations mig(db);
+        mig.run("sql/migrations");
+
+        db.execute("INSERT INTO members (discord_user_id, discord_username, display_name, role, first_name, last_name, birthday, fol_status) "
+                   "VALUES ('persist_user', 'puser', 'Persist U.', 'member', 'Persist', 'User', '2000-01-15', 'afol')");
+        db.execute("INSERT INTO chapters (name, shorthand, discord_announcement_channel_id) "
+                   "VALUES ('Persist Chapter', 'PC', '')");
+        db.execute("INSERT INTO chapter_members (member_id, chapter_id, chapter_role) "
+                   "VALUES (1, 1, 'lead')");
+        db.execute("INSERT INTO meetings (title, start_time, end_time, ical_uid, scope, notes) "
+                   "VALUES ('Persist Meeting', '2026-05-01T19:00:00', '2026-05-01T21:00:00', 'persist-uid-1', 'chapter', '# Notes')");
+        db.execute("INSERT INTO lug_events (title, start_time, end_time, status, ical_uid, scope, suppress_discord, notes) "
+                   "VALUES ('Persist Event', '2026-06-01', '2026-06-02', 'confirmed', 'persist-uid-2', 'lug_wide', 1, '## Report')");
+        db.execute("INSERT INTO attendance (member_id, entity_type, entity_id, notes, is_virtual) "
+                   "VALUES (1, 'meeting', 1, 'attended', 0)");
+        db.execute("INSERT INTO attendance (member_id, entity_type, entity_id, notes, is_virtual) "
+                   "VALUES (1, 'event', 1, 'was there', 1)");
+        db.execute("INSERT INTO sessions (token, member_id, role, expires_at) "
+                   "VALUES ('persist_token_abc', 1, 'member', '2099-12-31')");
+        db.execute("INSERT INTO perk_levels (name, discord_role_id, meeting_attendance_required, event_attendance_required, requires_paid_dues, sort_order) "
+                   "VALUES ('Gold', 'role999', 5, 2, 1, 1)");
+        db.execute("INSERT INTO lug_settings (key, value) VALUES ('test_setting', 'test_value')");
+        db.execute("INSERT INTO discord_role_mappings (discord_role_id, discord_role_name, lug_role) "
+                   "VALUES ('drole1', 'Test Role', 'member')");
+    }
+    // db is closed here (destructor)
+
+    // Phase 2: reopen database, run migrations again (should be no-op), verify all data
+    {
+        SqliteDatabase db(db_path);
+        Migrations mig(db);
+        mig.run("sql/migrations"); // should say "up to date"
+
+        // Members
+        { auto s = db.prepare("SELECT display_name, birthday, fol_status FROM members WHERE discord_user_id='persist_user'");
+          ASSERT_TRUE(s.step());
+          EXPECT_EQ(s.col_text(0), "Persist U.");
+          EXPECT_EQ(s.col_text(1), "2000-01-15");
+          EXPECT_EQ(s.col_text(2), "afol"); }
+
+        // Chapters
+        { auto s = db.prepare("SELECT name, shorthand FROM chapters WHERE name='Persist Chapter'");
+          ASSERT_TRUE(s.step());
+          EXPECT_EQ(s.col_text(1), "PC"); }
+
+        // Chapter members
+        { auto s = db.prepare("SELECT chapter_role FROM chapter_members WHERE member_id=1 AND chapter_id=1");
+          ASSERT_TRUE(s.step()) << "Chapter membership should persist across restart";
+          EXPECT_EQ(s.col_text(0), "lead"); }
+
+        // Meetings (with notes)
+        { auto s = db.prepare("SELECT title, notes FROM meetings WHERE ical_uid='persist-uid-1'");
+          ASSERT_TRUE(s.step());
+          EXPECT_EQ(s.col_text(0), "Persist Meeting");
+          EXPECT_EQ(s.col_text(1), "# Notes"); }
+
+        // Events (with suppress + notes)
+        { auto s = db.prepare("SELECT title, suppress_discord, notes FROM lug_events WHERE ical_uid='persist-uid-2'");
+          ASSERT_TRUE(s.step());
+          EXPECT_EQ(s.col_text(0), "Persist Event");
+          EXPECT_EQ(s.col_int(1), 1);
+          EXPECT_EQ(s.col_text(2), "## Report"); }
+
+        // Attendance (both records)
+        { auto s = db.prepare("SELECT COUNT(*) FROM attendance WHERE member_id=1");
+          s.step();
+          EXPECT_EQ(s.col_int(0), 2) << "Both attendance records should persist"; }
+        { auto s = db.prepare("SELECT notes, is_virtual FROM attendance WHERE entity_type='meeting'");
+          ASSERT_TRUE(s.step());
+          EXPECT_EQ(s.col_text(0), "attended");
+          EXPECT_EQ(s.col_int(1), 0); }
+        { auto s = db.prepare("SELECT notes, is_virtual FROM attendance WHERE entity_type='event'");
+          ASSERT_TRUE(s.step());
+          EXPECT_EQ(s.col_text(0), "was there");
+          EXPECT_EQ(s.col_int(1), 1); }
+
+        // Sessions
+        { auto s = db.prepare("SELECT token, role FROM sessions WHERE member_id=1");
+          ASSERT_TRUE(s.step()) << "Session should persist across restart";
+          EXPECT_EQ(s.col_text(0), "persist_token_abc");
+          EXPECT_EQ(s.col_text(1), "member"); }
+
+        // Perk levels
+        { auto s = db.prepare("SELECT name, discord_role_id, meeting_attendance_required, event_attendance_required, requires_paid_dues FROM perk_levels");
+          ASSERT_TRUE(s.step());
+          EXPECT_EQ(s.col_text(0), "Gold");
+          EXPECT_EQ(s.col_text(1), "role999");
+          EXPECT_EQ(s.col_int(2), 5);
+          EXPECT_EQ(s.col_int(3), 2);
+          EXPECT_EQ(s.col_int(4), 1); }
+
+        // Settings
+        { auto s = db.prepare("SELECT value FROM lug_settings WHERE key='test_setting'");
+          ASSERT_TRUE(s.step());
+          EXPECT_EQ(s.col_text(0), "test_value"); }
+
+        // Role mappings
+        { auto s = db.prepare("SELECT discord_role_name, lug_role FROM discord_role_mappings WHERE discord_role_id='drole1'");
+          ASSERT_TRUE(s.step());
+          EXPECT_EQ(s.col_text(0), "Test Role");
+          EXPECT_EQ(s.col_text(1), "member"); }
+    }
+
+    // Cleanup
+    fs::remove(db_path);
+    fs::remove(db_path + "-wal");
+    fs::remove(db_path + "-shm");
+}
+
+TEST(Migrations, Migration021MigratesReadonlyToMember) {
+    SqliteDatabase db(":memory:");
+    apply_migrations_up_to(db, 21);
+
+    // Insert a readonly member
+    db.execute("INSERT INTO members (discord_user_id, discord_username, display_name, role, first_name, last_name) "
+               "VALUES ('ro_user', 'readonly_user', 'RO U.', 'readonly', 'RO', 'User')");
+
+    apply_single_migration(db, 21);
+
+    // Should now be 'member', not 'readonly'
+    auto s = db.prepare("SELECT role FROM members WHERE discord_user_id='ro_user'");
+    ASSERT_TRUE(s.step());
+    EXPECT_EQ(s.col_text(0), "member");
 }

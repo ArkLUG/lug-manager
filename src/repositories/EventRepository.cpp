@@ -11,7 +11,9 @@ static const char* kSelectAllCols =
     "COALESCE(m.discord_user_id,''), "
     "COALESCE(e.google_calendar_event_id,''), "
     "e.suppress_discord, e.suppress_calendar, "
-    "COALESCE(e.notes,''), COALESCE(e.notes_discord_post_id,'') "
+    "COALESCE(e.notes,''), COALESCE(e.notes_discord_post_id,''), "
+    "COALESCE(e.entrance_fee,''), e.public_kids, e.public_teens, e.public_adults, "
+    "COALESCE(e.social_media_links,''), COALESCE(e.event_feedback,'') "
     "FROM lug_events e LEFT JOIN members m ON m.id = e.event_lead_id";
 
 EventRepository::EventRepository(SqliteDatabase& db) : db_(db) {}
@@ -45,6 +47,12 @@ LugEvent EventRepository::row_to_event(Statement& stmt) {
     e.suppress_calendar          = stmt.col_bool(24);
     e.notes                      = stmt.col_text(25);
     e.notes_discord_post_id      = stmt.col_text(26);
+    e.entrance_fee               = stmt.col_text(27);
+    e.public_kids                = static_cast<int>(stmt.col_int(28));
+    e.public_teens               = static_cast<int>(stmt.col_int(29));
+    e.public_adults              = static_cast<int>(stmt.col_int(30));
+    e.social_media_links         = stmt.col_text(31);
+    e.event_feedback             = stmt.col_text(32);
     return e;
 }
 
@@ -170,8 +178,9 @@ LugEvent EventRepository::create(const LugEvent& e) {
         "INSERT INTO lug_events (title, description, location, "
         "start_time, end_time, status, discord_thread_id, discord_event_id, "
         "ical_uid, signup_deadline, max_attendees, scope, chapter_id, event_lead_id, "
-        "discord_ping_role_ids, suppress_discord, suppress_calendar, notes) "
-        "VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)");
+        "discord_ping_role_ids, suppress_discord, suppress_calendar, notes, "
+        "entrance_fee, public_kids, public_teens, public_adults, social_media_links, event_feedback) "
+        "VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)");
     stmt.bind(1, e.title);
     stmt.bind(2, e.description);
     stmt.bind(3, e.location);
@@ -214,6 +223,12 @@ LugEvent EventRepository::create(const LugEvent& e) {
     stmt.bind(16, e.suppress_discord);
     stmt.bind(17, e.suppress_calendar);
     stmt.bind(18, e.notes);
+    stmt.bind(19, e.entrance_fee);
+    stmt.bind(20, static_cast<int64_t>(e.public_kids));
+    stmt.bind(21, static_cast<int64_t>(e.public_teens));
+    stmt.bind(22, static_cast<int64_t>(e.public_adults));
+    stmt.bind(23, e.social_media_links);
+    stmt.bind(24, e.event_feedback);
     stmt.step();
 
     int64_t new_id = db_.last_insert_rowid();
@@ -230,6 +245,8 @@ bool EventRepository::update(const LugEvent& e) {
         "start_time=?, end_time=?, status=?, discord_thread_id=?, discord_event_id=?, "
         "signup_deadline=?, max_attendees=?, scope=?, chapter_id=?, event_lead_id=?, "
         "discord_ping_role_ids=?, suppress_discord=?, suppress_calendar=?, notes=?, "
+        "entrance_fee=?, public_kids=?, public_teens=?, public_adults=?, "
+        "social_media_links=?, event_feedback=?, "
         "updated_at=datetime('now') WHERE id=?");
     stmt.bind(1, e.title);
     stmt.bind(2, e.description);
@@ -272,7 +289,13 @@ bool EventRepository::update(const LugEvent& e) {
     stmt.bind(15, e.suppress_discord);
     stmt.bind(16, e.suppress_calendar);
     stmt.bind(17, e.notes);
-    stmt.bind(18, e.id);
+    stmt.bind(18, e.entrance_fee);
+    stmt.bind(19, static_cast<int64_t>(e.public_kids));
+    stmt.bind(20, static_cast<int64_t>(e.public_teens));
+    stmt.bind(21, static_cast<int64_t>(e.public_adults));
+    stmt.bind(22, e.social_media_links);
+    stmt.bind(23, e.event_feedback);
+    stmt.bind(24, e.id);
     stmt.step();
 
     auto existing = find_by_id(e.id);

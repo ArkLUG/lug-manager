@@ -34,6 +34,10 @@ void Migrations::apply_migration(int version, const std::string& filepath) {
     ss << f.rdbuf();
     std::string sql = ss.str();
 
+    // Disable foreign keys before migration to prevent CASCADE deletes
+    // when recreating tables (e.g. DROP TABLE + RENAME).
+    // PRAGMA foreign_keys must be set outside a transaction.
+    db_.execute("PRAGMA foreign_keys=OFF");
     db_.execute("BEGIN");
     try {
         db_.execute(sql);
@@ -44,8 +48,10 @@ void Migrations::apply_migration(int version, const std::string& filepath) {
         std::cout << "[migrations] Applied version " << version << ": " << filepath << "\n";
     } catch (const std::exception& e) {
         db_.execute("ROLLBACK");
+        db_.execute("PRAGMA foreign_keys=ON");
         throw std::runtime_error("Migration " + std::to_string(version) + " failed: " + e.what());
     }
+    db_.execute("PRAGMA foreign_keys=ON");
 }
 
 void Migrations::run(const std::string& migrations_dir) {

@@ -22,6 +22,8 @@ public:
     bool   remove_by_id(int64_t attendance_id);
     std::vector<Attendance> get_member_history(int64_t member_id);
     std::vector<AttendanceRepository::MemberAttendanceSummary> get_all_member_summaries();
+    std::vector<AttendanceRepository::MemberAttendanceSummary> get_all_member_summaries_by_year(int year);
+    std::vector<int> get_attendance_years();
 
 private:
     AttendanceRepository& repo_;

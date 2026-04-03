@@ -94,7 +94,8 @@
                     <label class="block text-sm font-medium text-gray-700">Discord Role</label>
                     <select name="discord_role_id" id="perk-role-select"
                             hx-get="/api/discord/role-options?selected=" hx-trigger="load" hx-swap="innerHTML"
-                            class="ts-channel mt-1 w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-yellow-400">
+                            hx-on::after-settle="if(window.TomSelect && !this.tomselect) new TomSelect(this, {maxOptions:null})"
+                            class="mt-1 w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-yellow-400">
                         <option value="">Loading roles...</option>
                     </select>
                     <p class="text-xs text-gray-400 mt-1">Role automatically assigned when a member reaches this tier.</p>

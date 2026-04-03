@@ -175,11 +175,57 @@
     </script>
     {{/has_forum_channel}}
 
+    <!-- Report fields -->
+    <div class="border-t border-gray-200 pt-4 mt-2">
+      <h4 class="text-sm font-semibold text-gray-700 mb-3">Event Report Details</h4>
+
+      <div class="grid grid-cols-2 gap-4">
+        <div>
+          <label class="block text-sm font-medium text-gray-700 mb-1">Entrance Fee</label>
+          <input type="text" name="entrance_fee" value="{{entrance_fee}}"
+                 class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-yellow-400"
+                 placeholder="e.g. $5, Free">
+        </div>
+      </div>
+
+      <div class="grid grid-cols-3 gap-4 mt-3">
+        <div>
+          <label class="block text-sm font-medium text-gray-700 mb-1">Public Kids</label>
+          <input type="number" name="public_kids" value="{{public_kids}}" min="0"
+                 class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-yellow-400">
+        </div>
+        <div>
+          <label class="block text-sm font-medium text-gray-700 mb-1">Public Teens</label>
+          <input type="number" name="public_teens" value="{{public_teens}}" min="0"
+                 class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-yellow-400">
+        </div>
+        <div>
+          <label class="block text-sm font-medium text-gray-700 mb-1">Public Adults</label>
+          <input type="number" name="public_adults" value="{{public_adults}}" min="0"
+                 class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-yellow-400">
+        </div>
+      </div>
+
+      <div class="mt-3">
+        <label class="block text-sm font-medium text-gray-700 mb-1">Social Media Links / Mentions</label>
+        <textarea name="social_media_links" rows="2"
+                  class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-yellow-400"
+                  placeholder="Links to social media posts, ArkLUG mentions, announcements...">{{social_media_links}}</textarea>
+      </div>
+
+      <div class="mt-3">
+        <label class="block text-sm font-medium text-gray-700 mb-1">What You Liked Best</label>
+        <textarea name="event_feedback" rows="2"
+                  class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-yellow-400"
+                  placeholder="What you liked best about the event...">{{event_feedback}}</textarea>
+      </div>
+    </div>
+
     <div>
       <label class="block text-sm font-medium text-gray-700 mb-1">Notes</label>
       <textarea name="notes" rows="4" id="event-notes-editor"
                 class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-yellow-400"
-                placeholder="Meeting notes, reports, follow-ups...">{{notes}}</textarea>
+                placeholder="Additional notes, reports, follow-ups...">{{notes}}</textarea>
     </div>
 
     <div class="flex gap-6">

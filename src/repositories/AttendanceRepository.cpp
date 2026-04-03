@@ -146,6 +146,48 @@ AttendanceRepository::get_all_member_summaries() {
     return result;
 }
 
+std::vector<AttendanceRepository::MemberAttendanceSummary>
+AttendanceRepository::get_all_member_summaries_by_year(int year) {
+    std::string year_start = std::to_string(year) + "-01-01";
+    std::string year_end   = std::to_string(year + 1) + "-01-01";
+    auto stmt = db_.prepare(
+        "SELECT m.id, m.display_name, m.discord_username, "
+        "SUM(CASE WHEN a.entity_type='meeting' THEN 1 ELSE 0 END), "
+        "SUM(CASE WHEN a.entity_type='meeting' AND a.is_virtual=1 THEN 1 ELSE 0 END), "
+        "SUM(CASE WHEN a.entity_type='event' THEN 1 ELSE 0 END) "
+        "FROM members m "
+        "LEFT JOIN attendance a ON a.member_id = m.id "
+        "AND a.checked_in_at >= ? AND a.checked_in_at < ? "
+        "GROUP BY m.id "
+        "ORDER BY m.display_name ASC");
+    stmt.bind(1, year_start);
+    stmt.bind(2, year_end);
+
+    std::vector<MemberAttendanceSummary> result;
+    while (stmt.step()) {
+        MemberAttendanceSummary s;
+        s.member_id             = stmt.col_int(0);
+        s.display_name          = stmt.col_text(1);
+        s.discord_username      = stmt.col_text(2);
+        s.meeting_count         = static_cast<int>(stmt.col_int(3));
+        s.meeting_virtual_count = static_cast<int>(stmt.col_int(4));
+        s.event_count           = static_cast<int>(stmt.col_int(5));
+        result.push_back(s);
+    }
+    return result;
+}
+
+std::vector<int> AttendanceRepository::get_attendance_years() {
+    auto stmt = db_.prepare(
+        "SELECT DISTINCT CAST(strftime('%Y', checked_in_at) AS INTEGER) AS yr "
+        "FROM attendance ORDER BY yr DESC");
+    std::vector<int> result;
+    while (stmt.step()) {
+        result.push_back(static_cast<int>(stmt.col_int(0)));
+    }
+    return result;
+}
+
 int AttendanceRepository::count_member_by_year(int64_t member_id, int year,
                                                 const std::string& entity_type) {
     std::string year_start = std::to_string(year) + "-01-01";

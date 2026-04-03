@@ -1,6 +1,8 @@
 #include "routes/AttendanceRoutes.hpp"
 #include <crow.h>
 #include <crow/mustache.h>
+#include <ctime>
+#include <algorithm>
 
 // Returns true if the current user is admin, event lead, or has event_manager/lead
 // chapter role for the entity's chapter.
@@ -69,6 +71,7 @@ void register_attendance_routes(LugApp& app, AttendanceService& attendance,
                                 ChapterMemberRepository& chapter_members) {
 
     // GET /attendance/overview - admin/lead attendance overview for all members
+    // Query param: ?year=YYYY (defaults to current year)
     CROW_ROUTE(app, "/attendance/overview")([&](const crow::request& req) {
         crow::response res;
         if (!require_auth(req, res, app)) return res;
@@ -80,10 +83,35 @@ void register_attendance_routes(LugApp& app, AttendanceService& attendance,
             return res;
         }
 
-        auto summaries = attendance.get_all_member_summaries();
+        // Determine selected year (default to current)
+        std::time_t now = std::time(nullptr);
+        std::tm* tm = std::localtime(&now);
+        int current_year = tm->tm_year + 1900;
+        int selected_year = current_year;
+        {
+            auto qs = crow::query_string(req.url_params);
+            const char* y = qs.get("year");
+            if (y) try { selected_year = std::stoi(y); } catch (...) {}
+        }
+
+        auto summaries = attendance.get_all_member_summaries_by_year(selected_year);
+
+        // Get available years for the dropdown
+        auto years = attendance.get_attendance_years();
+        // Ensure current year is always in the list
+        if (std::find(years.begin(), years.end(), current_year) == years.end())
+            years.insert(years.begin(), current_year);
 
         crow::mustache::context ctx;
-        ctx["is_admin"] = true;
+        ctx["is_admin"]       = true;
+        ctx["selected_year"]  = selected_year;
+
+        crow::json::wvalue year_arr;
+        for (size_t i = 0; i < years.size(); ++i) {
+            year_arr[i]["year"]     = years[i];
+            year_arr[i]["selected"] = (years[i] == selected_year);
+        }
+        ctx["years"] = std::move(year_arr);
 
         crow::json::wvalue arr;
         for (size_t i = 0; i < summaries.size(); ++i) {

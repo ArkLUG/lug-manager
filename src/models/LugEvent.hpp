@@ -28,6 +28,12 @@ struct LugEvent {
     bool        suppress_calendar = false; // skip Google Calendar operations
     std::string notes;                     // markdown notes/report
     std::string notes_discord_post_id;     // Discord forum thread ID for published report
+    std::string entrance_fee;              // e.g. "$5", "Free"
+    int         public_kids     = 0;       // public attendee counts for report
+    int         public_teens    = 0;
+    int         public_adults   = 0;
+    std::string social_media_links;        // links to social media posts about the event
+    std::string event_feedback;            // "what you liked best"
     std::string created_at;
     std::string updated_at;
 };

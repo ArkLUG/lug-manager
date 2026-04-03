@@ -1,5 +1,6 @@
 -- Simplify roles: remove 'readonly', add birthday/fol_status fields
 -- SQLite cannot ALTER CHECK constraints, so we recreate the table.
+-- Foreign keys are OFF by default in SQLite, so DROP TABLE won't cascade.
 
 CREATE TABLE IF NOT EXISTS members_new (
     id                INTEGER PRIMARY KEY AUTOINCREMENT,

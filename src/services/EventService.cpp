@@ -295,6 +295,12 @@ LugEvent EventService::update(int64_t id, const LugEvent& updates) {
     updated.suppress_discord  = updates.suppress_discord;
     updated.suppress_calendar = updates.suppress_calendar;
     updated.notes             = updates.notes;
+    updated.entrance_fee      = updates.entrance_fee;
+    updated.public_kids       = updates.public_kids;
+    updated.public_teens      = updates.public_teens;
+    updated.public_adults     = updates.public_adults;
+    updated.social_media_links = updates.social_media_links;
+    updated.event_feedback    = updates.event_feedback;
 
     repo_.update(updated);
 

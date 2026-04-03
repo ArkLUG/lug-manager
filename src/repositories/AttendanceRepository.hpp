@@ -34,6 +34,10 @@ public:
         int         event_count = 0;
     };
     std::vector<MemberAttendanceSummary> get_all_member_summaries();
+    std::vector<MemberAttendanceSummary> get_all_member_summaries_by_year(int year);
+
+    // Returns the distinct years that have attendance records
+    std::vector<int> get_attendance_years();
 
     // Count attendance for a member in a calendar year, by entity type
     int count_member_by_year(int64_t member_id, int year, const std::string& entity_type);

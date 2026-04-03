@@ -1,9 +1,20 @@
 <div class="space-y-4" data-page-title="Attendance Overview">
-  <!-- Header -->
+  <!-- Header + Year Selector -->
   <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
     <div>
       <h2 class="text-xl font-semibold text-gray-800">Attendance Overview</h2>
-      <p class="text-sm text-gray-500 mt-0.5">{{member_count}} members</p>
+      <p class="text-sm text-gray-500 mt-0.5">{{member_count}} members &mdash; {{selected_year}}</p>
+    </div>
+    <div class="flex items-center gap-2">
+      <label class="text-sm text-gray-600">Year:</label>
+      <select id="attendance-year-select"
+              hx-get="/attendance/overview" hx-target="#main-content" hx-swap="innerHTML" hx-push-url="true"
+              hx-trigger="change" hx-include="this" name="year"
+              class="px-3 py-1.5 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-yellow-400">
+        {{#years}}
+        <option value="{{year}}" {{#selected}}selected{{/selected}}>{{year}}</option>
+        {{/years}}
+      </select>
     </div>
   </div>
 

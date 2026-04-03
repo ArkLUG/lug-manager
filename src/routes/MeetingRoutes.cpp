@@ -668,34 +668,50 @@ void register_meeting_routes(LugApp& app, MeetingService& meetings, AttendanceSe
         if (!mtg) { res.code = 404; res.write("Not found"); return res; }
         if (!can_manage_chapter_content(req, res, app, mtg->chapter_id, chapter_members)) return res;
 
-        // Build report with virtual/in-person split
+        // Build report in required format
         auto attendees = attendance.get_attendees("meeting", mtg->id);
+
+        // Get chapter name
+        std::string chapter_name;
+        if (mtg->chapter_id > 0) {
+            auto ch = chapters.get(mtg->chapter_id);
+            if (ch) chapter_name = ch->name;
+        }
+
+        std::ostringstream report;
+        report << "**Chapter:** " << (chapter_name.empty() ? "LUG Wide" : chapter_name) << "\n";
+        report << "**Meeting date:** " << mtg->start_time.substr(0, 10) << "\n";
+
+        // Members by name (in-person + virtual separated)
+        report << "**Members by name:** ";
         std::vector<std::string> in_person, virtual_list;
         for (const auto& a : attendees) {
             if (a.is_virtual) virtual_list.push_back(a.member_display_name);
             else              in_person.push_back(a.member_display_name);
         }
-
-        std::ostringstream report;
-        report << "# Meeting Report: " << mtg->title << "\n";
-        report << "**Date:** " << mtg->start_time << " - " << mtg->end_time << "\n";
-        if (!mtg->location.empty()) report << "**Location:** " << mtg->location << "\n";
-        report << "**Attendance:** " << attendees.size()
-               << " (" << in_person.size() << " in-person, "
-               << virtual_list.size() << " virtual)\n\n";
-        if (!in_person.empty()) {
-            report << "## In-Person Attendees\n";
-            for (const auto& n : in_person) report << "- " << n << "\n";
-            report << "\n";
+        for (size_t i = 0; i < in_person.size(); ++i) {
+            if (i > 0) report << ", ";
+            report << in_person[i];
         }
         if (!virtual_list.empty()) {
-            report << "## Virtual Attendees\n";
-            for (const auto& n : virtual_list) report << "- " << n << "\n";
-            report << "\n";
+            if (!in_person.empty()) report << "; ";
+            report << "Virtual: ";
+            for (size_t i = 0; i < virtual_list.size(); ++i) {
+                if (i > 0) report << ", ";
+                report << virtual_list[i];
+            }
         }
-        if (!mtg->notes.empty()) {
-            report << "## Notes\n" << mtg->notes << "\n";
-        }
+        report << "\n";
+
+        // Topics = notes/description
+        report << "**Topics:** ";
+        if (!mtg->notes.empty())
+            report << mtg->notes;
+        else if (!mtg->description.empty())
+            report << mtg->description;
+        else
+            report << "(none)";
+        report << "\n";
 
         // Use dedicated meeting reports forum, fall back to events forum
         std::string forum_id = discord.get_meeting_reports_forum_id();
