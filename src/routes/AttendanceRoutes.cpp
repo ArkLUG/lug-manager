@@ -110,9 +110,9 @@ void register_attendance_routes(LugApp& app, AttendanceService& attendance,
             std::string content = content_tmpl.render(ctx).dump();
             crow::mustache::context layout_ctx;
             layout_ctx["content"]           = content;
-            layout_ctx["page_title"]        = "Attendance Overview";
-            layout_ctx["active_attendance"] = true;
-            layout_ctx["is_admin"]          = true;
+            layout_ctx["page_title"]                 = "Attendance Overview";
+            layout_ctx["active_attendance_overview"] = true;
+            layout_ctx["is_admin"]                   = true;
             auto layout = crow::mustache::load("layout.html");
             res.write(layout.render(layout_ctx).dump());
         }
