@@ -29,12 +29,28 @@ void register_perk_routes(LugApp& app, PerkLevelRepository& perks,
                            MemberRepository& members,
                            DiscordClient& discord) {
 
-    // GET /settings/perks — list perk levels (admin only)
+    // GET /settings/perks — list perk levels for a year (admin only)
     CROW_ROUTE(app, "/settings/perks")([&](const crow::request& req) {
         crow::response res;
         if (!require_auth(req, res, app, "admin")) return res;
 
-        auto levels = perks.find_all();
+        // Determine selected year
+        std::time_t now_t = std::time(nullptr);
+        std::tm* tm_now = std::localtime(&now_t);
+        int current_year = tm_now->tm_year + 1900;
+        int selected_year = current_year;
+        {
+            auto qs = crow::query_string(req.url_params);
+            const char* y = qs.get("year");
+            if (y) try { selected_year = std::stoi(y); } catch (...) {}
+        }
+
+        auto levels = perks.find_by_year(selected_year);
+
+        // Year dropdown
+        auto perk_years = perks.get_perk_years();
+        if (std::find(perk_years.begin(), perk_years.end(), current_year) == perk_years.end())
+            perk_years.insert(perk_years.begin(), current_year);
 
         // Build role ID -> name lookup for display
         std::map<std::string, std::string> role_names;
@@ -58,10 +74,18 @@ void register_perk_routes(LugApp& app, PerkLevelRepository& perks,
             arr[i]["min_fol_status"]               = levels[i].min_fol_status;
             arr[i]["sort_order"]                   = levels[i].sort_order;
         }
-        ctx["perk_levels"] = std::move(arr);
-        ctx["has_perks"]   = !levels.empty();
-        ctx["is_admin"]    = true;
-        ctx["title"]       = "Perk Levels";
+        ctx["perk_levels"]    = std::move(arr);
+        ctx["has_perks"]      = !levels.empty();
+        ctx["is_admin"]       = true;
+        ctx["title"]          = "Perk Levels";
+        ctx["selected_year"]  = selected_year;
+
+        crow::json::wvalue year_arr;
+        for (size_t i = 0; i < perk_years.size(); ++i) {
+            year_arr[i]["year"]     = perk_years[i];
+            year_arr[i]["selected"] = (perk_years[i] == selected_year);
+        }
+        ctx["years"] = std::move(year_arr);
 
         bool is_htmx = req.get_header_value("HX-Request") == "true";
         auto tmpl = crow::mustache::load("settings/_perks.html");
@@ -77,6 +101,7 @@ void register_perk_routes(LugApp& app, PerkLevelRepository& perks,
         layout_ctx["page_title"]      = "Perk Levels";
         layout_ctx["active_settings"] = true;
         layout_ctx["is_admin"]        = true;
+        set_layout_auth(req, app, layout_ctx);
         auto layout = crow::mustache::load("layout.html");
         res.add_header("Content-Type", "text/html; charset=utf-8");
         res.write(layout.render(layout_ctx).dump());
@@ -107,9 +132,13 @@ void register_perk_routes(LugApp& app, PerkLevelRepository& perks,
         p.requires_paid_dues = (gp("requires_paid_dues") == "on" || gp("requires_paid_dues") == "1");
         { std::string fol = gp("min_fol_status"); p.min_fol_status = fol.empty() ? "afol" : fol; }
         try { p.sort_order = std::stoi(gp("sort_order")); } catch (...) {}
+        try { p.year = std::stoi(gp("year")); } catch (...) {
+            std::time_t now_t = std::time(nullptr);
+            p.year = std::localtime(&now_t)->tm_year + 1900;
+        }
 
         perks.create(p);
-        res.add_header("HX-Redirect", "/settings/perks");
+        res.add_header("HX-Redirect", "/settings/perks?year=" + std::to_string(p.year));
         res.code = 200;
         return res;
     });
@@ -214,16 +243,56 @@ void register_perk_routes(LugApp& app, PerkLevelRepository& perks,
         return res;
     });
 
+    // POST /settings/perks/clone — clone tiers from one year to another
+    CROW_ROUTE(app, "/settings/perks/clone").methods("POST"_method)(
+        [&](const crow::request& req) {
+        crow::response res;
+        if (!require_auth(req, res, app, "admin")) return res;
+
+        auto params = crow::query_string("?" + req.body);
+        auto gp = [&](const char* k) -> std::string { const char* v = params.get(k); return v ? v : ""; };
+
+        int source_year = 0, target_year = 0;
+        try { source_year = std::stoi(gp("source_year")); } catch (...) {}
+        try { target_year = std::stoi(gp("target_year")); } catch (...) {}
+
+        if (source_year == 0 || target_year == 0 || source_year == target_year) {
+            res.code = 400;
+            res.add_header("Content-Type", "text/html; charset=utf-8");
+            res.write(R"(<span class="text-red-500 text-xs">Invalid source or target year.</span>)");
+            return res;
+        }
+
+        // Check target year doesn't already have tiers
+        auto existing = perks.find_by_year(target_year);
+        if (!existing.empty()) {
+            res.code = 400;
+            res.add_header("Content-Type", "text/html; charset=utf-8");
+            res.write("<span class=\"text-red-500 text-xs\">" + std::to_string(target_year) +
+                      " already has " + std::to_string(existing.size()) + " tiers. Delete them first.</span>");
+            return res;
+        }
+
+        int count = perks.clone_year(source_year, target_year);
+        res.add_header("HX-Redirect", "/settings/perks?year=" + std::to_string(target_year));
+        res.code = 200;
+        return res;
+    });
+
     // POST /api/perks/sync-roles — bulk sync perk Discord roles for all members
     CROW_ROUTE(app, "/api/perks/sync-roles").methods("POST"_method)(
         [&](const crow::request& req) {
         crow::response res;
         if (!require_auth(req, res, app, "admin")) return res;
 
-        auto levels = perks.find_all();
+        // Sync uses current year's tiers
+        std::time_t now_sync = std::time(nullptr);
+        int sync_year = std::localtime(&now_sync)->tm_year + 1900;
+        auto levels = perks.find_by_year(sync_year);
         if (levels.empty()) {
             res.add_header("Content-Type", "text/html; charset=utf-8");
-            res.write(R"(<span class="text-yellow-600 text-xs">No perk levels defined.</span>)");
+            res.write("<span class=\"text-yellow-600 text-xs\">No perk levels defined for " +
+                      std::to_string(sync_year) + ".</span>");
             return res;
         }
 

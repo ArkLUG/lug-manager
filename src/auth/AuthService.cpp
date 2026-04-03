@@ -99,7 +99,7 @@ std::string AuthService::login_with_discord(const std::string& code, const std::
     }
 
     // 7. Create and return session token (24 hour lifetime)
-    return sessions_.create(member.id, member.role, 24);
+    return sessions_.create(member.id, member.role, member.display_name, 24);
 }
 
 std::optional<Session> AuthService::validate_session(const std::string& token) {

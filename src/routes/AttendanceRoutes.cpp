@@ -121,8 +121,8 @@ void register_attendance_routes(LugApp& app, AttendanceService& attendance,
         if (std::find(years.begin(), years.end(), current_year) == years.end())
             years.insert(years.begin(), current_year);
 
-        // Perk levels for tier computation
-        auto perk_levels = perks.find_all();
+        // Perk levels for tier computation (year-specific)
+        auto perk_levels = perks.find_by_year(params.year);
 
         crow::mustache::context ctx;
         ctx["is_admin"]       = true;
@@ -219,6 +219,7 @@ void register_attendance_routes(LugApp& app, AttendanceService& attendance,
             layout_ctx["page_title"]                 = "Attendance Overview";
             layout_ctx["active_attendance_overview"] = true;
             layout_ctx["is_admin"]                   = true;
+        set_layout_auth(req, app, layout_ctx);
             auto layout = crow::mustache::load("layout.html");
             res.write(layout.render(layout_ctx).dump());
         }
@@ -278,6 +279,7 @@ void register_attendance_routes(LugApp& app, AttendanceService& attendance,
             layout_ctx["page_title"]        = "My Attendance";
             layout_ctx["active_attendance"] = true;
             layout_ctx["is_admin"]          = ctx_auth.auth.role == "admin";
+        set_layout_auth(req, app, layout_ctx);
             auto layout = crow::mustache::load("layout.html");
             res.write(layout.render(layout_ctx).dump());
         }

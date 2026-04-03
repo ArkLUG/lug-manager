@@ -284,6 +284,7 @@ void register_settings_routes(LugApp& app, SettingsRepository& settings,
             layout_ctx["page_title"]      = "Settings";
             layout_ctx["active_settings"] = true;
             layout_ctx["is_admin"]        = true;
+        set_layout_auth(req, app, layout_ctx);
             auto layout = crow::mustache::load("layout.html");
             res.add_header("Content-Type", "text/html; charset=utf-8");
             res.write(layout.render(layout_ctx).dump());

@@ -11,6 +11,7 @@ struct PerkLevel {
     bool        requires_paid_dues         = false;
     std::string min_fol_status             = "afol"; // "kfol"|"tfol"|"afol"
     int         sort_order                  = 0;
+    int         year                        = 0; // calendar year this tier applies to
     std::string created_at;
     std::string updated_at;
 };

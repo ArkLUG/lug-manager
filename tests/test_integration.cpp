@@ -128,7 +128,7 @@ protected:
         admin_m.role = "admin";
         auto admin = member_repo->create(admin_m);
         admin_member_id = admin.id;
-        admin_token = session_store->create(admin.id, "admin");
+        admin_token = session_store->create(admin.id, "admin", admin.display_name);
 
         Member reg_m;
         reg_m.discord_user_id = "member-test-001";
@@ -139,7 +139,7 @@ protected:
         reg_m.role = "member";
         auto reg = member_repo->create(reg_m);
         regular_member_id = reg.id;
-        member_token = session_store->create(reg.id, "member");
+        member_token = session_store->create(reg.id, "member", reg.display_name);
 
         // Boot Crow app
         app = std::make_unique<LugApp>();

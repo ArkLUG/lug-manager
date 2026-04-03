@@ -180,6 +180,7 @@ static std::string render_event_page(const crow::request& req,
     layout_ctx["page_title"]    = all_events ? "All Events" : "Events";
     layout_ctx["active_events"] = true;
     layout_ctx["is_admin"]      = is_admin;
+        set_layout_auth(req, app, layout_ctx);
     auto layout = crow::mustache::load("layout.html");
     return layout.render(layout_ctx).dump();
 }
@@ -485,6 +486,7 @@ void register_event_routes(LugApp& app, EventService& events, AttendanceService&
             layout_ctx["page_title"]    = ev->title;
             layout_ctx["active_events"] = true;
             layout_ctx["is_admin"]      = is_admin;
+        set_layout_auth(req, app, layout_ctx);
             auto layout = crow::mustache::load("layout.html");
             res.write(layout.render(layout_ctx).dump());
         }

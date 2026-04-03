@@ -103,6 +103,7 @@ void register_chapter_routes(LugApp& app, ChapterService& chapters,
             layout_ctx["page_title"]     = "Chapters";
             layout_ctx["active_chapters"]= true;
             layout_ctx["is_admin"]       = ctx.auth.role == "admin";
+        set_layout_auth(req, app, layout_ctx);
             auto layout = crow::mustache::load("layout.html");
             res.add_header("Content-Type", "text/html; charset=utf-8");
             res.write(layout.render(layout_ctx).dump());
@@ -222,6 +223,7 @@ void register_chapter_routes(LugApp& app, ChapterService& chapters,
             layout_ctx["page_title"]      = ch->name;
             layout_ctx["active_chapters"] = true;
             layout_ctx["is_admin"]        = is_admin;
+        set_layout_auth(req, app, layout_ctx);
             auto layout = crow::mustache::load("layout.html");
             res.write(layout.render(layout_ctx).dump());
         }
@@ -463,6 +465,7 @@ void register_chapter_routes(LugApp& app, ChapterService& chapters,
             layout_ctx["page_title"]      = ch->name + " — Members";
             layout_ctx["active_chapters"] = true;
             layout_ctx["is_admin"]        = is_admin;
+        set_layout_auth(req, app, layout_ctx);
             auto layout = crow::mustache::load("layout.html");
             res.write(layout.render(layout_ctx).dump());
         }

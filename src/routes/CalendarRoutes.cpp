@@ -45,7 +45,7 @@ void register_calendar_routes(LugApp& app, CalendarGenerator& cal,
             ctx["perk_event_count"]   = event_count;
             ctx["perk_year"]          = year;
 
-            auto levels = perks.find_all();
+            auto levels = perks.find_by_year(year);
             std::string achieved_name;
             std::string next_name;
             int next_meetings_needed = 0;
@@ -91,6 +91,7 @@ void register_calendar_routes(LugApp& app, CalendarGenerator& cal,
             layout_ctx["page_title"]        = "Dashboard";
             layout_ctx["active_dashboard"]  = true;
             layout_ctx["is_admin"]          = auth_ctx.auth.role == "admin";
+        set_layout_auth(req, app, layout_ctx);
             auto layout = crow::mustache::load("layout.html");
             res.write(layout.render(layout_ctx).dump());
         }

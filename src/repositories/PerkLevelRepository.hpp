@@ -16,12 +16,15 @@ class PerkLevelRepository {
 public:
     explicit PerkLevelRepository(SqliteDatabase& db);
 
-    std::vector<PerkLevel>   find_all();           // ordered by sort_order
+    std::vector<PerkLevel>   find_all();           // all years, ordered by year desc + sort_order
+    std::vector<PerkLevel>   find_by_year(int year); // tiers for a specific year
+    std::vector<int>         get_perk_years();       // distinct years with tiers defined
     std::optional<PerkLevel> find_by_id(int64_t id);
 
     PerkLevel create(const PerkLevel& p);
     bool      update(const PerkLevel& p);
     bool      remove(int64_t id);
+    int       clone_year(int source_year, int target_year); // returns count cloned
 
 private:
     SqliteDatabase& db_;

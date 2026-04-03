@@ -9,6 +9,7 @@ struct AuthContext {
     int64_t     member_id     = 0;
     std::string role;
     std::string discord_username;
+    std::string display_name;
 
     bool is_admin()        const { return role == "admin"; }
     bool is_chapter_lead() const { return role == "admin" || role == "chapter_lead"; }
@@ -44,10 +45,23 @@ struct AuthMiddleware {
         ctx.auth.authenticated = true;
         ctx.auth.member_id     = session_opt->member_id;
         ctx.auth.role          = session_opt->role;
+        ctx.auth.display_name  = session_opt->display_name;
     }
 
     void after_handle(crow::request& /*req*/, crow::response& /*res*/, context& /*ctx*/) {}
 };
+
+// Helper: populate layout context with user info for sidebar display
+template<typename App>
+inline void set_layout_auth(const crow::request& req, App& app,
+                            crow::mustache::context& layout_ctx) {
+    auto& ctx = app.template get_context<AuthMiddleware>(req);
+    layout_ctx["is_admin"]     = ctx.auth.is_admin();
+    layout_ctx["display_name"] = ctx.auth.display_name;
+    layout_ctx["role"]         = ctx.auth.role;
+    if (!ctx.auth.display_name.empty())
+        layout_ctx["display_name_initial"] = std::string(1, ctx.auth.display_name[0]);
+}
 
 // Helper: check auth in route handlers.
 // Returns false and sets response if not authenticated/authorized.

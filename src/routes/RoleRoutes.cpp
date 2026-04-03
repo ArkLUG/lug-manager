@@ -108,6 +108,7 @@ void register_role_routes(LugApp& app,
             layout_ctx["page_title"]      = "Role Mappings";
             layout_ctx["active_settings"] = true;
             layout_ctx["is_admin"]        = true;
+        set_layout_auth(req, app, layout_ctx);
             auto layout = crow::mustache::load("layout.html");
             res.add_header("Content-Type", "text/html; charset=utf-8");
             res.write(layout.render(layout_ctx).dump());
@@ -127,8 +128,8 @@ void register_role_routes(LugApp& app,
         auto params = crow::query_string("?" + req.body);
 
         std::unordered_set<std::string> admin_ids, member_ids;
-        for (auto* id : params.get_list("lug_admin"))  if (id) admin_ids.insert(id);
-        for (auto* id : params.get_list("lug_member")) if (id) member_ids.insert(id);
+        for (auto* id : params.get_list("lug_admin", false))  if (id) admin_ids.insert(id);
+        for (auto* id : params.get_list("lug_member", false)) if (id) member_ids.insert(id);
 
         auto guild_roles = discord.fetch_guild_roles();
         for (auto& gr : guild_roles) {

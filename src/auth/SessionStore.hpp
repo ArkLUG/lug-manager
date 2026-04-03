@@ -11,7 +11,8 @@ public:
     explicit SessionStore(SqliteDatabase& db);
 
     // Create new session, returns token
-    std::string create(int64_t member_id, const std::string& role, int hours = 24);
+    std::string create(int64_t member_id, const std::string& role,
+                       const std::string& display_name = "", int hours = 24);
 
     // Find session by token (checks in-memory cache first, then DB)
     std::optional<Session> find(const std::string& token);

@@ -67,7 +67,8 @@ std::string SessionStore::generate_token() {
     return oss.str(); // 64-char lowercase hex string
 }
 
-std::string SessionStore::create(int64_t member_id, const std::string& role, int hours) {
+std::string SessionStore::create(int64_t member_id, const std::string& role,
+                                  const std::string& display_name, int hours) {
     std::string token      = generate_token();
     std::string expires_at = now_plus_hours(hours);
     std::string created_at = now_iso();
@@ -86,12 +87,13 @@ std::string SessionStore::create(int64_t member_id, const std::string& role, int
         stmt.step();
 
         Session s;
-        s.token      = token;
-        s.member_id  = member_id;
-        s.role       = role;
-        s.expires_at = expires_at;
-        s.created_at = created_at;
-        cache_[token] = s;
+        s.token        = token;
+        s.member_id    = member_id;
+        s.role         = role;
+        s.display_name = display_name;
+        s.expires_at   = expires_at;
+        s.created_at   = created_at;
+        cache_[token]  = s;
     }
     return token;
 }
@@ -129,6 +131,12 @@ std::optional<Session> SessionStore::find(const std::string& token) {
     s.role       = stmt.col_text(2);
     s.expires_at = stmt.col_text(3);
     s.created_at = stmt.col_text(4);
+    // Look up display name from members table
+    {
+        auto m_stmt = db_.prepare("SELECT display_name FROM members WHERE id=?");
+        m_stmt.bind(1, s.member_id);
+        if (m_stmt.step()) s.display_name = m_stmt.col_text(0);
+    }
 
     if (is_expired(s.expires_at)) {
         // Remove expired session
