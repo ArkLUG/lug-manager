@@ -102,7 +102,8 @@ Member MemberRepository::create(const Member& m) {
     auto stmt = db_.prepare(
         "INSERT INTO members (discord_user_id, discord_username, first_name, last_name, display_name, "
         "email, is_paid, paid_until, role, birthday, fol_status) VALUES (?,?,?,?,?,?,?,?,?,?,?)");
-    stmt.bind(1, m.discord_user_id);
+    if (m.discord_user_id.empty()) stmt.bind_null(1);
+    else                          stmt.bind(1, m.discord_user_id);
     stmt.bind(2, m.discord_username);
     stmt.bind(3, m.first_name);
     stmt.bind(4, m.last_name);

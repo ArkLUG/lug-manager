@@ -3,6 +3,7 @@
 #include <crow/mustache.h>
 #include <ctime>
 #include <algorithm>
+#include <map>
 
 // Returns true if the current user is admin, event lead, or has event_manager/lead
 // chapter role for the entity's chapter.
@@ -68,7 +69,9 @@ static std::string render_attendance_list(AttendanceService& attendance,
 
 void register_attendance_routes(LugApp& app, AttendanceService& attendance,
                                 EventService& events, MeetingService& meetings,
-                                ChapterMemberRepository& chapter_members) {
+                                ChapterMemberRepository& chapter_members,
+                                PerkLevelRepository& perks,
+                                MemberRepository& member_repo) {
 
     // GET /attendance/overview - admin/lead attendance overview for all members
     // Query param: ?year=YYYY (defaults to current year)
@@ -98,13 +101,21 @@ void register_attendance_routes(LugApp& app, AttendanceService& attendance,
 
         // Get available years for the dropdown
         auto years = attendance.get_attendance_years();
-        // Ensure current year is always in the list
         if (std::find(years.begin(), years.end(), current_year) == years.end())
             years.insert(years.begin(), current_year);
+
+        // Load perk levels and member paid status for tier computation
+        auto perk_levels = perks.find_all(); // sorted by sort_order
+        std::map<int64_t, bool> paid_map;
+        for (const auto& s : summaries) {
+            auto m = member_repo.find_by_id(s.member_id);
+            paid_map[s.member_id] = m && m->is_paid;
+        }
 
         crow::mustache::context ctx;
         ctx["is_admin"]       = true;
         ctx["selected_year"]  = selected_year;
+        ctx["has_perks"]      = !perk_levels.empty();
 
         crow::json::wvalue year_arr;
         for (size_t i = 0; i < years.size(); ++i) {
@@ -113,9 +124,34 @@ void register_attendance_routes(LugApp& app, AttendanceService& attendance,
         }
         ctx["years"] = std::move(year_arr);
 
+        // Pass perk level names for the legend
+        crow::json::wvalue perk_arr;
+        for (size_t i = 0; i < perk_levels.size(); ++i) {
+            perk_arr[i]["name"]     = perk_levels[i].name;
+            perk_arr[i]["meetings"] = perk_levels[i].meeting_attendance_required;
+            perk_arr[i]["events"]   = perk_levels[i].event_attendance_required;
+            perk_arr[i]["paid"]     = perk_levels[i].requires_paid_dues;
+        }
+        ctx["perk_levels"] = std::move(perk_arr);
+
+        // Compute tier for each member
+        int active_count = 0;
         crow::json::wvalue arr;
         for (size_t i = 0; i < summaries.size(); ++i) {
             auto& s = summaries[i];
+            bool is_paid = paid_map[s.member_id];
+            int total = s.meeting_count + s.event_count;
+
+            // Find highest achieved perk tier
+            std::string tier_name;
+            for (const auto& lvl : perk_levels) {
+                if (s.meeting_count >= lvl.meeting_attendance_required &&
+                    s.event_count >= lvl.event_attendance_required &&
+                    (!lvl.requires_paid_dues || is_paid)) {
+                    tier_name = lvl.name;
+                }
+            }
+
             arr[i]["member_id"]             = s.member_id;
             arr[i]["display_name"]          = s.display_name;
             arr[i]["discord_username"]      = s.discord_username;
@@ -123,11 +159,16 @@ void register_attendance_routes(LugApp& app, AttendanceService& attendance,
             arr[i]["meeting_virtual_count"] = s.meeting_virtual_count;
             arr[i]["meeting_in_person"]     = s.meeting_count - s.meeting_virtual_count;
             arr[i]["event_count"]           = s.event_count;
-            arr[i]["total"]                 = s.meeting_count + s.event_count;
-            arr[i]["has_attendance"]        = (s.meeting_count + s.event_count) > 0;
+            arr[i]["total"]                 = total;
+            arr[i]["has_attendance"]        = (total > 0);
+            arr[i]["is_paid"]               = is_paid;
+            arr[i]["tier_name"]             = tier_name;
+            arr[i]["has_tier"]              = !tier_name.empty();
+            if (total > 0) ++active_count;
         }
-        ctx["members"]      = std::move(arr);
-        ctx["member_count"] = static_cast<int>(summaries.size());
+        ctx["members"]       = std::move(arr);
+        ctx["member_count"]  = static_cast<int>(summaries.size());
+        ctx["active_count"]  = active_count;
 
         bool is_htmx = req.get_header_value("HX-Request") == "true";
         if (is_htmx) {
