@@ -1938,7 +1938,8 @@ TEST_F(IntegrationTest, PerkLevelsAdminCanAccess) {
 
 TEST_F(IntegrationTest, PerkLevelCreateAndList) {
     auto r = POST("/settings/perks",
-        "name=Bronze&meeting_attendance_required=3&event_attendance_required=1&sort_order=1",
+        "name=Bronze&meeting_attendance_required=3&event_attendance_required=1&sort_order=1"
+        "&min_fol_status=tfol",
         admin_token);
     EXPECT_TRUE(r.code == 200 || r.code == 302 || r.code == 307);
 
@@ -1949,4 +1950,99 @@ TEST_F(IntegrationTest, PerkLevelCreateAndList) {
     ASSERT_NE(it, levels.end());
     EXPECT_EQ(it->meeting_attendance_required, 3);
     EXPECT_EQ(it->event_attendance_required, 1);
+    EXPECT_EQ(it->min_fol_status, "tfol");
+}
+
+TEST_F(IntegrationTest, PerkLevelEditForm) {
+    // Create a perk level first
+    PerkLevel p;
+    p.name = "Editable Tier";
+    p.sort_order = 1;
+    p.min_fol_status = "kfol";
+    auto created = perk_level_repo->create(p);
+
+    // GET edit form
+    auto r = GET("/settings/perks/" + std::to_string(created.id) + "/edit", admin_token);
+    EXPECT_EQ(r.code, 200);
+    expect_contains(r, "Edit Perk Level");
+    expect_contains(r, "Editable Tier");
+}
+
+TEST_F(IntegrationTest, PerkLevelEditFormNonAdmin) {
+    PerkLevel p;
+    p.name = "Forbidden Tier";
+    p.sort_order = 1;
+    auto created = perk_level_repo->create(p);
+
+    auto r = GET("/settings/perks/" + std::to_string(created.id) + "/edit", member_token);
+    EXPECT_EQ(r.code, 403);
+}
+
+TEST_F(IntegrationTest, PerkLevelUpdate) {
+    PerkLevel p;
+    p.name = "Update Me";
+    p.meeting_attendance_required = 1;
+    p.min_fol_status = "kfol";
+    p.sort_order = 1;
+    auto created = perk_level_repo->create(p);
+
+    auto r = PUT("/settings/perks/" + std::to_string(created.id),
+        "name=Updated+Tier&meeting_attendance_required=5&event_attendance_required=2"
+        "&min_fol_status=afol&sort_order=3",
+        admin_token);
+    EXPECT_TRUE(r.code == 200 || r.code == 302 || r.code == 307);
+
+    auto found = perk_level_repo->find_by_id(created.id);
+    ASSERT_TRUE(found.has_value());
+    EXPECT_EQ(found->name, "Updated Tier");
+    EXPECT_EQ(found->meeting_attendance_required, 5);
+    EXPECT_EQ(found->event_attendance_required, 2);
+    EXPECT_EQ(found->min_fol_status, "afol");
+    EXPECT_EQ(found->sort_order, 3);
+}
+
+TEST_F(IntegrationTest, AttendanceOverviewYearFilter) {
+    auto r = GET("/attendance/overview?year=2026", admin_token);
+    EXPECT_EQ(r.code, 200);
+    expect_contains(r, "2026");
+    expect_contains(r, "Attendance Overview");
+}
+
+TEST_F(IntegrationTest, AttendanceOverviewSearch) {
+    auto r = GET("/attendance/overview?year=2026&search=Admin", admin_token);
+    EXPECT_EQ(r.code, 200);
+    expect_contains(r, "Admin U.");
+}
+
+TEST_F(IntegrationTest, AttendanceOverviewHideInactive) {
+    auto r = GET("/attendance/overview?year=2026&hide_inactive=1", admin_token);
+    EXPECT_EQ(r.code, 200);
+    expect_contains(r, "Attendance Overview");
+}
+
+TEST_F(IntegrationTest, AttendanceOverviewSort) {
+    auto r = GET("/attendance/overview?year=2026&sort=total&dir=desc", admin_token);
+    EXPECT_EQ(r.code, 200);
+    expect_contains(r, "Attendance Overview");
+}
+
+TEST_F(IntegrationTest, AttendanceOverviewPagination) {
+    auto r = GET("/attendance/overview?year=2026&page=1", admin_token);
+    EXPECT_EQ(r.code, 200);
+    expect_contains(r, "Page 1");
+}
+
+TEST_F(IntegrationTest, MemberCreateWithoutDiscord) {
+    auto r = POST("/members",
+        "first_name=Kid&last_name=Member&fol_status=kfol&role=member",
+        admin_token);
+    EXPECT_EQ(r.code, 200);
+
+    // Verify member was created without discord ID
+    auto all = member_repo->find_all();
+    auto it = std::find_if(all.begin(), all.end(),
+        [](const Member& m) { return m.first_name == "Kid" && m.last_name == "Member"; });
+    ASSERT_NE(it, all.end());
+    EXPECT_TRUE(it->discord_user_id.empty());
+    EXPECT_EQ(it->fol_status, "kfol");
 }

@@ -53,8 +53,8 @@ std::vector<Member> MemberService::list_paid() {
 }
 
 Member MemberService::create(const Member& m) {
-    if (m.discord_user_id.empty()) {
-        throw std::invalid_argument("discord_user_id required");
+    if (m.first_name.empty() && m.discord_user_id.empty()) {
+        throw std::invalid_argument("first_name or discord_user_id required");
     }
     Member to_create = m;
     // Auto-generate display_name from first/last if both are set
@@ -62,8 +62,12 @@ Member MemberService::create(const Member& m) {
         to_create.display_name = generate_nickname(to_create.first_name, to_create.last_name, 0);
     }
     if (to_create.display_name.empty()) {
-        to_create.display_name = to_create.discord_username.empty()
-            ? to_create.discord_user_id : to_create.discord_username;
+        if (!to_create.discord_username.empty())
+            to_create.display_name = to_create.discord_username;
+        else if (!to_create.first_name.empty())
+            to_create.display_name = to_create.first_name;
+        else
+            to_create.display_name = to_create.discord_user_id;
     }
     return repo_.create(to_create);
 }

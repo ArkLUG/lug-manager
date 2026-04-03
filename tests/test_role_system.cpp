@@ -1,4 +1,5 @@
 #include <gtest/gtest.h>
+#include <algorithm>
 #include "test_helper.hpp"
 #include "repositories/RoleMappingRepository.hpp"
 #include "repositories/MemberRepository.hpp"
@@ -275,4 +276,234 @@ TEST_F(ChapterRoleTest, LeadOutranksEventManager) {
     // chapter_role_rank is defined in AuthMiddleware.hpp
     EXPECT_GT(chapter_role_rank("lead"), chapter_role_rank("event_manager"));
     EXPECT_GT(chapter_role_rank("event_manager"), chapter_role_rank("member"));
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// FOL Rank Tests
+// ═══════════════════════════════════════════════════════════════════════════
+
+TEST(FolRank, Ordering) {
+    EXPECT_GT(fol_rank("afol"), fol_rank("tfol"));
+    EXPECT_GT(fol_rank("tfol"), fol_rank("kfol"));
+    EXPECT_EQ(fol_rank("kfol"), 0);
+    EXPECT_EQ(fol_rank(""), 0); // empty defaults to kfol level
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// Perk Level — min_fol_status
+// ═══════════════════════════════════════════════════════════════════════════
+
+TEST_F(PerkLevelTest, MinFolStatusPersists) {
+    PerkLevel p;
+    p.name = "Adults Only";
+    p.min_fol_status = "afol";
+    p.sort_order = 1;
+    auto created = perks->create(p);
+    EXPECT_EQ(created.min_fol_status, "afol");
+
+    auto found = perks->find_by_id(created.id);
+    ASSERT_TRUE(found.has_value());
+    EXPECT_EQ(found->min_fol_status, "afol");
+}
+
+TEST_F(PerkLevelTest, MinFolStatusDefaultsToKfol) {
+    PerkLevel p;
+    p.name = "Any Age";
+    p.sort_order = 1;
+    auto created = perks->create(p);
+    EXPECT_EQ(created.min_fol_status, "kfol");
+}
+
+TEST_F(PerkLevelTest, MinFolStatusUpdate) {
+    PerkLevel p;
+    p.name = "Updatable";
+    p.min_fol_status = "kfol";
+    p.sort_order = 1;
+    auto created = perks->create(p);
+
+    created.min_fol_status = "tfol";
+    perks->update(created);
+
+    auto found = perks->find_by_id(created.id);
+    ASSERT_TRUE(found.has_value());
+    EXPECT_EQ(found->min_fol_status, "tfol");
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// Attendance Overview — pagination, search, filter
+// ═══════════════════════════════════════════════════════════════════════════
+
+TEST_F(PerkLevelTest, OverviewPaginated) {
+    // Create 3 members with different attendance
+    for (int i = 1; i <= 3; ++i) {
+        Member m;
+        m.discord_user_id = "ov_user_" + std::to_string(i);
+        m.discord_username = "ov" + std::to_string(i);
+        m.display_name = "Overview " + std::to_string(i);
+        if (i == 2) m.is_paid = true;
+        members->create(m);
+    }
+    db->execute("INSERT INTO meetings (title, start_time, end_time, ical_uid, scope) "
+                "VALUES ('OV Mtg', '2026-03-01T19:00:00', '2026-03-01T21:00:00', 'ov-uid-1', 'chapter')");
+    attendance->check_in(1, "meeting", 1); // member 1 attends
+    attendance->check_in(2, "meeting", 1); // member 2 attends
+
+    AttendanceRepository::OverviewParams p;
+    p.year = 2026;
+    p.limit = 25;
+    p.offset = 0;
+
+    auto results = attendance->get_overview_paginated(p);
+    EXPECT_GE(results.size(), 3u);
+    int total = attendance->count_overview(p);
+    EXPECT_GE(total, 3);
+}
+
+TEST_F(PerkLevelTest, OverviewSearch) {
+    Member m;
+    m.discord_user_id = "searchable_user";
+    m.discord_username = "searchme";
+    m.display_name = "Findable Person";
+    members->create(m);
+
+    AttendanceRepository::OverviewParams p;
+    p.year = 2026;
+    p.search = "Findable";
+    p.limit = 25;
+
+    auto results = attendance->get_overview_paginated(p);
+    EXPECT_GE(results.size(), 1u);
+    EXPECT_EQ(results[0].display_name, "Findable Person");
+}
+
+TEST_F(PerkLevelTest, OverviewHideInactive) {
+    Member m1;
+    m1.discord_user_id = "active_ov";
+    m1.discord_username = "active";
+    m1.display_name = "Active U.";
+    m1.is_paid = true;
+    members->create(m1);
+
+    Member m2;
+    m2.discord_user_id = "inactive_ov";
+    m2.discord_username = "inactive";
+    m2.display_name = "Inactive U.";
+    members->create(m2);
+
+    AttendanceRepository::OverviewParams p;
+    p.year = 2026;
+    p.hide_inactive = true;
+    p.limit = 100;
+
+    auto results = attendance->get_overview_paginated(p);
+    // Active (paid) should be included, inactive (no dues, no attendance) should not
+    bool found_active = false, found_inactive = false;
+    for (const auto& s : results) {
+        if (s.display_name == "Active U.") found_active = true;
+        if (s.display_name == "Inactive U.") found_inactive = true;
+    }
+    EXPECT_TRUE(found_active);
+    EXPECT_FALSE(found_inactive);
+}
+
+TEST_F(PerkLevelTest, OverviewSortByTotal) {
+    Member m1;
+    m1.discord_user_id = "sort_a";
+    m1.discord_username = "sorta";
+    m1.display_name = "Sorta A.";
+    auto ma = members->create(m1);
+
+    Member m2;
+    m2.discord_user_id = "sort_b";
+    m2.discord_username = "sortb";
+    m2.display_name = "Sortb B.";
+    auto mb = members->create(m2);
+
+    db->execute("INSERT INTO meetings (title, start_time, end_time, ical_uid, scope) "
+                "VALUES ('Sort Mtg 1', '2026-05-01T19:00:00', '2026-05-01T21:00:00', 'sort-uid-1', 'chapter')");
+    db->execute("INSERT INTO meetings (title, start_time, end_time, ical_uid, scope) "
+                "VALUES ('Sort Mtg 2', '2026-05-02T19:00:00', '2026-05-02T21:00:00', 'sort-uid-2', 'chapter')");
+
+    // Member B attends 2, member A attends 1
+    attendance->check_in(mb.id, "meeting", 1);
+    attendance->check_in(mb.id, "meeting", 2);
+    attendance->check_in(ma.id, "meeting", 1);
+
+    AttendanceRepository::OverviewParams p;
+    p.year = 2026;
+    p.sort_col = "total";
+    p.sort_dir = "desc";
+    p.limit = 100;
+
+    auto results = attendance->get_overview_paginated(p);
+    // Find positions of our two members
+    int pos_a = -1, pos_b = -1;
+    for (size_t i = 0; i < results.size(); ++i) {
+        if (results[i].member_id == ma.id) pos_a = static_cast<int>(i);
+        if (results[i].member_id == mb.id) pos_b = static_cast<int>(i);
+    }
+    ASSERT_NE(pos_a, -1);
+    ASSERT_NE(pos_b, -1);
+    EXPECT_LT(pos_b, pos_a) << "Member B (2 attendance) should appear before A (1) in desc sort";
+}
+
+TEST_F(PerkLevelTest, OverviewLastAttendance) {
+    Member m;
+    m.discord_user_id = "last_att_user";
+    m.discord_username = "lastatt";
+    m.display_name = "Last Att U.";
+    auto member = members->create(m);
+
+    db->execute("INSERT INTO meetings (title, start_time, end_time, ical_uid, scope) "
+                "VALUES ('Last Mtg', '2026-06-15T19:00:00', '2026-06-15T21:00:00', 'last-uid-1', 'chapter')");
+    attendance->check_in(member.id, "meeting", 1);
+
+    AttendanceRepository::OverviewParams p;
+    p.year = 2026;
+    p.limit = 100;
+
+    auto results = attendance->get_overview_paginated(p);
+    auto it = std::find_if(results.begin(), results.end(),
+        [&](const auto& s) { return s.member_id == member.id; });
+    ASSERT_NE(it, results.end());
+    EXPECT_FALSE(it->last_attendance.empty()) << "Should have a last attendance date";
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// Optional Discord User ID
+// ═══════════════════════════════════════════════════════════════════════════
+
+TEST_F(MemberModelTest, CreateWithoutDiscordId) {
+    Member m;
+    m.first_name = "Kid";
+    m.last_name = "Member";
+    m.display_name = "Kid M.";
+    m.fol_status = "kfol";
+    // No discord_user_id
+    auto created = members->create(m);
+    EXPECT_GT(created.id, 0);
+    EXPECT_EQ(created.display_name, "Kid M.");
+
+    auto found = members->find_by_id(created.id);
+    ASSERT_TRUE(found.has_value());
+    EXPECT_TRUE(found->discord_user_id.empty());
+    EXPECT_EQ(found->fol_status, "kfol");
+}
+
+TEST_F(MemberModelTest, MultipleNullDiscordIdsAllowed) {
+    Member m1;
+    m1.first_name = "Kid1";
+    m1.last_name = "A";
+    m1.display_name = "Kid1 A.";
+    auto c1 = members->create(m1);
+
+    Member m2;
+    m2.first_name = "Kid2";
+    m2.last_name = "B";
+    m2.display_name = "Kid2 B.";
+    auto c2 = members->create(m2);
+
+    EXPECT_NE(c1.id, c2.id);
+    EXPECT_TRUE(c1.discord_user_id.empty());
+    EXPECT_TRUE(c2.discord_user_id.empty());
 }

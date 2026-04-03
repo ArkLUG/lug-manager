@@ -188,6 +188,87 @@ std::vector<int> AttendanceRepository::get_attendance_years() {
     return result;
 }
 
+// Build the common CTE + WHERE for overview queries
+static std::string build_overview_sql(const AttendanceRepository::OverviewParams& p,
+                                       bool count_only) {
+    std::string year_start = std::to_string(p.year) + "-01-01";
+    std::string year_end   = std::to_string(p.year + 1) + "-01-01";
+
+    // CTE computes per-member attendance stats for the year
+    std::string sql =
+        "WITH stats AS ("
+        "  SELECT m.id AS member_id, m.display_name, m.discord_username, m.is_paid, "
+        "         COALESCE(m.fol_status,'afol') AS fol_status, "
+        "         SUM(CASE WHEN a.entity_type='meeting' THEN 1 ELSE 0 END) AS meeting_count, "
+        "         SUM(CASE WHEN a.entity_type='meeting' AND a.is_virtual=1 THEN 1 ELSE 0 END) AS meeting_virtual_count, "
+        "         SUM(CASE WHEN a.entity_type='event' THEN 1 ELSE 0 END) AS event_count, "
+        "         MAX(a.checked_in_at) AS last_attendance "
+        "  FROM members m "
+        "  LEFT JOIN attendance a ON a.member_id = m.id "
+        "    AND a.checked_in_at >= '" + year_start + "' AND a.checked_in_at < '" + year_end + "' "
+        "  GROUP BY m.id"
+        ") ";
+
+    if (count_only) {
+        sql += "SELECT COUNT(*) FROM stats WHERE 1=1";
+    } else {
+        sql += "SELECT member_id, display_name, discord_username, meeting_count, "
+               "meeting_virtual_count, event_count, COALESCE(last_attendance,''), "
+               "is_paid, fol_status FROM stats WHERE 1=1";
+    }
+
+    // Search filter
+    if (!p.search.empty()) {
+        sql += " AND (display_name LIKE '%" + p.search + "%' OR discord_username LIKE '%" + p.search + "%')";
+    }
+
+    // Hide inactive: no attendance AND not paid
+    if (p.hide_inactive) {
+        sql += " AND (meeting_count + event_count > 0 OR is_paid = 1)";
+    }
+
+    if (!count_only) {
+        // Sort — whitelist columns
+        std::string col = "display_name";
+        if (p.sort_col == "meeting_count") col = "meeting_count";
+        else if (p.sort_col == "event_count") col = "event_count";
+        else if (p.sort_col == "total") col = "(meeting_count + event_count)";
+        else if (p.sort_col == "last_attendance") col = "last_attendance";
+
+        std::string dir = (p.sort_dir == "desc") ? "DESC" : "ASC";
+        sql += " ORDER BY " + col + " " + dir;
+        sql += " LIMIT " + std::to_string(p.limit) + " OFFSET " + std::to_string(p.offset);
+    }
+
+    return sql;
+}
+
+std::vector<AttendanceRepository::MemberAttendanceSummary>
+AttendanceRepository::get_overview_paginated(const OverviewParams& p) {
+    auto stmt = db_.prepare(build_overview_sql(p, false));
+    std::vector<MemberAttendanceSummary> result;
+    while (stmt.step()) {
+        MemberAttendanceSummary s;
+        s.member_id             = stmt.col_int(0);
+        s.display_name          = stmt.col_text(1);
+        s.discord_username      = stmt.col_text(2);
+        s.meeting_count         = static_cast<int>(stmt.col_int(3));
+        s.meeting_virtual_count = static_cast<int>(stmt.col_int(4));
+        s.event_count           = static_cast<int>(stmt.col_int(5));
+        s.last_attendance       = stmt.col_text(6);
+        s.is_paid               = stmt.col_bool(7);
+        s.fol_status            = stmt.col_text(8);
+        result.push_back(s);
+    }
+    return result;
+}
+
+int AttendanceRepository::count_overview(const OverviewParams& p) {
+    auto stmt = db_.prepare(build_overview_sql(p, true));
+    if (stmt.step()) return static_cast<int>(stmt.col_int(0));
+    return 0;
+}
+
 int AttendanceRepository::count_member_by_year(int64_t member_id, int year,
                                                 const std::string& entity_type) {
     std::string year_start = std::to_string(year) + "-01-01";

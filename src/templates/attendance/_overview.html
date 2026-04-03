@@ -1,16 +1,15 @@
 <div class="space-y-4" data-page-title="Attendance Overview">
-  <!-- Header + Year Selector -->
+  <!-- Header + Controls -->
   <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
     <div>
       <h2 class="text-xl font-semibold text-gray-800">Attendance Overview</h2>
-      <p class="text-sm text-gray-500 mt-0.5">{{active_count}} active of {{member_count}} members &mdash; {{selected_year}}</p>
+      <p class="text-sm text-gray-500 mt-0.5">{{active_count}} active of {{total_count}} members &mdash; {{selected_year}}</p>
     </div>
     <div class="flex items-center gap-2">
-      <label class="text-sm text-gray-600">Year:</label>
-      <select id="attendance-year-select"
+      <select name="year"
               hx-get="/attendance/overview" hx-target="#main-content" hx-swap="innerHTML" hx-push-url="true"
-              hx-trigger="change" hx-include="this" name="year"
-              class="px-3 py-1.5 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-yellow-400">
+              hx-trigger="change" hx-include="#overview-filters"
+              class="px-2 py-1.5 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-yellow-400">
         {{#years}}
         <option value="{{year}}" {{#selected}}selected{{/selected}}>{{year}}</option>
         {{/years}}
@@ -19,25 +18,63 @@
   </div>
 
   {{#has_perks}}
-  <!-- Tier Legend -->
   <div class="flex flex-wrap items-center gap-3 text-xs text-gray-500">
     <span class="font-medium text-gray-600">Tiers:</span>
     {{#perk_levels}}
-    <span class="px-2 py-0.5 rounded bg-gray-100 text-gray-600">{{name}} <span class="text-gray-400">({{meetings}}m / {{events}}e{{#paid}} + dues{{/paid}})</span></span>
+    <span class="px-2 py-0.5 rounded bg-gray-100 text-gray-600">{{name}} <span class="text-gray-400">({{meetings}}m / {{events}}e{{#paid}} + dues{{/paid}}{{#has_fol_req}} + {{min_fol}}+{{/has_fol_req}})</span></span>
     {{/perk_levels}}
   </div>
   {{/has_perks}}
 
-  <!-- Compact Table -->
+  <!-- Search + Filters -->
+  <div id="overview-filters" class="flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
+    <input type="hidden" name="year" value="{{selected_year}}">
+    <input type="hidden" name="sort" value="{{sort}}">
+    <input type="hidden" name="dir" value="{{dir}}">
+    <input type="search" name="search" value="{{search}}" placeholder="Search by name..."
+           hx-get="/attendance/overview" hx-target="#main-content" hx-swap="innerHTML" hx-push-url="true"
+           hx-trigger="input changed delay:300ms, search"
+           hx-include="#overview-filters"
+           class="flex-1 px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-yellow-400">
+    <label class="flex items-center gap-2 text-sm text-gray-600 cursor-pointer whitespace-nowrap px-3 py-2 border border-gray-300 rounded-lg hover:bg-gray-50">
+      <input type="checkbox" name="hide_inactive" value="1" {{#hide_inactive}}checked{{/hide_inactive}}
+             hx-get="/attendance/overview" hx-target="#main-content" hx-swap="innerHTML" hx-push-url="true"
+             hx-trigger="change" hx-include="#overview-filters">
+      Hide inactive
+    </label>
+  </div>
+
+  <!-- Table -->
   <div class="bg-white rounded-xl border border-gray-200 overflow-hidden">
     <div class="overflow-x-auto">
       <table class="w-full text-sm">
         <thead>
           <tr class="bg-gray-50 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-            <th class="px-3 py-2">Member</th>
-            <th class="px-3 py-2 text-center" title="Meetings (In-Person / Virtual)">Mtg</th>
-            <th class="px-3 py-2 text-center" title="Events">Evt</th>
-            <th class="px-3 py-2 text-center">Total</th>
+            <th class="px-3 py-2">
+              <a hx-get="/attendance/overview?sort=display_name&dir={{#sort_name_asc}}desc{{/sort_name_asc}}{{^sort_name_asc}}asc{{/sort_name_asc}}"
+                 hx-target="#main-content" hx-swap="innerHTML" hx-push-url="true" hx-include="#overview-filters"
+                 class="cursor-pointer hover:text-gray-800">Name</a>
+            </th>
+            <th class="px-3 py-2 text-center">
+              <a hx-get="/attendance/overview?sort=meeting_count&dir={{#sort_mtg_asc}}desc{{/sort_mtg_asc}}{{^sort_mtg_asc}}asc{{/sort_mtg_asc}}"
+                 hx-target="#main-content" hx-swap="innerHTML" hx-push-url="true" hx-include="#overview-filters"
+                 class="cursor-pointer hover:text-gray-800">Mtg</a>
+            </th>
+            <th class="px-3 py-2 text-center">
+              <a hx-get="/attendance/overview?sort=event_count&dir={{#sort_evt_asc}}desc{{/sort_evt_asc}}{{^sort_evt_asc}}asc{{/sort_evt_asc}}"
+                 hx-target="#main-content" hx-swap="innerHTML" hx-push-url="true" hx-include="#overview-filters"
+                 class="cursor-pointer hover:text-gray-800">Evt</a>
+            </th>
+            <th class="px-3 py-2 text-center">
+              <a hx-get="/attendance/overview?sort=total&dir={{#sort_tot_asc}}desc{{/sort_tot_asc}}{{^sort_tot_asc}}asc{{/sort_tot_asc}}"
+                 hx-target="#main-content" hx-swap="innerHTML" hx-push-url="true" hx-include="#overview-filters"
+                 class="cursor-pointer hover:text-gray-800">Total</a>
+            </th>
+            <th class="px-3 py-2 text-center">
+              <a hx-get="/attendance/overview?sort=last_attendance&dir={{#sort_last_asc}}desc{{/sort_last_asc}}{{^sort_last_asc}}asc{{/sort_last_asc}}"
+                 hx-target="#main-content" hx-swap="innerHTML" hx-push-url="true" hx-include="#overview-filters"
+                 class="cursor-pointer hover:text-gray-800">Last</a>
+            </th>
             <th class="px-3 py-2 text-center">Dues</th>
             {{#has_perks}}<th class="px-3 py-2">Tier</th>{{/has_perks}}
           </tr>
@@ -64,6 +101,10 @@
               {{#has_attendance}}<span class="inline-flex items-center justify-center min-w-[1.25rem] px-1 py-0.5 rounded-full text-xs font-semibold bg-gray-800 text-white">{{total}}</span>{{/has_attendance}}
               {{^has_attendance}}<span class="text-gray-300 text-xs">&ndash;</span>{{/has_attendance}}
             </td>
+            <td class="px-3 py-1.5 text-center text-xs text-gray-500">
+              {{#has_last}}{{last_attendance}}{{/has_last}}
+              {{^has_last}}<span class="text-gray-300">&ndash;</span>{{/has_last}}
+            </td>
             <td class="px-3 py-1.5 text-center">
               {{#is_paid}}<span class="text-green-600 text-xs font-medium">Paid</span>{{/is_paid}}
               {{^is_paid}}<span class="text-gray-300 text-xs">&ndash;</span>{{/is_paid}}
@@ -85,5 +126,22 @@
       <p class="font-medium">No members found</p>
     </div>
     {{/members}}
+  </div>
+
+  <!-- Pagination -->
+  <div class="flex items-center justify-between text-sm text-gray-500">
+    <span>Page {{page}} of {{total_pages}}</span>
+    <div class="flex items-center gap-2">
+      {{#has_prev}}
+      <button hx-get="/attendance/overview?page={{prev_page}}" hx-target="#main-content" hx-swap="innerHTML" hx-push-url="true" hx-include="#overview-filters"
+              class="px-3 py-1.5 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors">Prev</button>
+      {{/has_prev}}
+      {{^has_prev}}<span class="px-3 py-1.5 border border-gray-200 rounded-lg text-gray-300 cursor-not-allowed">Prev</span>{{/has_prev}}
+      {{#has_next}}
+      <button hx-get="/attendance/overview?page={{next_page}}" hx-target="#main-content" hx-swap="innerHTML" hx-push-url="true" hx-include="#overview-filters"
+              class="px-3 py-1.5 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors">Next</button>
+      {{/has_next}}
+      {{^has_next}}<span class="px-3 py-1.5 border border-gray-200 rounded-lg text-gray-300 cursor-not-allowed">Next</span>{{/has_next}}
+    </div>
   </div>
 </div>

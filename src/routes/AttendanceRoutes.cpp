@@ -86,68 +86,97 @@ void register_attendance_routes(LugApp& app, AttendanceService& attendance,
             return res;
         }
 
-        // Determine selected year (default to current)
+        // Parse query params
         std::time_t now = std::time(nullptr);
-        std::tm* tm = std::localtime(&now);
-        int current_year = tm->tm_year + 1900;
-        int selected_year = current_year;
-        {
-            auto qs = crow::query_string(req.url_params);
-            const char* y = qs.get("year");
-            if (y) try { selected_year = std::stoi(y); } catch (...) {}
-        }
+        std::tm* tm_now = std::localtime(&now);
+        int current_year = tm_now->tm_year + 1900;
 
-        auto summaries = attendance.get_all_member_summaries_by_year(selected_year);
+        auto qs = crow::query_string(req.url_params);
+        auto gp = [&](const char* k) -> std::string { const char* v = qs.get(k); return v ? v : ""; };
 
-        // Get available years for the dropdown
+        AttendanceRepository::OverviewParams params;
+        params.year = current_year;
+        { std::string y = gp("year"); if (!y.empty()) try { params.year = std::stoi(y); } catch (...) {} }
+        params.search = gp("search");
+        { std::string sc = gp("sort"); if (!sc.empty()) params.sort_col = sc; }
+        { std::string sd = gp("dir");  if (!sd.empty()) params.sort_dir = sd; }
+        params.hide_inactive = (gp("hide_inactive") == "1");
+
+        int page = 1;
+        { std::string p = gp("page"); if (!p.empty()) try { page = std::stoi(p); } catch (...) {} }
+        if (page < 1) page = 1;
+        constexpr int per_page = 25;
+
+        int total_count = attendance.count_overview(params);
+        int total_pages = (total_count + per_page - 1) / per_page;
+        if (total_pages < 1) total_pages = 1;
+        if (page > total_pages) page = total_pages;
+        params.limit = per_page;
+        params.offset = (page - 1) * per_page;
+
+        auto summaries = attendance.get_overview_paginated(params);
+
+        // Year dropdown
         auto years = attendance.get_attendance_years();
         if (std::find(years.begin(), years.end(), current_year) == years.end())
             years.insert(years.begin(), current_year);
 
-        // Load perk levels and member paid status for tier computation
-        auto perk_levels = perks.find_all(); // sorted by sort_order
-        std::map<int64_t, bool> paid_map;
-        for (const auto& s : summaries) {
-            auto m = member_repo.find_by_id(s.member_id);
-            paid_map[s.member_id] = m && m->is_paid;
-        }
+        // Perk levels for tier computation
+        auto perk_levels = perks.find_all();
 
         crow::mustache::context ctx;
         ctx["is_admin"]       = true;
-        ctx["selected_year"]  = selected_year;
+        ctx["selected_year"]  = params.year;
         ctx["has_perks"]      = !perk_levels.empty();
+        ctx["search"]         = params.search;
+        ctx["sort"]           = params.sort_col;
+        ctx["dir"]            = params.sort_dir;
+        ctx["hide_inactive"]  = params.hide_inactive;
+        // Sort direction flags for column header toggle links
+        ctx["sort_name_asc"]  = (params.sort_col == "display_name" && params.sort_dir == "asc");
+        ctx["sort_mtg_asc"]   = (params.sort_col == "meeting_count" && params.sort_dir == "asc");
+        ctx["sort_evt_asc"]   = (params.sort_col == "event_count" && params.sort_dir == "asc");
+        ctx["sort_tot_asc"]   = (params.sort_col == "total" && params.sort_dir == "asc");
+        ctx["sort_last_asc"]  = (params.sort_col == "last_attendance" && params.sort_dir == "asc");
+        ctx["page"]           = page;
+        ctx["total_pages"]    = total_pages;
+        ctx["total_count"]    = total_count;
+        ctx["has_prev"]       = (page > 1);
+        ctx["has_next"]       = (page < total_pages);
+        ctx["prev_page"]      = page - 1;
+        ctx["next_page"]      = page + 1;
 
         crow::json::wvalue year_arr;
         for (size_t i = 0; i < years.size(); ++i) {
             year_arr[i]["year"]     = years[i];
-            year_arr[i]["selected"] = (years[i] == selected_year);
+            year_arr[i]["selected"] = (years[i] == params.year);
         }
         ctx["years"] = std::move(year_arr);
 
-        // Pass perk level names for the legend
         crow::json::wvalue perk_arr;
         for (size_t i = 0; i < perk_levels.size(); ++i) {
             perk_arr[i]["name"]     = perk_levels[i].name;
             perk_arr[i]["meetings"] = perk_levels[i].meeting_attendance_required;
             perk_arr[i]["events"]   = perk_levels[i].event_attendance_required;
             perk_arr[i]["paid"]     = perk_levels[i].requires_paid_dues;
+            perk_arr[i]["min_fol"]  = perk_levels[i].min_fol_status;
+            perk_arr[i]["has_fol_req"] = (perk_levels[i].min_fol_status != "kfol");
         }
         ctx["perk_levels"] = std::move(perk_arr);
 
-        // Compute tier for each member
+        // Build member rows with tier
         int active_count = 0;
         crow::json::wvalue arr;
         for (size_t i = 0; i < summaries.size(); ++i) {
             auto& s = summaries[i];
-            bool is_paid = paid_map[s.member_id];
             int total = s.meeting_count + s.event_count;
 
-            // Find highest achieved perk tier
             std::string tier_name;
             for (const auto& lvl : perk_levels) {
                 if (s.meeting_count >= lvl.meeting_attendance_required &&
                     s.event_count >= lvl.event_attendance_required &&
-                    (!lvl.requires_paid_dues || is_paid)) {
+                    (!lvl.requires_paid_dues || s.is_paid) &&
+                    fol_rank(s.fol_status) >= fol_rank(lvl.min_fol_status)) {
                     tier_name = lvl.name;
                 }
             }
@@ -161,13 +190,15 @@ void register_attendance_routes(LugApp& app, AttendanceService& attendance,
             arr[i]["event_count"]           = s.event_count;
             arr[i]["total"]                 = total;
             arr[i]["has_attendance"]        = (total > 0);
-            arr[i]["is_paid"]               = is_paid;
+            arr[i]["is_paid"]               = s.is_paid;
+            arr[i]["last_attendance"]       = s.last_attendance;
+            arr[i]["has_last"]              = !s.last_attendance.empty();
             arr[i]["tier_name"]             = tier_name;
             arr[i]["has_tier"]              = !tier_name.empty();
             if (total > 0) ++active_count;
         }
         ctx["members"]       = std::move(arr);
-        ctx["member_count"]  = static_cast<int>(summaries.size());
+        ctx["member_count"]  = total_count;
         ctx["active_count"]  = active_count;
 
         bool is_htmx = req.get_header_value("HX-Request") == "true";

@@ -48,6 +48,14 @@ std::vector<AttendanceRepository::MemberAttendanceSummary> AttendanceService::ge
     return repo_.get_all_member_summaries_by_year(year);
 }
 
+std::vector<AttendanceRepository::MemberAttendanceSummary> AttendanceService::get_overview_paginated(const AttendanceRepository::OverviewParams& p) {
+    return repo_.get_overview_paginated(p);
+}
+
+int AttendanceService::count_overview(const AttendanceRepository::OverviewParams& p) {
+    return repo_.count_overview(p);
+}
+
 std::vector<int> AttendanceService::get_attendance_years() {
     return repo_.get_attendance_years();
 }

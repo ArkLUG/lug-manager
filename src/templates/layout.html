@@ -333,17 +333,31 @@
     document.addEventListener('DOMContentLoaded', function() { initChannelSelects(); });
     document.addEventListener('htmx:afterSwap', function() { initChannelSelects(); });
 
-    // Update visible page title from data-page-title on #main-content
+    // Update visible page title and nav highlights from data attributes
     document.addEventListener('htmx:afterSettle', function() {
       var mc = document.getElementById('main-content');
-      if (mc) {
-        var t = mc.getAttribute('data-page-title');
+      if (!mc) return;
+      // Find data-page-title on mc itself or its first child
+      var src = mc.getAttribute('data-page-title') ? mc : mc.querySelector('[data-page-title]');
+      if (src) {
+        var t = src.getAttribute('data-page-title');
         if (t) {
           var h1 = document.getElementById('page-title');
           if (h1) h1.textContent = t;
           document.title = t + ' — LUG Manager';
         }
       }
+      // Update nav highlights based on current URL
+      var path = window.location.pathname;
+      document.querySelectorAll('nav a[hx-get]').forEach(function(a) {
+        var href = a.getAttribute('hx-get');
+        var isActive = (path === href) || (href !== '/' && path.startsWith(href + '/'));
+        // Special case: /attendance vs /attendance/overview
+        if (href === '/attendance' && path.startsWith('/attendance/overview')) isActive = false;
+        if (href === '/attendance/overview' && path.startsWith('/attendance/overview')) isActive = true;
+        a.classList.remove('nav-active', 'nav-inactive');
+        a.classList.add(isActive ? 'nav-active' : 'nav-inactive');
+      });
     });
 
     // Sidebar toggle (mobile)

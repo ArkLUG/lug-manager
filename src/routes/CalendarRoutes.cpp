@@ -53,11 +53,13 @@ void register_calendar_routes(LugApp& app, CalendarGenerator& cal,
 
             auto member = member_repo.find_by_id(auth_ctx.auth.member_id);
             bool is_paid = member && member->is_paid;
+            std::string member_fol = member ? member->fol_status : "afol";
 
             for (const auto& lvl : levels) {
                 bool meets = meeting_count >= lvl.meeting_attendance_required &&
                              event_count >= lvl.event_attendance_required &&
-                             (!lvl.requires_paid_dues || is_paid);
+                             (!lvl.requires_paid_dues || is_paid) &&
+                             fol_rank(member_fol) >= fol_rank(lvl.min_fol_status);
                 if (meets) {
                     achieved_name = lvl.name;
                 } else if (next_name.empty()) {

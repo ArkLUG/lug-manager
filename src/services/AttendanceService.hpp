@@ -23,6 +23,8 @@ public:
     std::vector<Attendance> get_member_history(int64_t member_id);
     std::vector<AttendanceRepository::MemberAttendanceSummary> get_all_member_summaries();
     std::vector<AttendanceRepository::MemberAttendanceSummary> get_all_member_summaries_by_year(int year);
+    std::vector<AttendanceRepository::MemberAttendanceSummary> get_overview_paginated(const AttendanceRepository::OverviewParams& p);
+    int count_overview(const AttendanceRepository::OverviewParams& p);
     std::vector<int> get_attendance_years();
 
 private:
