@@ -111,6 +111,8 @@ std::string DiscordClient::discord_api_request(const std::string& method,
     curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, write_cb);
     curl_easy_setopt(curl, CURLOPT_WRITEDATA, &response);
     curl_easy_setopt(curl, CURLOPT_SSL_VERIFYPEER, 1L);
+    curl_easy_setopt(curl, CURLOPT_CONNECTTIMEOUT, 5L);
+    curl_easy_setopt(curl, CURLOPT_TIMEOUT, 15L);
 
     if (method == "POST") {
         curl_easy_setopt(curl, CURLOPT_POST, 1L);
@@ -1065,4 +1067,49 @@ void DiscordClient::post_message(const std::string& channel_id, const std::strin
             std::cerr << "[DiscordClient] post_message failed: " << e.what() << "\n";
         }
     });
+}
+
+std::string DiscordClient::publish_report_to_forum(const std::string& forum_channel_id,
+                                                     const std::string& existing_thread_id,
+                                                     const std::string& title,
+                                                     const std::string& content) {
+    if (forum_channel_id.empty()) return "";
+
+    if (!existing_thread_id.empty()) {
+        // Edit the existing forum thread's starter message
+        // First, get the thread's first message (starter)
+        try {
+            std::string resp = discord_api_request("GET",
+                "/channels/" + existing_thread_id + "/messages?limit=1&after=0");
+            auto j = json::parse(resp);
+            if (j.is_array() && !j.empty() && j[0].contains("id")) {
+                std::string msg_id = j[0]["id"].get<std::string>();
+                json edit_body;
+                edit_body["content"] = content;
+                discord_api_request("PATCH",
+                    "/channels/" + existing_thread_id + "/messages/" + msg_id,
+                    edit_body.dump());
+                return existing_thread_id;
+            }
+        } catch (const std::exception& ex) {
+            std::cerr << "[DiscordClient] publish_report edit failed: " << ex.what() << "\n";
+        }
+        return existing_thread_id;
+    }
+
+    // Create new forum thread
+    json body;
+    body["name"]                  = title.substr(0, 100); // Discord max thread name
+    body["auto_archive_duration"] = 10080; // 7 days
+    body["message"]["content"]    = content;
+    try {
+        std::string resp = discord_api_request(
+            "POST", "/channels/" + forum_channel_id + "/threads", body.dump());
+        auto j = json::parse(resp);
+        if (j.contains("id")) return j["id"].get<std::string>();
+        std::cerr << "[DiscordClient] publish_report_to_forum missing 'id': " << resp << "\n";
+    } catch (const std::exception& ex) {
+        std::cerr << "[DiscordClient] publish_report_to_forum error: " << ex.what() << "\n";
+    }
+    return "";
 }

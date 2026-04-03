@@ -17,6 +17,10 @@ struct Meeting {
     std::string ical_uid;         // UUID v4, generated on creation, NEVER changes
     std::string scope             = "chapter"; // "lug_wide" | "chapter" | "non_lug"
     int64_t     chapter_id        = 0;         // FK to chapters
+    bool        suppress_discord  = false;    // skip all Discord operations
+    bool        suppress_calendar = false;    // skip Google Calendar operations
+    std::string notes;                        // markdown notes/report
+    std::string notes_discord_post_id;        // Discord forum thread ID for published report
     std::string created_at;
     std::string updated_at;
 };

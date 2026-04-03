@@ -22,7 +22,7 @@
           <tr>
             <th>Name</th>
             <th>Discord</th>
-            <th>Email</th>
+            {{#can_see_pii}}<th>Email</th>{{/can_see_pii}}
             <th>Dues</th>
             <th>Role</th>
             <th>Chapter</th>
@@ -108,6 +108,7 @@
         return '<span class="text-gray-500">@' + escHtml(data) + '</span>';
       }
     },
+    {{#can_see_pii}}
     {
       data: 'email',
       render: function(data, type) {
@@ -115,6 +116,7 @@
         return '<span class="text-gray-500">' + escHtml(data || '') + '</span>';
       }
     },
+    {{/can_see_pii}}
     {
       data: 'is_paid',
       searchable: false,
@@ -133,9 +135,9 @@
       data: 'role',
       render: function(data, type) {
         if (type !== 'display') return data;
-        var cls = data === 'admin'    ? 'bg-yellow-100 text-yellow-800'
-                : data === 'readonly' ? 'bg-blue-100 text-blue-600'
-                :                      'bg-gray-100 text-gray-600';
+        var cls = data === 'admin'        ? 'bg-yellow-100 text-yellow-800'
+                : data === 'chapter_lead' ? 'bg-blue-100 text-blue-600'
+                :                          'bg-gray-100 text-gray-600';
         return '<span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium ' + cls + '">' + escHtml(data) + '</span>';
       }
     },

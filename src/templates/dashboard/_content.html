@@ -128,6 +128,35 @@
   })();
   </script>
 
+  {{#has_perks}}
+  <!-- Perk Progress -->
+  <div class="bg-white rounded-xl border border-gray-200 p-6">
+    <h3 class="font-semibold text-gray-800 mb-3">Attendance Progress ({{perk_year}})</h3>
+    <div class="flex gap-6 mb-3">
+      <div class="text-center">
+        <div class="text-2xl font-bold text-gray-800">{{perk_meeting_count}}</div>
+        <div class="text-xs text-gray-500">Meetings</div>
+      </div>
+      <div class="text-center">
+        <div class="text-2xl font-bold text-gray-800">{{perk_event_count}}</div>
+        <div class="text-xs text-gray-500">Events</div>
+      </div>
+    </div>
+    {{#perk_achieved}}
+    <div class="inline-flex items-center gap-1 px-3 py-1 bg-green-100 text-green-700 rounded-full text-sm font-medium mb-2">
+      {{perk_achieved_name}} achieved!
+    </div>
+    {{/perk_achieved}}
+    {{#perk_has_next}}
+    <p class="text-sm text-gray-500">
+      Next: <span class="font-medium text-gray-700">{{perk_next_name}}</span>
+      {{#perk_next_meetings}}&mdash; {{perk_next_meetings}} more meeting(s){{/perk_next_meetings}}
+      {{#perk_next_events}}&mdash; {{perk_next_events}} more event(s){{/perk_next_events}}
+    </p>
+    {{/perk_has_next}}
+  </div>
+  {{/has_perks}}
+
   {{#is_admin}}
   <!-- Admin quick actions -->
   <div class="bg-white rounded-xl border border-gray-200 p-6">

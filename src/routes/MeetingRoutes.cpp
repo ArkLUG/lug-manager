@@ -140,7 +140,8 @@ static std::string render_meeting_page(const crow::request& req,
 }
 
 void register_meeting_routes(LugApp& app, MeetingService& meetings, AttendanceService& attendance,
-                              ChapterMemberRepository& chapter_members, ChapterService& chapters) {
+                              ChapterMemberRepository& chapter_members, ChapterService& chapters,
+                              DiscordClient& discord) {
 
     // GET /meetings - list meetings (paginated + searchable)
     CROW_ROUTE(app, "/meetings")([&](const crow::request& req) {
@@ -189,10 +190,10 @@ void register_meeting_routes(LugApp& app, MeetingService& meetings, AttendanceSe
         return res;
     });
 
-    // GET /meetings/<id>/edit - edit meeting form (admin)
+    // GET /meetings/<id>/edit - edit meeting form (admin or chapter event_manager/lead)
     CROW_ROUTE(app, "/meetings/<int>/edit")([&](const crow::request& req, int id) {
         crow::response res;
-        if (!require_auth(req, res, app, "admin")) return res;
+        if (!require_auth(req, res, app)) return res;
 
         auto m = meetings.get(static_cast<int64_t>(id));
         if (!m) {
@@ -201,6 +202,7 @@ void register_meeting_routes(LugApp& app, MeetingService& meetings, AttendanceSe
             res.write("<div class=\"text-red-500 p-4\">Meeting not found.</div>");
             return res;
         }
+        if (!can_manage_chapter_content(req, res, app, m->chapter_id, chapter_members)) return res;
 
         // Trim to "YYYY-MM-DDTHH:MM" for datetime-local inputs
         auto trim_dt = [](const std::string& dt) -> std::string {
@@ -232,6 +234,9 @@ void register_meeting_routes(LugApp& app, MeetingService& meetings, AttendanceSe
         mctx["scope_chapter"]     = (m->scope == "chapter" || m->scope.empty());
         mctx["scope_lug_wide"]    = (m->scope == "lug_wide");
         mctx["scope_non_lug"]     = (m->scope == "non_lug");
+        mctx["suppress_discord"]  = m->suppress_discord;
+        mctx["suppress_calendar"] = m->suppress_calendar;
+        mctx["notes"]             = m->notes;
         res.write(tmpl.render(mctx).dump());
         return res;
     });
@@ -341,6 +346,9 @@ void register_meeting_routes(LugApp& app, MeetingService& meetings, AttendanceSe
         m.scope       = get_param("scope").empty() ? "chapter" : get_param("scope");
         { std::string ch = get_param("chapter_id");
           if (!ch.empty()) try { m.chapter_id = std::stoll(ch); } catch (...) {} }
+        m.suppress_discord  = (get_param("suppress_discord") == "on" || get_param("suppress_discord") == "1");
+        m.suppress_calendar = (get_param("suppress_calendar") == "on" || get_param("suppress_calendar") == "1");
+        m.notes             = get_param("notes");
 
         res.add_header("Content-Type", "text/html; charset=utf-8");
         if (m.title.empty()) {
@@ -368,7 +376,12 @@ void register_meeting_routes(LugApp& app, MeetingService& meetings, AttendanceSe
     CROW_ROUTE(app, "/meetings/<int>").methods("PUT"_method)(
         [&](const crow::request& req, int id) {
         crow::response res;
-        if (!require_auth(req, res, app, "admin")) return res;
+        if (!require_auth(req, res, app)) return res;
+        {
+            auto mtg = meetings.get(static_cast<int64_t>(id));
+            if (!mtg) { res.code = 404; res.write(R"({"error":"not found"})"); res.end(); return res; }
+            if (!can_manage_chapter_content(req, res, app, mtg->chapter_id, chapter_members)) return res;
+        }
 
         std::string content_type = req.get_header_value("Content-Type");
         bool is_form = content_type.find("application/x-www-form-urlencoded") != std::string::npos;
@@ -395,6 +408,9 @@ void register_meeting_routes(LugApp& app, MeetingService& meetings, AttendanceSe
             if (!scope.empty())       updates.scope       = scope;
             std::string ch = gp("chapter_id");
             if (!ch.empty()) try { updates.chapter_id = std::stoll(ch); } catch (...) {}
+            updates.suppress_discord  = (gp("suppress_discord") == "on" || gp("suppress_discord") == "1");
+            updates.suppress_calendar = (gp("suppress_calendar") == "on" || gp("suppress_calendar") == "1");
+            updates.notes             = gp("notes");
 
             res.add_header("Content-Type", "text/html; charset=utf-8");
             if (updates.title.empty()) {
@@ -474,7 +490,12 @@ void register_meeting_routes(LugApp& app, MeetingService& meetings, AttendanceSe
     CROW_ROUTE(app, "/meetings/<int>/cancel").methods("POST"_method)(
         [&](const crow::request& req, int id) {
         crow::response res;
-        if (!require_auth(req, res, app, "admin")) return res;
+        if (!require_auth(req, res, app)) return res;
+        {
+            auto mtg = meetings.get(static_cast<int64_t>(id));
+            if (!mtg) { res.code = 404; res.write(R"({"error":"not found"})"); return res; }
+            if (!can_manage_chapter_content(req, res, app, mtg->chapter_id, chapter_members)) return res;
+        }
 
         try {
             meetings.cancel(static_cast<int64_t>(id));
@@ -492,7 +513,12 @@ void register_meeting_routes(LugApp& app, MeetingService& meetings, AttendanceSe
     CROW_ROUTE(app, "/meetings/<int>/complete").methods("POST"_method)(
         [&](const crow::request& req, int id) {
         crow::response res;
-        if (!require_auth(req, res, app, "admin")) return res;
+        if (!require_auth(req, res, app)) return res;
+        {
+            auto mtg = meetings.get(static_cast<int64_t>(id));
+            if (!mtg) { res.code = 404; res.write(R"({"error":"not found"})"); return res; }
+            if (!can_manage_chapter_content(req, res, app, mtg->chapter_id, chapter_members)) return res;
+        }
 
         try {
             meetings.complete(static_cast<int64_t>(id));
@@ -597,6 +623,61 @@ void register_meeting_routes(LugApp& app, MeetingService& meetings, AttendanceSe
                 + icon + label + R"( &mdash; Cancel</button>)"
                 R"(</div>)");
         }
+        return res;
+    });
+
+    // POST /meetings/<id>/publish-report - publish notes+attendance to Discord forum
+    CROW_ROUTE(app, "/meetings/<int>/publish-report").methods("POST"_method)(
+        [&](const crow::request& req, int id) {
+        crow::response res;
+        if (!require_auth(req, res, app)) return res;
+
+        auto mtg = meetings.get(static_cast<int64_t>(id));
+        if (!mtg) { res.code = 404; res.write("Not found"); return res; }
+        if (!can_manage_chapter_content(req, res, app, mtg->chapter_id, chapter_members)) return res;
+
+        // Build report with virtual/in-person split
+        auto attendees = attendance.get_attendees("meeting", mtg->id);
+        std::vector<std::string> in_person, virtual_list;
+        for (const auto& a : attendees) {
+            if (a.is_virtual) virtual_list.push_back(a.member_display_name);
+            else              in_person.push_back(a.member_display_name);
+        }
+
+        std::ostringstream report;
+        report << "# Meeting Report: " << mtg->title << "\n";
+        report << "**Date:** " << mtg->start_time << " - " << mtg->end_time << "\n";
+        if (!mtg->location.empty()) report << "**Location:** " << mtg->location << "\n";
+        report << "**Attendance:** " << attendees.size()
+               << " (" << in_person.size() << " in-person, "
+               << virtual_list.size() << " virtual)\n\n";
+        if (!in_person.empty()) {
+            report << "## In-Person Attendees\n";
+            for (const auto& n : in_person) report << "- " << n << "\n";
+            report << "\n";
+        }
+        if (!virtual_list.empty()) {
+            report << "## Virtual Attendees\n";
+            for (const auto& n : virtual_list) report << "- " << n << "\n";
+            report << "\n";
+        }
+        if (!mtg->notes.empty()) {
+            report << "## Notes\n" << mtg->notes << "\n";
+        }
+
+        // Get forum channel — TODO: load from settings once discord_meeting_reports_forum_channel_id is configured
+        std::string forum_id = discord.get_events_forum_channel_id(); // fallback
+
+        std::string thread_id = discord.publish_report_to_forum(
+            forum_id, mtg->notes_discord_post_id,
+            "Report: " + mtg->title, report.str());
+
+        if (!thread_id.empty() && thread_id != mtg->notes_discord_post_id) {
+            meetings.repo().update_notes_discord_post_id(mtg->id, thread_id);
+        }
+
+        res.add_header("Content-Type", "text/html; charset=utf-8");
+        res.write(R"(<span class="text-green-600 text-xs">Report published!</span>)");
         return res;
     });
 }

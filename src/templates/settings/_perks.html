@@ -1,0 +1,98 @@
+<div class="max-w-4xl mx-auto p-6">
+    <div class="flex items-center justify-between mb-6">
+        <h2 class="text-2xl font-bold text-gray-800">Perk Levels</h2>
+        <div class="flex gap-2">
+            <button hx-post="/api/perks/sync-roles" hx-target="#sync-result" hx-swap="innerHTML"
+                    class="bg-indigo-600 text-white px-3 py-1.5 rounded text-sm hover:bg-indigo-700">
+                Sync Discord Roles
+            </button>
+        </div>
+    </div>
+    <span id="sync-result"></span>
+
+    {{#has_perks}}
+    <div class="bg-white shadow rounded-lg overflow-hidden mb-6">
+        <table class="min-w-full divide-y divide-gray-200">
+            <thead class="bg-gray-50">
+                <tr>
+                    <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Order</th>
+                    <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Name</th>
+                    <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Meetings</th>
+                    <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Events</th>
+                    <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Paid Dues</th>
+                    <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Discord Role</th>
+                    <th class="px-4 py-3"></th>
+                </tr>
+            </thead>
+            <tbody class="divide-y divide-gray-200">
+                {{#perk_levels}}
+                <tr>
+                    <td class="px-4 py-3 text-sm text-gray-700">{{sort_order}}</td>
+                    <td class="px-4 py-3 text-sm font-medium text-gray-900">{{name}}</td>
+                    <td class="px-4 py-3 text-sm text-gray-700">{{meeting_attendance_required}}</td>
+                    <td class="px-4 py-3 text-sm text-gray-700">{{event_attendance_required}}</td>
+                    <td class="px-4 py-3 text-sm text-gray-700">{{#requires_paid_dues}}Yes{{/requires_paid_dues}}{{^requires_paid_dues}}No{{/requires_paid_dues}}</td>
+                    <td class="px-4 py-3 text-sm text-gray-500">{{discord_role_id}}</td>
+                    <td class="px-4 py-3 text-right">
+                        <button hx-delete="/settings/perks/{{id}}" hx-confirm="Delete perk level '{{name}}'?"
+                                class="text-red-600 hover:text-red-800 text-sm">Delete</button>
+                    </td>
+                </tr>
+                {{/perk_levels}}
+            </tbody>
+        </table>
+    </div>
+    {{/has_perks}}
+    {{^has_perks}}
+    <p class="text-gray-500 mb-6">No perk levels defined yet.</p>
+    {{/has_perks}}
+
+    <div class="bg-white shadow rounded-lg p-6">
+        <h3 class="text-lg font-semibold text-gray-800 mb-4">Add Perk Level</h3>
+        <form hx-post="/settings/perks" hx-swap="none" class="space-y-4">
+            <div class="grid grid-cols-2 gap-4">
+                <div>
+                    <label class="block text-sm font-medium text-gray-700">Name</label>
+                    <input type="text" name="name" required
+                           class="mt-1 block w-full border border-gray-300 rounded px-3 py-2 text-sm"
+                           placeholder="e.g. Bronze, Silver, Gold">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700">Sort Order</label>
+                    <input type="number" name="sort_order" value="0"
+                           class="mt-1 block w-full border border-gray-300 rounded px-3 py-2 text-sm">
+                </div>
+            </div>
+            <div class="grid grid-cols-2 gap-4">
+                <div>
+                    <label class="block text-sm font-medium text-gray-700">Meetings Required</label>
+                    <input type="number" name="meeting_attendance_required" value="0" min="0"
+                           class="mt-1 block w-full border border-gray-300 rounded px-3 py-2 text-sm">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700">Events Required</label>
+                    <input type="number" name="event_attendance_required" value="0" min="0"
+                           class="mt-1 block w-full border border-gray-300 rounded px-3 py-2 text-sm">
+                </div>
+            </div>
+            <div class="grid grid-cols-2 gap-4">
+                <div>
+                    <label class="block text-sm font-medium text-gray-700">Discord Role ID</label>
+                    <input type="text" name="discord_role_id"
+                           class="mt-1 block w-full border border-gray-300 rounded px-3 py-2 text-sm"
+                           placeholder="Discord role snowflake ID">
+                </div>
+                <div class="flex items-end">
+                    <label class="flex items-center gap-2 text-sm text-gray-700">
+                        <input type="checkbox" name="requires_paid_dues" class="rounded border-gray-300">
+                        Requires Paid Dues
+                    </label>
+                </div>
+            </div>
+            <button type="submit"
+                    class="bg-green-600 text-white px-4 py-2 rounded text-sm hover:bg-green-700">
+                Add Perk Level
+            </button>
+        </form>
+    </div>
+</div>

@@ -26,21 +26,29 @@ static crow::mustache::context member_to_ctx(const Member& m) {
     ctx["is_paid"]          = m.is_paid;
     ctx["paid_until"]       = m.paid_until;
     ctx["role"]             = m.role;
-    ctx["role_admin"]       = m.role == "admin";
-    ctx["role_member"]      = m.role == "member" || m.role.empty();
-    ctx["role_readonly"]    = m.role == "readonly";
-    ctx["chapter_id"]       = m.chapter_id;
-    ctx["chapter_id_str"]   = m.chapter_id > 0 ? std::to_string(m.chapter_id) : "";
-    ctx["created_at"]       = m.created_at;
+    ctx["role_admin"]        = m.role == "admin";
+    ctx["role_chapter_lead"] = m.role == "chapter_lead";
+    ctx["role_member"]       = m.role == "member" || m.role.empty();
+    ctx["birthday"]          = m.birthday;
+    ctx["fol_status"]        = m.fol_status;
+    ctx["fol_kfol"]          = m.fol_status == "kfol";
+    ctx["fol_tfol"]          = m.fol_status == "tfol";
+    ctx["fol_afol"]          = m.fol_status == "afol" || m.fol_status.empty();
+    ctx["chapter_id"]        = m.chapter_id;
+    ctx["chapter_id_str"]    = m.chapter_id > 0 ? std::to_string(m.chapter_id) : "";
+    ctx["created_at"]        = m.created_at;
     return ctx;
 }
 
 static std::string render_members_page(const crow::request& req,
                                         LugApp& app) {
-    bool is_admin = app.get_context<AuthMiddleware>(req).auth.role == "admin";
+    auto& auth = app.get_context<AuthMiddleware>(req).auth;
+    bool is_admin = auth.is_admin();
+    bool can_see_pii = auth.is_chapter_lead(); // admin or chapter_lead
     crow::mustache::context ctx;
-    ctx["title"]    = "Members";
-    ctx["is_admin"] = is_admin;
+    ctx["title"]       = "Members";
+    ctx["is_admin"]    = is_admin;
+    ctx["can_see_pii"] = can_see_pii;
 
     bool is_htmx = req.get_header_value("HX-Request") == "true";
     if (is_htmx) {
@@ -100,6 +108,9 @@ void register_member_routes(LugApp& app, MemberService& members) {
 
         auto result = members.datatable(p);
 
+        // PII hiding: only admin and chapter_lead can see emails
+        bool can_see_pii = app.get_context<AuthMiddleware>(req).auth.is_chapter_lead();
+
         // Build JSON manually so "data" is always a proper [] array.
         // Crow's default wvalue serialises as null when no indices are set.
         auto esc_json = [](const std::string& s) -> std::string {
@@ -128,7 +139,7 @@ void register_member_routes(LugApp& app, MemberService& members) {
                  << ",\"id\":"               << m.id
                  << ",\"display_name\":\""   << esc_json(m.display_name) << "\""
                  << ",\"discord_username\":\"" << esc_json(m.discord_username) << "\""
-                 << ",\"email\":\""          << esc_json(m.email) << "\""
+                 << ",\"email\":\""          << (can_see_pii ? esc_json(m.email) : "") << "\""
                  << ",\"is_paid\":"          << (m.is_paid ? "true" : "false")
                  << ",\"paid_until\":\""     << esc_json(m.paid_until) << "\""
                  << ",\"role\":\""           << esc_json(m.role) << "\""
@@ -200,6 +211,8 @@ void register_member_routes(LugApp& app, MemberService& members) {
         m.last_name        = get_param("last_name");
         m.email            = get_param("email");
         m.role             = get_param("role").empty() ? "member" : get_param("role");
+        m.birthday         = get_param("birthday");
+        m.fol_status       = get_param("fol_status").empty() ? "afol" : get_param("fol_status");
 
         res.add_header("Content-Type", "text/html; charset=utf-8");
         try {
@@ -233,6 +246,8 @@ void register_member_routes(LugApp& app, MemberService& members) {
         updates.discord_username = get_param("discord_username");
         updates.email            = get_param("email");
         updates.role             = get_param("role");
+        updates.birthday         = get_param("birthday");
+        updates.fol_status       = get_param("fol_status").empty() ? "afol" : get_param("fol_status");
 
         std::string paid_until = get_param("paid_until");
         updates.paid_until = paid_until;

@@ -34,6 +34,8 @@ public:
     SyncResult sync_all_to_google_calendar();
     SyncResult sync_all_to_discord();
 
+    MeetingRepository& repo() { return repo_; }
+
 private:
     MeetingRepository&      repo_;
     DiscordClient&          discord_;

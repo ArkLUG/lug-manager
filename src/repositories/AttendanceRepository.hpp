@@ -35,6 +35,9 @@ public:
     };
     std::vector<MemberAttendanceSummary> get_all_member_summaries();
 
+    // Count attendance for a member in a calendar year, by entity type
+    int count_member_by_year(int64_t member_id, int year, const std::string& entity_type);
+
 private:
     SqliteDatabase& db_;
 };

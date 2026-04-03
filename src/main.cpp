@@ -16,6 +16,7 @@
 #include "repositories/SettingsRepository.hpp"
 #include "repositories/RoleMappingRepository.hpp"
 #include "repositories/ChapterMemberRepository.hpp"
+#include "repositories/PerkLevelRepository.hpp"
 #include "services/ChapterService.hpp"
 #include "services/MemberService.hpp"
 #include "services/MeetingService.hpp"
@@ -59,6 +60,7 @@ int main() {
         SettingsRepository      settings_repo(db);
         RoleMappingRepository   role_mapping_repo(db);
         ChapterMemberRepository chapter_member_repo(db);
+        PerkLevelRepository     perk_level_repo(db);
 
         // Async thread pool for non-blocking Discord API calls
         ThreadPool pool(4);
@@ -149,7 +151,10 @@ int main() {
             role_mapping_repo,
             chapter_member_repo,
             member_sync_service,
-            gcal_client
+            gcal_client,
+            perk_level_repo,
+            attendance_repo,
+            member_repo
         };
         register_all_routes(app, svc);
 

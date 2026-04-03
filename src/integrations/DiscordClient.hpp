@@ -140,6 +140,13 @@ public:
     std::string sync_post_meeting_announcement(const std::string& channel_id, const Meeting& m,
                                                const std::string& role_id);
 
+    // Publish a report to a forum channel. Creates new thread or edits existing.
+    // Returns the thread ID (for storing as notes_discord_post_id).
+    std::string publish_report_to_forum(const std::string& forum_channel_id,
+                                         const std::string& existing_thread_id,
+                                         const std::string& title,
+                                         const std::string& content);
+
 private:
     const Config& config_;
     ThreadPool&   pool_;

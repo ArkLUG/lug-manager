@@ -43,5 +43,6 @@ private:
     static std::string generate_uuid();
 
 public:
+    EventRepository& repo() { return repo_; }
     LugEvent with_calendar_title(const LugEvent& e) const;
 };

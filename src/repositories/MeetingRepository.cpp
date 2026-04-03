@@ -5,7 +5,9 @@ static const char* kSelectAllCols =
     "status, discord_event_id, ical_uid, COALESCE(scope,'chapter'), chapter_id, "
     "created_at, updated_at, "
     "COALESCE(discord_lug_message_id,''), COALESCE(discord_chapter_message_id,''), "
-    "COALESCE(google_calendar_event_id,'') "
+    "COALESCE(google_calendar_event_id,''), "
+    "suppress_discord, suppress_calendar, "
+    "COALESCE(notes,''), COALESCE(notes_discord_post_id,'') "
     "FROM meetings";
 
 MeetingRepository::MeetingRepository(SqliteDatabase& db) : db_(db) {}
@@ -28,6 +30,10 @@ Meeting MeetingRepository::row_to_meeting(Statement& stmt) {
     m.discord_lug_message_id      = stmt.col_text(13);
     m.discord_chapter_message_id  = stmt.col_text(14);
     m.google_calendar_event_id    = stmt.col_text(15);
+    m.suppress_discord            = stmt.col_bool(16);
+    m.suppress_calendar           = stmt.col_bool(17);
+    m.notes                       = stmt.col_text(18);
+    m.notes_discord_post_id       = stmt.col_text(19);
     return m;
 }
 
@@ -141,7 +147,8 @@ int MeetingRepository::count_all() {
 Meeting MeetingRepository::create(const Meeting& m) {
     auto stmt = db_.prepare(
         "INSERT INTO meetings (title, description, location, start_time, end_time, "
-        "status, discord_event_id, ical_uid, scope, chapter_id) VALUES (?,?,?,?,?,?,?,?,?,?)");
+        "status, discord_event_id, ical_uid, scope, chapter_id, "
+        "suppress_discord, suppress_calendar, notes) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)");
     stmt.bind(1, m.title);
     stmt.bind(2, m.description);
     stmt.bind(3, m.location);
@@ -157,6 +164,9 @@ Meeting MeetingRepository::create(const Meeting& m) {
     stmt.bind(9, m.scope.empty() ? std::string("chapter") : m.scope);
     if (m.chapter_id <= 0) stmt.bind_null(10);
     else                   stmt.bind(10, m.chapter_id);
+    stmt.bind(11, m.suppress_discord);
+    stmt.bind(12, m.suppress_calendar);
+    stmt.bind(13, m.notes);
     stmt.step();
 
     int64_t new_id = db_.last_insert_rowid();
@@ -170,7 +180,9 @@ Meeting MeetingRepository::create(const Meeting& m) {
 bool MeetingRepository::update(const Meeting& m) {
     auto stmt = db_.prepare(
         "UPDATE meetings SET title=?, description=?, location=?, start_time=?, end_time=?, "
-        "status=?, discord_event_id=?, scope=?, chapter_id=?, updated_at=datetime('now') WHERE id=?");
+        "status=?, discord_event_id=?, scope=?, chapter_id=?, "
+        "suppress_discord=?, suppress_calendar=?, notes=?, "
+        "updated_at=datetime('now') WHERE id=?");
     stmt.bind(1, m.title);
     stmt.bind(2, m.description);
     stmt.bind(3, m.location);
@@ -185,7 +197,10 @@ bool MeetingRepository::update(const Meeting& m) {
     stmt.bind(8, m.scope.empty() ? std::string("chapter") : m.scope);
     if (m.chapter_id <= 0) stmt.bind_null(9);
     else                   stmt.bind(9, m.chapter_id);
-    stmt.bind(10, m.id);
+    stmt.bind(10, m.suppress_discord);
+    stmt.bind(11, m.suppress_calendar);
+    stmt.bind(12, m.notes);
+    stmt.bind(13, m.id);
     stmt.step();
 
     auto existing = find_by_id(m.id);
@@ -251,6 +266,16 @@ bool MeetingRepository::update_google_calendar_event_id(int64_t id, const std::s
         "UPDATE meetings SET google_calendar_event_id=? WHERE id=?");
     if (gcal_event_id.empty()) stmt.bind_null(1);
     else                       stmt.bind(1, gcal_event_id);
+    stmt.bind(2, id);
+    stmt.step();
+    return true;
+}
+
+bool MeetingRepository::update_notes_discord_post_id(int64_t id, const std::string& post_id) {
+    auto stmt = db_.prepare(
+        "UPDATE meetings SET notes_discord_post_id=? WHERE id=?");
+    if (post_id.empty()) stmt.bind_null(1);
+    else                 stmt.bind(1, post_id);
     stmt.bind(2, id);
     stmt.step();
     return true;

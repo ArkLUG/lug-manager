@@ -9,7 +9,9 @@ static const char* kSelectAllCols =
     "COALESCE(e.discord_lug_message_id,''), "
     "COALESCE(e.discord_ping_role_ids,''), "
     "COALESCE(m.discord_user_id,''), "
-    "COALESCE(e.google_calendar_event_id,'') "
+    "COALESCE(e.google_calendar_event_id,''), "
+    "e.suppress_discord, e.suppress_calendar, "
+    "COALESCE(e.notes,''), COALESCE(e.notes_discord_post_id,'') "
     "FROM lug_events e LEFT JOIN members m ON m.id = e.event_lead_id";
 
 EventRepository::EventRepository(SqliteDatabase& db) : db_(db) {}
@@ -39,6 +41,10 @@ LugEvent EventRepository::row_to_event(Statement& stmt) {
     e.discord_ping_role_ids      = stmt.col_text(20);
     e.event_lead_discord_id      = stmt.col_text(21);
     e.google_calendar_event_id   = stmt.col_text(22);
+    e.suppress_discord           = stmt.col_bool(23);
+    e.suppress_calendar          = stmt.col_bool(24);
+    e.notes                      = stmt.col_text(25);
+    e.notes_discord_post_id      = stmt.col_text(26);
     return e;
 }
 
@@ -164,7 +170,8 @@ LugEvent EventRepository::create(const LugEvent& e) {
         "INSERT INTO lug_events (title, description, location, "
         "start_time, end_time, status, discord_thread_id, discord_event_id, "
         "ical_uid, signup_deadline, max_attendees, scope, chapter_id, event_lead_id, "
-        "discord_ping_role_ids) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)");
+        "discord_ping_role_ids, suppress_discord, suppress_calendar, notes) "
+        "VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)");
     stmt.bind(1, e.title);
     stmt.bind(2, e.description);
     stmt.bind(3, e.location);
@@ -204,6 +211,9 @@ LugEvent EventRepository::create(const LugEvent& e) {
     } else {
         stmt.bind(15, e.discord_ping_role_ids);
     }
+    stmt.bind(16, e.suppress_discord);
+    stmt.bind(17, e.suppress_calendar);
+    stmt.bind(18, e.notes);
     stmt.step();
 
     int64_t new_id = db_.last_insert_rowid();
@@ -219,7 +229,8 @@ bool EventRepository::update(const LugEvent& e) {
         "UPDATE lug_events SET title=?, description=?, location=?, "
         "start_time=?, end_time=?, status=?, discord_thread_id=?, discord_event_id=?, "
         "signup_deadline=?, max_attendees=?, scope=?, chapter_id=?, event_lead_id=?, "
-        "discord_ping_role_ids=?, updated_at=datetime('now') WHERE id=?");
+        "discord_ping_role_ids=?, suppress_discord=?, suppress_calendar=?, notes=?, "
+        "updated_at=datetime('now') WHERE id=?");
     stmt.bind(1, e.title);
     stmt.bind(2, e.description);
     stmt.bind(3, e.location);
@@ -258,7 +269,10 @@ bool EventRepository::update(const LugEvent& e) {
     } else {
         stmt.bind(14, e.discord_ping_role_ids);
     }
-    stmt.bind(15, e.id);
+    stmt.bind(15, e.suppress_discord);
+    stmt.bind(16, e.suppress_calendar);
+    stmt.bind(17, e.notes);
+    stmt.bind(18, e.id);
     stmt.step();
 
     auto existing = find_by_id(e.id);
@@ -327,4 +341,14 @@ bool EventRepository::update_discord_ids(int64_t id,
 
     auto existing = find_by_id(id);
     return existing.has_value();
+}
+
+bool EventRepository::update_notes_discord_post_id(int64_t id, const std::string& post_id) {
+    auto stmt = db_.prepare(
+        "UPDATE lug_events SET notes_discord_post_id=? WHERE id=?");
+    if (post_id.empty()) stmt.bind_null(1);
+    else                 stmt.bind(1, post_id);
+    stmt.bind(2, id);
+    stmt.step();
+    return true;
 }

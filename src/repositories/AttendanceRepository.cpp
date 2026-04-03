@@ -146,6 +146,21 @@ AttendanceRepository::get_all_member_summaries() {
     return result;
 }
 
+int AttendanceRepository::count_member_by_year(int64_t member_id, int year,
+                                                const std::string& entity_type) {
+    std::string year_start = std::to_string(year) + "-01-01";
+    std::string year_end   = std::to_string(year + 1) + "-01-01";
+    auto stmt = db_.prepare(
+        "SELECT COUNT(*) FROM attendance "
+        "WHERE member_id=? AND entity_type=? AND checked_in_at >= ? AND checked_in_at < ?");
+    stmt.bind(1, member_id);
+    stmt.bind(2, entity_type);
+    stmt.bind(3, year_start);
+    stmt.bind(4, year_end);
+    if (stmt.step()) return static_cast<int>(stmt.col_int(0));
+    return 0;
+}
+
 bool AttendanceRepository::is_checked_in(int64_t member_id, const std::string& entity_type,
                                           int64_t entity_id) {
     auto stmt = db_.prepare(

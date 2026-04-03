@@ -2,15 +2,32 @@
 #include <crow.h>
 #include <crow/mustache.h>
 
-// Returns true if the current user is admin OR the event lead for the given entity.
+// Returns true if the current user is admin, event lead, or has event_manager/lead
+// chapter role for the entity's chapter.
 static bool can_manage_attendance(const crow::request& req, LugApp& app,
-                                   EventService& events,
+                                   EventService& events, MeetingService& meetings,
+                                   ChapterMemberRepository& chapter_members,
                                    const std::string& entity_type, int64_t entity_id) {
     auto& auth = app.get_context<AuthMiddleware>(req);
     if (auth.auth.role == "admin") return true;
+
+    int64_t chapter_id = 0;
     if (entity_type == "event" && auth.auth.member_id > 0) {
         auto ev = events.get(entity_id);
-        if (ev && ev->event_lead_id == auth.auth.member_id) return true;
+        if (ev) {
+            if (ev->event_lead_id == auth.auth.member_id) return true;
+            chapter_id = ev->chapter_id;
+        }
+    } else if (entity_type == "meeting" && auth.auth.member_id > 0) {
+        auto mtg = meetings.get(entity_id);
+        if (mtg) chapter_id = mtg->chapter_id;
+    }
+
+    // Check chapter role: event_manager or lead can manage attendance
+    if (chapter_id > 0 && auth.auth.member_id > 0) {
+        auto role = chapter_members.get_chapter_role(auth.auth.member_id, chapter_id);
+        if (role && chapter_role_rank(*role) >= chapter_role_rank("event_manager"))
+            return true;
     }
     return false;
 }
@@ -48,7 +65,8 @@ static std::string render_attendance_list(AttendanceService& attendance,
 }
 
 void register_attendance_routes(LugApp& app, AttendanceService& attendance,
-                                EventService& events, MeetingService& meetings) {
+                                EventService& events, MeetingService& meetings,
+                                ChapterMemberRepository& chapter_members) {
 
     // GET /attendance/overview - admin/lead attendance overview for all members
     CROW_ROUTE(app, "/attendance/overview")([&](const crow::request& req) {
@@ -187,7 +205,7 @@ void register_attendance_routes(LugApp& app, AttendanceService& attendance,
         crow::response res;
         if (!require_auth(req, res, app)) return res;
 
-        bool can_manage = can_manage_attendance(req, app, events,
+        bool can_manage = can_manage_attendance(req, app, events, meetings, chapter_members,
                                                 entity_type, static_cast<int64_t>(entity_id));
         res.write(render_attendance_list(attendance, entity_type,
                                          static_cast<int64_t>(entity_id),
@@ -221,7 +239,7 @@ void register_attendance_routes(LugApp& app, AttendanceService& attendance,
         }
 
         int64_t entity_id = std::stoll(entity_id_s);
-        if (!can_manage_attendance(req, app, events, entity_type, entity_id)) {
+        if (!can_manage_attendance(req, app, events, meetings, chapter_members, entity_type, entity_id)) {
             res.code = 403;
             res.write(R"(<span class="text-red-500 text-xs">Forbidden</span>)");
             res.add_header("Content-Type", "text/html");
@@ -264,7 +282,7 @@ void register_attendance_routes(LugApp& app, AttendanceService& attendance,
         }
 
         int64_t entity_id = std::stoll(entity_id_s);
-        if (!can_manage_attendance(req, app, events, entity_type, entity_id)) {
+        if (!can_manage_attendance(req, app, events, meetings, chapter_members, entity_type, entity_id)) {
             res.code = 403;
             res.write(R"(<span class="text-red-500 text-xs">Forbidden</span>)");
             res.add_header("Content-Type", "text/html");
@@ -301,7 +319,7 @@ void register_attendance_routes(LugApp& app, AttendanceService& attendance,
         }
 
         int64_t entity_id = std::stoll(entity_id_s);
-        if (!can_manage_attendance(req, app, events, entity_type, entity_id)) {
+        if (!can_manage_attendance(req, app, events, meetings, chapter_members, entity_type, entity_id)) {
             res.code = 403;
             res.write(R"(<span class="text-red-500 text-xs">Forbidden</span>)");
             res.add_header("Content-Type", "text/html");

@@ -12,7 +12,9 @@ struct Member {
     std::string email;
     bool        is_paid          = false;
     std::string paid_until;       // ISO 8601 date "2026-12-31", may be empty
-    std::string role              = "member"; // "admin"|"chapter_admin"|"member"|"readonly"
+    std::string role              = "member"; // "admin"|"chapter_lead"|"member"
+    std::string birthday;                   // "YYYY-MM-DD", empty if unknown
+    std::string fol_status       = "afol";  // "kfol"|"tfol"|"afol"
     int64_t     chapter_id        = 0;       // FK to chapters, 0 if not in a chapter
     std::string chapter_name;               // denormalized for reads (may be empty)
     std::string created_at;

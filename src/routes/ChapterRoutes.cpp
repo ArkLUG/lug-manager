@@ -228,19 +228,14 @@ void register_chapter_routes(LugApp& app, ChapterService& chapters,
         return res;
     });
 
-    // POST /chapters/<id>/lead - add a chapter lead (admin or existing lead)
+    // POST /chapters/<id>/lead - add a chapter lead (admin only)
     CROW_ROUTE(app, "/chapters/<int>/lead").methods("POST"_method)(
         [&](const crow::request& req, int id) {
         crow::response res;
+        if (!require_auth(req, res, app, "admin")) return res;
         auto& ctx = app.get_context<AuthMiddleware>(req);
-        if (!ctx.auth.authenticated) { res.code = 401; return res; }
 
         int64_t chapter_id = static_cast<int64_t>(id);
-        bool is_admin = ctx.auth.role == "admin";
-        if (!is_admin) {
-            auto role = chapter_members.get_chapter_role(ctx.auth.member_id, chapter_id);
-            if (!role || *role != "lead") { res.code = 403; res.write("Forbidden"); return res; }
-        }
 
         auto params = crow::query_string("?" + req.body);
         const char* mid_raw = params.get("member_id");
@@ -269,19 +264,14 @@ void register_chapter_routes(LugApp& app, ChapterService& chapters,
         return res;
     });
 
-    // POST /chapters/<id>/lead/<member_id>/demote - remove lead role (back to member)
+    // POST /chapters/<id>/lead/<member_id>/demote - remove lead role (admin only)
     CROW_ROUTE(app, "/chapters/<int>/lead/<int>/demote").methods("POST"_method)(
         [&](const crow::request& req, int id, int member_id) {
         crow::response res;
+        if (!require_auth(req, res, app, "admin")) return res;
         auto& ctx = app.get_context<AuthMiddleware>(req);
-        if (!ctx.auth.authenticated) { res.code = 401; return res; }
 
         int64_t chapter_id = static_cast<int64_t>(id);
-        bool is_admin = ctx.auth.role == "admin";
-        if (!is_admin) {
-            auto role = chapter_members.get_chapter_role(ctx.auth.member_id, chapter_id);
-            if (!role || *role != "lead") { res.code = 403; res.write("Forbidden"); return res; }
-        }
 
         chapter_members.upsert(static_cast<int64_t>(member_id), chapter_id,
                                "member", ctx.auth.member_id);
@@ -511,6 +501,13 @@ void register_chapter_routes(LugApp& app, ChapterService& chapters,
         }
 
         int64_t member_id = std::stoll(member_id_str);
+
+        // Only admins can assign lead role
+        if (chapter_role == "lead" && !is_admin) {
+            res.code = 403;
+            res.write(R"(<div class="text-red-500 text-sm p-2">Only admins can assign the lead role.</div>)");
+            return res;
+        }
 
         // Check previous role so we know whether to add/remove the Discord lead role
         auto prev_role = chapter_members.get_chapter_role(member_id, chapter_id);

@@ -8,6 +8,9 @@
 #include "routes/CalendarRoutes.hpp"
 #include "routes/SettingsRoutes.hpp"
 #include "routes/RoleRoutes.hpp"
+#include "routes/PerkRoutes.hpp"
+#include "repositories/PerkLevelRepository.hpp"
+#include "repositories/AttendanceRepository.hpp"
 #include "services/MemberService.hpp"
 #include "services/MemberSyncService.hpp"
 #include "services/MeetingService.hpp"
@@ -38,6 +41,9 @@ struct Services {
     ChapterMemberRepository& chapter_members;
     MemberSyncService&      member_sync;
     GoogleCalendarClient&   gcal;
+    PerkLevelRepository&    perks;
+    AttendanceRepository&   attendance_repo;
+    MemberRepository&       member_repo;
 };
 
 void register_all_routes(LugApp& app, Services& svc);

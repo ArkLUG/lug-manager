@@ -5,7 +5,8 @@ static const char* kSelectAllCols =
     "SELECT m.id, m.discord_user_id, m.discord_username, m.display_name, m.email, "
     "m.is_paid, m.paid_until, m.role, "
     "COALESCE((SELECT chapter_id FROM chapter_members WHERE member_id=m.id LIMIT 1),0), "
-    "m.created_at, m.updated_at, COALESCE(m.first_name,''), COALESCE(m.last_name,'') "
+    "m.created_at, m.updated_at, COALESCE(m.first_name,''), COALESCE(m.last_name,''), "
+    "COALESCE(m.birthday,''), COALESCE(m.fol_status,'afol') "
     "FROM members m";
 
 MemberRepository::MemberRepository(SqliteDatabase& db) : db_(db) {}
@@ -25,6 +26,8 @@ Member MemberRepository::row_to_member(Statement& stmt) {
     m.updated_at       = stmt.col_text(10);
     m.first_name       = stmt.col_text(11);
     m.last_name        = stmt.col_text(12);
+    m.birthday         = stmt.col_text(13);
+    m.fol_status       = stmt.col_text(14);
     return m;
 }
 
@@ -82,7 +85,9 @@ std::vector<Member> MemberRepository::find_by_role(const std::string& role) {
 std::vector<Member> MemberRepository::find_by_chapter(int64_t chapter_id) {
     auto stmt = db_.prepare(
         "SELECT m.id, m.discord_user_id, m.discord_username, m.display_name, m.email, "
-        "m.is_paid, m.paid_until, m.role, cm.chapter_id, m.created_at, m.updated_at "
+        "m.is_paid, m.paid_until, m.role, cm.chapter_id, m.created_at, m.updated_at, "
+        "COALESCE(m.first_name,''), COALESCE(m.last_name,''), "
+        "COALESCE(m.birthday,''), COALESCE(m.fol_status,'afol') "
         "FROM members m JOIN chapter_members cm ON cm.member_id=m.id "
         "WHERE cm.chapter_id=? ORDER BY m.display_name ASC");
     stmt.bind(1, chapter_id);
@@ -96,7 +101,7 @@ std::vector<Member> MemberRepository::find_by_chapter(int64_t chapter_id) {
 Member MemberRepository::create(const Member& m) {
     auto stmt = db_.prepare(
         "INSERT INTO members (discord_user_id, discord_username, first_name, last_name, display_name, "
-        "email, is_paid, paid_until, role) VALUES (?,?,?,?,?,?,?,?,?)");
+        "email, is_paid, paid_until, role, birthday, fol_status) VALUES (?,?,?,?,?,?,?,?,?,?,?)");
     stmt.bind(1, m.discord_user_id);
     stmt.bind(2, m.discord_username);
     stmt.bind(3, m.first_name);
@@ -114,6 +119,8 @@ Member MemberRepository::create(const Member& m) {
         stmt.bind(8, m.paid_until);
     }
     stmt.bind(9, m.role.empty() ? std::string("member") : m.role);
+    stmt.bind(10, m.birthday);
+    stmt.bind(11, m.fol_status.empty() ? std::string("afol") : m.fol_status);
     stmt.step();
 
     int64_t new_id = db_.last_insert_rowid();
@@ -127,8 +134,8 @@ Member MemberRepository::create(const Member& m) {
 bool MemberRepository::update(const Member& m) {
     auto stmt = db_.prepare(
         "UPDATE members SET discord_username=?, first_name=?, last_name=?, display_name=?, email=?, "
-        "is_paid=?, paid_until=?, role=?, updated_at=datetime('now') "
-        "WHERE id=?");
+        "is_paid=?, paid_until=?, role=?, birthday=?, fol_status=?, "
+        "updated_at=datetime('now') WHERE id=?");
     stmt.bind(1, m.discord_username);
     stmt.bind(2, m.first_name);
     stmt.bind(3, m.last_name);
@@ -145,7 +152,9 @@ bool MemberRepository::update(const Member& m) {
         stmt.bind(7, m.paid_until);
     }
     stmt.bind(8, m.role);
-    stmt.bind(9, m.id);
+    stmt.bind(9, m.birthday);
+    stmt.bind(10, m.fol_status.empty() ? std::string("afol") : m.fol_status);
+    stmt.bind(11, m.id);
     stmt.step();
 
     // Check if any row was actually updated by querying it back
@@ -214,7 +223,8 @@ std::vector<Member> MemberRepository::find_paginated(const std::string& q,
     static const char* kJoinCols =
         "SELECT m.id, m.discord_user_id, m.discord_username, m.display_name, m.email, "
         "m.is_paid, m.paid_until, m.role, COALESCE(cm.chapter_id,0), m.created_at, m.updated_at, "
-        "COALESCE(c.name,'') FROM members m "
+        "COALESCE(c.name,''), COALESCE(m.first_name,''), COALESCE(m.last_name,''), "
+        "COALESCE(m.birthday,''), COALESCE(m.fol_status,'afol') FROM members m "
         "LEFT JOIN (SELECT member_id, MIN(chapter_id) AS chapter_id FROM chapter_members GROUP BY member_id) cm ON cm.member_id=m.id "
         "LEFT JOIN chapters c ON c.id=cm.chapter_id";
 
@@ -232,6 +242,10 @@ std::vector<Member> MemberRepository::find_paginated(const std::string& q,
         m.created_at       = stmt.col_text(9);
         m.updated_at       = stmt.col_text(10);
         m.chapter_name     = stmt.col_text(11);
+        m.first_name       = stmt.col_text(12);
+        m.last_name        = stmt.col_text(13);
+        m.birthday         = stmt.col_text(14);
+        m.fol_status       = stmt.col_text(15);
         return m;
     };
 

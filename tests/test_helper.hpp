@@ -19,7 +19,6 @@ protected:
         db.reset();
     }
 
-    // Helper: count rows in a table
     int count(const std::string& table) {
         auto stmt = db->prepare("SELECT COUNT(*) FROM " + table);
         stmt.step();

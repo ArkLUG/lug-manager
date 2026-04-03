@@ -32,6 +32,15 @@ set(JSON_BuildTests OFF CACHE BOOL "" FORCE)
 set(JSON_Install OFF CACHE BOOL "" FORCE)
 FetchContent_MakeAvailable(nlohmann_json)
 
+# md4c (C Markdown parser)
+FetchContent_Declare(md4c
+  GIT_REPOSITORY https://github.com/mity/md4c.git
+  GIT_TAG        release-0.5.2
+  GIT_SHALLOW    TRUE
+)
+set(BUILD_SHARED_LIBS OFF CACHE BOOL "" FORCE)
+FetchContent_MakeAvailable(md4c)
+
 # System libraries
 find_package(PkgConfig REQUIRED)
 pkg_check_modules(CURL    REQUIRED libcurl)
@@ -49,6 +58,7 @@ file(GLOB_RECURSE SOURCES
   src/async/*.cpp
   src/auth/*.cpp
   src/routes/*.cpp
+  src/utils/*.cpp
   src/main.cpp
 )
 
@@ -64,6 +74,7 @@ target_include_directories(lug_manager PRIVATE
 target_link_libraries(lug_manager PRIVATE
   Crow::Crow
   nlohmann_json::nlohmann_json
+  md4c-html
   ${CURL_LIBRARIES}
   ${SQLITE3_LIBRARIES}
   OpenSSL::SSL
@@ -100,6 +111,8 @@ if(BUILD_TESTS)
     src/integrations/*.cpp
     src/async/*.cpp
     src/auth/*.cpp
+    src/routes/*.cpp
+    src/utils/*.cpp
   )
 
   # Shared test helper library (app code without main/routes)
@@ -113,6 +126,7 @@ if(BUILD_TESTS)
   target_link_libraries(lug_lib PUBLIC
     Crow::Crow
     nlohmann_json::nlohmann_json
+    md4c-html
     ${CURL_LIBRARIES}
     ${SQLITE3_LIBRARIES}
     OpenSSL::SSL

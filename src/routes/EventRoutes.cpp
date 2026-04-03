@@ -279,10 +279,10 @@ void register_event_routes(LugApp& app, EventService& events, AttendanceService&
         return res;
     });
 
-    // GET /events/<id>/edit - edit event form (admin)
+    // GET /events/<id>/edit - edit event form (admin or chapter event_manager/lead)
     CROW_ROUTE(app, "/events/<int>/edit")([&](const crow::request& req, int id) {
         crow::response res;
-        if (!require_auth(req, res, app, "admin")) return res;
+        if (!require_auth(req, res, app)) return res;
 
         auto ev = events.get(static_cast<int64_t>(id));
         if (!ev) {
@@ -291,6 +291,7 @@ void register_event_routes(LugApp& app, EventService& events, AttendanceService&
             res.write("<div class=\"text-red-500 p-4\">Event not found.</div>");
             return res;
         }
+        if (!can_manage_chapter_content(req, res, app, ev->chapter_id, chapter_members)) return res;
 
         res.add_header("Content-Type", "text/html; charset=utf-8");
         auto tmpl = crow::mustache::load("events/_form.html");
@@ -359,6 +360,9 @@ void register_event_routes(LugApp& app, EventService& events, AttendanceService&
         mctx["has_forum_channel"]  = !discord.get_events_forum_channel_id().empty();
         mctx["has_thread"]         = !ev->discord_thread_id.empty();
         mctx["discord_thread_id"]  = ev->discord_thread_id;
+        mctx["suppress_discord"]   = ev->suppress_discord;
+        mctx["suppress_calendar"]  = ev->suppress_calendar;
+        mctx["notes"]              = ev->notes;
 
         res.write(tmpl.render(mctx).dump());
         return res;
@@ -502,6 +506,9 @@ void register_event_routes(LugApp& app, EventService& events, AttendanceService&
         if (max_str && std::string(max_str) != "") {
             try { e.max_attendees = std::stoi(max_str); } catch (...) { e.max_attendees = 0; }
         }
+        e.suppress_discord  = (get_param("suppress_discord") == "on" || get_param("suppress_discord") == "1");
+        e.suppress_calendar = (get_param("suppress_calendar") == "on" || get_param("suppress_calendar") == "1");
+        e.notes             = get_param("notes");
 
         res.add_header("Content-Type", "text/html; charset=utf-8");
         if (e.title.empty()) {
@@ -526,11 +533,16 @@ void register_event_routes(LugApp& app, EventService& events, AttendanceService&
         return res;
     });
 
-    // PUT /events/<id> - update event (form-encoded or JSON body)
+    // PUT /events/<id> - update event (admin or chapter event_manager/lead)
     CROW_ROUTE(app, "/events/<int>").methods("PUT"_method)(
         [&](const crow::request& req, int id) {
         crow::response res;
-        if (!require_auth(req, res, app, "admin")) return res;
+        if (!require_auth(req, res, app)) return res;
+        {
+            auto ev = events.get(static_cast<int64_t>(id));
+            if (!ev) { res.code = 404; res.write(R"({"error":"not found"})"); res.end(); return res; }
+            if (!can_manage_chapter_content(req, res, app, ev->chapter_id, chapter_members)) return res;
+        }
 
         std::string content_type = req.get_header_value("Content-Type");
         bool is_form = content_type.find("application/x-www-form-urlencoded") != std::string::npos;
@@ -569,6 +581,9 @@ void register_event_routes(LugApp& app, EventService& events, AttendanceService&
                     if (r && r[0]) { if (!csv.empty()) csv += ","; csv += r; }
                 updates.discord_ping_role_ids = csv;
             }
+            updates.suppress_discord  = (gp("suppress_discord") == "on" || gp("suppress_discord") == "1");
+            updates.suppress_calendar = (gp("suppress_calendar") == "on" || gp("suppress_calendar") == "1");
+            updates.notes             = gp("notes");
             // Thread selection on edit
             { std::string mode = gp("thread_mode");
               if (mode == "existing") {
@@ -670,11 +685,16 @@ void register_event_routes(LugApp& app, EventService& events, AttendanceService&
         return res;
     });
 
-    // POST /events/<id>/cancel - cancel event
+    // POST /events/<id>/cancel - cancel event (admin or chapter event_manager/lead)
     CROW_ROUTE(app, "/events/<int>/cancel").methods("POST"_method)(
         [&](const crow::request& req, int id) {
         crow::response res;
-        if (!require_auth(req, res, app, "admin")) return res;
+        if (!require_auth(req, res, app)) return res;
+        {
+            auto ev = events.get(static_cast<int64_t>(id));
+            if (!ev) { res.code = 404; res.write(R"({"error":"not found"})"); return res; }
+            if (!can_manage_chapter_content(req, res, app, ev->chapter_id, chapter_members)) return res;
+        }
 
         try {
             events.cancel(static_cast<int64_t>(id));
@@ -688,11 +708,16 @@ void register_event_routes(LugApp& app, EventService& events, AttendanceService&
         return res;
     });
 
-    // POST /events/<id>/status - update event status (open/closed)
+    // POST /events/<id>/status - update event status (admin or chapter event_manager/lead)
     CROW_ROUTE(app, "/events/<int>/status").methods("POST"_method)(
         [&](const crow::request& req, int id) {
         crow::response res;
-        if (!require_auth(req, res, app, "admin")) return res;
+        if (!require_auth(req, res, app)) return res;
+        {
+            auto ev = events.get(static_cast<int64_t>(id));
+            if (!ev) { res.code = 404; res.write(R"({"error":"not found"})"); return res; }
+            if (!can_manage_chapter_content(req, res, app, ev->chapter_id, chapter_members)) return res;
+        }
 
         auto params = crow::query_string("?" + req.body);
         const char* status_raw = params.get("status");
@@ -804,6 +829,50 @@ void register_event_routes(LugApp& app, EventService& events, AttendanceService&
             res.add_header("Content-Type", "text/html; charset=utf-8");
             res.write(std::string(R"(<span class="text-red-500 text-sm">Error: )") + ex.what() + "</span>");
         }
+        return res;
+    });
+
+    // POST /events/<id>/publish-report - publish notes+attendance to Discord forum
+    CROW_ROUTE(app, "/events/<int>/publish-report").methods("POST"_method)(
+        [&](const crow::request& req, int id) {
+        crow::response res;
+        if (!require_auth(req, res, app)) return res;
+
+        auto ev = events.get(static_cast<int64_t>(id));
+        if (!ev) { res.code = 404; res.write("Not found"); return res; }
+        if (!can_manage_chapter_content(req, res, app, ev->chapter_id, chapter_members)) return res;
+
+        // Build report content
+        auto attendees = attendance.get_attendees("event", ev->id);
+        std::ostringstream report;
+        report << "# Event Report: " << ev->title << "\n";
+        report << "**Date:** " << ev->start_time << " - " << ev->end_time << "\n";
+        if (!ev->location.empty()) report << "**Location:** " << ev->location << "\n";
+        report << "**Attendance:** " << attendees.size() << " attendees\n\n";
+        if (!attendees.empty()) {
+            report << "## Attendees\n";
+            for (const auto& a : attendees)
+                report << "- " << a.member_display_name << "\n";
+            report << "\n";
+        }
+        if (!ev->notes.empty()) {
+            report << "## Notes\n" << ev->notes << "\n";
+        }
+
+        // Get forum channel from settings
+        // TODO: load from settings once discord_event_reports_forum_channel_id is configured
+        std::string forum_id = discord.get_events_forum_channel_id(); // fallback to events forum
+
+        std::string thread_id = discord.publish_report_to_forum(
+            forum_id, ev->notes_discord_post_id,
+            "Report: " + ev->title, report.str());
+
+        if (!thread_id.empty() && thread_id != ev->notes_discord_post_id) {
+            events.repo().update_notes_discord_post_id(ev->id, thread_id);
+        }
+
+        res.add_header("Content-Type", "text/html; charset=utf-8");
+        res.write(R"(<span class="text-green-600 text-xs">Report published!</span>)");
         return res;
     });
 }

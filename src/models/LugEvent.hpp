@@ -24,6 +24,10 @@ struct LugEvent {
     int64_t     event_lead_id          = 0; // FK to members (nullable)
     std::string event_lead_name;            // display name of the lead (denormalized for reads)
     std::string event_lead_discord_id;      // discord_user_id of the lead (denormalized for reads)
+    bool        suppress_discord  = false; // skip all Discord operations
+    bool        suppress_calendar = false; // skip Google Calendar operations
+    std::string notes;                     // markdown notes/report
+    std::string notes_discord_post_id;     // Discord forum thread ID for published report
     std::string created_at;
     std::string updated_at;
 };

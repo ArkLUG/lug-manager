@@ -63,13 +63,11 @@ inline bool require_auth(const crow::request& req, crow::response& res, App& app
         } else {
             res.redirect("/login");
         }
-        res.end();
         return false;
     }
     if (min_role == "admin" && ctx.auth.role != "admin") {
         res.code = 403;
         res.write(R"({"error":"forbidden"})");
-        res.end();
         return false;
     }
     return true;
@@ -94,7 +92,6 @@ inline bool can_manage_chapter_content(const crow::request& req, crow::response&
     if (!ctx.auth.authenticated) {
         res.code = 401;
         res.write(R"({"error":"not authenticated"})");
-        res.end();
         return false;
     }
     if (ctx.auth.role == "admin") return true;
@@ -111,6 +108,5 @@ inline bool can_manage_chapter_content(const crow::request& req, crow::response&
     } else {
         res.write(R"({"error":"insufficient chapter permissions"})");
     }
-    res.end();
     return false;
 }

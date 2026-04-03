@@ -145,109 +145,110 @@ LugEvent EventService::create(const LugEvent& e) {
 
     LugEvent created = repo_.create(to_create);
 
-    try {
-        std::string thread_id   = created.discord_thread_id; // pre-set if user chose existing
-        std::string thread_name = format_thread_name(created);
-        std::string lug_msg_id;
-
-        std::string role = (created.scope == "non_lug")
-            ? discord_.get_non_lug_event_role_id()
-            : discord_.get_announcement_role_id();
-
-        std::cout << "[EventService] Discord integration for event " << created.id
-                  << " '" << created.title << "'\n";
-        std::cout << "[EventService]   lug_channel_id='"
-                  << discord_.get_lug_channel_id() << "'"
-                  << "  forum_channel_id='" << discord_.get_events_forum_channel_id() << "'"
-                  << "  role='" << role << "'\n";
-
-        // Step 1: Create forum thread FIRST so we can link to it in the announcement.
-        // (Pre-set thread_id means the user chose an existing thread — already linkable.)
-        if (thread_id.empty() && !discord_.get_events_forum_channel_id().empty()) {
-            thread_id = discord_.sync_create_forum_thread_for_event(thread_name, created);
-        }
-
-        // Build thread URL now if we have a thread (forum or pre-existing)
-        std::string thread_url;
-        if (!thread_id.empty() && !discord_.get_guild_id().empty())
-            thread_url = "https://discord.com/channels/" + discord_.get_guild_id() + "/" + thread_id;
-
-        // Step 2: Post announcement to lug_channel with thread link
-        if (!discord_.get_lug_channel_id().empty()) {
-            lug_msg_id = discord_.sync_post_event_announcement(
-                discord_.get_lug_channel_id(), created, role, thread_url);
-            if (lug_msg_id.empty())
-                std::cerr << "[EventService] Warning: lug_channel announcement post returned no message ID\n";
-            else
-                std::cout << "[EventService]   lug announcement posted, msg_id=" << lug_msg_id << "\n";
-        } else {
-            std::cerr << "[EventService] Warning: lug_channel_id is not configured — skipping announcement\n";
-        }
-
-        // Step 3: If no forum channel, create a text thread from the announcement message,
-        // then edit the announcement to add the thread link.
-        if (thread_id.empty() && !lug_msg_id.empty()) {
-            thread_id = discord_.sync_create_thread_from_message(
-                discord_.get_lug_channel_id(), lug_msg_id, thread_name);
-            if (!thread_id.empty() && !discord_.get_guild_id().empty()) {
-                thread_url = "https://discord.com/channels/" + discord_.get_guild_id() + "/" + thread_id;
-                std::string updated_content =
-                    DiscordClient::build_event_announcement_content(created, role, thread_url, discord_.get_suppress_pings());
-                discord_.update_channel_message(discord_.get_lug_channel_id(), lug_msg_id, updated_content);
-            }
-        }
-
-        // Step 3: Create Discord scheduled event
-        std::string event_id = discord_.sync_create_scheduled_event_event(created);
-
-        repo_.update_discord_ids(created.id, thread_id, event_id);
-        if (!lug_msg_id.empty()) repo_.update_lug_message_id(created.id, lug_msg_id);
-
-        created.discord_thread_id      = thread_id;
-        created.discord_event_id       = event_id;
-        created.discord_lug_message_id = lug_msg_id;
-    } catch (const std::exception& ex) {
-        std::cerr << "[EventService] Warning: failed to post Discord integration for event "
-                  << created.id << ": " << ex.what() << "\n";
-    }
-
-    // Step 4: Post to chapter announcement channel (if chapter event)
-    if (created.chapter_id > 0 && chapter_repo_) {
+    if (!created.suppress_discord) {
         try {
-            auto ch = chapter_repo_->find_by_id(created.chapter_id);
-            if (ch) {
-                std::cout << "[EventService]   chapter_id=" << created.chapter_id
-                          << "  chapter_announcement_channel='"
-                          << ch->discord_announcement_channel_id << "'\n";
-                if (!ch->discord_announcement_channel_id.empty()) {
-                    std::string ch_role = ch->discord_member_role_id.empty()
-                        ? discord_.get_announcement_role_id()
-                        : ch->discord_member_role_id;
-                    std::string ch_thread_url;
-                    if (!created.discord_thread_id.empty() && !discord_.get_guild_id().empty())
-                        ch_thread_url = "https://discord.com/channels/" + discord_.get_guild_id() + "/" + created.discord_thread_id;
-                    std::string msg_id = discord_.sync_post_event_announcement(
-                        ch->discord_announcement_channel_id, created, ch_role, ch_thread_url);
-                    if (!msg_id.empty()) {
-                        repo_.update_chapter_message_id(created.id, msg_id);
-                        created.discord_chapter_message_id = msg_id;
-                        std::cout << "[EventService]   chapter announcement posted, msg_id=" << msg_id << "\n";
-                    } else {
-                        std::cerr << "[EventService] Warning: chapter announcement post returned no message ID\n";
-                    }
-                } else {
-                    std::cerr << "[EventService] Warning: chapter " << created.chapter_id
-                              << " has no discord_announcement_channel_id configured\n";
+            std::string thread_id   = created.discord_thread_id; // pre-set if user chose existing
+            std::string thread_name = format_thread_name(created);
+            std::string lug_msg_id;
+
+            std::string role = (created.scope == "non_lug")
+                ? discord_.get_non_lug_event_role_id()
+                : discord_.get_announcement_role_id();
+
+            std::cout << "[EventService] Discord integration for event " << created.id
+                      << " '" << created.title << "'\n";
+            std::cout << "[EventService]   lug_channel_id='"
+                      << discord_.get_lug_channel_id() << "'"
+                      << "  forum_channel_id='" << discord_.get_events_forum_channel_id() << "'"
+                      << "  role='" << role << "'\n";
+
+            // Step 1: Create forum thread FIRST so we can link to it in the announcement.
+            if (thread_id.empty() && !discord_.get_events_forum_channel_id().empty()) {
+                thread_id = discord_.sync_create_forum_thread_for_event(thread_name, created);
+            }
+
+            // Build thread URL now if we have a thread (forum or pre-existing)
+            std::string thread_url;
+            if (!thread_id.empty() && !discord_.get_guild_id().empty())
+                thread_url = "https://discord.com/channels/" + discord_.get_guild_id() + "/" + thread_id;
+
+            // Step 2: Post announcement to lug_channel with thread link
+            if (!discord_.get_lug_channel_id().empty()) {
+                lug_msg_id = discord_.sync_post_event_announcement(
+                    discord_.get_lug_channel_id(), created, role, thread_url);
+                if (lug_msg_id.empty())
+                    std::cerr << "[EventService] Warning: lug_channel announcement post returned no message ID\n";
+                else
+                    std::cout << "[EventService]   lug announcement posted, msg_id=" << lug_msg_id << "\n";
+            } else {
+                std::cerr << "[EventService] Warning: lug_channel_id is not configured — skipping announcement\n";
+            }
+
+            // Step 3: If no forum channel, create a text thread from the announcement message,
+            // then edit the announcement to add the thread link.
+            if (thread_id.empty() && !lug_msg_id.empty()) {
+                thread_id = discord_.sync_create_thread_from_message(
+                    discord_.get_lug_channel_id(), lug_msg_id, thread_name);
+                if (!thread_id.empty() && !discord_.get_guild_id().empty()) {
+                    thread_url = "https://discord.com/channels/" + discord_.get_guild_id() + "/" + thread_id;
+                    std::string updated_content =
+                        DiscordClient::build_event_announcement_content(created, role, thread_url, discord_.get_suppress_pings());
+                    discord_.update_channel_message(discord_.get_lug_channel_id(), lug_msg_id, updated_content);
                 }
             }
+
+            // Step 4: Create Discord scheduled event
+            std::string event_id = discord_.sync_create_scheduled_event_event(created);
+
+            repo_.update_discord_ids(created.id, thread_id, event_id);
+            if (!lug_msg_id.empty()) repo_.update_lug_message_id(created.id, lug_msg_id);
+
+            created.discord_thread_id      = thread_id;
+            created.discord_event_id       = event_id;
+            created.discord_lug_message_id = lug_msg_id;
         } catch (const std::exception& ex) {
-            std::cerr << "[EventService] Warning: failed to post chapter announcement for event "
+            std::cerr << "[EventService] Warning: failed to post Discord integration for event "
                       << created.id << ": " << ex.what() << "\n";
         }
-    }
+
+        // Post to chapter announcement channel (if chapter event)
+        if (created.chapter_id > 0 && chapter_repo_) {
+            try {
+                auto ch = chapter_repo_->find_by_id(created.chapter_id);
+                if (ch) {
+                    std::cout << "[EventService]   chapter_id=" << created.chapter_id
+                              << "  chapter_announcement_channel='"
+                              << ch->discord_announcement_channel_id << "'\n";
+                    if (!ch->discord_announcement_channel_id.empty()) {
+                        std::string ch_role = ch->discord_member_role_id.empty()
+                            ? discord_.get_announcement_role_id()
+                            : ch->discord_member_role_id;
+                        std::string ch_thread_url;
+                        if (!created.discord_thread_id.empty() && !discord_.get_guild_id().empty())
+                            ch_thread_url = "https://discord.com/channels/" + discord_.get_guild_id() + "/" + created.discord_thread_id;
+                        std::string msg_id = discord_.sync_post_event_announcement(
+                            ch->discord_announcement_channel_id, created, ch_role, ch_thread_url);
+                        if (!msg_id.empty()) {
+                            repo_.update_chapter_message_id(created.id, msg_id);
+                            created.discord_chapter_message_id = msg_id;
+                            std::cout << "[EventService]   chapter announcement posted, msg_id=" << msg_id << "\n";
+                        } else {
+                            std::cerr << "[EventService] Warning: chapter announcement post returned no message ID\n";
+                        }
+                    } else {
+                        std::cerr << "[EventService] Warning: chapter " << created.chapter_id
+                                  << " has no discord_announcement_channel_id configured\n";
+                    }
+                }
+            } catch (const std::exception& ex) {
+                std::cerr << "[EventService] Warning: failed to post chapter announcement for event "
+                          << created.id << ": " << ex.what() << "\n";
+            }
+        }
+    } // end suppress_discord check
 
     // Google Calendar event
-    if (gcal_ && gcal_->is_configured()) {
+    if (!created.suppress_calendar && gcal_ && gcal_->is_configured()) {
         try {
             std::string gcal_id = gcal_->create_event(with_calendar_title(created));
             if (!gcal_id.empty()) {
@@ -290,119 +291,125 @@ LugEvent EventService::update(int64_t id, const LugEvent& updates) {
     // Only updated when the caller explicitly provides the field (routes handle the guard)
     if (updates.discord_ping_role_ids != "\x01")
         updated.discord_ping_role_ids = updates.discord_ping_role_ids;
+    // Suppress flags: always take from updates (route sets explicitly)
+    updated.suppress_discord  = updates.suppress_discord;
+    updated.suppress_calendar = updates.suppress_calendar;
+    updated.notes             = updates.notes;
 
     repo_.update(updated);
 
-    try {
-        discord_.update_event(updated);
-    } catch (const std::exception& ex) {
-        std::cerr << "[EventService] Warning: failed to update Discord event for event "
-                  << updated.id << ": " << ex.what() << "\n";
-    }
-
-    // Build thread URL for inclusion in announcement messages
-    std::string thread_url;
-    if (!updated.discord_thread_id.empty() && !discord_.get_guild_id().empty())
-        thread_url = "https://discord.com/channels/" + discord_.get_guild_id() + "/" + updated.discord_thread_id;
-
-    // Detect scope/chapter change — need to move announcements
-    bool scope_changed = existing->scope != updated.scope || existing->chapter_id != updated.chapter_id;
-
-    if (scope_changed) {
-        // Delete old announcements
-        if (!existing->discord_lug_message_id.empty() && !discord_.get_lug_channel_id().empty())
-            discord_.delete_channel_message(discord_.get_lug_channel_id(), existing->discord_lug_message_id);
-        if (!existing->discord_chapter_message_id.empty() && existing->chapter_id > 0 && chapter_repo_) {
-            auto old_ch = chapter_repo_->find_by_id(existing->chapter_id);
-            if (old_ch && !old_ch->discord_announcement_channel_id.empty())
-                discord_.delete_channel_message(old_ch->discord_announcement_channel_id, existing->discord_chapter_message_id);
+    if (!updated.suppress_discord) {
+        try {
+            discord_.update_event(updated);
+        } catch (const std::exception& ex) {
+            std::cerr << "[EventService] Warning: failed to update Discord event for event "
+                      << updated.id << ": " << ex.what() << "\n";
         }
-        updated.discord_lug_message_id.clear();
-        updated.discord_chapter_message_id.clear();
-        repo_.update_lug_message_id(updated.id, "");
-        repo_.update_chapter_message_id(updated.id, "");
 
-        // Post new announcement in the correct channel
-        if (updated.scope == "lug_wide" || updated.scope == "non_lug") {
-            if (!discord_.get_lug_channel_id().empty()) {
+        // Build thread URL for inclusion in announcement messages
+        std::string thread_url;
+        if (!updated.discord_thread_id.empty() && !discord_.get_guild_id().empty())
+            thread_url = "https://discord.com/channels/" + discord_.get_guild_id() + "/" + updated.discord_thread_id;
+
+        // Detect scope/chapter change — need to move announcements
+        bool scope_changed = existing->scope != updated.scope || existing->chapter_id != updated.chapter_id;
+
+        if (scope_changed) {
+            // Delete old announcements
+            if (!existing->discord_lug_message_id.empty() && !discord_.get_lug_channel_id().empty())
+                discord_.delete_channel_message(discord_.get_lug_channel_id(), existing->discord_lug_message_id);
+            if (!existing->discord_chapter_message_id.empty() && existing->chapter_id > 0 && chapter_repo_) {
+                auto old_ch = chapter_repo_->find_by_id(existing->chapter_id);
+                if (old_ch && !old_ch->discord_announcement_channel_id.empty())
+                    discord_.delete_channel_message(old_ch->discord_announcement_channel_id, existing->discord_chapter_message_id);
+            }
+            updated.discord_lug_message_id.clear();
+            updated.discord_chapter_message_id.clear();
+            repo_.update_lug_message_id(updated.id, "");
+            repo_.update_chapter_message_id(updated.id, "");
+
+            // Post new announcement in the correct channel
+            if (updated.scope == "lug_wide" || updated.scope == "non_lug") {
+                if (!discord_.get_lug_channel_id().empty()) {
+                    try {
+                        std::string role = (updated.scope == "non_lug")
+                            ? discord_.get_non_lug_event_role_id()
+                            : discord_.get_announcement_role_id();
+                        std::string msg_id = discord_.sync_post_event_announcement(
+                            discord_.get_lug_channel_id(), updated, role, thread_url);
+                        if (!msg_id.empty()) {
+                            repo_.update_lug_message_id(updated.id, msg_id);
+                            updated.discord_lug_message_id = msg_id;
+                        }
+                    } catch (const std::exception& ex) {
+                        std::cerr << "[EventService] Warning: failed to post lug announcement: " << ex.what() << "\n";
+                    }
+                }
+            }
+            if ((updated.scope == "chapter" || scope_changed) && updated.chapter_id > 0 && chapter_repo_) {
+                try {
+                    auto ch = chapter_repo_->find_by_id(updated.chapter_id);
+                    if (ch && !ch->discord_announcement_channel_id.empty()) {
+                        std::string ch_role = ch->discord_member_role_id.empty()
+                            ? discord_.get_announcement_role_id()
+                            : ch->discord_member_role_id;
+                        std::string msg_id = discord_.sync_post_event_announcement(
+                            ch->discord_announcement_channel_id, updated, ch_role, thread_url);
+                        if (!msg_id.empty()) {
+                            repo_.update_chapter_message_id(updated.id, msg_id);
+                            updated.discord_chapter_message_id = msg_id;
+                        }
+                    }
+                } catch (const std::exception& ex) {
+                    std::cerr << "[EventService] Warning: failed to post chapter announcement: " << ex.what() << "\n";
+                }
+            }
+        } else {
+            // Same scope — edit announcements in place
+            if (!updated.discord_lug_message_id.empty() && !discord_.get_lug_channel_id().empty()) {
                 try {
                     std::string role = (updated.scope == "non_lug")
                         ? discord_.get_non_lug_event_role_id()
                         : discord_.get_announcement_role_id();
-                    std::string msg_id = discord_.sync_post_event_announcement(
-                        discord_.get_lug_channel_id(), updated, role, thread_url);
-                    if (!msg_id.empty()) {
-                        repo_.update_lug_message_id(updated.id, msg_id);
-                        updated.discord_lug_message_id = msg_id;
+                    std::string new_content =
+                        DiscordClient::build_event_announcement_content(updated, role, thread_url, discord_.get_suppress_pings());
+                    discord_.update_channel_message(discord_.get_lug_channel_id(),
+                                                    updated.discord_lug_message_id, new_content);
+                } catch (const std::exception& ex) {
+                    std::cerr << "[EventService] Warning: failed to update lug announcement: " << ex.what() << "\n";
+                }
+            }
+            if (!updated.discord_chapter_message_id.empty() && updated.chapter_id > 0 && chapter_repo_) {
+                try {
+                    auto ch = chapter_repo_->find_by_id(updated.chapter_id);
+                    if (ch && !ch->discord_announcement_channel_id.empty()) {
+                        std::string ch_role = ch->discord_member_role_id.empty()
+                            ? discord_.get_announcement_role_id()
+                            : ch->discord_member_role_id;
+                        std::string new_content =
+                            DiscordClient::build_event_announcement_content(updated, ch_role, thread_url, discord_.get_suppress_pings());
+                        discord_.update_channel_message(ch->discord_announcement_channel_id,
+                                                        updated.discord_chapter_message_id, new_content);
                     }
                 } catch (const std::exception& ex) {
-                    std::cerr << "[EventService] Warning: failed to post lug announcement: " << ex.what() << "\n";
+                    std::cerr << "[EventService] Warning: failed to update chapter announcement: " << ex.what() << "\n";
                 }
             }
         }
-        if ((updated.scope == "chapter" || scope_changed) && updated.chapter_id > 0 && chapter_repo_) {
-            try {
-                auto ch = chapter_repo_->find_by_id(updated.chapter_id);
-                if (ch && !ch->discord_announcement_channel_id.empty()) {
-                    std::string ch_role = ch->discord_member_role_id.empty()
-                        ? discord_.get_announcement_role_id()
-                        : ch->discord_member_role_id;
-                    std::string msg_id = discord_.sync_post_event_announcement(
-                        ch->discord_announcement_channel_id, updated, ch_role, thread_url);
-                    if (!msg_id.empty()) {
-                        repo_.update_chapter_message_id(updated.id, msg_id);
-                        updated.discord_chapter_message_id = msg_id;
-                    }
-                }
-            } catch (const std::exception& ex) {
-                std::cerr << "[EventService] Warning: failed to post chapter announcement: " << ex.what() << "\n";
-            }
-        }
-    } else {
-        // Same scope — edit announcements in place
-        if (!updated.discord_lug_message_id.empty() && !discord_.get_lug_channel_id().empty()) {
-            try {
-                std::string role = (updated.scope == "non_lug")
-                    ? discord_.get_non_lug_event_role_id()
-                    : discord_.get_announcement_role_id();
-                std::string new_content =
-                    DiscordClient::build_event_announcement_content(updated, role, thread_url, discord_.get_suppress_pings());
-                discord_.update_channel_message(discord_.get_lug_channel_id(),
-                                                updated.discord_lug_message_id, new_content);
-            } catch (const std::exception& ex) {
-                std::cerr << "[EventService] Warning: failed to update lug announcement: " << ex.what() << "\n";
-            }
-        }
-        if (!updated.discord_chapter_message_id.empty() && updated.chapter_id > 0 && chapter_repo_) {
-            try {
-                auto ch = chapter_repo_->find_by_id(updated.chapter_id);
-                if (ch && !ch->discord_announcement_channel_id.empty()) {
-                    std::string ch_role = ch->discord_member_role_id.empty()
-                        ? discord_.get_announcement_role_id()
-                        : ch->discord_member_role_id;
-                    std::string new_content =
-                        DiscordClient::build_event_announcement_content(updated, ch_role, thread_url, discord_.get_suppress_pings());
-                    discord_.update_channel_message(ch->discord_announcement_channel_id,
-                                                    updated.discord_chapter_message_id, new_content);
-                }
-            } catch (const std::exception& ex) {
-                std::cerr << "[EventService] Warning: failed to update chapter announcement: " << ex.what() << "\n";
-            }
-        }
-    }
 
-    // Post update notification in the thread (no pings, can be suppressed)
-    if (!discord_.get_suppress_updates() && !updated.discord_thread_id.empty()) {
-        try {
-            discord_.post_message(updated.discord_thread_id,
-                "**Event Updated** — " + updated.title + " has been updated.");
-        } catch (const std::exception& ex) {
-            std::cerr << "[EventService] Warning: failed to post update notification: " << ex.what() << "\n";
+        // Post update notification in the thread (no pings, can be suppressed)
+        if (!discord_.get_suppress_updates() && !updated.discord_thread_id.empty()) {
+            try {
+                discord_.post_message(updated.discord_thread_id,
+                    "**Event Updated** — " + updated.title + " has been updated.");
+            } catch (const std::exception& ex) {
+                std::cerr << "[EventService] Warning: failed to post update notification: " << ex.what() << "\n";
+            }
         }
-    }
+    } // end suppress_discord check
 
     // Google Calendar update
-    if (gcal_ && gcal_->is_configured() && !updated.google_calendar_event_id.empty()) {
+    if (!updated.suppress_calendar && gcal_ && gcal_->is_configured() && !updated.google_calendar_event_id.empty()) {
         try {
             gcal_->update_event(updated.google_calendar_event_id, with_calendar_title(updated));
         } catch (const std::exception& ex) {
