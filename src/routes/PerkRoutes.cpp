@@ -32,12 +32,23 @@ void register_perk_routes(LugApp& app, PerkLevelRepository& perks,
         if (!require_auth(req, res, app, "admin")) return res;
 
         auto levels = perks.find_all();
+
+        // Build role ID -> name lookup for display
+        std::map<std::string, std::string> role_names;
+        try {
+            auto guild_roles = discord.fetch_guild_roles();
+            for (const auto& r : guild_roles) role_names[r.id] = r.name;
+        } catch (...) {}
+
         crow::mustache::context ctx;
         crow::json::wvalue arr;
         for (size_t i = 0; i < levels.size(); ++i) {
             arr[i]["id"]                          = levels[i].id;
             arr[i]["name"]                        = levels[i].name;
             arr[i]["discord_role_id"]              = levels[i].discord_role_id;
+            auto rit = role_names.find(levels[i].discord_role_id);
+            arr[i]["discord_role_name"]            = rit != role_names.end() ? ("@" + rit->second) :
+                                                     (levels[i].discord_role_id.empty() ? "None" : levels[i].discord_role_id);
             arr[i]["meeting_attendance_required"]  = levels[i].meeting_attendance_required;
             arr[i]["event_attendance_required"]    = levels[i].event_attendance_required;
             arr[i]["requires_paid_dues"]           = levels[i].requires_paid_dues;

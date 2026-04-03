@@ -1,9 +1,20 @@
 <div class="max-w-4xl mx-auto p-6">
+    <div class="flex items-center gap-3 mb-6">
+        <a hx-get="/settings" hx-target="#main-content" hx-push-url="true" hx-swap="innerHTML"
+           class="text-sm text-gray-500 hover:text-gray-700 transition-colors cursor-pointer">&larr; Settings</a>
+        <span class="text-gray-300">/</span>
+        <span class="text-sm font-medium text-gray-700">Perk Levels</span>
+    </div>
+
     <div class="flex items-center justify-between mb-6">
-        <h2 class="text-2xl font-bold text-gray-800">Perk Levels</h2>
+        <div>
+            <h2 class="text-xl font-bold text-gray-800">Perk Levels</h2>
+            <p class="text-sm text-gray-500 mt-0.5">Define attendance tiers with Discord role rewards</p>
+        </div>
         <div class="flex gap-2">
             <button hx-post="/api/perks/sync-roles" hx-target="#sync-result" hx-swap="innerHTML"
-                    class="bg-indigo-600 text-white px-3 py-1.5 rounded text-sm hover:bg-indigo-700">
+                    class="inline-flex items-center gap-2 px-3 py-1.5 bg-indigo-600 text-white rounded-lg text-sm hover:bg-indigo-700 transition-colors">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
                 Sync Discord Roles
             </button>
         </div>
@@ -11,7 +22,7 @@
     <span id="sync-result"></span>
 
     {{#has_perks}}
-    <div class="bg-white shadow rounded-lg overflow-hidden mb-6">
+    <div class="bg-white rounded-xl border border-gray-200 overflow-hidden mb-6">
         <table class="min-w-full divide-y divide-gray-200">
             <thead class="bg-gray-50">
                 <tr>
@@ -32,7 +43,7 @@
                     <td class="px-4 py-3 text-sm text-gray-700">{{meeting_attendance_required}}</td>
                     <td class="px-4 py-3 text-sm text-gray-700">{{event_attendance_required}}</td>
                     <td class="px-4 py-3 text-sm text-gray-700">{{#requires_paid_dues}}Yes{{/requires_paid_dues}}{{^requires_paid_dues}}No{{/requires_paid_dues}}</td>
-                    <td class="px-4 py-3 text-sm text-gray-500">{{discord_role_id}}</td>
+                    <td class="px-4 py-3 text-sm text-gray-500">{{discord_role_name}}</td>
                     <td class="px-4 py-3 text-right">
                         <button hx-delete="/settings/perks/{{id}}" hx-confirm="Delete perk level '{{name}}'?"
                                 class="text-red-600 hover:text-red-800 text-sm">Delete</button>
@@ -44,45 +55,51 @@
     </div>
     {{/has_perks}}
     {{^has_perks}}
-    <p class="text-gray-500 mb-6">No perk levels defined yet.</p>
+    <div class="bg-white rounded-xl border border-dashed border-gray-300 p-8 text-center text-gray-400 mb-6">
+        <p class="font-medium">No perk levels defined yet</p>
+        <p class="text-sm mt-1">Add a tier below to get started.</p>
+    </div>
     {{/has_perks}}
 
-    <div class="bg-white shadow rounded-lg p-6">
+    <div class="bg-white rounded-xl border border-gray-200 p-6">
         <h3 class="text-lg font-semibold text-gray-800 mb-4">Add Perk Level</h3>
         <form hx-post="/settings/perks" hx-swap="none" class="space-y-4">
             <div class="grid grid-cols-2 gap-4">
                 <div>
                     <label class="block text-sm font-medium text-gray-700">Name</label>
                     <input type="text" name="name" required
-                           class="mt-1 block w-full border border-gray-300 rounded px-3 py-2 text-sm"
+                           class="mt-1 block w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-yellow-400"
                            placeholder="e.g. Bronze, Silver, Gold">
                 </div>
                 <div>
                     <label class="block text-sm font-medium text-gray-700">Sort Order</label>
                     <input type="number" name="sort_order" value="0"
-                           class="mt-1 block w-full border border-gray-300 rounded px-3 py-2 text-sm">
+                           class="mt-1 block w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-yellow-400">
                 </div>
             </div>
             <div class="grid grid-cols-2 gap-4">
                 <div>
                     <label class="block text-sm font-medium text-gray-700">Meetings Required</label>
                     <input type="number" name="meeting_attendance_required" value="0" min="0"
-                           class="mt-1 block w-full border border-gray-300 rounded px-3 py-2 text-sm">
+                           class="mt-1 block w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-yellow-400">
                 </div>
                 <div>
                     <label class="block text-sm font-medium text-gray-700">Events Required</label>
                     <input type="number" name="event_attendance_required" value="0" min="0"
-                           class="mt-1 block w-full border border-gray-300 rounded px-3 py-2 text-sm">
+                           class="mt-1 block w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-yellow-400">
                 </div>
             </div>
             <div class="grid grid-cols-2 gap-4">
                 <div>
-                    <label class="block text-sm font-medium text-gray-700">Discord Role ID</label>
-                    <input type="text" name="discord_role_id"
-                           class="mt-1 block w-full border border-gray-300 rounded px-3 py-2 text-sm"
-                           placeholder="Discord role snowflake ID">
+                    <label class="block text-sm font-medium text-gray-700">Discord Role</label>
+                    <select name="discord_role_id" id="perk-role-select"
+                            hx-get="/api/discord/role-options?selected=" hx-trigger="load" hx-swap="innerHTML"
+                            class="ts-channel mt-1 w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-yellow-400">
+                        <option value="">Loading roles...</option>
+                    </select>
+                    <p class="text-xs text-gray-400 mt-1">Role automatically assigned when a member reaches this tier.</p>
                 </div>
-                <div class="flex items-end">
+                <div class="flex items-end pb-1">
                     <label class="flex items-center gap-2 text-sm text-gray-700">
                         <input type="checkbox" name="requires_paid_dues" class="rounded border-gray-300">
                         Requires Paid Dues
@@ -90,9 +107,17 @@
                 </div>
             </div>
             <button type="submit"
-                    class="bg-green-600 text-white px-4 py-2 rounded text-sm hover:bg-green-700">
+                    class="inline-flex items-center gap-2 px-4 py-2 bg-gray-800 text-white rounded-lg text-sm font-medium hover:bg-gray-700 transition-colors">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
                 Add Perk Level
             </button>
         </form>
+    </div>
+
+    <div class="bg-blue-50 border border-blue-200 rounded-xl p-4 text-sm text-blue-800 mt-6">
+        <strong>How it works:</strong> Attendance is tracked separately for meetings and events per calendar year (Jan–Dec).
+        Members qualify for a tier when they meet <em>both</em> the meeting and event thresholds.
+        If "Requires Paid Dues" is checked, the member must also have active dues.
+        Use "Sync Discord Roles" to bulk-assign roles based on current attendance.
     </div>
 </div>
