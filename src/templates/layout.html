@@ -319,6 +319,17 @@
       var el = document.getElementById(id);
       if (el && el.tomselect) el.tomselect.destroy();
     }
+    // Toggle attendance panel: load if empty, clear if already loaded
+    window.toggleAttendance = function(btn, url, targetId) {
+      var target = document.getElementById(targetId);
+      if (!target) return;
+      if (target.innerHTML.trim()) {
+        target.innerHTML = '';
+      } else {
+        htmx.ajax('GET', '/' + url, {target: target, swap: 'innerHTML'});
+      }
+    };
+
     document.addEventListener('DOMContentLoaded', function() { initChannelSelects(); });
     document.addEventListener('htmx:afterSwap', function() { initChannelSelects(); });
 

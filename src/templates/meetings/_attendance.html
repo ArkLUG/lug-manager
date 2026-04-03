@@ -55,7 +55,7 @@
       <input type="hidden" name="entity_id" value="{{entity_id}}">
       <select name="member_id" multiple id="att-add-member-{{entity_type}}-{{entity_id}}"
               hx-get="/api/member-options" hx-trigger="load" hx-target="this" hx-swap="innerHTML"
-              hx-on::after-settle="if(window.TomSelect&&!this.tomselect)new TomSelect(this,{maxOptions:null,plugins:['remove_button']})"
+              hx-on::after-settle="if(window.TomSelect&&!this.tomselect){var ts=new TomSelect(this,{maxOptions:null,plugins:['remove_button']});ts.on('item_add',function(){ts.setTextboxValue('');});}"
               class="flex-1 text-xs border border-gray-300 rounded px-2 py-1.5">
         <option value="">Loading members…</option>
       </select>
