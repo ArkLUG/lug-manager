@@ -5,7 +5,7 @@
       <h2 class="text-xl font-semibold text-gray-800">Meetings</h2>
       <p class="text-sm text-gray-500 mt-0.5">{{total_count}} total</p>
     </div>
-    {{#is_admin}}
+    {{#can_create}}
     <div class="flex items-center gap-2">
       <button hx-get="/meetings/new" hx-target="#modal" hx-swap="innerHTML"
               class="inline-flex items-center gap-2 px-4 py-2 bg-gray-800 text-white rounded-lg text-sm font-medium hover:bg-gray-700 transition-colors">
@@ -13,7 +13,7 @@
         New Meeting
       </button>
     </div>
-    {{/is_admin}}
+    {{/can_create}}
   </div>
 
   <!-- Search -->
@@ -67,6 +67,13 @@
           <p class="text-xs sm:text-sm text-gray-500 mt-2 line-clamp-2">{{description}}</p>
           {{/description}}
 
+          {{#has_notes}}
+          <details class="mt-2">
+            <summary class="text-xs font-medium text-gray-500 cursor-pointer hover:text-gray-700">Notes</summary>
+            <div class="mt-1 prose prose-sm max-w-none text-gray-600">{{{notes_html}}}</div>
+          </details>
+          {{/has_notes}}
+
           <!-- Actions row -->
           <div class="flex flex-wrap items-center gap-2 mt-3">
             <span id="attendance-count-meeting-{{id}}" class="text-xs text-gray-400"
@@ -86,7 +93,7 @@
             </a>
             {{/discord_event_id}}
 
-            {{#is_admin}}
+            {{#can_manage}}
             {{^is_cancelled}}
             <div class="flex flex-wrap items-center gap-2 sm:ml-auto">
               <button hx-get="/meetings/{{id}}/edit" hx-target="#modal" hx-swap="innerHTML"
@@ -97,9 +104,15 @@
                       class="text-sm px-3 py-1.5 text-red-600 border border-red-300 rounded-lg hover:bg-red-50 transition-colors">
                 Delete
               </button>
+              <span id="mtg-report-{{id}}">
+                <button hx-post="/meetings/{{id}}/publish-report" hx-target="#mtg-report-{{id}}" hx-swap="innerHTML"
+                        class="text-sm px-3 py-1.5 text-purple-600 border border-purple-300 rounded-lg hover:bg-purple-50 transition-colors">
+                  {{#has_report}}Update Report{{/has_report}}{{^has_report}}Publish Report{{/has_report}}
+                </button>
+              </span>
             </div>
             {{/is_cancelled}}
-            {{/is_admin}}
+            {{/can_manage}}
           </div>
 
           <!-- Expandable attendance list -->

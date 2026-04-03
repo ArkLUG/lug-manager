@@ -47,6 +47,10 @@ public:
     std::string get_guild_id()                  const { return guild_id_; }
     std::string get_lug_channel_id()            const { return lug_channel_id_; }
     std::string get_events_forum_channel_id()   const { return events_forum_channel_id_; }
+    std::string get_event_reports_forum_id()   const { return event_reports_forum_id_; }
+    std::string get_meeting_reports_forum_id() const { return meeting_reports_forum_id_; }
+    void set_event_reports_forum_id(const std::string& id) { event_reports_forum_id_ = id; }
+    void set_meeting_reports_forum_id(const std::string& id) { meeting_reports_forum_id_ = id; }
     std::string get_announcement_role_id()      const { return announcement_role_id_; }
     std::string get_non_lug_event_role_id()     const { return non_lug_event_role_id_; }
     std::string get_timezone()                  const { return timezone_; }
@@ -156,6 +160,8 @@ private:
     std::string   announcement_role_id_;
     std::string   non_lug_event_role_id_;
     std::string   timezone_              = "UTC";
+    std::string   event_reports_forum_id_;
+    std::string   meeting_reports_forum_id_;
     bool          suppress_pings_        = false;
     bool          suppress_updates_      = false;
 

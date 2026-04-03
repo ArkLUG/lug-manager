@@ -114,3 +114,16 @@
     </div>
   </form>
 </div>
+<script>
+(function() {
+  var el = document.getElementById('meeting-notes-editor');
+  if (el && typeof EasyMDE !== 'undefined') {
+    new EasyMDE({
+      element: el,
+      spellChecker: false,
+      status: false,
+      toolbar: ['bold', 'italic', 'heading', '|', 'unordered-list', 'ordered-list', '|', 'link', '|', 'preview']
+    });
+  }
+})();
+</script>

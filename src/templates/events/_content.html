@@ -19,12 +19,14 @@
         Upcoming Only
       </button>
       {{/show_all}}
+      {{/is_admin}}
+      {{#can_create}}
       <button hx-get="/events/new" hx-target="#modal" hx-swap="innerHTML"
               class="inline-flex items-center gap-2 px-4 py-2 bg-gray-800 text-white rounded-lg text-sm font-medium hover:bg-gray-700 transition-colors">
         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
         New Event
       </button>
-      {{/is_admin}}
+      {{/can_create}}
     </div>
   </div>
 
@@ -84,6 +86,13 @@
           <p class="text-xs sm:text-sm text-gray-500 mt-2 line-clamp-2">{{description}}</p>
           {{/description}}
 
+          {{#has_notes}}
+          <details class="mt-2">
+            <summary class="text-xs font-medium text-gray-500 cursor-pointer hover:text-gray-700">Notes</summary>
+            <div class="mt-1 prose prose-sm max-w-none text-gray-600">{{{notes_html}}}</div>
+          </details>
+          {{/has_notes}}
+
           <!-- Actions row -->
           <div class="flex flex-wrap items-center gap-2 mt-3">
             {{^scope_non_lug}}
@@ -105,7 +114,7 @@
             </a>
             {{/discord_thread_id}}
 
-            {{#is_admin}}
+            {{#can_manage}}
             {{^is_cancelled}}
             <div class="flex flex-wrap items-center gap-2 sm:ml-auto">
               <button hx-get="/events/{{id}}/edit" hx-target="#modal" hx-swap="innerHTML"
@@ -146,17 +155,25 @@
               </button>
               {{/is_closed}}
               {{/scope_non_lug}}
+              {{#is_admin}}
               <button hx-post="/events/{{id}}/convert-to-meeting" hx-confirm="Convert this event to a meeting? The event will be deleted and a new meeting created with the same details."
                       class="text-sm px-3 py-1.5 text-amber-600 border border-amber-300 rounded-lg hover:bg-amber-50 transition-colors">
                 To Meeting
               </button>
+              {{/is_admin}}
               <button hx-post="/events/{{id}}/cancel" hx-confirm="Delete this event?" hx-swap="none"
                       class="text-sm px-3 py-1.5 text-red-600 border border-red-300 rounded-lg hover:bg-red-50 transition-colors">
                 Delete
               </button>
+              <span id="ev-report-{{id}}">
+                <button hx-post="/events/{{id}}/publish-report" hx-target="#ev-report-{{id}}" hx-swap="innerHTML"
+                        class="text-sm px-3 py-1.5 text-purple-600 border border-purple-300 rounded-lg hover:bg-purple-50 transition-colors">
+                  {{#has_report}}Update Report{{/has_report}}{{^has_report}}Publish Report{{/has_report}}
+                </button>
+              </span>
             </div>
             {{/is_cancelled}}
-            {{/is_admin}}
+            {{/can_manage}}
           </div>
 
           <div id="ev-attendance-{{id}}" class="mt-3"></div>

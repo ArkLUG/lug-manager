@@ -100,6 +100,8 @@ int main() {
             discord_client.reconfigure(guild, channel, forum_channel, announce_role, non_lug_role, timezone);
             discord_client.set_suppress_pings(settings_repo.get("discord_suppress_pings") == "1");
             discord_client.set_suppress_updates(settings_repo.get("discord_suppress_updates") == "1");
+            discord_client.set_event_reports_forum_id(settings_repo.get("discord_event_reports_forum_channel_id"));
+            discord_client.set_meeting_reports_forum_id(settings_repo.get("discord_meeting_reports_forum_channel_id"));
             calendar.set_timezone(timezone);
 
             // Google Calendar

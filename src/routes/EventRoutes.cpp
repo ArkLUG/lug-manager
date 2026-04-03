@@ -1,8 +1,10 @@
 #include "routes/EventRoutes.hpp"
+#include "utils/MarkdownRenderer.hpp"
 #include <crow.h>
 #include <crow/mustache.h>
 #include <stdexcept>
 #include <set>
+#include <map>
 #include <sstream>
 #include <cstdio>
 
@@ -28,12 +30,23 @@ static std::string event_status_color(const std::string& status) {
 static crow::mustache::context build_event_list_ctx(
         const std::vector<LugEvent>& event_list,
         AttendanceService& attendance,
+        ChapterMemberRepository& chapter_members,
         bool is_admin,
+        bool can_create,
         int64_t current_member_id,
         const std::string& title_str = "Events") {
     crow::mustache::context ctx;
-    ctx["title"]    = title_str;
-    ctx["is_admin"] = is_admin;
+    ctx["title"]      = title_str;
+    ctx["is_admin"]   = is_admin;
+    ctx["can_create"] = can_create;
+
+    // Pre-fetch user's chapter memberships for per-event can_manage check
+    std::map<int64_t, std::string> user_chapter_roles;
+    if (!is_admin && current_member_id > 0) {
+        auto memberships = chapter_members.find_by_member(current_member_id);
+        for (const auto& cm : memberships)
+            user_chapter_roles[cm.chapter_id] = cm.chapter_role;
+    }
 
     crow::json::wvalue arr;
     for (size_t i = 0; i < event_list.size(); ++i) {
@@ -72,6 +85,18 @@ static crow::mustache::context build_event_list_ctx(
         arr[i]["is_closed"]        = (e.status == "closed");
         arr[i]["has_discord_thread"]= !e.discord_thread_id.empty();
         arr[i]["is_admin"]         = is_admin;
+        arr[i]["has_notes"]        = !e.notes.empty();
+        arr[i]["notes_html"]       = e.notes.empty() ? "" : render_markdown(e.notes);
+        arr[i]["has_report"]       = !e.notes_discord_post_id.empty();
+
+        // Per-event can_manage: admin always, or chapter event_manager/lead
+        bool event_can_manage = is_admin;
+        if (!is_admin && e.chapter_id > 0) {
+            auto it = user_chapter_roles.find(e.chapter_id);
+            if (it != user_chapter_roles.end())
+                event_can_manage = chapter_role_rank(it->second) >= chapter_role_rank("event_manager");
+        }
+        arr[i]["can_manage"] = event_can_manage;
 
         int count = attendance.get_count("event", e.id);
         arr[i]["attendance_count"] = count;
@@ -101,10 +126,19 @@ static std::string render_event_page(const crow::request& req,
                                       LugApp& app,
                                       EventService& events,
                                       AttendanceService& attendance,
+                                      ChapterMemberRepository& chapter_members,
                                       bool all_events = false) {
     auto& auth     = app.get_context<AuthMiddleware>(req);
     bool is_admin  = auth.auth.role == "admin";
     int64_t mbr_id = auth.auth.member_id;
+    // can_create: admin or anyone with event_manager/lead role in any chapter
+    bool can_create = is_admin;
+    if (!is_admin && mbr_id > 0) {
+        auto memberships = chapter_members.find_by_member(mbr_id);
+        for (const auto& cm : memberships)
+            if (chapter_role_rank(cm.chapter_role) >= chapter_role_rank("event_manager"))
+                { can_create = true; break; }
+    }
 
     auto qs = crow::query_string(req.url_params);
     const char* s_raw = qs.get("search");
@@ -121,7 +155,7 @@ static std::string render_event_page(const crow::request& req,
     int offset = (page - 1) * kEvPerPage;
 
     auto event_list = events.list_paginated(search, kEvPerPage, offset, upcoming_only);
-    auto ctx = build_event_list_ctx(event_list, attendance, is_admin, mbr_id);
+    auto ctx = build_event_list_ctx(event_list, attendance, chapter_members, is_admin, can_create, mbr_id);
 
     ctx["show_all"]    = all_events;
     ctx["search"]      = search;
@@ -211,7 +245,7 @@ void register_event_routes(LugApp& app, EventService& events, AttendanceService&
         crow::response res;
         if (!require_auth(req, res, app)) return res;
         res.add_header("Content-Type", "text/html; charset=utf-8");
-        res.write(render_event_page(req, app, events, attendance, false));
+        res.write(render_event_page(req, app, events, attendance, chapter_members, false));
         return res;
     });
 
@@ -220,7 +254,7 @@ void register_event_routes(LugApp& app, EventService& events, AttendanceService&
         crow::response res;
         if (!require_auth(req, res, app, "admin")) return res;
         res.add_header("Content-Type", "text/html; charset=utf-8");
-        res.write(render_event_page(req, app, events, attendance, true));
+        res.write(render_event_page(req, app, events, attendance, chapter_members, true));
         return res;
     });
 
@@ -523,7 +557,7 @@ void register_event_routes(LugApp& app, EventService& events, AttendanceService&
             res.add_header("HX-Trigger", "closeModal");
             res.add_header("HX-Redirect", "/events");
             res.code = 200;
-            res.write(render_event_page(req, app, events, attendance, false));
+            res.write(render_event_page(req, app, events, attendance, chapter_members, false));
         } catch (const std::exception& ex) {
             res.code = 400;
             res.write(std::string(
@@ -617,7 +651,7 @@ void register_event_routes(LugApp& app, EventService& events, AttendanceService&
                 res.add_header("HX-Trigger", "closeModal");
                 res.add_header("HX-Redirect", "/events");
                 res.code = 200;
-                res.write(render_event_page(req, app, events, attendance, false));
+                res.write(render_event_page(req, app, events, attendance, chapter_members, false));
             } catch (const std::exception& ex) {
                 res.code = 400;
                 std::cerr << "[EventRoutes] PUT /events/" << id << " error: " << ex.what() << "\n";
@@ -859,9 +893,9 @@ void register_event_routes(LugApp& app, EventService& events, AttendanceService&
             report << "## Notes\n" << ev->notes << "\n";
         }
 
-        // Get forum channel from settings
-        // TODO: load from settings once discord_event_reports_forum_channel_id is configured
-        std::string forum_id = discord.get_events_forum_channel_id(); // fallback to events forum
+        // Use dedicated event reports forum, fall back to events forum
+        std::string forum_id = discord.get_event_reports_forum_id();
+        if (forum_id.empty()) forum_id = discord.get_events_forum_channel_id();
 
         std::string thread_id = discord.publish_report_to_forum(
             forum_id, ev->notes_discord_post_id,

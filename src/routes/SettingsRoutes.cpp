@@ -206,6 +206,8 @@ void register_settings_routes(LugApp& app, SettingsRepository& settings,
         std::string suppress_updates  = settings.get("discord_suppress_updates");
         std::string gcal_sa_path      = settings.get("google_service_account_json_path");
         std::string gcal_cal_id       = settings.get("google_calendar_id");
+        std::string event_reports_forum = settings.get("discord_event_reports_forum_channel_id");
+        std::string meeting_reports_forum = settings.get("discord_meeting_reports_forum_channel_id");
 
         auto build_options = [](const std::vector<DiscordChannel>& channels,
                                 const std::string& selected,
@@ -266,6 +268,8 @@ void register_settings_routes(LugApp& app, SettingsRepository& settings,
         mctx["suppress_pings"]       = (suppress_pings == "1");
         mctx["suppress_updates"]     = (suppress_updates == "1");
         mctx["gcal_configured"]      = gcal.is_configured();
+        mctx["event_reports_forum_id"]   = event_reports_forum;
+        mctx["meeting_reports_forum_id"] = meeting_reports_forum;
 
         bool is_htmx = req.get_header_value("HX-Request") == "true";
         if (is_htmx) {
@@ -335,6 +339,14 @@ void register_settings_routes(LugApp& app, SettingsRepository& settings,
         if (!timezone.empty()) calendar.set_timezone(timezone);
         settings.set("google_service_account_json_path", gcal_sa_path);
         settings.set("google_calendar_id",               gcal_cal_id);
+        {
+            std::string ev_reports = get_param("discord_event_reports_forum_channel_id");
+            std::string mtg_reports = get_param("discord_meeting_reports_forum_channel_id");
+            settings.set("discord_event_reports_forum_channel_id", ev_reports);
+            settings.set("discord_meeting_reports_forum_channel_id", mtg_reports);
+            discord.set_event_reports_forum_id(ev_reports);
+            discord.set_meeting_reports_forum_id(mtg_reports);
+        }
         if (!gcal_sa_path.empty() && !gcal_cal_id.empty())
             gcal.reconfigure(gcal_sa_path, gcal_cal_id, timezone);
 
