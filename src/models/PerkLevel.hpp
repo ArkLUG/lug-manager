@@ -9,7 +9,7 @@ struct PerkLevel {
     int         meeting_attendance_required = 0;
     int         event_attendance_required   = 0;
     bool        requires_paid_dues         = false;
-    std::string min_fol_status             = "kfol"; // "kfol"|"tfol"|"afol"
+    std::string min_fol_status             = "afol"; // "kfol"|"tfol"|"afol"
     int         sort_order                  = 0;
     std::string created_at;
     std::string updated_at;

@@ -25,6 +25,7 @@
             {{#can_see_pii}}<th>Email</th>{{/can_see_pii}}
             <th>Dues</th>
             <th>Role</th>
+            <th>FOL</th>
             <th>Chapter</th>
             {{#is_admin}}<th>Actions</th>{{/is_admin}}
           </tr>
@@ -96,16 +97,21 @@
   var columns = [
     {
       data: 'display_name',
-      render: function(data, type) {
+      render: function(data, type, row) {
         if (type !== 'display') return data;
-        return '<div class="font-medium text-gray-800">' + escHtml(data) + '</div>';
+        var full = escHtml((row.first_name || '') + ' ' + (row.last_name || '')).trim();
+        var html = '<div class="font-medium text-gray-800">' + escHtml(data) + '</div>';
+        if (full && full !== escHtml(data)) {
+          html += '<div class="text-xs text-gray-400">' + full + '</div>';
+        }
+        return html;
       }
     },
     {
       data: 'discord_username',
       render: function(data, type) {
-        if (type !== 'display') return data;
-        return '<span class="text-gray-500">@' + escHtml(data) + '</span>';
+        if (type !== 'display') return data || '';
+        return data ? '<span class="text-gray-500">@' + escHtml(data) + '</span>' : '<span class="text-gray-300 text-xs">&mdash;</span>';
       }
     },
     {{#can_see_pii}}
@@ -139,6 +145,17 @@
                 : data === 'chapter_lead' ? 'bg-blue-100 text-blue-600'
                 :                          'bg-gray-100 text-gray-600';
         return '<span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium ' + cls + '">' + escHtml(data) + '</span>';
+      }
+    },
+    {
+      data: 'fol_status',
+      render: function(data, type) {
+        if (type !== 'display') return data || 'afol';
+        var label = (data || 'afol').toUpperCase();
+        var cls = data === 'kfol' ? 'bg-pink-100 text-pink-700'
+                : data === 'tfol' ? 'bg-cyan-100 text-cyan-700'
+                :                   'bg-gray-100 text-gray-600';
+        return '<span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium ' + cls + '">' + label + '</span>';
       }
     },
     {

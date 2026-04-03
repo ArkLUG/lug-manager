@@ -105,7 +105,7 @@ void register_perk_routes(LugApp& app, PerkLevelRepository& perks,
         try { p.meeting_attendance_required = std::stoi(gp("meeting_attendance_required")); } catch (...) {}
         try { p.event_attendance_required = std::stoi(gp("event_attendance_required")); } catch (...) {}
         p.requires_paid_dues = (gp("requires_paid_dues") == "on" || gp("requires_paid_dues") == "1");
-        { std::string fol = gp("min_fol_status"); p.min_fol_status = fol.empty() ? "kfol" : fol; }
+        { std::string fol = gp("min_fol_status"); p.min_fol_status = fol.empty() ? "afol" : fol; }
         try { p.sort_order = std::stoi(gp("sort_order")); } catch (...) {}
 
         perks.create(p);
@@ -193,7 +193,7 @@ void register_perk_routes(LugApp& app, PerkLevelRepository& perks,
         try { p.meeting_attendance_required = std::stoi(gp("meeting_attendance_required")); } catch (...) {}
         try { p.event_attendance_required = std::stoi(gp("event_attendance_required")); } catch (...) {}
         p.requires_paid_dues = (gp("requires_paid_dues") == "on" || gp("requires_paid_dues") == "1");
-        { std::string fol = gp("min_fol_status"); p.min_fol_status = fol.empty() ? "kfol" : fol; }
+        { std::string fol = gp("min_fol_status"); p.min_fol_status = fol.empty() ? "afol" : fol; }
         try { p.sort_order = std::stoi(gp("sort_order")); } catch (...) {}
 
         perks.update(p);

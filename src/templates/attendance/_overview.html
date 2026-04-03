@@ -77,14 +77,15 @@
             </th>
             <th class="px-3 py-2 text-center">Dues</th>
             {{#has_perks}}<th class="px-3 py-2">Tier</th>{{/has_perks}}
+            <th class="px-3 py-2"></th>
           </tr>
         </thead>
         <tbody class="divide-y divide-gray-100">
           {{#members}}
           <tr class="hover:bg-gray-50 transition-colors {{^has_attendance}}opacity-40{{/has_attendance}}">
             <td class="px-3 py-1.5">
-              <span class="font-medium text-gray-800 text-sm">{{display_name}}</span>
-              <span class="text-xs text-gray-400 ml-1 hidden sm:inline">@{{discord_username}}</span>
+              <span class="font-medium text-gray-800 text-sm">{{full_name}}</span>
+              <span class="text-xs text-gray-400 ml-1 hidden sm:inline">({{display_name}}){{#discord_username}} @{{discord_username}}{{/discord_username}}</span>
             </td>
             <td class="px-3 py-1.5 text-center text-xs">
               {{#meeting_count}}
@@ -115,6 +116,15 @@
               {{^has_tier}}<span class="text-gray-300 text-xs">&ndash;</span>{{/has_tier}}
             </td>
             {{/has_perks}}
+            <td class="px-3 py-1.5 text-right">
+              <button onclick="toggleAttendance(this, 'attendance/member/{{member_id}}/detail?year={{selected_year}}', 'member-detail-{{member_id}}')"
+                      class="text-xs text-blue-600 hover:text-blue-800">View</button>
+            </td>
+          </tr>
+          <tr id="member-detail-row-{{member_id}}" class="bg-gray-50">
+            <td colspan="99" class="px-3 py-0">
+              <div id="member-detail-{{member_id}}"></div>
+            </td>
           </tr>
           {{/members}}
         </tbody>

@@ -138,12 +138,15 @@ void register_member_routes(LugApp& app, MemberService& members) {
             json << "{\"DT_RowId\":\"member-row-" << m.id << "\""
                  << ",\"id\":"               << m.id
                  << ",\"display_name\":\""   << esc_json(m.display_name) << "\""
+                 << ",\"first_name\":\""     << esc_json(m.first_name) << "\""
+                 << ",\"last_name\":\""      << esc_json(m.last_name) << "\""
                  << ",\"discord_username\":\"" << esc_json(m.discord_username) << "\""
                  << ",\"email\":\""          << (can_see_pii ? esc_json(m.email) : "") << "\""
                  << ",\"is_paid\":"          << (m.is_paid ? "true" : "false")
                  << ",\"paid_until\":\""     << esc_json(m.paid_until) << "\""
                  << ",\"role\":\""           << esc_json(m.role) << "\""
                  << ",\"chapter_name\":\""   << esc_json(m.chapter_name) << "\""
+                 << ",\"fol_status\":\""    << esc_json(m.fol_status) << "\""
                  << "}";
         }
         json << "]}";

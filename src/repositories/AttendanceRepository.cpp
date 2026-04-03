@@ -197,29 +197,35 @@ static std::string build_overview_sql(const AttendanceRepository::OverviewParams
     // CTE computes per-member attendance stats for the year
     std::string sql =
         "WITH stats AS ("
-        "  SELECT m.id AS member_id, m.display_name, m.discord_username, m.is_paid, "
+        "  SELECT m.id AS member_id, m.display_name, "
+        "         COALESCE(m.first_name,'') AS first_name, COALESCE(m.last_name,'') AS last_name, "
+        "         m.discord_username, m.is_paid, "
         "         COALESCE(m.fol_status,'afol') AS fol_status, "
         "         SUM(CASE WHEN a.entity_type='meeting' THEN 1 ELSE 0 END) AS meeting_count, "
         "         SUM(CASE WHEN a.entity_type='meeting' AND a.is_virtual=1 THEN 1 ELSE 0 END) AS meeting_virtual_count, "
         "         SUM(CASE WHEN a.entity_type='event' THEN 1 ELSE 0 END) AS event_count, "
-        "         MAX(a.checked_in_at) AS last_attendance "
+        "         MAX(SUBSTR(CASE WHEN a.entity_type='meeting' THEN COALESCE(mt.start_time,'') "
+        "                         ELSE COALESCE(ev.start_time,'') END, 1, 10)) AS last_attendance "
         "  FROM members m "
         "  LEFT JOIN attendance a ON a.member_id = m.id "
         "    AND a.checked_in_at >= '" + year_start + "' AND a.checked_in_at < '" + year_end + "' "
+        "  LEFT JOIN meetings mt ON a.entity_type='meeting' AND mt.id = a.entity_id "
+        "  LEFT JOIN lug_events ev ON a.entity_type='event' AND ev.id = a.entity_id "
         "  GROUP BY m.id"
         ") ";
 
     if (count_only) {
         sql += "SELECT COUNT(*) FROM stats WHERE 1=1";
     } else {
-        sql += "SELECT member_id, display_name, discord_username, meeting_count, "
-               "meeting_virtual_count, event_count, COALESCE(last_attendance,''), "
+        sql += "SELECT member_id, display_name, first_name, last_name, discord_username, "
+               "meeting_count, meeting_virtual_count, event_count, COALESCE(last_attendance,''), "
                "is_paid, fol_status FROM stats WHERE 1=1";
     }
 
     // Search filter
     if (!p.search.empty()) {
-        sql += " AND (display_name LIKE '%" + p.search + "%' OR discord_username LIKE '%" + p.search + "%')";
+        sql += " AND (display_name LIKE '%" + p.search + "%' OR discord_username LIKE '%" + p.search + "%'"
+               " OR first_name LIKE '%" + p.search + "%' OR last_name LIKE '%" + p.search + "%')";
     }
 
     // Hide inactive: no attendance AND not paid
@@ -251,13 +257,15 @@ AttendanceRepository::get_overview_paginated(const OverviewParams& p) {
         MemberAttendanceSummary s;
         s.member_id             = stmt.col_int(0);
         s.display_name          = stmt.col_text(1);
-        s.discord_username      = stmt.col_text(2);
-        s.meeting_count         = static_cast<int>(stmt.col_int(3));
-        s.meeting_virtual_count = static_cast<int>(stmt.col_int(4));
-        s.event_count           = static_cast<int>(stmt.col_int(5));
-        s.last_attendance       = stmt.col_text(6);
-        s.is_paid               = stmt.col_bool(7);
-        s.fol_status            = stmt.col_text(8);
+        s.first_name            = stmt.col_text(2);
+        s.last_name             = stmt.col_text(3);
+        s.discord_username      = stmt.col_text(4);
+        s.meeting_count         = static_cast<int>(stmt.col_int(5));
+        s.meeting_virtual_count = static_cast<int>(stmt.col_int(6));
+        s.event_count           = static_cast<int>(stmt.col_int(7));
+        s.last_attendance       = stmt.col_text(8);
+        s.is_paid               = stmt.col_bool(9);
+        s.fol_status            = stmt.col_text(10);
         result.push_back(s);
     }
     return result;
@@ -280,6 +288,53 @@ int AttendanceRepository::count_member_by_year(int64_t member_id, int year,
     stmt.bind(2, entity_type);
     stmt.bind(3, year_start);
     stmt.bind(4, year_end);
+    if (stmt.step()) return static_cast<int>(stmt.col_int(0));
+    return 0;
+}
+
+std::vector<AttendanceRepository::AttendanceDetail>
+AttendanceRepository::get_member_attendance_detail(int64_t member_id, int year,
+                                                    int limit, int offset) {
+    std::string year_start = std::to_string(year) + "-01-01";
+    std::string year_end   = std::to_string(year + 1) + "-01-01";
+    auto stmt = db_.prepare(
+        "SELECT a.entity_type, a.entity_id, "
+        "  CASE WHEN a.entity_type='meeting' THEN COALESCE(mt.title,'') ELSE COALESCE(ev.title,'') END, "
+        "  CASE WHEN a.entity_type='meeting' THEN SUBSTR(COALESCE(mt.start_time,''),1,10) ELSE SUBSTR(COALESCE(ev.start_time,''),1,10) END, "
+        "  SUBSTR(a.checked_in_at,1,10), a.is_virtual "
+        "FROM attendance a "
+        "LEFT JOIN meetings mt ON a.entity_type='meeting' AND mt.id=a.entity_id "
+        "LEFT JOIN lug_events ev ON a.entity_type='event' AND ev.id=a.entity_id "
+        "WHERE a.member_id=? AND a.checked_in_at >= ? AND a.checked_in_at < ? "
+        "ORDER BY a.checked_in_at DESC LIMIT ? OFFSET ?");
+    stmt.bind(1, member_id);
+    stmt.bind(2, year_start);
+    stmt.bind(3, year_end);
+    stmt.bind(4, static_cast<int64_t>(limit));
+    stmt.bind(5, static_cast<int64_t>(offset));
+
+    std::vector<AttendanceDetail> result;
+    while (stmt.step()) {
+        AttendanceDetail d;
+        d.entity_type  = stmt.col_text(0);
+        d.entity_id    = stmt.col_int(1);
+        d.title        = stmt.col_text(2);
+        d.date         = stmt.col_text(3);
+        d.checked_in_at = stmt.col_text(4);
+        d.is_virtual   = stmt.col_bool(5);
+        result.push_back(d);
+    }
+    return result;
+}
+
+int AttendanceRepository::count_member_attendance_detail(int64_t member_id, int year) {
+    std::string year_start = std::to_string(year) + "-01-01";
+    std::string year_end   = std::to_string(year + 1) + "-01-01";
+    auto stmt = db_.prepare(
+        "SELECT COUNT(*) FROM attendance WHERE member_id=? AND checked_in_at >= ? AND checked_in_at < ?");
+    stmt.bind(1, member_id);
+    stmt.bind(2, year_start);
+    stmt.bind(3, year_end);
     if (stmt.step()) return static_cast<int>(stmt.col_int(0));
     return 0;
 }

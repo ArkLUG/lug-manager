@@ -54,7 +54,7 @@ PerkLevel PerkLevelRepository::create(const PerkLevel& p) {
     stmt.bind(3, static_cast<int64_t>(p.meeting_attendance_required));
     stmt.bind(4, static_cast<int64_t>(p.event_attendance_required));
     stmt.bind(5, p.requires_paid_dues);
-    stmt.bind(6, p.min_fol_status.empty() ? std::string("kfol") : p.min_fol_status);
+    stmt.bind(6, p.min_fol_status.empty() ? std::string("afol") : p.min_fol_status);
     stmt.bind(7, static_cast<int64_t>(p.sort_order));
     stmt.step();
 
@@ -76,7 +76,7 @@ bool PerkLevelRepository::update(const PerkLevel& p) {
     stmt.bind(3, static_cast<int64_t>(p.meeting_attendance_required));
     stmt.bind(4, static_cast<int64_t>(p.event_attendance_required));
     stmt.bind(5, p.requires_paid_dues);
-    stmt.bind(6, p.min_fol_status.empty() ? std::string("kfol") : p.min_fol_status);
+    stmt.bind(6, p.min_fol_status.empty() ? std::string("afol") : p.min_fol_status);
     stmt.bind(7, static_cast<int64_t>(p.sort_order));
     stmt.bind(8, p.id);
     stmt.step();

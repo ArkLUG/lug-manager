@@ -183,6 +183,9 @@ void register_attendance_routes(LugApp& app, AttendanceService& attendance,
 
             arr[i]["member_id"]             = s.member_id;
             arr[i]["display_name"]          = s.display_name;
+            arr[i]["first_name"]            = s.first_name;
+            arr[i]["last_name"]             = s.last_name;
+            arr[i]["full_name"]             = s.first_name + " " + s.last_name;
             arr[i]["discord_username"]      = s.discord_username;
             arr[i]["meeting_count"]         = s.meeting_count;
             arr[i]["meeting_virtual_count"] = s.meeting_virtual_count;
@@ -191,10 +194,13 @@ void register_attendance_routes(LugApp& app, AttendanceService& attendance,
             arr[i]["total"]                 = total;
             arr[i]["has_attendance"]        = (total > 0);
             arr[i]["is_paid"]               = s.is_paid;
-            arr[i]["last_attendance"]       = s.last_attendance;
-            arr[i]["has_last"]              = !s.last_attendance.empty();
+            // Trim to date-only for display
+            std::string last_date = s.last_attendance.size() >= 10 ? s.last_attendance.substr(0, 10) : s.last_attendance;
+            arr[i]["last_attendance"]       = last_date;
+            arr[i]["has_last"]              = !last_date.empty();
             arr[i]["tier_name"]             = tier_name;
             arr[i]["has_tier"]              = !tier_name.empty();
+            arr[i]["selected_year"]         = params.year;
             if (total > 0) ++active_count;
         }
         ctx["members"]       = std::move(arr);
@@ -431,6 +437,71 @@ void register_attendance_routes(LugApp& app, AttendanceService& attendance,
                                          true, entity_type == "meeting"));
         res.add_header("Content-Type", "text/html");
         res.add_header("HX-Trigger", "attendanceUpdated");
+        return res;
+    });
+
+    // GET /attendance/member/<id>/detail?year=YYYY&page=N — member's attended events/meetings
+    CROW_ROUTE(app, "/attendance/member/<int>/detail")([&](const crow::request& req, int id) {
+        crow::response res;
+        if (!require_auth(req, res, app)) return res;
+
+        auto qs = crow::query_string(req.url_params);
+        auto gp = [&](const char* k) -> std::string { const char* v = qs.get(k); return v ? v : ""; };
+
+        std::time_t now_t = std::time(nullptr);
+        std::tm* tm_now = std::localtime(&now_t);
+        int year = tm_now->tm_year + 1900;
+        { std::string y = gp("year"); if (!y.empty()) try { year = std::stoi(y); } catch (...) {} }
+
+        int page = 1;
+        { std::string p = gp("page"); if (!p.empty()) try { page = std::stoi(p); } catch (...) {} }
+        if (page < 1) page = 1;
+        constexpr int per_page = 15;
+
+        auto& att_repo = attendance; // service wraps repo
+        int total = att_repo.repo().count_member_attendance_detail(static_cast<int64_t>(id), year);
+        int total_pages = (total + per_page - 1) / per_page;
+        if (total_pages < 1) total_pages = 1;
+        if (page > total_pages) page = total_pages;
+
+        auto details = att_repo.repo().get_member_attendance_detail(
+            static_cast<int64_t>(id), year, per_page, (page - 1) * per_page);
+
+        // Build HTML fragment
+        std::ostringstream html;
+        html << "<div class=\"text-xs space-y-1 py-2\">";
+        if (details.empty()) {
+            html << "<p class=\"text-gray-400\">No attendance for " << year << ".</p>";
+        }
+        for (const auto& d : details) {
+            std::string type_badge = d.entity_type == "meeting"
+                ? "<span class=\"px-1.5 py-0.5 rounded bg-blue-100 text-blue-700 font-medium\">Mtg</span>"
+                : "<span class=\"px-1.5 py-0.5 rounded bg-purple-100 text-purple-700 font-medium\">Evt</span>";
+            html << "<div class=\"flex items-center gap-2\">"
+                 << type_badge
+                 << "<span class=\"text-gray-700\">" << d.title << "</span>"
+                 << "<span class=\"text-gray-400\">" << d.date << "</span>";
+            if (d.is_virtual) html << "<span class=\"px-1 py-0.5 rounded bg-indigo-100 text-indigo-600\">Virtual</span>";
+            html << "</div>";
+        }
+        // Pagination
+        if (total_pages > 1) {
+            html << "<div class=\"flex items-center gap-2 pt-1\">";
+            if (page > 1)
+                html << "<button hx-get=\"/attendance/member/" << id << "/detail?year=" << year << "&page=" << (page - 1)
+                     << "\" hx-target=\"#member-detail-" << id << "\" hx-swap=\"innerHTML\""
+                     << " class=\"px-2 py-0.5 border border-gray-300 rounded text-gray-600 hover:bg-gray-50\">Prev</button>";
+            html << "<span class=\"text-gray-400\">Page " << page << "/" << total_pages << "</span>";
+            if (page < total_pages)
+                html << "<button hx-get=\"/attendance/member/" << id << "/detail?year=" << year << "&page=" << (page + 1)
+                     << "\" hx-target=\"#member-detail-" << id << "\" hx-swap=\"innerHTML\""
+                     << " class=\"px-2 py-0.5 border border-gray-300 rounded text-gray-600 hover:bg-gray-50\">Next</button>";
+            html << "</div>";
+        }
+        html << "</div>";
+
+        res.add_header("Content-Type", "text/html; charset=utf-8");
+        res.write(html.str());
         return res;
     });
 }

@@ -28,6 +28,8 @@ public:
     struct MemberAttendanceSummary {
         int64_t     member_id = 0;
         std::string display_name;
+        std::string first_name;
+        std::string last_name;
         std::string discord_username;
         int         meeting_count = 0;
         int         meeting_virtual_count = 0;
@@ -57,6 +59,19 @@ public:
 
     // Count attendance for a member in a calendar year, by entity type
     int count_member_by_year(int64_t member_id, int year, const std::string& entity_type);
+
+    // Paginated member attendance detail (with event/meeting title joined)
+    struct AttendanceDetail {
+        std::string entity_type;    // "meeting" or "event"
+        int64_t     entity_id = 0;
+        std::string title;
+        std::string date;           // start_time date portion
+        std::string checked_in_at;
+        bool        is_virtual = false;
+    };
+    std::vector<AttendanceDetail> get_member_attendance_detail(int64_t member_id, int year,
+                                                                int limit, int offset);
+    int count_member_attendance_detail(int64_t member_id, int year);
 
 private:
     SqliteDatabase& db_;

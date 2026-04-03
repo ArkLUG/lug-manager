@@ -12,7 +12,7 @@
     </svg>
     {{/is_virtual}}
     <span class="font-medium truncate">{{member_display_name}}</span>
-    <span class="text-gray-400 hidden sm:inline">@{{member_discord_username}}</span>
+    {{#member_discord_username}}<span class="text-gray-400 hidden sm:inline">@{{member_discord_username}}</span>{{/member_discord_username}}
     {{#is_virtual}}<span class="ml-1 px-1.5 py-0.5 rounded text-[10px] font-medium bg-indigo-100 text-indigo-700">Virtual</span>{{/is_virtual}}
 
     {{#is_admin}}

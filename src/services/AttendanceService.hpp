@@ -26,6 +26,7 @@ public:
     std::vector<AttendanceRepository::MemberAttendanceSummary> get_overview_paginated(const AttendanceRepository::OverviewParams& p);
     int count_overview(const AttendanceRepository::OverviewParams& p);
     std::vector<int> get_attendance_years();
+    AttendanceRepository& repo() { return repo_; }
 
 private:
     AttendanceRepository& repo_;

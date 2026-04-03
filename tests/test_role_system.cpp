@@ -306,12 +306,12 @@ TEST_F(PerkLevelTest, MinFolStatusPersists) {
     EXPECT_EQ(found->min_fol_status, "afol");
 }
 
-TEST_F(PerkLevelTest, MinFolStatusDefaultsToKfol) {
+TEST_F(PerkLevelTest, MinFolStatusDefaultsToAfol) {
     PerkLevel p;
     p.name = "Any Age";
     p.sort_order = 1;
     auto created = perks->create(p);
-    EXPECT_EQ(created.min_fol_status, "kfol");
+    EXPECT_EQ(created.min_fol_status, "afol");
 }
 
 TEST_F(PerkLevelTest, MinFolStatusUpdate) {
