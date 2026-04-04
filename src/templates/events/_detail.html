@@ -33,6 +33,13 @@
 
   <!-- Details grid -->
   <dl class="space-y-3 text-sm">
+    {{#scope_chapter}}{{#chapter_name}}
+    <div class="grid grid-cols-3 gap-1">
+      <dt class="text-gray-500 font-medium">Chapter</dt>
+      <dd class="col-span-2 text-gray-800">{{chapter_name}}</dd>
+    </div>
+    {{/chapter_name}}{{/scope_chapter}}
+
     <div class="grid grid-cols-3 gap-1">
       <dt class="text-gray-500 font-medium">Date</dt>
       <dd class="col-span-2 text-gray-800">

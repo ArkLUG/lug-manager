@@ -360,6 +360,11 @@ void register_meeting_routes(LugApp& app, MeetingService& meetings, AttendanceSe
         ctx["scope"]          = m->scope;
         ctx["scope_lug_wide"] = (m->scope == "lug_wide");
         ctx["scope_non_lug"]  = (m->scope == "non_lug");
+        ctx["scope_chapter"]  = (m->scope == "chapter" || m->scope.empty());
+        if (m->chapter_id > 0) {
+            auto ch = chapters.get(m->chapter_id);
+            if (ch) ctx["chapter_name"] = ch->name;
+        }
         ctx["is_virtual"]     = m->is_virtual;
         ctx["discord_voice_channel_id"] = m->discord_voice_channel_id;
         ctx["has_notes"]      = !m->notes.empty();

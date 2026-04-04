@@ -482,6 +482,11 @@ void register_event_routes(LugApp& app, EventService& events, AttendanceService&
         ctx["scope"]            = ev->scope;
         ctx["scope_lug_wide"]   = (ev->scope == "lug_wide");
         ctx["scope_non_lug"]    = (ev->scope == "non_lug");
+        ctx["scope_chapter"]    = (ev->scope == "chapter" || ev->scope.empty());
+        if (ev->chapter_id > 0) {
+            auto ch = chapters.get(ev->chapter_id);
+            if (ch) ctx["chapter_name"] = ch->name;
+        }
         ctx["event_lead_name"]  = ev->event_lead_name;
         ctx["has_event_lead"]   = (ev->event_lead_id > 0);
         ctx["has_notes"]        = !ev->notes.empty();
