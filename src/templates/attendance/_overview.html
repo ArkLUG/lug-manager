@@ -60,7 +60,7 @@
                  hx-target="#main-content" hx-swap="innerHTML" hx-push-url="true" hx-include="#overview-filters"
                  class="cursor-pointer hover:text-gray-800">Mtg</a>
             </th>
-            <th class="px-3 py-2 text-center">
+            <th class="px-3 py-2 text-center hidden sm:table-cell">
               <a hx-get="/attendance/overview?sort=event_count&dir={{#sort_evt_asc}}desc{{/sort_evt_asc}}{{^sort_evt_asc}}asc{{/sort_evt_asc}}"
                  hx-target="#main-content" hx-swap="innerHTML" hx-push-url="true" hx-include="#overview-filters"
                  class="cursor-pointer hover:text-gray-800">Evt</a>
@@ -70,13 +70,13 @@
                  hx-target="#main-content" hx-swap="innerHTML" hx-push-url="true" hx-include="#overview-filters"
                  class="cursor-pointer hover:text-gray-800">Total</a>
             </th>
-            <th class="px-3 py-2 text-center">
+            <th class="px-3 py-2 text-center hidden md:table-cell">
               <a hx-get="/attendance/overview?sort=last_attendance&dir={{#sort_last_asc}}desc{{/sort_last_asc}}{{^sort_last_asc}}asc{{/sort_last_asc}}"
                  hx-target="#main-content" hx-swap="innerHTML" hx-push-url="true" hx-include="#overview-filters"
                  class="cursor-pointer hover:text-gray-800">Last</a>
             </th>
-            <th class="px-3 py-2 text-center">Dues</th>
-            {{#has_perks}}<th class="px-3 py-2">Tier</th>{{/has_perks}}
+            <th class="px-3 py-2 text-center hidden md:table-cell">Dues</th>
+            {{#has_perks}}<th class="px-3 py-2 hidden lg:table-cell">Tier</th>{{/has_perks}}
             <th class="px-3 py-2"></th>
           </tr>
         </thead>
@@ -90,11 +90,11 @@
             <td class="px-3 py-1.5 text-center text-xs">
               {{#meeting_count}}
               <span class="font-medium text-blue-700">{{meeting_count}}</span>
-              <span class="text-gray-400 hidden sm:inline">({{meeting_in_person}}p/{{meeting_virtual_count}}v)</span>
+              <span class="text-gray-400 hidden md:inline">({{meeting_in_person}}p/{{meeting_virtual_count}}v)</span>
               {{/meeting_count}}
               {{^meeting_count}}<span class="text-gray-300">&ndash;</span>{{/meeting_count}}
             </td>
-            <td class="px-3 py-1.5 text-center text-xs">
+            <td class="px-3 py-1.5 text-center text-xs hidden sm:table-cell">
               {{#event_count}}<span class="font-medium text-purple-700">{{event_count}}</span>{{/event_count}}
               {{^event_count}}<span class="text-gray-300">&ndash;</span>{{/event_count}}
             </td>
@@ -102,16 +102,16 @@
               {{#has_attendance}}<span class="inline-flex items-center justify-center min-w-[1.25rem] px-1 py-0.5 rounded-full text-xs font-semibold bg-gray-800 text-white">{{total}}</span>{{/has_attendance}}
               {{^has_attendance}}<span class="text-gray-300 text-xs">&ndash;</span>{{/has_attendance}}
             </td>
-            <td class="px-3 py-1.5 text-center text-xs text-gray-500">
+            <td class="px-3 py-1.5 text-center text-xs text-gray-500 hidden md:table-cell">
               {{#has_last}}{{last_attendance}}{{/has_last}}
               {{^has_last}}<span class="text-gray-300">&ndash;</span>{{/has_last}}
             </td>
-            <td class="px-3 py-1.5 text-center">
+            <td class="px-3 py-1.5 text-center hidden md:table-cell">
               {{#is_paid}}<span class="text-green-600 text-xs font-medium">Paid</span>{{/is_paid}}
               {{^is_paid}}<span class="text-gray-300 text-xs">&ndash;</span>{{/is_paid}}
             </td>
             {{#has_perks}}
-            <td class="px-3 py-1.5">
+            <td class="px-3 py-1.5 hidden lg:table-cell">
               {{#has_tier}}<span class="px-2 py-0.5 rounded text-xs font-medium bg-yellow-100 text-yellow-800">{{tier_name}}</span>{{/has_tier}}
               {{^has_tier}}<span class="text-gray-300 text-xs">&ndash;</span>{{/has_tier}}
             </td>
