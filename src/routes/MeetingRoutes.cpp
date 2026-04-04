@@ -245,6 +245,14 @@ void register_meeting_routes(LugApp& app, MeetingService& meetings, AttendanceSe
                 opts << "<option value=\"" << ch.id << "\">" << ch.name << "</option>\n";
             mctx["chapter_options"] = opts.str();
         }
+        {
+            auto voice_chs = discord.fetch_voice_channels();
+            std::ostringstream vopts;
+            vopts << "<option value=\"\">-- No voice channel --</option>\n";
+            for (auto& ch : voice_chs)
+                vopts << "<option value=\"" << ch.id << "\">" << ch.name << "</option>\n";
+            mctx["voice_channel_options"] = vopts.str();
+        }
         mctx["action"]        = "/meetings";
         mctx["title"]         = "Schedule New Meeting";
         mctx["is_new"]        = true;
@@ -299,6 +307,16 @@ void register_meeting_routes(LugApp& app, MeetingService& meetings, AttendanceSe
         mctx["scope_non_lug"]     = (m->scope == "non_lug");
         mctx["is_virtual"]                 = m->is_virtual;
         mctx["discord_voice_channel_id"]   = m->discord_voice_channel_id;
+        {
+            auto voice_chs = discord.fetch_voice_channels();
+            std::ostringstream vopts;
+            vopts << "<option value=\"\">-- No voice channel --</option>\n";
+            for (auto& ch : voice_chs)
+                vopts << "<option value=\"" << ch.id << "\""
+                      << (ch.id == m->discord_voice_channel_id ? " selected" : "")
+                      << ">" << ch.name << "</option>\n";
+            mctx["voice_channel_options"] = vopts.str();
+        }
         mctx["suppress_discord"]  = m->suppress_discord;
         mctx["suppress_calendar"] = m->suppress_calendar;
         mctx["notes"]             = m->notes;
