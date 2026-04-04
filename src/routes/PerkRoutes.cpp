@@ -126,6 +126,7 @@ void register_perk_routes(LugApp& app, PerkLevelRepository& perks,
             res.write(R"(<div class="text-red-500 text-sm p-2">Name is required.</div>)");
             return res;
         }
+        p.description = gp("description");
         p.discord_role_id = gp("discord_role_id");
         try { p.meeting_attendance_required = std::stoi(gp("meeting_attendance_required")); } catch (...) {}
         try { p.event_attendance_required = std::stoi(gp("event_attendance_required")); } catch (...) {}
@@ -170,6 +171,8 @@ void register_perk_routes(LugApp& app, PerkLevelRepository& perks,
           << "<input type=\"text\" name=\"name\" value=\"" << p->name << "\" required class=\"" << cls_input << "\"></div>"
           << "<div><label class=\"block text-sm font-medium text-gray-700\">Sort Order</label>"
           << "<input type=\"number\" name=\"sort_order\" value=\"" << p->sort_order << "\" class=\"" << cls_input << "\"></div></div>"
+          << "<div><label class=\"block text-sm font-medium text-gray-700\">Description</label>"
+          << "<textarea name=\"description\" rows=\"2\" class=\"" << cls_input << "\" placeholder=\"What members get at this tier\">" << p->description << "</textarea></div>"
           << "<div class=\"grid grid-cols-2 gap-4\">"
           << "<div><label class=\"block text-sm font-medium text-gray-700\">Meetings Required</label>"
           << "<input type=\"number\" name=\"meeting_attendance_required\" value=\"" << p->meeting_attendance_required << "\" min=\"0\" class=\"" << cls_input << "\"></div>"
@@ -217,6 +220,7 @@ void register_perk_routes(LugApp& app, PerkLevelRepository& perks,
         PerkLevel p = *existing;
         std::string name = gp("name");
         if (!name.empty()) p.name = name;
+        p.description = gp("description");
         p.discord_role_id = gp("discord_role_id");
         try { p.meeting_attendance_required = std::stoi(gp("meeting_attendance_required")); } catch (...) {}
         try { p.event_attendance_required = std::stoi(gp("event_attendance_required")); } catch (...) {}

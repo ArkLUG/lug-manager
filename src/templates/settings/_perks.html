@@ -48,7 +48,10 @@
                 {{#perk_levels}}
                 <tr>
                     <td class="px-4 py-3 text-sm text-gray-700 hidden sm:table-cell">{{sort_order}}</td>
-                    <td class="px-4 py-3 text-sm font-medium text-gray-900">{{name}}</td>
+                    <td class="px-4 py-3">
+                        <div class="text-sm font-medium text-gray-900">{{name}}</div>
+                        {{#description}}<div class="text-xs text-gray-500">{{description}}</div>{{/description}}
+                    </td>
                     <td class="px-4 py-3 text-sm text-gray-700">{{meeting_attendance_required}}</td>
                     <td class="px-4 py-3 text-sm text-gray-700">{{event_attendance_required}}</td>
                     <td class="px-4 py-3 text-sm text-gray-700 hidden md:table-cell">{{#requires_paid_dues}}Yes{{/requires_paid_dues}}{{^requires_paid_dues}}No{{/requires_paid_dues}}</td>
@@ -104,6 +107,12 @@
                     <input type="number" name="sort_order" value="0"
                            class="mt-1 block w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-yellow-400">
                 </div>
+            </div>
+            <div>
+                <label class="block text-sm font-medium text-gray-700">Description</label>
+                <textarea name="description" rows="2"
+                          class="mt-1 block w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-yellow-400"
+                          placeholder="What members get at this tier (e.g. custom Discord role, priority seating, etc.)"></textarea>
             </div>
             <div class="grid grid-cols-2 gap-4">
                 <div>

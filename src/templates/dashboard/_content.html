@@ -126,13 +126,16 @@
       </div>
     </div>
     {{#perk_achieved}}
-    <div class="inline-flex items-center gap-1 px-3 py-1 bg-green-100 text-green-700 rounded-full text-sm font-medium mb-2">
-      {{perk_achieved_name}} achieved!
+    <div class="mb-2">
+      <div class="inline-flex items-center gap-1 px-3 py-1 bg-green-100 text-green-700 rounded-full text-sm font-medium">
+        {{perk_achieved_name}} achieved!
+      </div>
+      {{#perk_achieved_desc}}<p class="text-xs text-gray-500 mt-1 ml-1">{{perk_achieved_desc}}</p>{{/perk_achieved_desc}}
     </div>
     {{/perk_achieved}}
     {{#perk_has_next}}
     <p class="text-sm text-gray-500">
-      Next: <span class="font-medium text-gray-700">{{perk_next_name}}</span>
+      Next: <span class="font-medium text-gray-700">{{perk_next_name}}</span>{{#perk_next_desc}} <span class="text-gray-400">&mdash; {{perk_next_desc}}</span>{{/perk_next_desc}}
       {{#perk_show_meetings}} &mdash; {{perk_next_meetings}} more meeting(s){{/perk_show_meetings}}
       {{#perk_show_events}} &mdash; {{perk_next_events}} more event(s){{/perk_show_events}}
       {{#perk_next_needs_dues}} &mdash; <span class="text-red-600 font-medium">dues required</span>{{/perk_next_needs_dues}}

@@ -5,6 +5,7 @@
 struct PerkLevel {
     int64_t     id                          = 0;
     std::string name;
+    std::string description;               // what this tier gives/means
     std::string discord_role_id;
     int         meeting_attendance_required = 0;
     int         event_attendance_required   = 0;

@@ -3,7 +3,7 @@
 static const char* kSelectAllCols =
     "SELECT id, name, COALESCE(discord_role_id,''), meeting_attendance_required, "
     "event_attendance_required, requires_paid_dues, COALESCE(min_fol_status,'afol'), "
-    "sort_order, year, created_at, updated_at "
+    "sort_order, year, created_at, updated_at, COALESCE(description,'') "
     "FROM perk_levels";
 
 // fol_rank() defined in header
@@ -23,6 +23,7 @@ PerkLevel PerkLevelRepository::row_to_perk(Statement& stmt) {
     p.year                        = static_cast<int>(stmt.col_int(8));
     p.created_at                  = stmt.col_text(9);
     p.updated_at                  = stmt.col_text(10);
+    p.description                 = stmt.col_text(11);
     return p;
 }
 
@@ -69,17 +70,18 @@ std::optional<PerkLevel> PerkLevelRepository::find_by_id(int64_t id) {
 
 PerkLevel PerkLevelRepository::create(const PerkLevel& p) {
     auto stmt = db_.prepare(
-        "INSERT INTO perk_levels (name, discord_role_id, meeting_attendance_required, "
+        "INSERT INTO perk_levels (name, description, discord_role_id, meeting_attendance_required, "
         "event_attendance_required, requires_paid_dues, min_fol_status, sort_order, year) "
-        "VALUES (?,?,?,?,?,?,?,?)");
+        "VALUES (?,?,?,?,?,?,?,?,?)");
     stmt.bind(1, p.name);
-    stmt.bind(2, p.discord_role_id);
-    stmt.bind(3, static_cast<int64_t>(p.meeting_attendance_required));
-    stmt.bind(4, static_cast<int64_t>(p.event_attendance_required));
-    stmt.bind(5, p.requires_paid_dues);
-    stmt.bind(6, p.min_fol_status.empty() ? std::string("afol") : p.min_fol_status);
-    stmt.bind(7, static_cast<int64_t>(p.sort_order));
-    stmt.bind(8, static_cast<int64_t>(p.year));
+    stmt.bind(2, p.description);
+    stmt.bind(3, p.discord_role_id);
+    stmt.bind(4, static_cast<int64_t>(p.meeting_attendance_required));
+    stmt.bind(5, static_cast<int64_t>(p.event_attendance_required));
+    stmt.bind(6, p.requires_paid_dues);
+    stmt.bind(7, p.min_fol_status.empty() ? std::string("afol") : p.min_fol_status);
+    stmt.bind(8, static_cast<int64_t>(p.sort_order));
+    stmt.bind(9, static_cast<int64_t>(p.year));
     stmt.step();
 
     int64_t new_id = db_.last_insert_rowid();
@@ -92,18 +94,19 @@ PerkLevel PerkLevelRepository::create(const PerkLevel& p) {
 
 bool PerkLevelRepository::update(const PerkLevel& p) {
     auto stmt = db_.prepare(
-        "UPDATE perk_levels SET name=?, discord_role_id=?, meeting_attendance_required=?, "
+        "UPDATE perk_levels SET name=?, description=?, discord_role_id=?, meeting_attendance_required=?, "
         "event_attendance_required=?, requires_paid_dues=?, min_fol_status=?, sort_order=?, year=?, "
         "updated_at=datetime('now') WHERE id=?");
     stmt.bind(1, p.name);
-    stmt.bind(2, p.discord_role_id);
-    stmt.bind(3, static_cast<int64_t>(p.meeting_attendance_required));
-    stmt.bind(4, static_cast<int64_t>(p.event_attendance_required));
-    stmt.bind(5, p.requires_paid_dues);
-    stmt.bind(6, p.min_fol_status.empty() ? std::string("afol") : p.min_fol_status);
-    stmt.bind(7, static_cast<int64_t>(p.sort_order));
-    stmt.bind(8, static_cast<int64_t>(p.year));
-    stmt.bind(9, p.id);
+    stmt.bind(2, p.description);
+    stmt.bind(3, p.discord_role_id);
+    stmt.bind(4, static_cast<int64_t>(p.meeting_attendance_required));
+    stmt.bind(5, static_cast<int64_t>(p.event_attendance_required));
+    stmt.bind(6, p.requires_paid_dues);
+    stmt.bind(7, p.min_fol_status.empty() ? std::string("afol") : p.min_fol_status);
+    stmt.bind(8, static_cast<int64_t>(p.sort_order));
+    stmt.bind(9, static_cast<int64_t>(p.year));
+    stmt.bind(10, p.id);
     stmt.step();
 
     return find_by_id(p.id).has_value();

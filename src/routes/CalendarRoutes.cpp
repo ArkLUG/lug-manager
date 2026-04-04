@@ -70,8 +70,8 @@ void register_calendar_routes(LugApp& app, CalendarGenerator& cal,
             ctx["perk_year"]          = year;
 
             auto levels = perks.find_by_year(year);
-            std::string achieved_name;
-            std::string next_name;
+            std::string achieved_name, achieved_desc;
+            std::string next_name, next_desc;
             int next_meetings_needed = 0;
             int next_events_needed = 0;
             bool next_needs_dues = false;
@@ -87,8 +87,10 @@ void register_calendar_routes(LugApp& app, CalendarGenerator& cal,
                              fol_rank(member_fol) >= fol_rank(lvl.min_fol_status);
                 if (meets) {
                     achieved_name = lvl.name;
+                    achieved_desc = lvl.description;
                 } else if (next_name.empty()) {
                     next_name = lvl.name;
+                    next_desc = lvl.description;
                     next_meetings_needed = std::max(0, lvl.meeting_attendance_required - meeting_count);
                     next_events_needed = std::max(0, lvl.event_attendance_required - event_count);
                     next_needs_dues = lvl.requires_paid_dues && !is_paid;
@@ -97,8 +99,10 @@ void register_calendar_routes(LugApp& app, CalendarGenerator& cal,
 
             ctx["perk_achieved"]         = !achieved_name.empty();
             ctx["perk_achieved_name"]    = achieved_name;
+            ctx["perk_achieved_desc"]    = achieved_desc;
             ctx["perk_has_next"]         = !next_name.empty();
             ctx["perk_next_name"]        = next_name;
+            ctx["perk_next_desc"]        = next_desc;
             ctx["perk_next_meetings"]    = next_meetings_needed > 0 ? next_meetings_needed : 0;
             ctx["perk_next_events"]      = next_events_needed > 0 ? next_events_needed : 0;
             ctx["perk_show_meetings"]    = (next_meetings_needed > 0);
