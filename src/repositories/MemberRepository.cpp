@@ -6,7 +6,10 @@ static const char* kSelectAllCols =
     "m.is_paid, m.paid_until, m.role, "
     "COALESCE((SELECT chapter_id FROM chapter_members WHERE member_id=m.id LIMIT 1),0), "
     "m.created_at, m.updated_at, COALESCE(m.first_name,''), COALESCE(m.last_name,''), "
-    "COALESCE(m.birthday,''), COALESCE(m.fol_status,'afol') "
+    "COALESCE(m.birthday,''), COALESCE(m.fol_status,'afol'), "
+    "COALESCE(m.phone,''), COALESCE(m.address_line1,''), COALESCE(m.address_line2,''), "
+    "COALESCE(m.city,''), COALESCE(m.state,''), COALESCE(m.zip,''), "
+    "m.pii_public "
     "FROM members m";
 
 MemberRepository::MemberRepository(SqliteDatabase& db) : db_(db) {}
@@ -28,6 +31,13 @@ Member MemberRepository::row_to_member(Statement& stmt) {
     m.last_name        = stmt.col_text(12);
     m.birthday         = stmt.col_text(13);
     m.fol_status       = stmt.col_text(14);
+    m.phone            = stmt.col_text(15);
+    m.address_line1    = stmt.col_text(16);
+    m.address_line2    = stmt.col_text(17);
+    m.city             = stmt.col_text(18);
+    m.state            = stmt.col_text(19);
+    m.zip              = stmt.col_text(20);
+    m.pii_public       = stmt.col_bool(21);
     return m;
 }
 
@@ -87,7 +97,10 @@ std::vector<Member> MemberRepository::find_by_chapter(int64_t chapter_id) {
         "SELECT m.id, m.discord_user_id, m.discord_username, m.display_name, m.email, "
         "m.is_paid, m.paid_until, m.role, cm.chapter_id, m.created_at, m.updated_at, "
         "COALESCE(m.first_name,''), COALESCE(m.last_name,''), "
-        "COALESCE(m.birthday,''), COALESCE(m.fol_status,'afol') "
+        "COALESCE(m.birthday,''), COALESCE(m.fol_status,'afol'), "
+        "COALESCE(m.phone,''), COALESCE(m.address_line1,''), COALESCE(m.address_line2,''), "
+        "COALESCE(m.city,''), COALESCE(m.state,''), COALESCE(m.zip,''), "
+        "m.pii_public "
         "FROM members m JOIN chapter_members cm ON cm.member_id=m.id "
         "WHERE cm.chapter_id=? ORDER BY m.display_name ASC");
     stmt.bind(1, chapter_id);
@@ -101,7 +114,9 @@ std::vector<Member> MemberRepository::find_by_chapter(int64_t chapter_id) {
 Member MemberRepository::create(const Member& m) {
     auto stmt = db_.prepare(
         "INSERT INTO members (discord_user_id, discord_username, first_name, last_name, display_name, "
-        "email, is_paid, paid_until, role, birthday, fol_status) VALUES (?,?,?,?,?,?,?,?,?,?,?)");
+        "email, is_paid, paid_until, role, birthday, fol_status, "
+        "phone, address_line1, address_line2, city, state, zip, pii_public) "
+        "VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)");
     if (m.discord_user_id.empty()) stmt.bind_null(1);
     else                          stmt.bind(1, m.discord_user_id);
     stmt.bind(2, m.discord_username);
@@ -122,6 +137,13 @@ Member MemberRepository::create(const Member& m) {
     stmt.bind(9, m.role.empty() ? std::string("member") : m.role);
     stmt.bind(10, m.birthday);
     stmt.bind(11, m.fol_status.empty() ? std::string("afol") : m.fol_status);
+    stmt.bind(12, m.phone);
+    stmt.bind(13, m.address_line1);
+    stmt.bind(14, m.address_line2);
+    stmt.bind(15, m.city);
+    stmt.bind(16, m.state);
+    stmt.bind(17, m.zip);
+    stmt.bind(18, m.pii_public);
     stmt.step();
 
     int64_t new_id = db_.last_insert_rowid();
@@ -136,6 +158,7 @@ bool MemberRepository::update(const Member& m) {
     auto stmt = db_.prepare(
         "UPDATE members SET discord_username=?, first_name=?, last_name=?, display_name=?, email=?, "
         "is_paid=?, paid_until=?, role=?, birthday=?, fol_status=?, "
+        "phone=?, address_line1=?, address_line2=?, city=?, state=?, zip=?, pii_public=?, "
         "updated_at=datetime('now') WHERE id=?");
     stmt.bind(1, m.discord_username);
     stmt.bind(2, m.first_name);
@@ -155,7 +178,14 @@ bool MemberRepository::update(const Member& m) {
     stmt.bind(8, m.role);
     stmt.bind(9, m.birthday);
     stmt.bind(10, m.fol_status.empty() ? std::string("afol") : m.fol_status);
-    stmt.bind(11, m.id);
+    stmt.bind(11, m.phone);
+    stmt.bind(12, m.address_line1);
+    stmt.bind(13, m.address_line2);
+    stmt.bind(14, m.city);
+    stmt.bind(15, m.state);
+    stmt.bind(16, m.zip);
+    stmt.bind(17, m.pii_public);
+    stmt.bind(18, m.id);
     stmt.step();
 
     // Check if any row was actually updated by querying it back
@@ -225,7 +255,10 @@ std::vector<Member> MemberRepository::find_paginated(const std::string& q,
         "SELECT m.id, m.discord_user_id, m.discord_username, m.display_name, m.email, "
         "m.is_paid, m.paid_until, m.role, COALESCE(cm.chapter_id,0), m.created_at, m.updated_at, "
         "COALESCE(c.name,''), COALESCE(m.first_name,''), COALESCE(m.last_name,''), "
-        "COALESCE(m.birthday,''), COALESCE(m.fol_status,'afol') FROM members m "
+        "COALESCE(m.birthday,''), COALESCE(m.fol_status,'afol'), "
+        "COALESCE(m.phone,''), COALESCE(m.address_line1,''), COALESCE(m.address_line2,''), "
+        "COALESCE(m.city,''), COALESCE(m.state,''), COALESCE(m.zip,''), "
+        "m.pii_public FROM members m "
         "LEFT JOIN (SELECT member_id, MIN(chapter_id) AS chapter_id FROM chapter_members GROUP BY member_id) cm ON cm.member_id=m.id "
         "LEFT JOIN chapters c ON c.id=cm.chapter_id";
 
@@ -247,6 +280,13 @@ std::vector<Member> MemberRepository::find_paginated(const std::string& q,
         m.last_name        = stmt.col_text(13);
         m.birthday         = stmt.col_text(14);
         m.fol_status       = stmt.col_text(15);
+        m.phone            = stmt.col_text(16);
+        m.address_line1    = stmt.col_text(17);
+        m.address_line2    = stmt.col_text(18);
+        m.city             = stmt.col_text(19);
+        m.state            = stmt.col_text(20);
+        m.zip              = stmt.col_text(21);
+        m.pii_public       = stmt.col_bool(22);
         return m;
     };
 

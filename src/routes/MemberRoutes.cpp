@@ -34,6 +34,13 @@ static crow::mustache::context member_to_ctx(const Member& m) {
     ctx["fol_kfol"]          = m.fol_status == "kfol";
     ctx["fol_tfol"]          = m.fol_status == "tfol";
     ctx["fol_afol"]          = m.fol_status == "afol" || m.fol_status.empty();
+    ctx["pii_public"]        = m.pii_public;
+    ctx["phone"]             = m.phone;
+    ctx["address_line1"]     = m.address_line1;
+    ctx["address_line2"]     = m.address_line2;
+    ctx["city"]              = m.city;
+    ctx["state"]             = m.state;
+    ctx["zip"]               = m.zip;
     ctx["chapter_id"]        = m.chapter_id;
     ctx["chapter_id_str"]    = m.chapter_id > 0 ? std::to_string(m.chapter_id) : "";
     ctx["created_at"]        = m.created_at;
@@ -109,8 +116,9 @@ void register_member_routes(LugApp& app, MemberService& members) {
 
         auto result = members.datatable(p);
 
-        // PII hiding: only admin and chapter_lead can see emails
-        bool can_see_pii = app.get_context<AuthMiddleware>(req).auth.is_chapter_lead();
+        // PII hiding: admin/chapter_lead always see PII; regular members only see PII
+        // for members who have opted in with pii_public=true
+        bool role_can_see_pii = app.get_context<AuthMiddleware>(req).auth.is_chapter_lead();
 
         // Build JSON manually so "data" is always a proper [] array.
         // Crow's default wvalue serialises as null when no indices are set.
@@ -136,13 +144,14 @@ void register_member_routes(LugApp& app, MemberService& members) {
         for (size_t i = 0; i < result.data.size(); ++i) {
             if (i > 0) json << ",";
             const auto& m = result.data[i];
+            bool show_pii = role_can_see_pii || m.pii_public;
             json << "{\"DT_RowId\":\"member-row-" << m.id << "\""
                  << ",\"id\":"               << m.id
                  << ",\"display_name\":\""   << esc_json(m.display_name) << "\""
                  << ",\"first_name\":\""     << esc_json(m.first_name) << "\""
                  << ",\"last_name\":\""      << esc_json(m.last_name) << "\""
                  << ",\"discord_username\":\"" << esc_json(m.discord_username) << "\""
-                 << ",\"email\":\""          << (can_see_pii ? esc_json(m.email) : "") << "\""
+                 << ",\"email\":\""          << (show_pii ? esc_json(m.email) : "") << "\""
                  << ",\"is_paid\":"          << (m.is_paid ? "true" : "false")
                  << ",\"paid_until\":\""     << esc_json(m.paid_until) << "\""
                  << ",\"role\":\""           << esc_json(m.role) << "\""
@@ -217,6 +226,13 @@ void register_member_routes(LugApp& app, MemberService& members) {
         m.role             = get_param("role").empty() ? "member" : get_param("role");
         m.birthday         = get_param("birthday");
         m.fol_status       = get_param("fol_status").empty() ? "afol" : get_param("fol_status");
+        m.phone            = get_param("phone");
+        m.address_line1    = get_param("address_line1");
+        m.address_line2    = get_param("address_line2");
+        m.city             = get_param("city");
+        m.state            = get_param("state");
+        m.zip              = get_param("zip");
+        m.pii_public       = (get_param("pii_public") == "on" || get_param("pii_public") == "1");
 
         res.add_header("Content-Type", "text/html; charset=utf-8");
         try {
@@ -252,6 +268,13 @@ void register_member_routes(LugApp& app, MemberService& members) {
         updates.role             = get_param("role");
         updates.birthday         = get_param("birthday");
         updates.fol_status       = get_param("fol_status").empty() ? "afol" : get_param("fol_status");
+        updates.phone            = get_param("phone");
+        updates.address_line1    = get_param("address_line1");
+        updates.address_line2    = get_param("address_line2");
+        updates.city             = get_param("city");
+        updates.state            = get_param("state");
+        updates.zip              = get_param("zip");
+        updates.pii_public       = (get_param("pii_public") == "on" || get_param("pii_public") == "1");
 
         std::string paid_until = get_param("paid_until");
         updates.paid_until = paid_until;

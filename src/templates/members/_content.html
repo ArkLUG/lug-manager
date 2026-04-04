@@ -22,7 +22,7 @@
           <tr>
             <th>Name</th>
             <th>Discord</th>
-            {{#can_see_pii}}<th>Email</th>{{/can_see_pii}}
+            <th>Email</th>
             <th>Dues</th>
             <th>Role</th>
             <th>FOL</th>
@@ -114,15 +114,13 @@
         return data ? '<span class="text-gray-500">@' + escHtml(data) + '</span>' : '<span class="text-gray-300 text-xs">&mdash;</span>';
       }
     },
-    {{#can_see_pii}}
     {
       data: 'email',
       render: function(data, type) {
         if (type !== 'display') return data || '';
-        return '<span class="text-gray-500">' + escHtml(data || '') + '</span>';
+        return data ? '<span class="text-gray-500">' + escHtml(data) + '</span>' : '<span class="text-gray-300 text-xs">&mdash;</span>';
       }
     },
-    {{/can_see_pii}}
     {
       data: 'is_paid',
       searchable: false,

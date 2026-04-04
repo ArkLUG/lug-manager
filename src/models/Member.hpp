@@ -13,6 +13,13 @@ struct Member {
     bool        is_paid          = false;
     std::string paid_until;       // ISO 8601 date "2026-12-31", may be empty
     std::string role              = "member"; // "admin"|"chapter_lead"|"member"
+    std::string phone;
+    std::string address_line1;
+    std::string address_line2;
+    std::string city;
+    std::string state;
+    std::string zip;
+    bool        pii_public       = false;    // member opted to share PII with other members
     std::string birthday;                   // "YYYY-MM-DD", empty if unknown
     std::string fol_status       = "afol";  // "kfol"|"tfol"|"afol"
     int64_t     chapter_id        = 0;       // FK to chapters, 0 if not in a chapter
