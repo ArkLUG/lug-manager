@@ -219,10 +219,11 @@ spec:
 
 ## CI/CD
 
-The GitHub Actions workflow (`.github/workflows/docker.yml`) automatically:
-- Builds on push to `main`
-- Builds on pull requests (without pushing)
-- Pushes to `ghcr.io/arklug/lug-manager` with tags: `latest`, `main`, semver, and commit SHA
+The GitHub Actions workflow (`.github/workflows/docker.yml`) runs a single job that:
+- Builds the Docker image (which compiles the project and runs all tests inside the build stage)
+- If tests fail, the Docker build fails and no image is pushed
+- On push to `main`: pushes to `ghcr.io/arklug/lug-manager` with tags `latest`, `main`, semver, and commit SHA
+- On pull requests: builds and tests only (no push)
 - Uses GitHub Actions cache for faster builds
 
 No additional setup needed — it uses the built-in `GITHUB_TOKEN` for ghcr.io authentication.

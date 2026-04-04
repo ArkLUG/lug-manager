@@ -6,27 +6,30 @@ A modern web application for managing LEGO User Groups (LUGs). Built with **C++ 
 
 ## Features
 
-- **Member Management**: Track members with contact info, FOL status (KFOL/TFOL/AFOL), birthday, dues, and Discord role sync. Members without Discord accounts (e.g. KFOLs) are supported.
-- **PII Controls**: Members can opt-in to share contact info (email, phone, address) with other members. Admins and chapter leads always see PII; regular members only see PII for opted-in members.
-- **Role System**: Three global roles (admin, chapter_lead, member) mapped via Discord roles, plus chapter-level roles (lead, event_manager, member). Anyone in the Discord guild can log in.
-- **Chapter System**: Organize members into chapters with leads, event managers, Discord channels, and role sync
-- **Meeting & Event Management**: Schedule with Discord events, forum threads, announcements, Google Calendar sync, and per-event suppress flags for historical data entry
-- **Notes & Reports**: Markdown notes on events/meetings with WYSIWYG editor (EasyMDE). Publish reports to Discord forum channels with attendance (virtual/in-person split for meetings, multi-day for events)
-- **Attendance Tracking**: Admin/lead/event-manager managed attendance with virtual support, year-filtered overview with search/sort/pagination, per-member detail view, perk tier display, and hide-inactive toggle
-- **Perk Levels**: Admin-defined attendance tiers per year with Discord role rewards, FOL requirements, and paid dues prerequisites. Clone tiers between years. Members see progress on dashboard.
-- **Discord Integration**: OAuth2 login, scheduled events, forum threads, announcements, role sync, perk role assignment
+- **Member Management**: Track members with contact info, age range (KFOL/TFOL/AFOL), birthday, dues, and Discord role sync. Members without Discord accounts (e.g. KFOLs) are fully supported. Phone numbers, addresses, and ZIP codes are auto-formatted and validated.
+- **Per-Field Privacy Controls**: Members choose per-field who sees their PII (email, phone, address, birthday, Discord username). Three levels: Don't share, Verified members only, All members. Only the member themselves can change their privacy settings — admins cannot override.
+- **Verified Members**: "Verified" means a member has physically attended at least one meeting/event (virtual attendance doesn't count) or has paid dues. This prevents random Discord joiners from scraping contact info.
+- **Self-Service Profile**: Members can edit their own profile (name, contact info, privacy settings) without admin involvement via "Edit My Profile" on the dashboard and members page.
+- **Role System**: Three global roles (admin, chapter_lead, member) mapped via Discord roles, plus chapter-level roles (lead, event_manager, member). Anyone in the Discord guild can log in. Chapter leads can add/edit members and manage dues. Only admins can delete members or change roles.
+- **Chapter System**: Organize members into chapters with leads, event managers, Discord channels, and role sync. Chapter names shown in meeting/event scope columns.
+- **Meeting & Event Management**: Sortable tables with search, pagination, and responsive mobile layout. Meetings support virtual mode with Discord voice channel selection. Events have tentative/confirmed status. Map links on locations open the user's default map app (Google Maps, Apple Maps, Waze, etc.).
+- **QR Code Check-in**: Managers generate a QR code for any meeting or event. Attendees scan to reach a public check-in page with three methods: Discord OAuth (auto-creates member if new), search existing members, or manual entry for new members. Duplicate detection prevents double check-ins.
+- **Notes & Reports**: Markdown notes on events/meetings with WYSIWYG editor (EasyMDE). Publish reports to Discord forum channels with attendance (virtual/in-person split for meetings, multi-day for events).
+- **Attendance Tracking**: Admin/lead/event-manager managed attendance with virtual support, year-filtered overview with search/sort/pagination, per-member detail view, perk tier display, and hide-inactive toggle. Members cannot self-check-in — only managers can add attendees (or via QR check-in).
+- **Perk Levels**: Admin-defined attendance tiers per year with Discord role rewards, minimum age range requirements, and paid dues prerequisites. Clone tiers between years. Dashboard shows progress with meetings attended, events attended, dues status, and what's needed for the next tier.
+- **Discord Integration**: OAuth2 login, scheduled events, forum threads, announcements, role sync, perk role assignment, voice channel selection for virtual meetings, member sync every 6 hours
 - **Google Calendar Integration**: Push events directly to a shared Google Calendar via service account, import existing events
-- **iCal Feed**: RFC 5545 calendar subscription for personal calendar apps
-- **Responsive UI**: Mobile-friendly HTMX + Tailwind CSS interface with dynamic nav highlights, page title updates, and EasyMDE markdown editor
+- **iCal Feed**: RFC 5545 calendar subscription for personal calendar apps (collapsible on dashboard)
+- **Responsive UI**: Mobile-friendly tables that progressively hide columns on smaller screens. HTMX + Tailwind CSS interface with proper browser back/forward support. Detail modals for viewing full meeting/event info including attendance panel.
 
 ## Technology Stack
 
 - **Backend**: C++20 with CrowCPP v1.2.0 (header-only HTTP server)
-- **Database**: SQLite with WAL mode and automatic migrations
-- **Frontend**: HTMX + Tailwind CSS + TomSelect + EasyMDE (CDN, no build step)
+- **Database**: SQLite with WAL mode and automatic migrations (34 migrations)
+- **Frontend**: HTMX + Tailwind CSS + TomSelect + EasyMDE + QRCode.js + DataTables (CDN, no build step)
 - **External APIs**: Discord OAuth2 + REST, Google Calendar API v3
 - **Dependencies**: asio, nlohmann/json, md4c, libcurl, OpenSSL, Google Test
-- **CI/CD**: GitHub Actions (test gate + Docker build/push)
+- **CI/CD**: GitHub Actions (tests run inside Docker build, single-job pipeline)
 
 ## Prerequisites
 
@@ -63,7 +66,9 @@ brew install cmake curl sqlite openssl pkg-config
 
 2. **Run tests**:
    ```bash
-   ctest --test-dir build --output-on-failure
+   cmake -B build -S . -DBUILD_TESTS=ON
+   cmake --build build -j$(nproc)
+   ctest --test-dir build --output-on-failure -j$(nproc)
    ```
 
 3. **Configure**:
@@ -101,23 +106,47 @@ brew install cmake curl sqlite openssl pkg-config
 | Role | Access |
 |------|--------|
 | **admin** | Full access to everything |
-| **chapter_lead** | Can see PII, manage chapter members, assign event managers. Cannot add/remove leads or edit chapter/system settings. |
-| **member** | View events, meetings, chapters, own attendance. Cannot see PII unless member opted in. |
+| **chapter_lead** | Can see all PII, manage members (add/edit/dues), manage chapter members, assign event managers. Cannot delete members, change roles, or edit system settings. |
+| **member** | View events, meetings, chapters, own attendance. PII visibility depends on each member's per-field privacy settings. |
 
 ### Chapter Roles (assigned per-chapter by admins/leads)
 
 | Role | Access |
 |------|--------|
 | **lead** | Manage chapter members + assign event_manager + everything event_manager can do |
-| **event_manager** | Create/edit/delete events and meetings in their chapter, take attendance |
+| **event_manager** | Create/edit/delete events and meetings in their chapter, manage attendance, generate QR check-in codes |
 | **member** | Basic chapter membership |
 
-### PII Visibility
+### PII Privacy
 
-PII fields (email, phone, birthday, address) are visible based on:
-- **Admin/chapter_lead**: always see all PII
-- **Regular member**: only sees PII for members who have opted in (`pii_public` toggle in member edit form)
-- **Phone/address**: only visible in admin-only member edit form (not in the members list)
+Each member controls their own privacy settings via "Edit My Profile". Per field (email, phone, address, birthday, Discord username), they choose:
+
+| Setting | Who can see |
+|---------|-------------|
+| **Don't share** | Only admins and chapter leads |
+| **Verified members** | Members who have attended in-person or paid dues |
+| **All members** | Any logged-in member |
+
+Admins and chapter leads always see all PII regardless of settings. Members always see their own info. Virtual-only attendance does not count toward "verified" status.
+
+## QR Code Check-in
+
+Managers (admin, chapter lead, event lead, event manager) can generate a QR code for any meeting or event from the detail modal. When scanned, attendees reach a public check-in page with three options:
+
+1. **Discord**: OAuth login that auto-creates a member account if new, then checks in
+2. **Find Me**: Search existing members by name, select, and check in
+3. **New Member**: Enter first/last name and optional email. If a matching name exists, checks in the existing member instead of creating a duplicate.
+
+The QR token is generated once per entity and reused by all managers.
+
+## Virtual Meetings
+
+Meetings can be marked as "Virtual" in the create/edit form. Virtual meetings:
+- Hide the location field and show a Discord voice channel dropdown instead
+- Display "Virtual (Discord)" as the location in calendar feeds and Discord events
+- Show a camera icon and "Virtual" label in the meetings table
+- Provide a "Join Voice Channel" link in the detail modal
+- Show a virtual attendance toggle on the QR check-in page
 
 ## Discord Setup
 
@@ -166,19 +195,19 @@ Chapter leads can manage members and assign event managers. Only admins can add/
 ## Attendance & Perk Levels
 
 ### Attendance
-- **Admin/lead/event-manager managed**: searchable multi-select to check in members
-- **Virtual support**: meetings track in-person vs. virtual attendance
-- **Overview**: year-filtered, paginated, searchable, sortable table with last-seen date and perk tier
-- **Per-member detail**: expandable view of attended events/meetings for the selected year
-- **Hide inactive**: toggle to hide members with no attendance and no dues
+- **Manager-controlled**: Only admins, chapter leads, event leads, and event managers can check in members (via attendance panel or QR code)
+- **Virtual support**: Meetings track in-person vs. virtual attendance (virtual does not count toward "verified" member status)
+- **Overview**: Year-filtered, paginated, searchable, sortable table with last-seen date and perk tier
+- **Per-member detail**: Expandable view of attended events/meetings for the selected year
+- **Hide inactive**: Toggle to hide members with no attendance and no dues
 
 ### Perk Levels
 - Admin-defined tiers per calendar year (e.g. Bronze, Silver, Gold)
 - Separate meeting and event attendance thresholds
-- Optional paid dues and minimum FOL status requirements
+- Optional paid dues and minimum age range (KFOL/TFOL/AFOL) requirements
 - Discord role auto-assigned when a member qualifies
 - Clone tiers between years for easy setup
-- Members see progress on their dashboard
+- Dashboard shows progress: meetings attended, events attended, dues status, and remaining requirements for the next tier
 
 ## Event Reports
 
@@ -223,15 +252,15 @@ All runtime configuration is managed from the Settings page (`/settings`):
 
 ## Testing
 
-The project includes comprehensive tests across 8 test suites:
+The project includes comprehensive tests across 16 test suites (8 unit + 8 integration):
 
 ```bash
 # Build with tests
 cmake -B build -S . -DBUILD_TESTS=ON
 cmake --build build -j$(nproc)
 
-# Run all tests
-ctest --test-dir build --output-on-failure
+# Run all tests in parallel
+ctest --test-dir build --output-on-failure -j$(nproc)
 ```
 
 | Suite | Coverage |
@@ -240,12 +269,20 @@ ctest --test-dir build --output-on-failure
 | test_discord_content | Announcement content generation, ping suppression |
 | test_repositories | CRUD for all repositories, pagination, search |
 | test_services | Service layer logic, calendar generation |
-| test_role_system | Role mappings, FOL ranks, perk levels, member fields |
+| test_role_system | Role mappings, age range ranks, perk levels, member fields, per-field PII sharing |
 | test_suppression | Suppress flags, notes persistence, attendance summaries |
 | test_markdown | Markdown-to-HTML rendering (md4c) |
-| test_integration | Full HTTP stack: auth, permissions, CRUD, PII visibility |
+| test_integration_auth | Login, logout, session, dashboard, calendar |
+| test_integration_members | Member CRUD, PII visibility |
+| test_integration_chapters | Chapter CRUD, leads, members |
+| test_integration_meetings | Meeting CRUD, pagination, detail |
+| test_integration_events | Event CRUD, status, detail |
+| test_integration_attendance | Attendance check-in, virtual toggle, overview |
+| test_integration_settings | Settings save, Discord API, sync, nicknames |
+| test_integration_permissions | Per-field PII sharing, role-based access, chapter permissions, verified member logic |
+| test_integration_ui | Content validation, calendar output, badge rendering |
 
-CI runs all tests before Docker build — failing tests block deployment.
+CI runs all tests inside the Docker build — failing tests block image creation.
 
 ## Docker
 
@@ -272,7 +309,7 @@ See [DOCKER.md](DOCKER.md) for detailed deployment instructions.
 │   ├── main.cpp                 # Entry point, server setup
 │   ├── config/                  # Configuration (env vars, .env loading)
 │   ├── middleware/               # Auth middleware (Discord session)
-│   ├── routes/                  # HTTP route handlers
+│   ├── routes/                  # HTTP route handlers (12 route files)
 │   ├── services/                # Business logic
 │   ├── repositories/            # Database access layer
 │   ├── models/                  # Data structs
@@ -282,10 +319,20 @@ See [DOCKER.md](DOCKER.md) for detailed deployment instructions.
 │   ├── async/                   # Thread pool
 │   ├── db/                      # SQLite abstraction + migrations
 │   ├── templates/               # Mustache HTML templates
+│   │   ├── checkin/             # Public QR check-in page
+│   │   ├── members/             # Member list, forms, views
+│   │   ├── meetings/            # Meeting list, forms, detail, attendance
+│   │   ├── events/              # Event list, forms, detail
+│   │   ├── chapters/            # Chapter list, detail, members
+│   │   ├── attendance/          # Attendance overview, personal history
+│   │   ├── settings/            # Admin settings, roles, perks
+│   │   └── dashboard/           # Dashboard with member info, perk progress
 │   └── static/                  # CSS, JS assets
-├── tests/                       # Google Test suites
-├── sql/migrations/              # Auto-applied database migrations
-├── .github/workflows/           # CI/CD pipeline
+├── tests/                       # Google Test suites (8 unit + 8 integration)
+│   ├── integration_test_base.hpp # Shared fixture for integration tests
+│   └── test_integration_*.cpp   # Split integration tests by feature
+├── sql/migrations/              # Auto-applied database migrations (34)
+├── .github/workflows/           # CI/CD pipeline (single Docker build job)
 ├── CMakeLists.txt
 ├── Dockerfile
 ├── docker-compose.yml
@@ -313,10 +360,13 @@ The bot's role must be **higher** in the Discord role hierarchy than any roles i
 ### Database locked
 SQLite WAL mode supports concurrent reads but only one writer.
 
+### Duplicate controls on browser back/forward
+HTMX history restoration is handled automatically — DataTables and TomSelect instances are cleaned up before page cache. If you see duplicates, hard-refresh the page.
+
 ## License
 
 This project is licensed under the [GNU Affero General Public License v3.0](LICENSE) (AGPL-3.0). You are free to fork, modify, and distribute this software, but any modifications — including those deployed as a network service — must be made available under the same license.
 
 ## Contributing
 
-Pull requests welcome! Please ensure all tests pass (`ctest --test-dir build`) and code compiles cleanly with `-Wall -Wextra`.
+Pull requests welcome! Please ensure all tests pass (`ctest --test-dir build -j$(nproc)`) and code compiles cleanly with zero warnings.
