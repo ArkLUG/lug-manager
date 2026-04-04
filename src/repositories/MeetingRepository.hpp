@@ -16,7 +16,9 @@ public:
     std::vector<Meeting>   find_by_chapter(int64_t chapter_id);
     std::vector<Meeting>   find_upcoming_by_chapter(int64_t chapter_id);
 
-    std::vector<Meeting> find_paginated(const std::string& search, int limit, int offset);
+    std::vector<Meeting> find_paginated(const std::string& search, int limit, int offset,
+                                        const std::string& sort_col = "start_time",
+                                        const std::string& sort_dir = "DESC");
     int                  count_filtered(const std::string& search);
     int                  count_all();
 

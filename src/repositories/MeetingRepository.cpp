@@ -102,11 +102,20 @@ std::vector<Meeting> MeetingRepository::find_upcoming_by_chapter(int64_t chapter
     return result;
 }
 
-std::vector<Meeting> MeetingRepository::find_paginated(const std::string& search, int limit, int offset) {
+std::vector<Meeting> MeetingRepository::find_paginated(const std::string& search, int limit, int offset,
+                                                       const std::string& sort_col,
+                                                       const std::string& sort_dir) {
     std::vector<Meeting> result;
+    std::string dir = (sort_dir == "ASC") ? "ASC" : "DESC";
+    std::string order = "start_time";
+    if (sort_col == "title") order = "title";
+    else if (sort_col == "status") order = "status";
+    else if (sort_col == "location") order = "location";
+    else if (sort_col == "scope") order = "scope";
+    std::string order_clause = " ORDER BY " + order + " " + dir + " LIMIT ? OFFSET ?";
+
     if (search.empty()) {
-        auto stmt = db_.prepare(
-            std::string(kSelectAllCols) + " ORDER BY start_time DESC LIMIT ? OFFSET ?");
+        auto stmt = db_.prepare(std::string(kSelectAllCols) + order_clause);
         stmt.bind(1, static_cast<int64_t>(limit));
         stmt.bind(2, static_cast<int64_t>(offset));
         while (stmt.step()) result.push_back(row_to_meeting(stmt));
@@ -115,7 +124,7 @@ std::vector<Meeting> MeetingRepository::find_paginated(const std::string& search
         auto stmt = db_.prepare(
             std::string(kSelectAllCols) +
             " WHERE title LIKE ? OR description LIKE ? OR location LIKE ?"
-            " ORDER BY start_time DESC LIMIT ? OFFSET ?");
+            + order_clause);
         stmt.bind(1, pat); stmt.bind(2, pat); stmt.bind(3, pat);
         stmt.bind(4, static_cast<int64_t>(limit));
         stmt.bind(5, static_cast<int64_t>(offset));

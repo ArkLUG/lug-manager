@@ -147,6 +147,16 @@ static std::string render_event_page(const crow::request& req,
     { const char* p = qs.get("page"); if (p) try { page = std::stoi(p); } catch (...) {} }
     if (page < 1) page = 1;
 
+    // Sort params
+    const char* sc = qs.get("sort");
+    const char* sd = qs.get("dir");
+    std::string sort_col = sc ? sc : "start_time";
+    std::string sort_dir = sd ? sd : "ASC";
+    // Validate
+    static const std::set<std::string> kEvSortCols = {"start_time","title","status","location","scope"};
+    if (!kEvSortCols.count(sort_col)) sort_col = "start_time";
+    if (sort_dir != "ASC" && sort_dir != "DESC") sort_dir = "ASC";
+
     bool upcoming_only = !all_events;
     int total = events.count_filtered(search, upcoming_only);
     int total_pages = (total + kEvPerPage - 1) / kEvPerPage;
@@ -154,7 +164,7 @@ static std::string render_event_page(const crow::request& req,
     if (page > total_pages) page = total_pages;
     int offset = (page - 1) * kEvPerPage;
 
-    auto event_list = events.list_paginated(search, kEvPerPage, offset, upcoming_only);
+    auto event_list = events.list_paginated(search, kEvPerPage, offset, upcoming_only, sort_col, sort_dir);
     auto ctx = build_event_list_ctx(event_list, attendance, chapter_members, is_admin, can_create, mbr_id);
 
     ctx["show_all"]    = all_events;
@@ -166,6 +176,13 @@ static std::string render_event_page(const crow::request& req,
     ctx["has_next"]    = (page < total_pages);
     ctx["prev_page"]   = page - 1;
     ctx["next_page"]   = page + 1;
+    ctx["sort"]             = sort_col;
+    ctx["dir"]              = sort_dir;
+    ctx["next_dir"]         = (sort_dir == "ASC") ? "DESC" : "ASC";
+    ctx["sort_is_date"]     = (sort_col == "start_time");
+    ctx["sort_is_title"]    = (sort_col == "title");
+    ctx["sort_is_location"] = (sort_col == "location");
+    ctx["dir_is_asc"]       = (sort_dir == "ASC");
 
     bool is_htmx = req.get_header_value("HX-Request") == "true";
     if (is_htmx) {

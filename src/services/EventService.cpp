@@ -37,8 +37,11 @@ std::vector<LugEvent> EventService::list_by_chapter(int64_t chapter_id) {
     return repo_.find_upcoming_by_chapter(chapter_id);
 }
 
-std::vector<LugEvent> EventService::list_paginated(const std::string& search, int limit, int offset, bool upcoming_only) {
-    return repo_.find_paginated(search, limit, offset, upcoming_only);
+std::vector<LugEvent> EventService::list_paginated(const std::string& search, int limit, int offset,
+                                                    bool upcoming_only,
+                                                    const std::string& sort_col,
+                                                    const std::string& sort_dir) {
+    return repo_.find_paginated(search, limit, offset, upcoming_only, sort_col, sort_dir);
 }
 int EventService::count_filtered(const std::string& search, bool upcoming_only) { return repo_.count_filtered(search, upcoming_only); }
 int EventService::count_all() { return repo_.count_all(); }

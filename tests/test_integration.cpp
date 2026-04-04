@@ -398,7 +398,7 @@ TEST_F(IntegrationTest, MemberCannotAccessSettings) {
 TEST_F(IntegrationTest, DashboardLoads) {
     auto r = GET("/dashboard", admin_token);
     EXPECT_EQ(r.code, 200);
-    expect_contains(r, "Welcome");
+    expect_contains(r, "Edit Profile");
     expect_contains(r, "calendar.ics");
     expect_contains(r, "Members");
     expect_contains(r, "Meetings");
@@ -408,7 +408,7 @@ TEST_F(IntegrationTest, DashboardLoads) {
 TEST_F(IntegrationTest, DashboardHtmxPartial) {
     auto r = GET_HTMX("/dashboard", admin_token);
     EXPECT_EQ(r.code, 200);
-    expect_contains(r, "Welcome");
+    expect_contains(r, "Edit Profile");
     // Partial should NOT have full layout
     expect_not_contains(r, "<html");
 }

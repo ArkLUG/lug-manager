@@ -17,7 +17,10 @@ public:
     std::vector<LugEvent>   list_upcoming();
     std::vector<LugEvent>   list_all();
     std::vector<LugEvent>   list_by_chapter(int64_t chapter_id);
-    std::vector<LugEvent>   list_paginated(const std::string& search, int limit, int offset, bool upcoming_only = true);
+    std::vector<LugEvent>   list_paginated(const std::string& search, int limit, int offset,
+                                            bool upcoming_only = true,
+                                            const std::string& sort_col = "start_time",
+                                            const std::string& sort_dir = "ASC");
     int                     count_filtered(const std::string& search, bool upcoming_only = true);
     int                     count_all();
     std::optional<LugEvent> get(int64_t id);

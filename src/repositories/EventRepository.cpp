@@ -129,15 +129,24 @@ std::vector<LugEvent> EventRepository::find_upcoming_by_chapter(int64_t chapter_
     return result;
 }
 
-std::vector<LugEvent> EventRepository::find_paginated(const std::string& search, int limit, int offset, bool upcoming_only) {
+std::vector<LugEvent> EventRepository::find_paginated(const std::string& search, int limit, int offset,
+                                                       bool upcoming_only,
+                                                       const std::string& sort_col,
+                                                       const std::string& sort_dir) {
     std::string where;
     if (upcoming_only) where += " WHERE e.start_time >= datetime('now', '-1 hour')";
     if (!search.empty()) {
         where += upcoming_only ? " AND" : " WHERE";
         where += " (e.title LIKE ? OR e.description LIKE ? OR e.location LIKE ?)";
     }
+    std::string dir = (sort_dir == "DESC") ? "DESC" : "ASC";
+    std::string order = "e.start_time";
+    if (sort_col == "title") order = "e.title";
+    else if (sort_col == "status") order = "e.status";
+    else if (sort_col == "location") order = "e.location";
+    else if (sort_col == "scope") order = "e.scope";
     auto stmt = db_.prepare(
-        std::string(kSelectAllCols) + where + " ORDER BY e.start_time ASC LIMIT ? OFFSET ?");
+        std::string(kSelectAllCols) + where + " ORDER BY " + order + " " + dir + " LIMIT ? OFFSET ?");
     int idx = 1;
     std::string pat;
     if (!search.empty()) {

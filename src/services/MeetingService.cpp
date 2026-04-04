@@ -36,8 +36,10 @@ std::vector<Meeting> MeetingService::list_by_chapter(int64_t chapter_id) {
     return repo_.find_upcoming_by_chapter(chapter_id);
 }
 
-std::vector<Meeting> MeetingService::list_paginated(const std::string& search, int limit, int offset) {
-    return repo_.find_paginated(search, limit, offset);
+std::vector<Meeting> MeetingService::list_paginated(const std::string& search, int limit, int offset,
+                                                    const std::string& sort_col,
+                                                    const std::string& sort_dir) {
+    return repo_.find_paginated(search, limit, offset, sort_col, sort_dir);
 }
 int MeetingService::count_filtered(const std::string& search) { return repo_.count_filtered(search); }
 int MeetingService::count_all() { return repo_.count_all(); }

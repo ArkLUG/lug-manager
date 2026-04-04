@@ -3,6 +3,7 @@
 #include <crow.h>
 #include <crow/mustache.h>
 #include <map>
+#include <set>
 #include <cstdio>
 
 static std::string normalize_datetime(const std::string& dt) {
@@ -136,13 +137,22 @@ static std::string render_meeting_page(const crow::request& req,
     { const char* p = qs.get("page"); if (p) try { page = std::stoi(p); } catch (...) {} }
     if (page < 1) page = 1;
 
+    // Sort params
+    const char* sc = qs.get("sort");
+    const char* sd = qs.get("dir");
+    std::string sort_col = sc ? sc : "start_time";
+    std::string sort_dir = sd ? sd : "DESC";
+    static const std::set<std::string> kMtgSortCols = {"start_time","title","status","location","scope"};
+    if (!kMtgSortCols.count(sort_col)) sort_col = "start_time";
+    if (sort_dir != "ASC" && sort_dir != "DESC") sort_dir = "DESC";
+
     int total = meetings.count_filtered(search);
     int total_pages = (total + kPerPage - 1) / kPerPage;
     if (total_pages < 1) total_pages = 1;
     if (page > total_pages) page = total_pages;
     int offset = (page - 1) * kPerPage;
 
-    auto meeting_list = meetings.list_paginated(search, kPerPage, offset);
+    auto meeting_list = meetings.list_paginated(search, kPerPage, offset, sort_col, sort_dir);
     auto ctx = build_meeting_list_ctx(meeting_list, attendance, chapter_members, is_admin, can_create, member_id);
 
     ctx["search"]      = search;
@@ -153,6 +163,13 @@ static std::string render_meeting_page(const crow::request& req,
     ctx["has_next"]    = (page < total_pages);
     ctx["prev_page"]   = page - 1;
     ctx["next_page"]   = page + 1;
+    ctx["sort"]             = sort_col;
+    ctx["dir"]              = sort_dir;
+    ctx["next_dir"]         = (sort_dir == "ASC") ? "DESC" : "ASC";
+    ctx["sort_is_date"]     = (sort_col == "start_time");
+    ctx["sort_is_title"]    = (sort_col == "title");
+    ctx["sort_is_location"] = (sort_col == "location");
+    ctx["dir_is_asc"]       = (sort_dir == "ASC");
 
     bool is_htmx = req.get_header_value("HX-Request") == "true";
     if (is_htmx) {
