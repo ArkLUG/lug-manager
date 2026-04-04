@@ -39,7 +39,7 @@
                     <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Mtg</th>
                     <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Evt</th>
                     <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase hidden md:table-cell">Paid Dues</th>
-                    <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase hidden md:table-cell">Min FOL</th>
+                    <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase hidden md:table-cell">Min Age</th>
                     <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase hidden lg:table-cell">Discord Role</th>
                     <th class="px-4 py-3"></th>
                 </tr>
@@ -137,14 +137,14 @@
             </div>
             <div class="grid grid-cols-2 gap-4">
                 <div>
-                    <label class="block text-sm font-medium text-gray-700">Minimum FOL Status</label>
+                    <label class="block text-sm font-medium text-gray-700">Minimum Age Range</label>
                     <select name="min_fol_status"
                             class="mt-1 w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-yellow-400">
-                        <option value="kfol">KFOL (Kid) — any member</option>
-                        <option value="tfol">TFOL (Teen) — teens and adults only</option>
-                        <option value="afol" selected>AFOL (Adult) — adults only</option>
+                        <option value="kfol">KFOL — Kids and up (any age)</option>
+                        <option value="tfol">TFOL — Teens and up</option>
+                        <option value="afol" selected>AFOL — Adults only</option>
                     </select>
-                    <p class="text-xs text-gray-400 mt-1">Members below this FOL level won't qualify for this tier.</p>
+                    <p class="text-xs text-gray-400 mt-1">Members below this age range won't qualify for this tier.</p>
                 </div>
             </div>
             <button type="submit"

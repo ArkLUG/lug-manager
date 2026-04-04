@@ -25,7 +25,7 @@
           </div>
           {{/member_has_chapter}}
           <div>
-            <span class="text-gray-400 text-xs">FOL Status</span>
+            <span class="text-gray-400 text-xs">Age Range</span>
             <div class="text-gray-100 font-medium">{{member_fol_label}}</div>
           </div>
           <div>
@@ -115,6 +115,15 @@
         <div class="text-2xl font-bold text-gray-800">{{perk_event_count}}</div>
         <div class="text-xs text-gray-500">Events</div>
       </div>
+      <div class="text-center">
+        {{#perk_is_paid}}
+        <div class="text-2xl font-bold text-green-600">&#10003;</div>
+        {{/perk_is_paid}}
+        {{^perk_is_paid}}
+        <div class="text-2xl font-bold text-red-500">&#10007;</div>
+        {{/perk_is_paid}}
+        <div class="text-xs text-gray-500">Dues</div>
+      </div>
     </div>
     {{#perk_achieved}}
     <div class="inline-flex items-center gap-1 px-3 py-1 bg-green-100 text-green-700 rounded-full text-sm font-medium mb-2">
@@ -124,8 +133,9 @@
     {{#perk_has_next}}
     <p class="text-sm text-gray-500">
       Next: <span class="font-medium text-gray-700">{{perk_next_name}}</span>
-      {{#perk_next_meetings}}&mdash; {{perk_next_meetings}} more meeting(s){{/perk_next_meetings}}
-      {{#perk_next_events}}&mdash; {{perk_next_events}} more event(s){{/perk_next_events}}
+      {{#perk_show_meetings}} &mdash; {{perk_next_meetings}} more meeting(s){{/perk_show_meetings}}
+      {{#perk_show_events}} &mdash; {{perk_next_events}} more event(s){{/perk_show_events}}
+      {{#perk_next_needs_dues}} &mdash; <span class="text-red-600 font-medium">dues required</span>{{/perk_next_needs_dues}}
     </p>
     {{/perk_has_next}}
   </div>

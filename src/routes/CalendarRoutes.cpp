@@ -74,6 +74,7 @@ void register_calendar_routes(LugApp& app, CalendarGenerator& cal,
             std::string next_name;
             int next_meetings_needed = 0;
             int next_events_needed = 0;
+            bool next_needs_dues = false;
 
             auto member = member_repo.find_by_id(auth_ctx.auth.member_id);
             bool is_paid = member && member->is_paid;
@@ -90,6 +91,7 @@ void register_calendar_routes(LugApp& app, CalendarGenerator& cal,
                     next_name = lvl.name;
                     next_meetings_needed = std::max(0, lvl.meeting_attendance_required - meeting_count);
                     next_events_needed = std::max(0, lvl.event_attendance_required - event_count);
+                    next_needs_dues = lvl.requires_paid_dues && !is_paid;
                 }
             }
 
@@ -97,8 +99,12 @@ void register_calendar_routes(LugApp& app, CalendarGenerator& cal,
             ctx["perk_achieved_name"]    = achieved_name;
             ctx["perk_has_next"]         = !next_name.empty();
             ctx["perk_next_name"]        = next_name;
-            ctx["perk_next_meetings"]    = next_meetings_needed;
-            ctx["perk_next_events"]      = next_events_needed;
+            ctx["perk_next_meetings"]    = next_meetings_needed > 0 ? next_meetings_needed : 0;
+            ctx["perk_next_events"]      = next_events_needed > 0 ? next_events_needed : 0;
+            ctx["perk_show_meetings"]    = (next_meetings_needed > 0);
+            ctx["perk_show_events"]      = (next_events_needed > 0);
+            ctx["perk_next_needs_dues"]  = next_needs_dues;
+            ctx["perk_is_paid"]          = is_paid;
             ctx["has_perks"]             = !levels.empty();
         }
 
