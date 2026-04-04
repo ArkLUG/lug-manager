@@ -56,11 +56,13 @@
           <!-- Title + badges -->
           <div class="flex items-center gap-1.5 sm:gap-2 flex-wrap">
             <h3 class="font-semibold text-gray-800 text-sm sm:text-base {{#is_cancelled}}line-through{{/is_cancelled}}">{{title}}</h3>
+            {{^scope_non_lug}}
             {{#is_tentative}}<span class="px-2 py-0.5 rounded text-xs font-medium bg-yellow-100 text-yellow-800">Tentative</span>{{/is_tentative}}
             {{#is_confirmed}}<span class="px-2 py-0.5 rounded text-xs font-medium bg-blue-100 text-blue-700">Confirmed</span>{{/is_confirmed}}
             {{#is_open}}<span class="px-2 py-0.5 rounded text-xs font-medium bg-green-100 text-green-700">Open</span>{{/is_open}}
             {{#is_closed}}<span class="px-2 py-0.5 rounded text-xs font-medium bg-gray-100 text-gray-600">Closed</span>{{/is_closed}}
             {{#is_cancelled}}<span class="px-2 py-0.5 rounded text-xs font-medium bg-red-100 text-red-700">Cancelled</span>{{/is_cancelled}}
+            {{/scope_non_lug}}
             {{#scope_lug_wide}}<span class="px-2 py-0.5 rounded text-xs font-medium bg-indigo-100 text-indigo-700">LUG Wide</span>{{/scope_lug_wide}}
             {{#scope_non_lug}}<span class="px-2 py-0.5 rounded text-xs font-medium bg-amber-100 text-amber-700">Non-LUG</span>{{/scope_non_lug}}
           </div>
@@ -155,12 +157,6 @@
               </button>
               {{/is_closed}}
               {{/scope_non_lug}}
-              {{#is_admin}}
-              <button hx-post="/events/{{id}}/convert-to-meeting" hx-confirm="Convert this event to a meeting? The event will be deleted and a new meeting created with the same details."
-                      class="text-sm px-3 py-1.5 text-amber-600 border border-amber-300 rounded-lg hover:bg-amber-50 transition-colors">
-                To Meeting
-              </button>
-              {{/is_admin}}
               <button hx-post="/events/{{id}}/cancel" hx-confirm="Delete this event?" hx-swap="none"
                       class="text-sm px-3 py-1.5 text-red-600 border border-red-300 rounded-lg hover:bg-red-50 transition-colors">
                 Delete

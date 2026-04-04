@@ -57,13 +57,16 @@ void register_chapter_routes(LugApp& app, ChapterService& chapters,
 
         crow::mustache::context mctx;
         mctx["title"] = "Chapters";
-        mctx["is_admin"] = ctx.auth.role == "admin";
+        mctx["is_admin"] = ctx.auth.is_admin();
+        mctx["can_see_dues"] = ctx.auth.is_chapter_lead();
 
+        bool can_see_dues = ctx.auth.is_chapter_lead();
         crow::json::wvalue arr;
         for (size_t i = 0; i < all_chapters.size(); ++i) {
             const auto& ch = all_chapters[i];
             arr[i]["id"]          = ch.id;
             arr[i]["name"]        = ch.name;
+            arr[i]["can_see_dues"] = can_see_dues;
             arr[i]["shorthand"]   = ch.shorthand;
             arr[i]["has_shorthand"] = !ch.shorthand.empty();
             arr[i]["description"] = ch.description;

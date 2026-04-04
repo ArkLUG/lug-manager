@@ -29,8 +29,32 @@ void register_calendar_routes(LugApp& app, CalendarGenerator& cal,
         ctx["title"]      = "Dashboard";
         ctx["member_id"]  = auth_ctx.auth.member_id;
         ctx["role"]       = auth_ctx.auth.role;
-        ctx["is_admin"]   = auth_ctx.auth.role == "admin";
+        ctx["is_admin"]   = auth_ctx.auth.is_admin();
+        ctx["is_chapter_lead"] = auth_ctx.auth.is_chapter_lead();
         ctx["is_member"]  = auth_ctx.auth.role == "member" || auth_ctx.auth.role == "admin";
+
+        // Member profile info
+        auto member_info = member_repo.find_by_id(auth_ctx.auth.member_id);
+        if (member_info) {
+            ctx["member_display_name"]  = member_info->display_name;
+            ctx["member_initial"]       = member_info->display_name.empty() ? std::string("?")
+                                        : std::string(1, member_info->display_name[0]);
+            ctx["member_first_name"]    = member_info->first_name;
+            ctx["member_last_name"]     = member_info->last_name;
+            ctx["member_email"]         = member_info->email;
+            ctx["member_phone"]         = member_info->phone;
+            ctx["member_chapter"]       = member_info->chapter_name;
+            ctx["member_has_chapter"]   = !member_info->chapter_name.empty();
+            ctx["member_is_paid"]       = member_info->is_paid;
+            ctx["member_paid_until"]    = member_info->paid_until;
+            ctx["member_fol_status"]    = member_info->fol_status.empty() ? "afol" : member_info->fol_status;
+            ctx["member_fol_label"]     = member_info->fol_status == "kfol" ? "KFOL"
+                                        : member_info->fol_status == "tfol" ? "TFOL" : "AFOL";
+            ctx["member_role_label"]    = auth_ctx.auth.role == "admin" ? "Admin"
+                                        : auth_ctx.auth.role == "chapter_lead" ? "Chapter Lead" : "Member";
+            ctx["member_role_admin"]    = auth_ctx.auth.role == "admin";
+            ctx["member_role_chapter_lead"] = auth_ctx.auth.role == "chapter_lead";
+        }
 
         // Perk progress for current user
         {
