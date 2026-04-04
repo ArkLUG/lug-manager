@@ -9,7 +9,7 @@ struct LugEvent {
     std::string location;
     std::string start_time;
     std::string end_time;
-    std::string status           = "confirmed"; // "tentative"|"confirmed"|"open"|"closed"|"cancelled"
+    std::string status           = "confirmed"; // "tentative"|"confirmed"|"cancelled"
     std::string discord_thread_id;
     std::string discord_event_id;
     std::string google_calendar_event_id;    // Google Calendar event ID
