@@ -537,7 +537,7 @@ TEST_F(IntegrationTest, EventManagerCannotEditOtherChapter) {
 
 TEST_F(IntegrationTest, EventManagerCanCreateChapterMeeting) {
     auto r = POST("/meetings",
-        "title=EM+Perm+Meeting&start_time=2026-09-20T19:00:00&end_time=2026-09-20T21:00:00"
+        "title=EM+Perm+Meeting&location=Test+Location&start_time=2026-09-20T19:00:00&end_time=2026-09-20T21:00:00"
         "&scope=chapter&chapter_id=" + std::to_string(test_chapter_id) +
         "&suppress_discord=on",
         event_manager_token);

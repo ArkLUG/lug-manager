@@ -52,8 +52,10 @@
     <div>
       <label class="block text-sm font-medium text-gray-700 mb-1">Location</label>
       <input type="text" name="location" value="{{location}}"
+             maxlength="200"
              class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-yellow-400"
-             placeholder="Convention Center, Hall B">
+             placeholder="Convention Center, 123 Main St, Conway, AR 72032">
+      <p class="text-xs text-gray-400 mt-1">Include the full address for map links to work correctly.</p>
     </div>
 
     <div class="grid grid-cols-2 gap-4">

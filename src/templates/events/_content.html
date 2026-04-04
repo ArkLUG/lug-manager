@@ -108,8 +108,9 @@
               {{#scope_non_lug}}<span class="px-2 py-0.5 rounded text-xs font-medium bg-amber-100 text-amber-700">Non-LUG</span>{{/scope_non_lug}}
               {{^scope_lug_wide}}{{^scope_non_lug}}<span class="text-xs text-gray-500">Chapter</span>{{/scope_non_lug}}{{/scope_lug_wide}}
             </td>
-            <td class="px-4 py-3 text-gray-500 truncate max-w-[12rem]">
-              {{#location}}{{location}}{{/location}}
+            <td class="px-4 py-3 truncate max-w-[12rem]">
+              {{#location}}<a href="#" onclick="window.open(mapUrl('{{location}}'),'_blank');return false"
+                 class="text-gray-600 hover:text-indigo-600 hover:underline">{{location}}</a>{{/location}}
               {{^location}}<span class="text-gray-300">&mdash;</span>{{/location}}
             </td>
             <td class="px-4 py-3 whitespace-nowrap">

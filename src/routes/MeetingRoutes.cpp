@@ -88,6 +88,8 @@ static crow::mustache::context build_meeting_list_ctx(
         arr[i]["scope_lug_wide"] = (m.scope == "lug_wide");
         arr[i]["scope_non_lug"]  = (m.scope == "non_lug");
         arr[i]["discord_event_id"] = m.discord_event_id;
+        arr[i]["is_virtual"]       = m.is_virtual;
+        arr[i]["discord_voice_channel_id"] = m.discord_voice_channel_id;
         arr[i]["has_notes"]        = !m.notes.empty();
         arr[i]["notes_html"]       = m.notes.empty() ? "" : render_markdown(m.notes);
         arr[i]["has_report"]       = !m.notes_discord_post_id.empty();
@@ -284,6 +286,8 @@ void register_meeting_routes(LugApp& app, MeetingService& meetings, AttendanceSe
         mctx["scope_chapter"]     = (m->scope == "chapter" || m->scope.empty());
         mctx["scope_lug_wide"]    = (m->scope == "lug_wide");
         mctx["scope_non_lug"]     = (m->scope == "non_lug");
+        mctx["is_virtual"]                 = m->is_virtual;
+        mctx["discord_voice_channel_id"]   = m->discord_voice_channel_id;
         mctx["suppress_discord"]  = m->suppress_discord;
         mctx["suppress_calendar"] = m->suppress_calendar;
         mctx["notes"]             = m->notes;
@@ -327,6 +331,8 @@ void register_meeting_routes(LugApp& app, MeetingService& meetings, AttendanceSe
         ctx["scope"]          = m->scope;
         ctx["scope_lug_wide"] = (m->scope == "lug_wide");
         ctx["scope_non_lug"]  = (m->scope == "non_lug");
+        ctx["is_virtual"]     = m->is_virtual;
+        ctx["discord_voice_channel_id"] = m->discord_voice_channel_id;
         ctx["has_notes"]      = !m->notes.empty();
         ctx["notes_html"]     = m->notes.empty() ? "" : render_markdown(m->notes);
         ctx["start_time_fmt"] = fmt_time(m->start_time);
@@ -404,14 +410,22 @@ void register_meeting_routes(LugApp& app, MeetingService& meetings, AttendanceSe
         m.scope       = get_param("scope").empty() ? "chapter" : get_param("scope");
         { std::string ch = get_param("chapter_id");
           if (!ch.empty()) try { m.chapter_id = std::stoll(ch); } catch (...) {} }
+        m.is_virtual        = (get_param("is_virtual") == "on" || get_param("is_virtual") == "1");
+        m.discord_voice_channel_id = get_param("discord_voice_channel_id");
         m.suppress_discord  = (get_param("suppress_discord") == "on" || get_param("suppress_discord") == "1");
         m.suppress_calendar = (get_param("suppress_calendar") == "on" || get_param("suppress_calendar") == "1");
         m.notes             = get_param("notes");
+        if (m.is_virtual) m.location = "Virtual (Discord)";
 
         res.add_header("Content-Type", "text/html; charset=utf-8");
         if (m.title.empty()) {
             res.code = 400;
             res.write(R"(<div class="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded">Title is required.</div>)");
+            return res;
+        }
+        if (!m.is_virtual && m.location.empty()) {
+            res.code = 400;
+            res.write(R"(<div class="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded">Location is required for in-person meetings.</div>)");
             return res;
         }
 
@@ -466,9 +480,12 @@ void register_meeting_routes(LugApp& app, MeetingService& meetings, AttendanceSe
             if (!scope.empty())       updates.scope       = scope;
             std::string ch = gp("chapter_id");
             if (!ch.empty()) try { updates.chapter_id = std::stoll(ch); } catch (...) {}
+            updates.is_virtual        = (gp("is_virtual") == "on" || gp("is_virtual") == "1");
+            updates.discord_voice_channel_id = gp("discord_voice_channel_id");
             updates.suppress_discord  = (gp("suppress_discord") == "on" || gp("suppress_discord") == "1");
             updates.suppress_calendar = (gp("suppress_calendar") == "on" || gp("suppress_calendar") == "1");
             updates.notes             = gp("notes");
+            if (updates.is_virtual) updates.location = "Virtual (Discord)";
 
             res.add_header("Content-Type", "text/html; charset=utf-8");
             if (updates.title.empty()) {

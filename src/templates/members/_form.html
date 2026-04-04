@@ -103,6 +103,9 @@
       <div>
         <label class="block text-sm font-medium text-gray-700 mb-1">Phone</label>
         <input type="tel" name="phone" value="{{phone}}"
+               pattern="\(\d{3}\)\s?\d{3}-\d{4}"
+               title="Format: (555) 123-4567"
+               data-phone-format
                class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-yellow-400"
                placeholder="(555) 123-4567">
       </div>
@@ -110,9 +113,11 @@
       <div class="col-span-2">
         <label class="block text-sm font-medium text-gray-700 mb-1">Address</label>
         <input type="text" name="address_line1" value="{{address_line1}}"
+               maxlength="100"
                class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-yellow-400 mb-2"
                placeholder="Street address">
         <input type="text" name="address_line2" value="{{address_line2}}"
+               maxlength="100"
                class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-yellow-400"
                placeholder="Apt, suite, unit (optional)">
       </div>
@@ -120,19 +125,24 @@
       <div>
         <label class="block text-sm font-medium text-gray-700 mb-1">City</label>
         <input type="text" name="city" value="{{city}}"
+               maxlength="50"
                class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-yellow-400">
       </div>
 
       <div>
         <label class="block text-sm font-medium text-gray-700 mb-1">State</label>
         <input type="text" name="state" value="{{state}}"
-               class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-yellow-400"
+               pattern="[A-Za-z]{2}" maxlength="2"
+               title="Two-letter state code (e.g. AR)"
+               class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-yellow-400 uppercase"
                placeholder="AR">
       </div>
 
       <div>
         <label class="block text-sm font-medium text-gray-700 mb-1">ZIP</label>
         <input type="text" name="zip" value="{{zip}}"
+               pattern="\d{5}(-\d{4})?" maxlength="10"
+               title="5-digit ZIP or ZIP+4 (e.g. 72201 or 72201-1234)"
                class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-yellow-400"
                placeholder="72201">
       </div>

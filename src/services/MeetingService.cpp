@@ -180,7 +180,9 @@ Meeting MeetingService::update(int64_t id, const Meeting& updates) {
     if (updates.chapter_id > 0)       updated.chapter_id  = updates.chapter_id;
     else if (updates.scope == "lug_wide" || updates.scope == "non_lug")
                                       updated.chapter_id  = 0; // clear chapter when switching to non-chapter scope
-    // Suppress flags and notes: always take from updates
+    // Virtual, suppress flags, and notes: always take from updates
+    updated.is_virtual                = updates.is_virtual;
+    updated.discord_voice_channel_id  = updates.discord_voice_channel_id;
     updated.suppress_discord  = updates.suppress_discord;
     updated.suppress_calendar = updates.suppress_calendar;
     updated.notes             = updates.notes;

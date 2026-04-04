@@ -29,12 +29,40 @@
       <dd class="col-span-2 text-gray-800">{{start_time_fmt}} &ndash; {{end_time_fmt}}</dd>
     </div>
 
+    {{#is_virtual}}
+    <div class="grid grid-cols-3 gap-1">
+      <dt class="text-gray-500 font-medium">Format</dt>
+      <dd class="col-span-2">
+        <span class="inline-flex items-center gap-1 text-indigo-600 font-medium">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z"/></svg>
+          Virtual Meeting
+        </span>
+      </dd>
+    </div>
+    {{#discord_voice_channel_id}}
+    <div class="grid grid-cols-3 gap-1">
+      <dt class="text-gray-500 font-medium">Voice Channel</dt>
+      <dd class="col-span-2">
+        <a href="https://discord.com/channels/{{discord_voice_channel_id}}" target="_blank"
+           class="text-indigo-600 hover:text-indigo-800 text-sm">Join Voice Channel</a>
+      </dd>
+    </div>
+    {{/discord_voice_channel_id}}
+    {{/is_virtual}}
+    {{^is_virtual}}
     {{#location}}
     <div class="grid grid-cols-3 gap-1">
       <dt class="text-gray-500 font-medium">Location</dt>
-      <dd class="col-span-2 text-gray-800">{{location}}</dd>
+      <dd class="col-span-2">
+        <a href="#" onclick="window.open(mapUrl('{{location}}'),'_blank');return false"
+           class="text-gray-800 hover:text-indigo-600 hover:underline inline-flex items-center gap-1">
+          {{location}}
+          <svg class="w-3.5 h-3.5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
+        </a>
+      </dd>
     </div>
     {{/location}}
+    {{/is_virtual}}
 
     <div class="grid grid-cols-3 gap-1">
       <dt class="text-gray-500 font-medium">Attendees</dt>

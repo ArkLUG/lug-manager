@@ -440,6 +440,36 @@
     document.addEventListener('keydown', function(e) {
       if (e.key === 'Escape') closeModal();
     });
+
+    // Map link helper: uses geo: URI so the OS opens the user's default map app.
+    // Falls back to Google Maps on desktop browsers that don't handle geo: links.
+    window.mapUrl = function(address) {
+      var encoded = encodeURIComponent(address);
+      var isMobile = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
+      if (isMobile) {
+        // geo: URI opens the default maps app on both Android and iOS
+        return 'geo:0,0?q=' + encoded;
+      }
+      // Desktop: Google Maps web (works universally)
+      return 'https://www.google.com/maps/search/?api=1&query=' + encoded;
+    };
+
+    // Auto-format phone inputs: digits → (XXX) XXX-XXXX
+    function formatPhone(input) {
+      var digits = input.value.replace(/\D/g, '').slice(0, 10);
+      if (digits.length === 0) { input.value = ''; return; }
+      if (digits.length <= 3) input.value = '(' + digits;
+      else if (digits.length <= 6) input.value = '(' + digits.slice(0,3) + ') ' + digits.slice(3);
+      else input.value = '(' + digits.slice(0,3) + ') ' + digits.slice(3,6) + '-' + digits.slice(6);
+    }
+    // Force state to uppercase
+    function upperState(input) { input.value = input.value.toUpperCase(); }
+
+    // Bind to current + future inputs (after HTMX swaps modals in)
+    document.addEventListener('input', function(e) {
+      if (e.target.hasAttribute('data-phone-format')) formatPhone(e.target);
+      if (e.target.name === 'state' && e.target.maxLength === 2) upperState(e.target);
+    });
   </script>
 </body>
 </html>

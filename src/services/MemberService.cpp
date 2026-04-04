@@ -3,6 +3,42 @@
 #include <iostream>
 #include <thread>
 #include <chrono>
+#include <regex>
+
+// Normalize phone to (XXX) XXX-XXXX format; returns empty if invalid/empty
+static std::string normalize_phone(const std::string& raw) {
+    if (raw.empty()) return "";
+    std::string digits;
+    for (char c : raw) if (c >= '0' && c <= '9') digits += c;
+    if (digits.size() == 11 && digits[0] == '1') digits = digits.substr(1); // strip leading 1
+    if (digits.size() != 10) return raw; // return as-is if not 10 digits
+    return "(" + digits.substr(0,3) + ") " + digits.substr(3,3) + "-" + digits.substr(6);
+}
+
+// Normalize state to uppercase 2-letter; returns as-is if not exactly 2 alpha
+static std::string normalize_state(const std::string& raw) {
+    if (raw.size() != 2) return raw;
+    std::string out;
+    for (char c : raw) {
+        if (std::isalpha(static_cast<unsigned char>(c)))
+            out += static_cast<char>(std::toupper(static_cast<unsigned char>(c)));
+        else return raw;
+    }
+    return out;
+}
+
+// Validate ZIP is 5 or 5+4 format
+static std::string normalize_zip(const std::string& raw) {
+    if (raw.empty()) return "";
+    static const std::regex zip_re(R"(\d{5}(-\d{4})?)");
+    if (std::regex_match(raw, zip_re)) return raw;
+    // Strip non-digits and try to format
+    std::string digits;
+    for (char c : raw) if (c >= '0' && c <= '9') digits += c;
+    if (digits.size() == 5) return digits;
+    if (digits.size() == 9) return digits.substr(0,5) + "-" + digits.substr(5);
+    return raw; // return as-is
+}
 
 MemberService::MemberService(MemberRepository& repo, DiscordClient* discord)
     : repo_(repo), discord_(discord) {}
@@ -57,6 +93,9 @@ Member MemberService::create(const Member& m) {
         throw std::invalid_argument("first_name or discord_user_id required");
     }
     Member to_create = m;
+    to_create.phone = normalize_phone(to_create.phone);
+    to_create.state = normalize_state(to_create.state);
+    to_create.zip   = normalize_zip(to_create.zip);
     // Auto-generate display_name from first/last if both are set
     if (!to_create.first_name.empty() && !to_create.last_name.empty()) {
         to_create.display_name = generate_nickname(to_create.first_name, to_create.last_name, 0);
@@ -87,12 +126,12 @@ Member MemberService::update(int64_t id, const Member& updates) {
     if (!updates.role.empty())             m.role             = updates.role;
     if (!updates.paid_until.empty())       m.paid_until       = updates.paid_until;
     m.is_paid      = updates.is_paid;
-    m.phone        = updates.phone;
+    m.phone        = normalize_phone(updates.phone);
     m.address_line1 = updates.address_line1;
     m.address_line2 = updates.address_line2;
     m.city         = updates.city;
-    m.state        = updates.state;
-    m.zip          = updates.zip;
+    m.state        = normalize_state(updates.state);
+    m.zip          = normalize_zip(updates.zip);
     m.birthday     = updates.birthday;
     if (!updates.pii_sharing.empty()) m.pii_sharing = updates.pii_sharing;
     if (!updates.fol_status.empty()) m.fol_status = updates.fol_status;

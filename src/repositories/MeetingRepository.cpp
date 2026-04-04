@@ -7,7 +7,8 @@ static const char* kSelectAllCols =
     "COALESCE(discord_lug_message_id,''), COALESCE(discord_chapter_message_id,''), "
     "COALESCE(google_calendar_event_id,''), "
     "suppress_discord, suppress_calendar, "
-    "COALESCE(notes,''), COALESCE(notes_discord_post_id,'') "
+    "COALESCE(notes,''), COALESCE(notes_discord_post_id,''), "
+    "is_virtual, COALESCE(discord_voice_channel_id,'') "
     "FROM meetings";
 
 MeetingRepository::MeetingRepository(SqliteDatabase& db) : db_(db) {}
@@ -34,6 +35,8 @@ Meeting MeetingRepository::row_to_meeting(Statement& stmt) {
     m.suppress_calendar           = stmt.col_bool(17);
     m.notes                       = stmt.col_text(18);
     m.notes_discord_post_id       = stmt.col_text(19);
+    m.is_virtual                  = stmt.col_bool(20);
+    m.discord_voice_channel_id    = stmt.col_text(21);
     return m;
 }
 
@@ -157,7 +160,8 @@ Meeting MeetingRepository::create(const Meeting& m) {
     auto stmt = db_.prepare(
         "INSERT INTO meetings (title, description, location, start_time, end_time, "
         "status, discord_event_id, ical_uid, scope, chapter_id, "
-        "suppress_discord, suppress_calendar, notes) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)");
+        "suppress_discord, suppress_calendar, notes, is_virtual, discord_voice_channel_id) "
+        "VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)");
     stmt.bind(1, m.title);
     stmt.bind(2, m.description);
     stmt.bind(3, m.location);
@@ -176,6 +180,8 @@ Meeting MeetingRepository::create(const Meeting& m) {
     stmt.bind(11, m.suppress_discord);
     stmt.bind(12, m.suppress_calendar);
     stmt.bind(13, m.notes);
+    stmt.bind(14, m.is_virtual);
+    stmt.bind(15, m.discord_voice_channel_id);
     stmt.step();
 
     int64_t new_id = db_.last_insert_rowid();
@@ -191,6 +197,7 @@ bool MeetingRepository::update(const Meeting& m) {
         "UPDATE meetings SET title=?, description=?, location=?, start_time=?, end_time=?, "
         "status=?, discord_event_id=?, scope=?, chapter_id=?, "
         "suppress_discord=?, suppress_calendar=?, notes=?, "
+        "is_virtual=?, discord_voice_channel_id=?, "
         "updated_at=datetime('now') WHERE id=?");
     stmt.bind(1, m.title);
     stmt.bind(2, m.description);
@@ -209,7 +216,9 @@ bool MeetingRepository::update(const Meeting& m) {
     stmt.bind(10, m.suppress_discord);
     stmt.bind(11, m.suppress_calendar);
     stmt.bind(12, m.notes);
-    stmt.bind(13, m.id);
+    stmt.bind(13, m.is_virtual);
+    stmt.bind(14, m.discord_voice_channel_id);
+    stmt.bind(15, m.id);
     stmt.step();
 
     auto existing = find_by_id(m.id);

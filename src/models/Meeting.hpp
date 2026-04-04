@@ -17,6 +17,8 @@ struct Meeting {
     std::string ical_uid;         // UUID v4, generated on creation, NEVER changes
     std::string scope             = "chapter"; // "lug_wide" | "chapter" | "non_lug"
     int64_t     chapter_id        = 0;         // FK to chapters
+    bool        is_virtual        = false;    // wholly virtual meeting (no physical location)
+    std::string discord_voice_channel_id;     // Discord voice channel for virtual meetings
     bool        suppress_discord  = false;    // skip all Discord operations
     bool        suppress_calendar = false;    // skip Google Calendar operations
     std::string notes;                        // markdown notes/report
