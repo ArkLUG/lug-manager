@@ -383,7 +383,7 @@ TEST_F(IntegrationTest, ChapterLeadCanSeePII) {
 TEST_F(IntegrationTest, MemberCannotSeePIIWhenNotPublic) {
     auto admin = member_repo->find_by_id(admin_member_id);
     admin->email = "hidden_pii@example.com";
-    admin->pii_public = false;
+    admin->pii_sharing = "none";
     member_repo->update(*admin);
 
     auto r = POST("/api/members/datatable", "draw=1&start=0&length=25&search=", member_token);
@@ -392,10 +392,10 @@ TEST_F(IntegrationTest, MemberCannotSeePIIWhenNotPublic) {
 }
 
 TEST_F(IntegrationTest, MemberCanSeePIIWhenPublic) {
-    // Set admin member's PII to public
+    // Set admin member's PII to all
     auto admin = member_repo->find_by_id(admin_member_id);
     admin->email = "public_pii@example.com";
-    admin->pii_public = true;
+    admin->pii_sharing = "all";
     member_repo->update(*admin);
 
     // Regular member should now see the email
@@ -404,7 +404,7 @@ TEST_F(IntegrationTest, MemberCanSeePIIWhenPublic) {
     expect_contains(r, "public_pii@example.com");
 
     // Clean up
-    admin->pii_public = false;
+    admin->pii_sharing = "none";
     member_repo->update(*admin);
 }
 
@@ -413,7 +413,7 @@ TEST_F(IntegrationTest, MemberCreateWithContactFields) {
         "first_name=Contact&last_name=Test&discord_user_id=contact-int-test"
         "&discord_username=contacttest&role=member"
         "&phone=(555)+999-0000&address_line1=456+Oak+St&city=Conway&state=AR&zip=72032"
-        "&pii_public=on",
+        "&pii_sharing=all",
         admin_token);
     EXPECT_EQ(r.code, 200);
 
@@ -426,7 +426,7 @@ TEST_F(IntegrationTest, MemberCreateWithContactFields) {
     EXPECT_EQ(it->city, "Conway");
     EXPECT_EQ(it->state, "AR");
     EXPECT_EQ(it->zip, "72032");
-    EXPECT_TRUE(it->pii_public);
+    EXPECT_EQ(it->pii_sharing, "all");
 }
 
 TEST_F(IntegrationTest, MemberEditFormAdminOnly) {

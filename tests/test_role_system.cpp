@@ -522,27 +522,34 @@ TEST_F(MemberModelTest, PiiPublicDefaultsFalse) {
 
     auto found = members->find_by_id(created.id);
     ASSERT_TRUE(found.has_value());
-    EXPECT_FALSE(found->pii_public);
+    EXPECT_EQ(found->pii_sharing, "none");
 }
 
-TEST_F(MemberModelTest, PiiPublicPersists) {
+TEST_F(MemberModelTest, PiiSharingPersists) {
     Member m;
     m.discord_user_id = "pii_pub";
     m.discord_username = "pii_pub";
     m.display_name = "PII Pub U.";
-    m.pii_public = true;
+    m.pii_sharing = "all";
     auto created = members->create(m);
 
     auto found = members->find_by_id(created.id);
     ASSERT_TRUE(found.has_value());
-    EXPECT_TRUE(found->pii_public);
+    EXPECT_EQ(found->pii_sharing, "all");
 
-    // Toggle off
-    found->pii_public = false;
+    // Change to verified
+    found->pii_sharing = "verified";
     members->update(*found);
     auto found2 = members->find_by_id(created.id);
     ASSERT_TRUE(found2.has_value());
-    EXPECT_FALSE(found2->pii_public);
+    EXPECT_EQ(found2->pii_sharing, "verified");
+
+    // Change to none
+    found2->pii_sharing = "none";
+    members->update(*found2);
+    auto found3 = members->find_by_id(created.id);
+    ASSERT_TRUE(found3.has_value());
+    EXPECT_EQ(found3->pii_sharing, "none");
 }
 
 TEST_F(MemberModelTest, MultipleNullDiscordIdsAllowed) {

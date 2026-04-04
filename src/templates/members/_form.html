@@ -91,12 +91,13 @@
       </div>
 
       <div class="col-span-2">
-        <label class="flex items-center gap-2 text-sm text-gray-700 cursor-pointer">
-          <input type="checkbox" name="pii_public" {{#pii_public}}checked{{/pii_public}}
-                 class="rounded border-gray-300">
-          Share contact info with other members
-        </label>
-        <p class="text-xs text-gray-400 mt-1">When enabled, your email, phone, and address will be visible to all logged-in members. Otherwise only admins and chapter leads can see it.</p>
+        <label class="block text-sm font-medium text-gray-700 mb-1">Share contact info</label>
+        <select name="pii_sharing" class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-yellow-400">
+          <option value="none" {{#pii_none}}selected{{/pii_none}}>Don't share</option>
+          <option value="verified" {{#pii_verified}}selected{{/pii_verified}}>Verified members only</option>
+          <option value="all" {{#pii_all}}selected{{/pii_all}}>All members</option>
+        </select>
+        <p class="text-xs text-gray-400 mt-1">Controls who can see this member's email, phone, address, and Discord username.</p>
       </div>
 
       <div>

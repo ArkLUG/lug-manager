@@ -20,6 +20,8 @@ public:
     std::vector<Attendance> find_by_member(int64_t member_id);
 
     int  count_by_entity(const std::string& entity_type, int64_t entity_id);
+    // Returns true if member has ever attended anything or has ever been paid
+    bool is_verified_member(int64_t member_id);
     bool is_checked_in(int64_t member_id, const std::string& entity_type, int64_t entity_id);
     bool set_virtual(int64_t attendance_id, bool is_virtual);
     bool remove_by_id(int64_t attendance_id);

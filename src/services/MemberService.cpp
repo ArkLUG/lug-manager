@@ -94,7 +94,7 @@ Member MemberService::update(int64_t id, const Member& updates) {
     m.state        = updates.state;
     m.zip          = updates.zip;
     m.birthday     = updates.birthday;
-    m.pii_public   = updates.pii_public;
+    if (!updates.pii_sharing.empty()) m.pii_sharing = updates.pii_sharing;
     if (!updates.fol_status.empty()) m.fol_status = updates.fol_status;
 
     // Regenerate display_name if first/last names are set

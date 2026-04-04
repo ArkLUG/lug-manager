@@ -9,7 +9,7 @@ static const char* kSelectAllCols =
     "COALESCE(m.birthday,''), COALESCE(m.fol_status,'afol'), "
     "COALESCE(m.phone,''), COALESCE(m.address_line1,''), COALESCE(m.address_line2,''), "
     "COALESCE(m.city,''), COALESCE(m.state,''), COALESCE(m.zip,''), "
-    "m.pii_public "
+    "COALESCE(m.pii_sharing,'none') "
     "FROM members m";
 
 MemberRepository::MemberRepository(SqliteDatabase& db) : db_(db) {}
@@ -37,7 +37,7 @@ Member MemberRepository::row_to_member(Statement& stmt) {
     m.city             = stmt.col_text(18);
     m.state            = stmt.col_text(19);
     m.zip              = stmt.col_text(20);
-    m.pii_public       = stmt.col_bool(21);
+    m.pii_sharing      = stmt.col_text(21);
     return m;
 }
 
@@ -115,7 +115,7 @@ Member MemberRepository::create(const Member& m) {
     auto stmt = db_.prepare(
         "INSERT INTO members (discord_user_id, discord_username, first_name, last_name, display_name, "
         "email, is_paid, paid_until, role, birthday, fol_status, "
-        "phone, address_line1, address_line2, city, state, zip, pii_public) "
+        "phone, address_line1, address_line2, city, state, zip, pii_sharing) "
         "VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)");
     if (m.discord_user_id.empty()) stmt.bind_null(1);
     else                          stmt.bind(1, m.discord_user_id);
@@ -143,7 +143,7 @@ Member MemberRepository::create(const Member& m) {
     stmt.bind(15, m.city);
     stmt.bind(16, m.state);
     stmt.bind(17, m.zip);
-    stmt.bind(18, m.pii_public);
+    stmt.bind(18, m.pii_sharing.empty() ? std::string("none") : m.pii_sharing);
     stmt.step();
 
     int64_t new_id = db_.last_insert_rowid();
@@ -158,7 +158,7 @@ bool MemberRepository::update(const Member& m) {
     auto stmt = db_.prepare(
         "UPDATE members SET discord_username=?, first_name=?, last_name=?, display_name=?, email=?, "
         "is_paid=?, paid_until=?, role=?, birthday=?, fol_status=?, "
-        "phone=?, address_line1=?, address_line2=?, city=?, state=?, zip=?, pii_public=?, "
+        "phone=?, address_line1=?, address_line2=?, city=?, state=?, zip=?, pii_sharing=?, "
         "updated_at=datetime('now') WHERE id=?");
     stmt.bind(1, m.discord_username);
     stmt.bind(2, m.first_name);
@@ -184,7 +184,7 @@ bool MemberRepository::update(const Member& m) {
     stmt.bind(14, m.city);
     stmt.bind(15, m.state);
     stmt.bind(16, m.zip);
-    stmt.bind(17, m.pii_public);
+    stmt.bind(17, m.pii_sharing.empty() ? std::string("none") : m.pii_sharing);
     stmt.bind(18, m.id);
     stmt.step();
 
@@ -258,7 +258,7 @@ std::vector<Member> MemberRepository::find_paginated(const std::string& q,
         "COALESCE(m.birthday,''), COALESCE(m.fol_status,'afol'), "
         "COALESCE(m.phone,''), COALESCE(m.address_line1,''), COALESCE(m.address_line2,''), "
         "COALESCE(m.city,''), COALESCE(m.state,''), COALESCE(m.zip,''), "
-        "m.pii_public FROM members m "
+        "COALESCE(m.pii_sharing,'none') FROM members m "
         "LEFT JOIN (SELECT member_id, MIN(chapter_id) AS chapter_id FROM chapter_members GROUP BY member_id) cm ON cm.member_id=m.id "
         "LEFT JOIN chapters c ON c.id=cm.chapter_id";
 
@@ -286,7 +286,7 @@ std::vector<Member> MemberRepository::find_paginated(const std::string& q,
         m.city             = stmt.col_text(19);
         m.state            = stmt.col_text(20);
         m.zip              = stmt.col_text(21);
-        m.pii_public       = stmt.col_bool(22);
+        m.pii_sharing      = stmt.col_text(22);
         return m;
     };
 

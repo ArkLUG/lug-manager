@@ -3,7 +3,7 @@
 void register_all_routes(LugApp& app, Services& svc) {
     register_auth_routes(app, svc.auth, svc.oauth);
     register_chapter_routes(app, svc.chapters, svc.chapter_members, svc.members, svc.discord);
-    register_member_routes(app, svc.members);
+    register_member_routes(app, svc.members, svc.attendance_repo);
     register_meeting_routes(app, svc.meetings, svc.attendance, svc.chapter_members, svc.chapters, svc.discord);
     register_event_routes(app, svc.events, svc.attendance, svc.chapter_members, svc.discord, svc.members, svc.meetings, svc.chapters);
     register_attendance_routes(app, svc.attendance, svc.events, svc.meetings, svc.chapter_members, svc.perks, svc.member_repo);

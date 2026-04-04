@@ -29,7 +29,10 @@ static crow::mustache::context member_to_ctx(const Member& m) {
     ctx["fol_kfol"]          = m.fol_status == "kfol";
     ctx["fol_tfol"]          = m.fol_status == "tfol";
     ctx["fol_afol"]          = m.fol_status == "afol" || m.fol_status.empty();
-    ctx["pii_public"]        = m.pii_public;
+    ctx["pii_sharing"]        = m.pii_sharing;
+    ctx["pii_none"]           = (m.pii_sharing == "none" || m.pii_sharing.empty());
+    ctx["pii_verified"]       = (m.pii_sharing == "verified");
+    ctx["pii_all"]            = (m.pii_sharing == "all");
     ctx["phone"]             = m.phone;
     ctx["address_line1"]     = m.address_line1;
     ctx["address_line2"]     = m.address_line2;
@@ -72,7 +75,7 @@ static std::string render_members_page(const crow::request& req,
     return layout.render(layout_ctx).dump();
 }
 
-void register_member_routes(LugApp& app, MemberService& members) {
+void register_member_routes(LugApp& app, MemberService& members, AttendanceRepository& attendance_repo) {
 
     // GET /members - members page (table shell; data loaded via AJAX)
     CROW_ROUTE(app, "/members")([&](const crow::request& req) {
@@ -116,6 +119,7 @@ void register_member_routes(LugApp& app, MemberService& members) {
         auto& auth = app.get_context<AuthMiddleware>(req).auth;
         bool role_can_see_pii = auth.is_chapter_lead();
         bool can_see_dues = auth.is_chapter_lead(); // admin or chapter_lead
+        bool viewer_is_verified = role_can_see_pii || attendance_repo.is_verified_member(auth.member_id);
 
         // Build JSON manually so "data" is always a proper [] array.
         // Crow's default wvalue serialises as null when no indices are set.
@@ -141,7 +145,9 @@ void register_member_routes(LugApp& app, MemberService& members) {
         for (size_t i = 0; i < result.data.size(); ++i) {
             if (i > 0) json << ",";
             const auto& m = result.data[i];
-            bool show_pii = role_can_see_pii || m.pii_public;
+            bool show_pii = role_can_see_pii
+                          || m.pii_sharing == "all"
+                          || (m.pii_sharing == "verified" && viewer_is_verified);
             json << "{\"DT_RowId\":\"member-row-" << m.id << "\""
                  << ",\"id\":"               << m.id
                  << ",\"display_name\":\""   << esc_json(m.display_name) << "\""
@@ -217,7 +223,10 @@ void register_member_routes(LugApp& app, MemberService& members) {
         updates.state          = get_param("state");
         updates.zip            = get_param("zip");
         updates.birthday       = get_param("birthday");
-        updates.pii_public     = (get_param("pii_public") == "on" || get_param("pii_public") == "1");
+                {
+            std::string ps = get_param("pii_sharing");
+            updates.pii_sharing = (ps == "verified" || ps == "all") ? ps : "none";
+        }
 
         res.add_header("Content-Type", "text/html; charset=utf-8");
         try {
@@ -247,7 +256,10 @@ void register_member_routes(LugApp& app, MemberService& members) {
         }
 
         auto& auth = app.get_context<AuthMiddleware>(req).auth;
-        bool show_pii = auth.is_chapter_lead() || m->pii_public;
+        bool viewer_verified = auth.is_chapter_lead() || attendance_repo.is_verified_member(auth.member_id);
+        bool show_pii = auth.is_chapter_lead()
+                      || m->pii_sharing == "all"
+                      || (m->pii_sharing == "verified" && viewer_verified);
         bool show_dues = auth.is_chapter_lead();
         bool is_self = (auth.member_id == m->id);
 
@@ -334,7 +346,10 @@ void register_member_routes(LugApp& app, MemberService& members) {
         m.city             = get_param("city");
         m.state            = get_param("state");
         m.zip              = get_param("zip");
-        m.pii_public       = (get_param("pii_public") == "on" || get_param("pii_public") == "1");
+        {
+            std::string ps = get_param("pii_sharing");
+            m.pii_sharing = (ps == "verified" || ps == "all") ? ps : "none";
+        }
 
         res.add_header("Content-Type", "text/html; charset=utf-8");
         try {
@@ -381,7 +396,10 @@ void register_member_routes(LugApp& app, MemberService& members) {
         updates.city             = get_param("city");
         updates.state            = get_param("state");
         updates.zip              = get_param("zip");
-        updates.pii_public       = (get_param("pii_public") == "on" || get_param("pii_public") == "1");
+        {
+            std::string ps = get_param("pii_sharing");
+            updates.pii_sharing = (ps == "verified" || ps == "all") ? ps : "none";
+        }
 
         std::string paid_until = get_param("paid_until");
         updates.paid_until = paid_until;
