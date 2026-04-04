@@ -101,10 +101,10 @@ TEST(ThreadStarter, LeadMentionSuppressed) {
     e.event_lead_discord_id = "lead123";
     e.event_lead_name = "Lead Name";
 
-    auto with_ping = DiscordClient::build_thread_starter_content(e, "", false);
+    auto with_ping = DiscordClient::build_thread_starter_content(e, false);
     EXPECT_NE(with_ping.find("<@lead123>"), std::string::npos);
 
-    auto no_ping = DiscordClient::build_thread_starter_content(e, "", true);
+    auto no_ping = DiscordClient::build_thread_starter_content(e, true);
     EXPECT_EQ(no_ping.find("<@lead123>"), std::string::npos);
     EXPECT_NE(no_ping.find("Lead Name"), std::string::npos);
 }

@@ -132,7 +132,6 @@ public:
                                                          bool suppress_pings = false);
     // Full thread starter: all details + pings the event lead by Discord mention
     static std::string build_thread_starter_content(const LugEvent& e,
-                                                     const std::string& role_id,
                                                      bool suppress_pings = false);
 
     // Meeting announcement: title, date/time, location + role ping

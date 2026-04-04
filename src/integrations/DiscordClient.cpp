@@ -332,7 +332,6 @@ std::string DiscordClient::build_event_announcement_content(const LugEvent& e,
 
 // static
 std::string DiscordClient::build_thread_starter_content(const LugEvent& e,
-                                                          const std::string& role_id,
                                                           bool suppress_pings) {
     auto fmt_date = [](const std::string& iso) -> std::string {
         if (iso.size() < 10) return iso;
@@ -452,7 +451,7 @@ std::string DiscordClient::sync_create_forum_thread_for_event(const std::string&
     json body;
     body["name"]                  = title;
     body["auto_archive_duration"] = 10080; // 7 days
-    body["message"]["content"]    = build_thread_starter_content(e, role_id, suppress_pings_);
+    body["message"]["content"]    = build_thread_starter_content(e, suppress_pings_);
     std::string resp = discord_api_request(
         "POST", "/channels/" + events_forum_channel_id_ + "/threads", body.dump());
     try {
@@ -1028,8 +1027,7 @@ void DiscordClient::update_event(const LugEvent& e) {
 
                 // For forum threads the starter message ID == thread ID; try to edit it.
                 // For text channel threads this will fail — fall back to a new update post.
-                std::string role = (e.scope == "non_lug") ? non_lug_event_role_id_ : announcement_role_id_;
-                std::string new_content = build_thread_starter_content(e, role, suppress_pings_);
+                std::string new_content = build_thread_starter_content(e, suppress_pings_);
                 json patch_body;
                 patch_body["content"] = new_content;
                 std::string patch_resp = discord_api_request(

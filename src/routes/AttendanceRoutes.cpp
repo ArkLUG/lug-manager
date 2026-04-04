@@ -70,8 +70,7 @@ static std::string render_attendance_list(AttendanceService& attendance,
 void register_attendance_routes(LugApp& app, AttendanceService& attendance,
                                 EventService& events, MeetingService& meetings,
                                 ChapterMemberRepository& chapter_members,
-                                PerkLevelRepository& perks,
-                                MemberRepository& member_repo) {
+                                PerkLevelRepository& perks) {
 
     // GET /attendance/overview - admin/lead attendance overview for all members
     // Query param: ?year=YYYY (defaults to current year)

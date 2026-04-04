@@ -151,7 +151,6 @@ void register_perk_routes(LugApp& app, PerkLevelRepository& perks,
         auto p = perks.find_by_id(static_cast<int64_t>(id));
         if (!p) { res.code = 404; res.write("Not found"); return res; }
 
-        auto q = [](const std::string& s) { return s; }; // identity for readability
         std::string cls_input = "mt-1 block w-full border border-gray-300 rounded-lg px-3 py-2 text-sm";
         std::string cls_select = "mt-1 w-full border border-gray-300 rounded-lg px-3 py-2 text-sm";
         std::string checked_paid = p->requires_paid_dues ? " checked" : "";
@@ -273,7 +272,7 @@ void register_perk_routes(LugApp& app, PerkLevelRepository& perks,
             return res;
         }
 
-        int count = perks.clone_year(source_year, target_year);
+        perks.clone_year(source_year, target_year);
         res.add_header("HX-Redirect", "/settings/perks?year=" + std::to_string(target_year));
         res.code = 200;
         return res;
