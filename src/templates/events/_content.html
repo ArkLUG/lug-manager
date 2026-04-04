@@ -129,16 +129,6 @@
                 {{#can_manage}}{{^is_cancelled}}
                 <button hx-get="/events/{{id}}/edit" hx-target="#modal" hx-swap="innerHTML"
                         class="text-xs px-2 py-1 text-gray-600 border border-gray-300 rounded hover:bg-gray-50">Edit</button>
-                {{^scope_non_lug}}
-                {{#is_tentative}}
-                <button hx-post="/events/{{id}}/status" hx-vals='{"status":"confirmed"}' hx-swap="none"
-                        class="text-xs px-2 py-1 text-blue-600 border border-blue-300 rounded hover:bg-blue-50">Confirm</button>
-                {{/is_tentative}}
-                {{#is_confirmed}}
-                <button hx-post="/events/{{id}}/status" hx-vals='{"status":"tentative"}' hx-swap="none"
-                        class="text-xs px-2 py-1 text-yellow-700 border border-yellow-300 rounded hover:bg-yellow-50">Tentative</button>
-                {{/is_confirmed}}
-                {{/scope_non_lug}}
                 <button hx-post="/events/{{id}}/cancel" hx-confirm="Delete this event?" hx-swap="none"
                         class="text-xs px-2 py-1 text-red-500 border border-red-300 rounded hover:bg-red-50">Delete</button>
                 {{/is_cancelled}}{{/can_manage}}

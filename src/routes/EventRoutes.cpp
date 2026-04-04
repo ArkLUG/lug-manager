@@ -466,6 +466,9 @@ void register_event_routes(LugApp& app, EventService& events, AttendanceService&
         ctx["location"]         = ev->location;
         ctx["start_time"]       = ev->start_time;
         ctx["end_time"]         = ev->end_time;
+        // Date-only for display (trim time portion)
+        ctx["start_date"]       = ev->start_time.size() >= 10 ? ev->start_time.substr(0, 10) : ev->start_time;
+        ctx["end_date"]         = ev->end_time.size() >= 10 ? ev->end_time.substr(0, 10) : ev->end_time;
         ctx["status"]           = ev->status;
         ctx["status_color"]     = event_status_color(ev->status);
         if (!ev->signup_deadline.empty()) ctx["signup_deadline"] = ev->signup_deadline;

@@ -86,7 +86,7 @@
   {{/has_notes}}
 
   <!-- QR Check-in (managers only) -->
-  {{#can_manage}}
+  {{#can_manage}}{{^is_virtual}}
   <div class="mt-4 pt-4 border-t border-gray-200">
     <div class="flex items-center justify-between mb-2">
       <h4 class="text-sm font-medium text-gray-500">QR Check-in</h4>
@@ -98,7 +98,7 @@
     </div>
     <div id="mtg-qr-{{id}}"></div>
   </div>
-  {{/can_manage}}
+  {{/is_virtual}}{{/can_manage}}
 
   <!-- Attendance panel (loaded via HTMX for live updates + admin controls) -->
   <div class="mt-4 pt-4 border-t border-gray-200">

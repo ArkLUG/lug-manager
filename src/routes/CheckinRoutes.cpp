@@ -24,6 +24,14 @@ void register_checkin_routes(LugApp& app,
         auto mtg = meetings.get(static_cast<int64_t>(id));
         if (!mtg) { res.code = 404; res.write("Not found"); return res; }
 
+        // No QR check-in for virtual meetings
+        if (mtg->is_virtual) {
+            res.code = 400;
+            res.add_header("Content-Type", "text/html; charset=utf-8");
+            res.write(R"(<span class="text-gray-400 text-xs">QR check-in is not available for virtual meetings.</span>)");
+            return res;
+        }
+
         // Permission: admin, chapter lead/event_manager for this chapter
         if (!can_manage_chapter_content(req, res, app, mtg->chapter_id, chapter_members))
             return res;
@@ -107,12 +115,19 @@ void register_checkin_routes(LugApp& app,
 
         auto mtg = meeting_repo.find_by_checkin_token(token);
         if (mtg) {
+            if (mtg->is_virtual) {
+                res.code = 404;
+                auto tmpl = crow::mustache::load("checkin/_page.html");
+                crow::mustache::context ctx;
+                ctx["not_found"] = true;
+                res.write(tmpl.render(ctx).dump());
+                return res;
+            }
             entity_type = "meeting";
             entity_id = mtg->id;
             entity_title = mtg->title;
             entity_date = mtg->start_time;
             entity_location = mtg->location;
-            is_virtual_meeting = mtg->is_virtual;
         } else {
             auto ev = event_repo.find_by_checkin_token(token);
             if (ev) {

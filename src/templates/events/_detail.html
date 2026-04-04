@@ -13,6 +13,18 @@
     {{#is_tentative}}<span class="px-2 py-0.5 rounded text-xs font-medium bg-yellow-100 text-yellow-800">Tentative</span>{{/is_tentative}}
     {{#is_confirmed}}<span class="px-2 py-0.5 rounded text-xs font-medium bg-blue-100 text-blue-700">Confirmed</span>{{/is_confirmed}}
     {{#is_cancelled}}<span class="px-2 py-0.5 rounded text-xs font-medium bg-red-100 text-red-700">Cancelled</span>{{/is_cancelled}}
+
+    {{#can_manage}}{{^scope_non_lug}}{{^is_cancelled}}
+    {{#is_tentative}}
+    <button hx-post="/events/{{id}}/status" hx-vals='{"status":"confirmed"}' hx-swap="none"
+            class="px-2 py-0.5 rounded text-xs font-medium text-blue-600 border border-blue-300 hover:bg-blue-50">Confirm</button>
+    {{/is_tentative}}
+    {{#is_confirmed}}
+    <button hx-post="/events/{{id}}/status" hx-vals='{"status":"tentative"}' hx-swap="none"
+            class="px-2 py-0.5 rounded text-xs font-medium text-yellow-700 border border-yellow-300 hover:bg-yellow-50">Mark Tentative</button>
+    {{/is_confirmed}}
+    {{/is_cancelled}}{{/scope_non_lug}}{{/can_manage}}
+    {{#is_cancelled}}<span class="px-2 py-0.5 rounded text-xs font-medium bg-red-100 text-red-700">Cancelled</span>{{/is_cancelled}}
     {{/scope_non_lug}}
     {{#scope_lug_wide}}<span class="px-2 py-0.5 rounded text-xs font-medium bg-indigo-100 text-indigo-700">LUG Wide</span>{{/scope_lug_wide}}
     {{#scope_non_lug}}<span class="px-2 py-0.5 rounded text-xs font-medium bg-amber-100 text-amber-700">Non-LUG</span>{{/scope_non_lug}}
@@ -22,10 +34,10 @@
   <!-- Details grid -->
   <dl class="space-y-3 text-sm">
     <div class="grid grid-cols-3 gap-1">
-      <dt class="text-gray-500 font-medium">When</dt>
+      <dt class="text-gray-500 font-medium">Date</dt>
       <dd class="col-span-2 text-gray-800">
-        {{start_time}}
-        {{#end_time}}<br><span class="text-gray-500">to</span> {{end_time}}{{/end_time}}
+        {{start_date}}
+        {{#end_date}}<br><span class="text-gray-500">to</span> {{end_date}}{{/end_date}}
       </dd>
     </div>
 
