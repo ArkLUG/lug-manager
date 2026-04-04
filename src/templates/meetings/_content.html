@@ -51,10 +51,10 @@
                 {{/sort_is_title}}
               </a>
             </th>
-            <th class="px-4 py-3 text-left font-medium text-gray-600">Time</th>
-            <th class="px-4 py-3 text-left font-medium text-gray-600">Status</th>
-            <th class="px-4 py-3 text-left font-medium text-gray-600">Scope</th>
-            <th class="px-4 py-3 text-left">
+            <th class="px-4 py-3 text-left font-medium text-gray-600 hidden md:table-cell">Time</th>
+            <th class="px-4 py-3 text-left font-medium text-gray-600 hidden lg:table-cell">Status</th>
+            <th class="px-4 py-3 text-left font-medium text-gray-600 hidden lg:table-cell">Scope</th>
+            <th class="px-4 py-3 text-left hidden md:table-cell">
               <a hx-get="/meetings?sort=location&dir={{#sort_is_location}}{{next_dir}}{{/sort_is_location}}{{^sort_is_location}}ASC{{/sort_is_location}}&search={{search}}"
                  hx-target="#main-content" hx-swap="innerHTML" hx-push-url="true"
                  class="font-medium text-gray-600 hover:text-gray-900 cursor-pointer inline-flex items-center gap-1">
@@ -64,7 +64,7 @@
                 {{/sort_is_location}}
               </a>
             </th>
-            <th class="px-4 py-3 text-left font-medium text-gray-600">Attendees</th>
+            <th class="px-4 py-3 text-left font-medium text-gray-600 hidden md:table-cell">Attendees</th>
             <th class="px-4 py-3 text-right font-medium text-gray-600">Actions</th>
           </tr>
         </thead>
@@ -77,22 +77,23 @@
             </td>
             <td class="px-4 py-3">
               <div class="font-medium text-gray-800 {{#is_cancelled}}line-through{{/is_cancelled}}">{{title}}</div>
-              {{#description}}<div class="text-xs text-gray-400 truncate max-w-xs">{{description}}</div>{{/description}}
+              <div class="text-xs text-gray-400 md:hidden">{{start_time_fmt}} &ndash; {{end_time_fmt}}</div>
+              {{#description}}<div class="text-xs text-gray-400 truncate max-w-xs hidden sm:block">{{description}}</div>{{/description}}
             </td>
-            <td class="px-4 py-3 whitespace-nowrap text-gray-500 text-xs">
+            <td class="px-4 py-3 whitespace-nowrap text-gray-500 text-xs hidden md:table-cell">
               {{start_time_fmt}} &ndash; {{end_time_fmt}}
             </td>
-            <td class="px-4 py-3 whitespace-nowrap">
+            <td class="px-4 py-3 whitespace-nowrap hidden lg:table-cell">
               {{#is_scheduled}}<span class="px-2 py-0.5 rounded text-xs font-medium bg-blue-100 text-blue-700">Scheduled</span>{{/is_scheduled}}
               {{#is_cancelled}}<span class="px-2 py-0.5 rounded text-xs font-medium bg-red-100 text-red-700">Cancelled</span>{{/is_cancelled}}
               {{#is_completed}}<span class="px-2 py-0.5 rounded text-xs font-medium bg-gray-100 text-gray-600">Completed</span>{{/is_completed}}
             </td>
-            <td class="px-4 py-3 whitespace-nowrap">
+            <td class="px-4 py-3 whitespace-nowrap hidden lg:table-cell">
               {{#scope_lug_wide}}<span class="px-2 py-0.5 rounded text-xs font-medium bg-indigo-100 text-indigo-700">LUG Wide</span>{{/scope_lug_wide}}
               {{#scope_non_lug}}<span class="px-2 py-0.5 rounded text-xs font-medium bg-amber-100 text-amber-700">Non-LUG</span>{{/scope_non_lug}}
               {{^scope_lug_wide}}{{^scope_non_lug}}{{#chapter_name}}<span class="text-xs text-gray-500">{{chapter_name}}</span>{{/chapter_name}}{{^chapter_name}}<span class="text-xs text-gray-400">Chapter</span>{{/chapter_name}}{{/scope_non_lug}}{{/scope_lug_wide}}
             </td>
-            <td class="px-4 py-3 text-gray-500 truncate max-w-[12rem]">
+            <td class="px-4 py-3 text-gray-500 truncate max-w-[12rem] hidden md:table-cell">
               {{#is_virtual}}
               <span class="inline-flex items-center gap-1 text-indigo-600 text-xs font-medium">
                 <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z"/></svg>
@@ -101,11 +102,14 @@
               {{/is_virtual}}
               {{^is_virtual}}
               {{#location}}<a href="#" onclick="window.open(mapUrl('{{location}}'),'_blank');return false"
-                 class="text-gray-600 hover:text-indigo-600 hover:underline">{{location}}</a>{{/location}}
+                 class="inline-flex items-center gap-1 text-indigo-600 underline decoration-indigo-300 hover:decoration-indigo-600 hover:text-indigo-800">
+                <svg class="w-3.5 h-3.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
+                <span class="truncate">{{location}}</span>
+              </a>{{/location}}
               {{^location}}<span class="text-gray-300">&mdash;</span>{{/location}}
               {{/is_virtual}}
             </td>
-            <td class="px-4 py-3 whitespace-nowrap">
+            <td class="px-4 py-3 whitespace-nowrap hidden md:table-cell">
               <span id="attendance-count-meeting-{{id}}" class="text-xs text-gray-500"
                     hx-get="/attendance/count/meeting/{{id}}" hx-trigger="load, attendanceUpdated from:body" hx-swap="outerHTML">
                 ...

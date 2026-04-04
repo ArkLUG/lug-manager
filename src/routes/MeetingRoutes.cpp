@@ -370,6 +370,15 @@ void register_meeting_routes(LugApp& app, MeetingService& meetings, AttendanceSe
         ctx["is_checked_in"]  = checked_in;
         ctx["member_id"]      = mbr_id;
         ctx["page_title"]     = m->title;
+        // can_manage: admin or chapter event_manager/lead
+        {
+            bool cm = is_admin;
+            if (!is_admin && m->chapter_id > 0) {
+                auto role_opt = chapter_members.get_chapter_role(mbr_id, m->chapter_id);
+                if (role_opt) cm = chapter_role_rank(*role_opt) >= chapter_role_rank("event_manager");
+            }
+            ctx["can_manage"] = cm;
+        }
 
         crow::json::wvalue att_arr;
         for (size_t i = 0; i < attendees.size(); ++i) {

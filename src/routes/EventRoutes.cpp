@@ -491,6 +491,15 @@ void register_event_routes(LugApp& app, EventService& events, AttendanceService&
         ctx["attendance_count"] = count;
         ctx["has_discord_thread"]= !ev->discord_thread_id.empty();
         ctx["page_title"]       = ev->title;
+        // can_manage: admin, event lead, or chapter event_manager/lead
+        {
+            bool cm = is_admin || (ev->event_lead_id > 0 && ev->event_lead_id == mbr_id);
+            if (!cm && ev->chapter_id > 0) {
+                auto role_opt = chapter_members.get_chapter_role(mbr_id, ev->chapter_id);
+                if (role_opt) cm = chapter_role_rank(*role_opt) >= chapter_role_rank("event_manager");
+            }
+            ctx["can_manage"] = cm;
+        }
 
         if (ev->max_attendees > 0) {
             ctx["has_max"]   = true;
