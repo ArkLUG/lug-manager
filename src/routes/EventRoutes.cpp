@@ -465,6 +465,15 @@ void register_event_routes(LugApp& app, EventService& events, AttendanceService&
         ctx["is_cancelled"]     = (ev->status == "cancelled");
         ctx["is_open"]          = (ev->status == "open");
         ctx["is_closed"]        = (ev->status == "closed");
+        ctx["scope"]            = ev->scope;
+        ctx["scope_lug_wide"]   = (ev->scope == "lug_wide");
+        ctx["scope_non_lug"]    = (ev->scope == "non_lug");
+        ctx["event_lead_name"]  = ev->event_lead_name;
+        ctx["has_event_lead"]   = (ev->event_lead_id > 0);
+        ctx["has_notes"]        = !ev->notes.empty();
+        ctx["notes_html"]       = ev->notes.empty() ? "" : render_markdown(ev->notes);
+        ctx["entrance_fee"]     = ev->entrance_fee;
+        ctx["has_entrance_fee"] = !ev->entrance_fee.empty();
         ctx["is_admin"]         = is_admin;
         ctx["is_checked_in"]    = checked_in;
         ctx["member_id"]        = mbr_id;

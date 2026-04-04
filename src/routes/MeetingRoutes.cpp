@@ -324,10 +324,17 @@ void register_meeting_routes(LugApp& app, MeetingService& meetings, AttendanceSe
         ctx["is_cancelled"] = (m->status == "cancelled");
         ctx["is_completed"] = (m->status == "completed");
         ctx["is_scheduled"] = (m->status == "scheduled");
-        ctx["is_admin"]     = is_admin;
-        ctx["is_checked_in"]= checked_in;
-        ctx["member_id"]    = mbr_id;
-        ctx["page_title"]   = m->title;
+        ctx["scope"]          = m->scope;
+        ctx["scope_lug_wide"] = (m->scope == "lug_wide");
+        ctx["scope_non_lug"]  = (m->scope == "non_lug");
+        ctx["has_notes"]      = !m->notes.empty();
+        ctx["notes_html"]     = m->notes.empty() ? "" : render_markdown(m->notes);
+        ctx["start_time_fmt"] = fmt_time(m->start_time);
+        ctx["end_time_fmt"]   = fmt_time(m->end_time);
+        ctx["is_admin"]       = is_admin;
+        ctx["is_checked_in"]  = checked_in;
+        ctx["member_id"]      = mbr_id;
+        ctx["page_title"]     = m->title;
 
         crow::json::wvalue att_arr;
         for (size_t i = 0; i < attendees.size(); ++i) {

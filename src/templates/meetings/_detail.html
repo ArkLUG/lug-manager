@@ -1,0 +1,72 @@
+<div class="p-6 max-w-lg" data-page-title="{{title}}">
+  <div class="flex items-center justify-between mb-5">
+    <h3 class="text-lg font-semibold text-gray-800 truncate pr-4">{{title}}</h3>
+    <button onclick="closeModal()"
+            class="text-gray-400 hover:text-gray-600 p-1 rounded flex-shrink-0">
+      <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+    </button>
+  </div>
+
+  <!-- Badges -->
+  <div class="flex flex-wrap items-center gap-2 mb-4">
+    {{#is_scheduled}}<span class="px-2 py-0.5 rounded text-xs font-medium bg-blue-100 text-blue-700">Scheduled</span>{{/is_scheduled}}
+    {{#is_cancelled}}<span class="px-2 py-0.5 rounded text-xs font-medium bg-red-100 text-red-700">Cancelled</span>{{/is_cancelled}}
+    {{#is_completed}}<span class="px-2 py-0.5 rounded text-xs font-medium bg-gray-100 text-gray-600">Completed</span>{{/is_completed}}
+    {{#scope_lug_wide}}<span class="px-2 py-0.5 rounded text-xs font-medium bg-indigo-100 text-indigo-700">LUG Wide</span>{{/scope_lug_wide}}
+    {{#scope_non_lug}}<span class="px-2 py-0.5 rounded text-xs font-medium bg-amber-100 text-amber-700">Non-LUG</span>{{/scope_non_lug}}
+    {{^scope_lug_wide}}{{^scope_non_lug}}<span class="px-2 py-0.5 rounded text-xs font-medium bg-gray-100 text-gray-500">Chapter</span>{{/scope_non_lug}}{{/scope_lug_wide}}
+  </div>
+
+  <!-- Details grid -->
+  <dl class="space-y-3 text-sm">
+    <div class="grid grid-cols-3 gap-1">
+      <dt class="text-gray-500 font-medium">Date</dt>
+      <dd class="col-span-2 text-gray-800">{{start_time}}</dd>
+    </div>
+
+    <div class="grid grid-cols-3 gap-1">
+      <dt class="text-gray-500 font-medium">Time</dt>
+      <dd class="col-span-2 text-gray-800">{{start_time_fmt}} &ndash; {{end_time_fmt}}</dd>
+    </div>
+
+    {{#location}}
+    <div class="grid grid-cols-3 gap-1">
+      <dt class="text-gray-500 font-medium">Location</dt>
+      <dd class="col-span-2 text-gray-800">{{location}}</dd>
+    </div>
+    {{/location}}
+
+    <div class="grid grid-cols-3 gap-1">
+      <dt class="text-gray-500 font-medium">Attendees</dt>
+      <dd class="col-span-2 text-gray-800">{{attendance_count}}</dd>
+    </div>
+  </dl>
+
+  {{#description}}
+  <div class="mt-4 pt-4 border-t border-gray-200">
+    <h4 class="text-sm font-medium text-gray-500 mb-1">Description</h4>
+    <p class="text-sm text-gray-700 whitespace-pre-line">{{description}}</p>
+  </div>
+  {{/description}}
+
+  {{#has_notes}}
+  <div class="mt-4 pt-4 border-t border-gray-200">
+    <h4 class="text-sm font-medium text-gray-500 mb-1">Notes</h4>
+    <div class="prose prose-sm max-w-none text-gray-700">{{{notes_html}}}</div>
+  </div>
+  {{/has_notes}}
+
+  <!-- Attendee list -->
+  <div class="mt-4 pt-4 border-t border-gray-200">
+    <h4 class="text-sm font-medium text-gray-500 mb-2">Attendees ({{attendance_count}})</h4>
+    {{#attendees}}
+    <div class="flex items-center gap-2 py-1.5 text-sm">
+      <span class="text-gray-800">{{member_display_name}}</span>
+      {{#member_discord_username}}<span class="text-xs text-gray-400">@{{member_discord_username}}</span>{{/member_discord_username}}
+    </div>
+    {{/attendees}}
+    {{^attendees}}
+    <p class="text-xs text-gray-400 italic">No attendees yet</p>
+    {{/attendees}}
+  </div>
+</div>

@@ -78,7 +78,7 @@
               </a>
             </th>
             <th class="px-4 py-3 text-left font-medium text-gray-600">Attendees</th>
-            {{#can_create}}<th class="px-4 py-3 text-right font-medium text-gray-600">Actions</th>{{/can_create}}
+            <th class="px-4 py-3 text-right font-medium text-gray-600">Actions</th>
           </tr>
         </thead>
         <tbody class="divide-y divide-gray-100">
@@ -120,10 +120,11 @@
               </span>
               {{/scope_non_lug}}
             </td>
-            {{#can_create}}
             <td class="px-4 py-3 whitespace-nowrap text-right">
-              {{#can_manage}}{{^is_cancelled}}
               <div class="inline-flex items-center gap-1">
+                <button hx-get="/events/{{id}}" hx-target="#modal" hx-swap="innerHTML"
+                        class="text-xs px-2 py-1 text-gray-600 border border-gray-300 rounded hover:bg-gray-50">View</button>
+                {{#can_manage}}{{^is_cancelled}}
                 <button hx-get="/events/{{id}}/edit" hx-target="#modal" hx-swap="innerHTML"
                         class="text-xs px-2 py-1 text-gray-600 border border-gray-300 rounded hover:bg-gray-50">Edit</button>
                 {{^scope_non_lug}}
@@ -146,10 +147,9 @@
                 {{/scope_non_lug}}
                 <button hx-post="/events/{{id}}/cancel" hx-confirm="Delete this event?" hx-swap="none"
                         class="text-xs px-2 py-1 text-red-500 border border-red-300 rounded hover:bg-red-50">Delete</button>
+                {{/is_cancelled}}{{/can_manage}}
               </div>
-              {{/is_cancelled}}{{/can_manage}}
             </td>
-            {{/can_create}}
           </tr>
           {{/events}}
         </tbody>
