@@ -36,14 +36,14 @@ public:
     SyncResult sync_all_to_google_calendar();
     SyncResult sync_all_to_discord();
 
+    static std::string generate_uuid();
+
 private:
     EventRepository&        repo_;
     DiscordClient&          discord_;
     CalendarGenerator&      cal_;
     ChapterRepository*      chapter_repo_;
     GoogleCalendarClient*   gcal_;
-
-    static std::string generate_uuid();
 
 public:
     EventRepository& repo() { return repo_; }

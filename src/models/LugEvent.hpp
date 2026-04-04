@@ -28,6 +28,7 @@ struct LugEvent {
     bool        suppress_calendar = false; // skip Google Calendar operations
     std::string notes;                     // markdown notes/report
     std::string notes_discord_post_id;     // Discord forum thread ID for published report
+    std::string checkin_token;             // UUID for public QR check-in page
     std::string entrance_fee;              // e.g. "$5", "Free"
     int         public_kids     = 0;       // public attendee counts for report
     int         public_teens    = 0;

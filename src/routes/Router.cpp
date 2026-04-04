@@ -11,4 +11,7 @@ void register_all_routes(LugApp& app, Services& svc) {
     register_settings_routes(app, svc.settings, svc.discord, svc.member_sync, svc.calendar, svc.gcal, svc.events, svc.meetings, svc.members);
     register_role_routes(app, svc.role_mappings, svc.chapters, svc.discord);
     register_perk_routes(app, svc.perks, svc.attendance_repo, svc.member_repo, svc.discord);
+    register_checkin_routes(app, svc.meeting_repo, svc.event_repo,
+                            svc.meetings, svc.events, svc.attendance, svc.members,
+                            svc.member_repo, svc.chapter_members, svc.oauth, svc.discord);
 }

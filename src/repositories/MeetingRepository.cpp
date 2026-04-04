@@ -8,7 +8,8 @@ static const char* kSelectAllCols =
     "COALESCE(google_calendar_event_id,''), "
     "suppress_discord, suppress_calendar, "
     "COALESCE(notes,''), COALESCE(notes_discord_post_id,''), "
-    "is_virtual, COALESCE(discord_voice_channel_id,'') "
+    "is_virtual, COALESCE(discord_voice_channel_id,''), "
+    "COALESCE(checkin_token,'') "
     "FROM meetings";
 
 MeetingRepository::MeetingRepository(SqliteDatabase& db) : db_(db) {}
@@ -37,6 +38,7 @@ Meeting MeetingRepository::row_to_meeting(Statement& stmt) {
     m.notes_discord_post_id       = stmt.col_text(19);
     m.is_virtual                  = stmt.col_bool(20);
     m.discord_voice_channel_id    = stmt.col_text(21);
+    m.checkin_token               = stmt.col_text(22);
     return m;
 }
 
@@ -297,4 +299,20 @@ bool MeetingRepository::update_notes_discord_post_id(int64_t id, const std::stri
     stmt.bind(2, id);
     stmt.step();
     return true;
+}
+
+bool MeetingRepository::update_checkin_token(int64_t id, const std::string& token) {
+    auto stmt = db_.prepare("UPDATE meetings SET checkin_token=? WHERE id=?");
+    stmt.bind(1, token);
+    stmt.bind(2, id);
+    stmt.step();
+    return true;
+}
+
+std::optional<Meeting> MeetingRepository::find_by_checkin_token(const std::string& token) {
+    if (token.empty()) return std::nullopt;
+    auto stmt = db_.prepare(std::string(kSelectAllCols) + " WHERE checkin_token=?");
+    stmt.bind(1, token);
+    if (stmt.step()) return row_to_meeting(stmt);
+    return std::nullopt;
 }

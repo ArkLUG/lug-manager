@@ -193,7 +193,8 @@ protected:
             *attendance_svc, *auth_service, *discord_oauth, *discord_client,
             *calendar, *settings_repo, *role_mapping_repo, *chapter_member_repo,
             *member_sync_svc, *gcal_client,
-            *perk_level_repo, *attendance_repo, *member_repo
+            *perk_level_repo, *attendance_repo, *member_repo,
+            *meeting_repo, *event_repo
         };
         register_all_routes(*app, svc);
 

@@ -51,15 +51,22 @@ void register_auth_routes(LugApp& app, AuthService& auth, DiscordOAuth& oauth) {
         return res;
     });
 
-    // GET /auth/callback - handle OAuth2 callback
+    // GET /auth/callback - handle OAuth2 callback (normal login or checkin)
     CROW_ROUTE(app, "/auth/callback")([&](const crow::request& req) {
         auto params = crow::query_string(req.url_params);
         const char* code_raw  = params.get("code");
         const char* error_raw = params.get("error");
+        const char* state_raw = params.get("state");
+        std::string state = state_raw ? std::string(state_raw) : "";
+        bool is_checkin = state.substr(0, 8) == "checkin:";
 
         if (error_raw) {
             crow::response res;
-            res.redirect(build_url(req, "/login?error=discord_denied"));
+            if (is_checkin) {
+                res.redirect(build_url(req, "/checkin/" + state.substr(8) + "?error=discord_denied"));
+            } else {
+                res.redirect(build_url(req, "/login?error=discord_denied"));
+            }
             return res;
         }
 
@@ -72,16 +79,23 @@ void register_auth_routes(LugApp& app, AuthService& auth, DiscordOAuth& oauth) {
         std::string code(code_raw);
         std::string redirect_uri = build_url(req, "/auth/callback");
         try {
-            std::string token = auth.login_with_discord(code, redirect_uri);
+            std::string session_token = auth.login_with_discord(code, redirect_uri);
             crow::response res;
             res.add_header("Set-Cookie",
-                "session=" + token + "; HttpOnly; Path=/; Max-Age=86400; SameSite=Lax");
-            res.redirect(build_url(req, "/dashboard"));
+                "session=" + session_token + "; HttpOnly; Path=/; Max-Age=86400; SameSite=Lax");
+            if (is_checkin) {
+                // Redirect back to checkin page — the session cookie will identify the user
+                res.redirect(build_url(req, "/checkin/" + state.substr(8) + "?discord=1"));
+            } else {
+                res.redirect(build_url(req, "/dashboard"));
+            }
             return res;
         } catch (const std::exception& e) {
             std::string err = e.what();
             crow::response res;
-            if (err == "not_authorized") {
+            if (is_checkin) {
+                res.redirect(build_url(req, "/checkin/" + state.substr(8) + "?error=failed"));
+            } else if (err == "not_authorized") {
                 res.redirect(build_url(req, "/login?error=not_member"));
             } else {
                 std::cerr << "[auth] Login error: " << err << "\n";

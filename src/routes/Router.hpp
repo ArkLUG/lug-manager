@@ -9,6 +9,7 @@
 #include "routes/SettingsRoutes.hpp"
 #include "routes/RoleRoutes.hpp"
 #include "routes/PerkRoutes.hpp"
+#include "routes/CheckinRoutes.hpp"
 #include "repositories/PerkLevelRepository.hpp"
 #include "repositories/AttendanceRepository.hpp"
 #include "services/MemberService.hpp"
@@ -25,6 +26,8 @@
 #include "repositories/SettingsRepository.hpp"
 #include "repositories/RoleMappingRepository.hpp"
 #include "repositories/ChapterMemberRepository.hpp"
+#include "repositories/MeetingRepository.hpp"
+#include "repositories/EventRepository.hpp"
 
 struct Services {
     ChapterService&         chapters;
@@ -44,6 +47,8 @@ struct Services {
     PerkLevelRepository&    perks;
     AttendanceRepository&   attendance_repo;
     MemberRepository&       member_repo;
+    MeetingRepository&      meeting_repo;
+    EventRepository&        event_repo;
 };
 
 void register_all_routes(LugApp& app, Services& svc);

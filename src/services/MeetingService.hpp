@@ -38,13 +38,13 @@ public:
 
     MeetingRepository& repo() { return repo_; }
 
+    static std::string generate_uuid();
+
 private:
     MeetingRepository&      repo_;
     DiscordClient&          discord_;
     CalendarGenerator&      cal_;
     ChapterRepository*      chapter_repo_;
     GoogleCalendarClient*   gcal_;
-
-    static std::string generate_uuid();
     Meeting with_calendar_title(const Meeting& m) const;
 };

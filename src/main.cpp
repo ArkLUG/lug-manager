@@ -156,7 +156,9 @@ int main() {
             gcal_client,
             perk_level_repo,
             attendance_repo,
-            member_repo
+            member_repo,
+            meeting_repo,
+            event_repo
         };
         register_all_routes(app, svc);
 

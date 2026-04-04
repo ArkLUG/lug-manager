@@ -13,7 +13,8 @@ static const char* kSelectAllCols =
     "e.suppress_discord, e.suppress_calendar, "
     "COALESCE(e.notes,''), COALESCE(e.notes_discord_post_id,''), "
     "COALESCE(e.entrance_fee,''), e.public_kids, e.public_teens, e.public_adults, "
-    "COALESCE(e.social_media_links,''), COALESCE(e.event_feedback,'') "
+    "COALESCE(e.social_media_links,''), COALESCE(e.event_feedback,''), "
+    "COALESCE(e.checkin_token,'') "
     "FROM lug_events e LEFT JOIN members m ON m.id = e.event_lead_id";
 
 EventRepository::EventRepository(SqliteDatabase& db) : db_(db) {}
@@ -53,6 +54,7 @@ LugEvent EventRepository::row_to_event(Statement& stmt) {
     e.public_adults              = static_cast<int>(stmt.col_int(30));
     e.social_media_links         = stmt.col_text(31);
     e.event_feedback             = stmt.col_text(32);
+    e.checkin_token              = stmt.col_text(33);
     return e;
 }
 
@@ -383,4 +385,20 @@ bool EventRepository::update_notes_discord_post_id(int64_t id, const std::string
     stmt.bind(2, id);
     stmt.step();
     return true;
+}
+
+bool EventRepository::update_checkin_token(int64_t id, const std::string& token) {
+    auto stmt = db_.prepare("UPDATE lug_events SET checkin_token=? WHERE id=?");
+    stmt.bind(1, token);
+    stmt.bind(2, id);
+    stmt.step();
+    return true;
+}
+
+std::optional<LugEvent> EventRepository::find_by_checkin_token(const std::string& token) {
+    if (token.empty()) return std::nullopt;
+    auto stmt = db_.prepare(std::string(kSelectAllCols) + " WHERE e.checkin_token=?");
+    stmt.bind(1, token);
+    if (stmt.step()) return row_to_event(stmt);
+    return std::nullopt;
 }

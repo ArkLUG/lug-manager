@@ -34,6 +34,8 @@ public:
     bool     update_chapter_message_id(int64_t id, const std::string& message_id);
     bool     update_google_calendar_event_id(int64_t id, const std::string& gcal_event_id);
     bool     update_notes_discord_post_id(int64_t id, const std::string& post_id);
+    bool     update_checkin_token(int64_t id, const std::string& token);
+    std::optional<LugEvent> find_by_checkin_token(const std::string& token);
 
 private:
     SqliteDatabase& db_;

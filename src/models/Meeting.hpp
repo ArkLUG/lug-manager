@@ -23,6 +23,7 @@ struct Meeting {
     bool        suppress_calendar = false;    // skip Google Calendar operations
     std::string notes;                        // markdown notes/report
     std::string notes_discord_post_id;        // Discord forum thread ID for published report
+    std::string checkin_token;                // UUID for public QR check-in page
     std::string created_at;
     std::string updated_at;
 };
