@@ -51,19 +51,19 @@ std::string AuthService::login_with_discord(const std::string& code, const std::
         member_opt = members_.create(bootstrap);
     }
 
-    // 4b. Role-mapping auto-provision: if still not found, check Discord guild roles
+    // 4b. Auto-provision: if still not found, create with mapped role or default "member"
+    //     Anyone in the Discord guild can log in to view their membership status.
     if (!member_opt) {
         std::string lug_role = resolve_role_from_discord(user_info.id);
-        if (!lug_role.empty()) {
-            Member provisioned;
-            provisioned.discord_user_id  = user_info.id;
-            provisioned.discord_username = user_info.username;
-            provisioned.display_name     = user_info.global_name.empty() ? user_info.username : user_info.global_name;
-            provisioned.role             = lug_role;
-            std::cerr << "[AuthService] Auto-provisioning member " << user_info.username
-                      << " with role=" << lug_role << "\n";
-            member_opt = members_.create(provisioned);
-        }
+        if (lug_role.empty()) lug_role = "member"; // default: any guild member can log in
+        Member provisioned;
+        provisioned.discord_user_id  = user_info.id;
+        provisioned.discord_username = user_info.username;
+        provisioned.display_name     = user_info.global_name.empty() ? user_info.username : user_info.global_name;
+        provisioned.role             = lug_role;
+        std::cerr << "[AuthService] Auto-provisioning member " << user_info.username
+                  << " with role=" << lug_role << "\n";
+        member_opt = members_.create(provisioned);
     }
 
     if (!member_opt) {

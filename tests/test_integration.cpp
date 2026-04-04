@@ -79,8 +79,13 @@ protected:
     // Test session tokens
     std::string admin_token;
     std::string member_token;
+    std::string chapter_lead_token;
+    std::string event_manager_token;
     int64_t admin_member_id = 0;
     int64_t regular_member_id = 0;
+    int64_t chapter_lead_member_id = 0;
+    int64_t event_manager_member_id = 0;
+    int64_t test_chapter_id = 0;
 
     void SetUp() override {
         db = std::make_unique<SqliteDatabase>(":memory:");
@@ -140,6 +145,39 @@ protected:
         auto reg = member_repo->create(reg_m);
         regular_member_id = reg.id;
         member_token = session_store->create(reg.id, "member", reg.display_name);
+
+        // Create chapter_lead user
+        Member cl_m;
+        cl_m.discord_user_id = "lead-test-001";
+        cl_m.discord_username = "chapter_lead_user";
+        cl_m.first_name = "Lead";
+        cl_m.last_name = "User";
+        cl_m.display_name = "Lead U.";
+        cl_m.role = "chapter_lead";
+        auto cl = member_repo->create(cl_m);
+        chapter_lead_member_id = cl.id;
+        chapter_lead_token = session_store->create(cl.id, "chapter_lead", cl.display_name);
+
+        // Create event_manager user (global role is "member", chapter role is "event_manager")
+        Member em_m;
+        em_m.discord_user_id = "em-test-001";
+        em_m.discord_username = "event_manager_user";
+        em_m.first_name = "EventMgr";
+        em_m.last_name = "User";
+        em_m.display_name = "EventMgr U.";
+        em_m.role = "member";
+        auto em = member_repo->create(em_m);
+        event_manager_member_id = em.id;
+        event_manager_token = session_store->create(em.id, "member", em.display_name);
+
+        // Create a test chapter and assign roles
+        Chapter test_ch;
+        test_ch.name = "Permission Test Chapter";
+        test_ch.discord_announcement_channel_id = "";
+        auto created_ch = chapter_repo->create(test_ch);
+        test_chapter_id = created_ch.id;
+        chapter_member_repo->upsert(chapter_lead_member_id, test_chapter_id, "lead", admin_member_id);
+        chapter_member_repo->upsert(event_manager_member_id, test_chapter_id, "event_manager", admin_member_id);
 
         // Boot Crow app
         app = std::make_unique<LugApp>();
@@ -2030,6 +2068,264 @@ TEST_F(IntegrationTest, AttendanceOverviewPagination) {
     auto r = GET("/attendance/overview?year=2026&page=1", admin_token);
     EXPECT_EQ(r.code, 200);
     expect_contains(r, "Page 1");
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// Comprehensive Permission Tests
+// ═══════════════════════════════════════════════════════════════════════════
+
+// --- PII visibility ---
+
+TEST_F(IntegrationTest, ChapterLeadCanSeePII) {
+    auto admin = member_repo->find_by_id(admin_member_id);
+    admin->email = "pii_test@example.com";
+    member_repo->update(*admin);
+
+    auto r = POST("/api/members/datatable", "draw=1&start=0&length=25&search=", chapter_lead_token);
+    EXPECT_EQ(r.code, 200);
+    expect_contains(r, "pii_test@example.com");
+}
+
+TEST_F(IntegrationTest, MemberCannotSeePII) {
+    auto admin = member_repo->find_by_id(admin_member_id);
+    admin->email = "hidden_pii@example.com";
+    member_repo->update(*admin);
+
+    auto r = POST("/api/members/datatable", "draw=1&start=0&length=25&search=", member_token);
+    EXPECT_EQ(r.code, 200);
+    expect_not_contains(r, "hidden_pii@example.com");
+}
+
+TEST_F(IntegrationTest, MemberEditFormAdminOnly) {
+    auto r = GET("/members/" + std::to_string(regular_member_id), member_token);
+    EXPECT_EQ(r.code, 403);
+}
+
+TEST_F(IntegrationTest, AdminCanAccessMemberEditForm) {
+    auto r = GET("/members/" + std::to_string(regular_member_id), admin_token);
+    EXPECT_EQ(r.code, 200);
+    expect_contains(r, "Edit Member");
+}
+
+// --- Chapter lead restrictions ---
+
+TEST_F(IntegrationTest, ChapterLeadCanManageChapterMembers) {
+    auto r = GET("/chapters/" + std::to_string(test_chapter_id) + "/members", chapter_lead_token);
+    EXPECT_EQ(r.code, 200);
+}
+
+TEST_F(IntegrationTest, ChapterLeadCanAddEventManager) {
+    Member new_m;
+    new_m.discord_user_id = "new-em-perm-test";
+    new_m.discord_username = "new_em";
+    new_m.display_name = "NewEM U.";
+    auto created = member_repo->create(new_m);
+
+    auto r = POST("/chapters/" + std::to_string(test_chapter_id) + "/members",
+        "member_id=" + std::to_string(created.id) + "&chapter_role=event_manager",
+        chapter_lead_token);
+    EXPECT_EQ(r.code, 200);
+}
+
+TEST_F(IntegrationTest, ChapterLeadCannotAddLead) {
+    Member new_m;
+    new_m.discord_user_id = "lead-deny-test";
+    new_m.discord_username = "lead_deny";
+    new_m.display_name = "LeadDeny U.";
+    auto created = member_repo->create(new_m);
+
+    auto r = POST("/chapters/" + std::to_string(test_chapter_id) + "/lead",
+        "member_id=" + std::to_string(created.id), chapter_lead_token);
+    EXPECT_EQ(r.code, 403);
+}
+
+TEST_F(IntegrationTest, ChapterLeadCannotSetLeadRoleViaMembersEndpoint) {
+    Member new_m;
+    new_m.discord_user_id = "lead-role-deny";
+    new_m.discord_username = "role_deny";
+    new_m.display_name = "RoleDeny U.";
+    auto created = member_repo->create(new_m);
+
+    auto r = POST("/chapters/" + std::to_string(test_chapter_id) + "/members",
+        "member_id=" + std::to_string(created.id) + "&chapter_role=lead",
+        chapter_lead_token);
+    EXPECT_EQ(r.code, 403);
+}
+
+TEST_F(IntegrationTest, ChapterLeadCannotEditChapterSettings) {
+    auto r = PUT("/chapters/" + std::to_string(test_chapter_id),
+        "name=Hacked+Chapter", chapter_lead_token);
+    EXPECT_EQ(r.code, 403);
+}
+
+// --- Event manager permissions ---
+
+TEST_F(IntegrationTest, EventManagerCanCreateChapterEvent) {
+    auto r = POST("/events",
+        "title=EM+Perm+Event&start_time=2026-09-01&end_time=2026-09-02"
+        "&scope=chapter&chapter_id=" + std::to_string(test_chapter_id) +
+        "&suppress_discord=on",
+        event_manager_token);
+    EXPECT_EQ(r.code, 200);
+}
+
+TEST_F(IntegrationTest, EventManagerCanEditChapterEvent2) {
+    LugEvent e;
+    e.title = "EM Edit Test";
+    e.start_time = "2026-09-10T00:00:00";
+    e.end_time = "2026-09-11T00:00:00";
+    e.scope = "chapter";
+    e.chapter_id = test_chapter_id;
+    e.suppress_discord = true;
+    auto created = event_svc->create(e);
+
+    auto r = GET("/events/" + std::to_string(created.id) + "/edit", event_manager_token);
+    EXPECT_EQ(r.code, 200);
+}
+
+TEST_F(IntegrationTest, EventManagerCannotEditOtherChapter) {
+    Chapter other;
+    other.name = "Other Chapter";
+    other.discord_announcement_channel_id = "";
+    auto other_ch = chapter_repo->create(other);
+
+    LugEvent e;
+    e.title = "Other Chapter Event";
+    e.start_time = "2026-09-15T00:00:00";
+    e.end_time = "2026-09-16T00:00:00";
+    e.scope = "chapter";
+    e.chapter_id = other_ch.id;
+    e.suppress_discord = true;
+    auto created = event_svc->create(e);
+
+    auto r = GET("/events/" + std::to_string(created.id) + "/edit", event_manager_token);
+    EXPECT_EQ(r.code, 403);
+}
+
+TEST_F(IntegrationTest, EventManagerCanCreateChapterMeeting) {
+    auto r = POST("/meetings",
+        "title=EM+Perm+Meeting&start_time=2026-09-20T19:00:00&end_time=2026-09-20T21:00:00"
+        "&scope=chapter&chapter_id=" + std::to_string(test_chapter_id) +
+        "&suppress_discord=on",
+        event_manager_token);
+    EXPECT_EQ(r.code, 200);
+}
+
+TEST_F(IntegrationTest, EventManagerCanCancelChapterMeeting) {
+    Meeting m;
+    m.title = "EM Cancel Meeting";
+    m.start_time = "2026-09-25T19:00:00";
+    m.end_time = "2026-09-25T21:00:00";
+    m.scope = "chapter";
+    m.chapter_id = test_chapter_id;
+    m.suppress_discord = true;
+    auto created = meeting_svc->create(m);
+
+    auto r = POST("/meetings/" + std::to_string(created.id) + "/cancel", "", event_manager_token);
+    EXPECT_EQ(r.code, 200);
+}
+
+TEST_F(IntegrationTest, RegularMemberCannotCreateEvent) {
+    auto r = POST("/events",
+        "title=Blocked&start_time=2026-10-01&end_time=2026-10-02&scope=lug_wide",
+        member_token);
+    EXPECT_EQ(r.code, 403);
+}
+
+TEST_F(IntegrationTest, RegularMemberCannotEditEvent) {
+    LugEvent e;
+    e.title = "Blocked Edit";
+    e.start_time = "2026-10-05T00:00:00";
+    e.end_time = "2026-10-06T00:00:00";
+    e.scope = "chapter";
+    e.chapter_id = test_chapter_id;
+    e.suppress_discord = true;
+    auto created = event_svc->create(e);
+
+    auto r = GET("/events/" + std::to_string(created.id) + "/edit", member_token);
+    EXPECT_EQ(r.code, 403);
+}
+
+// --- Admin-only routes ---
+
+TEST_F(IntegrationTest, MemberCannotAccessAttendanceOverview2) {
+    auto r = GET("/attendance/overview", member_token);
+    EXPECT_EQ(r.code, 403);
+}
+
+TEST_F(IntegrationTest, ChapterLeadCannotAccessSettings) {
+    auto r = GET("/settings", chapter_lead_token);
+    EXPECT_TRUE(r.code == 302 || r.code == 307);
+}
+
+TEST_F(IntegrationTest, ChapterLeadCannotAccessPerks) {
+    auto r = GET("/settings/perks", chapter_lead_token);
+    EXPECT_EQ(r.code, 403);
+}
+
+TEST_F(IntegrationTest, EventManagerCannotAccessAdmin) {
+    auto r1 = GET("/settings", event_manager_token);
+    EXPECT_TRUE(r1.code == 302 || r1.code == 307);
+
+    auto r2 = GET("/attendance/overview", event_manager_token);
+    EXPECT_EQ(r2.code, 403);
+
+    auto r3 = GET("/settings/perks", event_manager_token);
+    EXPECT_EQ(r3.code, 403);
+}
+
+// --- View-only access for all authenticated ---
+
+TEST_F(IntegrationTest, AllUsersCanViewDashboard) {
+    EXPECT_EQ(GET("/dashboard", member_token).code, 200);
+    EXPECT_EQ(GET("/dashboard", chapter_lead_token).code, 200);
+    EXPECT_EQ(GET("/dashboard", event_manager_token).code, 200);
+}
+
+TEST_F(IntegrationTest, AllUsersCanViewEvents) {
+    EXPECT_EQ(GET("/events", member_token).code, 200);
+    EXPECT_EQ(GET("/events", chapter_lead_token).code, 200);
+    EXPECT_EQ(GET("/events", event_manager_token).code, 200);
+}
+
+TEST_F(IntegrationTest, AllUsersCanViewMeetings) {
+    EXPECT_EQ(GET("/meetings", member_token).code, 200);
+    EXPECT_EQ(GET("/meetings", chapter_lead_token).code, 200);
+    EXPECT_EQ(GET("/meetings", event_manager_token).code, 200);
+}
+
+TEST_F(IntegrationTest, AllUsersCanViewChapters) {
+    EXPECT_EQ(GET("/chapters", member_token).code, 200);
+    EXPECT_EQ(GET("/chapters", chapter_lead_token).code, 200);
+    EXPECT_EQ(GET("/chapters", event_manager_token).code, 200);
+}
+
+TEST_F(IntegrationTest, AllUsersCanViewMembers) {
+    EXPECT_EQ(GET("/members", member_token).code, 200);
+    EXPECT_EQ(GET("/members", chapter_lead_token).code, 200);
+    EXPECT_EQ(GET("/members", event_manager_token).code, 200);
+}
+
+TEST_F(IntegrationTest, AllUsersCanViewPersonalAttendance) {
+    EXPECT_EQ(GET("/attendance", member_token).code, 200);
+    EXPECT_EQ(GET("/attendance", chapter_lead_token).code, 200);
+    EXPECT_EQ(GET("/attendance", event_manager_token).code, 200);
+}
+
+// --- Convert-to-meeting admin-only ---
+
+TEST_F(IntegrationTest, EventManagerCannotConvertToMeeting) {
+    LugEvent e;
+    e.title = "No Convert";
+    e.start_time = "2026-11-01T00:00:00";
+    e.end_time = "2026-11-02T00:00:00";
+    e.scope = "chapter";
+    e.chapter_id = test_chapter_id;
+    e.suppress_discord = true;
+    auto created = event_svc->create(e);
+
+    auto r = POST("/events/" + std::to_string(created.id) + "/convert-to-meeting", "", event_manager_token);
+    EXPECT_EQ(r.code, 403);
 }
 
 TEST_F(IntegrationTest, MemberCreateWithoutDiscord) {

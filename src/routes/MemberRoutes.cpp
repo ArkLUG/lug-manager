@@ -172,10 +172,10 @@ void register_member_routes(LugApp& app, MemberService& members) {
         return res;
     });
 
-    // GET /members/<id> - member edit form fragment
+    // GET /members/<id> - member edit form fragment (admin only - contains PII)
     CROW_ROUTE(app, "/members/<int>")([&](const crow::request& req, int id) {
         crow::response res;
-        if (!require_auth(req, res, app)) return res;
+        if (!require_auth(req, res, app, "admin")) return res;
 
         auto m = members.get(static_cast<int64_t>(id));
         if (!m) {
