@@ -233,6 +233,35 @@ void register_member_routes(LugApp& app, MemberService& members) {
         return res;
     });
 
+    // GET /members/<id>/view - read-only member detail modal (any authenticated user)
+    CROW_ROUTE(app, "/members/<int>/view")([&](const crow::request& req, int id) {
+        crow::response res;
+        if (!require_auth(req, res, app)) return res;
+
+        auto m = members.get(static_cast<int64_t>(id));
+        if (!m) {
+            res.code = 404;
+            res.add_header("Content-Type", "text/html; charset=utf-8");
+            res.write("<div class=\"text-red-500 p-4\">Member not found.</div>");
+            return res;
+        }
+
+        auto& auth = app.get_context<AuthMiddleware>(req).auth;
+        bool show_pii = auth.is_chapter_lead() || m->pii_public;
+        bool show_dues = auth.is_chapter_lead();
+        bool is_self = (auth.member_id == m->id);
+
+        auto ctx = member_to_ctx(*m);
+        ctx["show_pii"]  = show_pii || is_self;
+        ctx["show_dues"] = show_dues || is_self;
+        ctx["is_self"]   = is_self;
+
+        res.add_header("Content-Type", "text/html; charset=utf-8");
+        auto tmpl = crow::mustache::load("members/_view.html");
+        res.write(tmpl.render(ctx).dump());
+        return res;
+    });
+
     // GET /members/new - new member form fragment (chapter_lead+)
     CROW_ROUTE(app, "/members/new")([&](const crow::request& req) {
         crow::response res;

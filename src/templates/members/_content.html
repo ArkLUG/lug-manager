@@ -34,7 +34,7 @@
             <th>Role</th>
             <th>FOL</th>
             <th>Chapter</th>
-            {{#can_see_dues}}<th>Actions</th>{{/can_see_dues}}
+            <th>Actions</th>
           </tr>
         </thead>
         <tbody></tbody>
@@ -185,7 +185,6 @@
     }
   );
 
-  {{#can_see_dues}}
   columns.push({
     data: null,
     orderable: false,
@@ -193,7 +192,10 @@
     render: function(data, type, row) {
       if (type !== 'display') return '';
       var html = '<div class="flex items-center justify-end gap-2">'
-        + '<button hx-get="/members/' + row.id + '" hx-target="#modal" hx-swap="innerHTML"'
+        + '<button hx-get="/members/' + row.id + '/view" hx-target="#modal" hx-swap="innerHTML"'
+        + ' class="text-xs px-2 py-1 text-gray-600 border border-gray-300 rounded hover:bg-gray-50">View</button>';
+      {{#can_see_dues}}
+      html += '<button hx-get="/members/' + row.id + '" hx-target="#modal" hx-swap="innerHTML"'
         + ' class="text-xs px-2 py-1 text-gray-600 border border-gray-300 rounded hover:bg-gray-50">Edit</button>'
         + '<button onclick="setMemberDues(' + row.id + ',\'' + escHtml(row.display_name).replace(/'/g,'&#39;') + '\')"'
         + ' class="text-xs px-2 py-1 text-gray-600 border border-gray-300 rounded hover:bg-gray-50">Dues</button>';
@@ -201,11 +203,11 @@
       html += '<button hx-delete="/members/' + row.id + '" hx-confirm="Delete ' + escHtml(row.display_name) + '? This cannot be undone." hx-swap="none"'
         + ' class="text-xs px-2 py-1 text-red-500 border border-red-300 rounded hover:bg-red-50">Delete</button>';
       {{/is_admin}}
+      {{/can_see_dues}}
       html += '</div>';
       return html;
     }
   });
-  {{/can_see_dues}}
 
   // ── init ─────────────────────────────────────────────────────────────────
   if (typeof DataTable === 'undefined') {

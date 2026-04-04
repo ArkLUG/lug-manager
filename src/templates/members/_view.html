@@ -1,0 +1,100 @@
+<div class="p-6 max-w-md">
+  <div class="flex items-center justify-between mb-5">
+    <h3 class="text-lg font-semibold text-gray-800">{{display_name}}</h3>
+    <button onclick="closeModal()"
+            class="text-gray-400 hover:text-gray-600 p-1 rounded">
+      <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+    </button>
+  </div>
+
+  <!-- Role + FOL badges -->
+  <div class="flex flex-wrap items-center gap-2 mb-4">
+    {{#role_admin}}<span class="px-2 py-0.5 rounded text-xs font-medium bg-yellow-100 text-yellow-800">Admin</span>{{/role_admin}}
+    {{#role_chapter_lead}}<span class="px-2 py-0.5 rounded text-xs font-medium bg-blue-100 text-blue-600">Chapter Lead</span>{{/role_chapter_lead}}
+    {{#role_member}}<span class="px-2 py-0.5 rounded text-xs font-medium bg-gray-100 text-gray-600">Member</span>{{/role_member}}
+    {{#fol_kfol}}<span class="px-2 py-0.5 rounded text-xs font-medium bg-pink-100 text-pink-700">KFOL</span>{{/fol_kfol}}
+    {{#fol_tfol}}<span class="px-2 py-0.5 rounded text-xs font-medium bg-cyan-100 text-cyan-700">TFOL</span>{{/fol_tfol}}
+    {{#fol_afol}}<span class="px-2 py-0.5 rounded text-xs font-medium bg-gray-100 text-gray-600">AFOL</span>{{/fol_afol}}
+  </div>
+
+  <dl class="space-y-3 text-sm">
+    <!-- Always visible -->
+    {{#first_name}}
+    <div class="grid grid-cols-3 gap-1">
+      <dt class="text-gray-500 font-medium">Name</dt>
+      <dd class="col-span-2 text-gray-800">{{first_name}} {{last_name}}</dd>
+    </div>
+    {{/first_name}}
+
+    {{#chapter_id_str}}
+    <div class="grid grid-cols-3 gap-1">
+      <dt class="text-gray-500 font-medium">Chapter</dt>
+      <dd class="col-span-2 text-gray-800">{{chapter_name}}</dd>
+    </div>
+    {{/chapter_id_str}}
+
+    <!-- PII: shown if member opted in or viewer has permission -->
+    {{#show_pii}}
+    {{#discord_username}}
+    <div class="grid grid-cols-3 gap-1">
+      <dt class="text-gray-500 font-medium">Discord</dt>
+      <dd class="col-span-2 text-gray-800">@{{discord_username}}</dd>
+    </div>
+    {{/discord_username}}
+
+    {{#email}}
+    <div class="grid grid-cols-3 gap-1">
+      <dt class="text-gray-500 font-medium">Email</dt>
+      <dd class="col-span-2 text-gray-800">{{email}}</dd>
+    </div>
+    {{/email}}
+
+    {{#phone}}
+    <div class="grid grid-cols-3 gap-1">
+      <dt class="text-gray-500 font-medium">Phone</dt>
+      <dd class="col-span-2 text-gray-800">{{phone}}</dd>
+    </div>
+    {{/phone}}
+
+    {{#address_line1}}
+    <div class="grid grid-cols-3 gap-1">
+      <dt class="text-gray-500 font-medium">Address</dt>
+      <dd class="col-span-2 text-gray-800">
+        {{address_line1}}
+        {{#address_line2}}<br>{{address_line2}}{{/address_line2}}
+        {{#city}}<br>{{city}}{{#state}}, {{state}}{{/state}} {{zip}}{{/city}}
+      </dd>
+    </div>
+    {{/address_line1}}
+
+    {{#birthday}}
+    <div class="grid grid-cols-3 gap-1">
+      <dt class="text-gray-500 font-medium">Birthday</dt>
+      <dd class="col-span-2 text-gray-800">{{birthday}}</dd>
+    </div>
+    {{/birthday}}
+    {{/show_pii}}
+
+    {{^show_pii}}
+    <div class="text-xs text-gray-400 italic py-2">
+      This member has not shared their contact info with other members.
+    </div>
+    {{/show_pii}}
+
+    <!-- Dues: shown to chapter leads+ or self -->
+    {{#show_dues}}
+    <div class="grid grid-cols-3 gap-1 pt-2 border-t border-gray-100">
+      <dt class="text-gray-500 font-medium">Dues</dt>
+      <dd class="col-span-2">
+        {{#is_paid}}
+        <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-green-100 text-green-700">Paid</span>
+        {{#paid_until}}<span class="text-xs text-gray-400 ml-1">until {{paid_until}}</span>{{/paid_until}}
+        {{/is_paid}}
+        {{^is_paid}}
+        <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-red-100 text-red-700">Unpaid</span>
+        {{/is_paid}}
+      </dd>
+    </div>
+    {{/show_dues}}
+  </dl>
+</div>
