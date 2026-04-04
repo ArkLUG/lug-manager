@@ -421,6 +421,20 @@
       if (window.innerWidth < 768) closeSidebar();
     });
 
+    // Destroy DataTables and TomSelect before HTMX caches the page for history,
+    // so the cached HTML doesn't include generated wrapper elements (search, pagination, etc.)
+    document.addEventListener('htmx:beforeHistorySave', function() {
+      if (window.membersTable) {
+        window.membersTable.destroy();
+        window.membersTable = null;
+      }
+      // Destroy all TomSelect instances so cached HTML is clean
+      document.querySelectorAll('.ts-wrapper').forEach(function(el) {
+        var select = el.previousElementSibling;
+        if (select && select.tomselect) select.tomselect.destroy();
+      });
+    });
+
     // Close modal on HX-Trigger: closeModal; reload DataTable if present
     document.addEventListener('htmx:afterRequest', function(evt) {
       const trigger = evt.detail.xhr ? evt.detail.xhr.getResponseHeader('HX-Trigger') : null;
