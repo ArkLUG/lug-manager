@@ -490,6 +490,61 @@ TEST_F(MemberModelTest, CreateWithoutDiscordId) {
     EXPECT_EQ(found->fol_status, "kfol");
 }
 
+TEST_F(MemberModelTest, ContactFieldsPersist) {
+    Member m;
+    m.discord_user_id = "contact_test";
+    m.discord_username = "contact";
+    m.display_name = "Contact U.";
+    m.phone = "(555) 123-4567";
+    m.address_line1 = "123 Brick Lane";
+    m.address_line2 = "Apt 4B";
+    m.city = "Little Rock";
+    m.state = "AR";
+    m.zip = "72201";
+    auto created = members->create(m);
+
+    auto found = members->find_by_id(created.id);
+    ASSERT_TRUE(found.has_value());
+    EXPECT_EQ(found->phone, "(555) 123-4567");
+    EXPECT_EQ(found->address_line1, "123 Brick Lane");
+    EXPECT_EQ(found->address_line2, "Apt 4B");
+    EXPECT_EQ(found->city, "Little Rock");
+    EXPECT_EQ(found->state, "AR");
+    EXPECT_EQ(found->zip, "72201");
+}
+
+TEST_F(MemberModelTest, PiiPublicDefaultsFalse) {
+    Member m;
+    m.discord_user_id = "pii_default";
+    m.discord_username = "pii_def";
+    m.display_name = "PII Def U.";
+    auto created = members->create(m);
+
+    auto found = members->find_by_id(created.id);
+    ASSERT_TRUE(found.has_value());
+    EXPECT_FALSE(found->pii_public);
+}
+
+TEST_F(MemberModelTest, PiiPublicPersists) {
+    Member m;
+    m.discord_user_id = "pii_pub";
+    m.discord_username = "pii_pub";
+    m.display_name = "PII Pub U.";
+    m.pii_public = true;
+    auto created = members->create(m);
+
+    auto found = members->find_by_id(created.id);
+    ASSERT_TRUE(found.has_value());
+    EXPECT_TRUE(found->pii_public);
+
+    // Toggle off
+    found->pii_public = false;
+    members->update(*found);
+    auto found2 = members->find_by_id(created.id);
+    ASSERT_TRUE(found2.has_value());
+    EXPECT_FALSE(found2->pii_public);
+}
+
 TEST_F(MemberModelTest, MultipleNullDiscordIdsAllowed) {
     Member m1;
     m1.first_name = "Kid1";

@@ -6,24 +6,27 @@ A modern web application for managing LEGO User Groups (LUGs). Built with **C++ 
 
 ## Features
 
-- **Member Management**: Track paid vs. non-paid members, manage dues, Discord role sync
-- **Chapter System**: Organize members into chapters with their own leads, channels, and roles
-- **Meeting Management**: Schedule meetings, create Discord events, sync to Google Calendar
-- **Event Management**: Organize events with Discord threads, forum posts, announcements, and convert to meetings
-- **Attendance Tracking**: Admin/event lead managed attendance with virtual attendance support for meetings
-- **Google Calendar Import**: Pull existing events from a shared Google Calendar into LUG Manager
-- **Discord Integration**: OAuth2 login, automatic scheduled events, forum threads, announcement messages, role sync
-- **Google Calendar Integration**: Push events directly to a shared Google Calendar via service account
-- **iCal Feed**: RFC 5545 calendar subscription for individual members (Google Calendar, Outlook, Apple Calendar)
-- **Responsive UI**: Mobile-friendly HTMX + Tailwind CSS interface with search and pagination
+- **Member Management**: Track members with contact info, FOL status (KFOL/TFOL/AFOL), birthday, dues, and Discord role sync. Members without Discord accounts (e.g. KFOLs) are supported.
+- **PII Controls**: Members can opt-in to share contact info (email, phone, address) with other members. Admins and chapter leads always see PII; regular members only see PII for opted-in members.
+- **Role System**: Three global roles (admin, chapter_lead, member) mapped via Discord roles, plus chapter-level roles (lead, event_manager, member). Anyone in the Discord guild can log in.
+- **Chapter System**: Organize members into chapters with leads, event managers, Discord channels, and role sync
+- **Meeting & Event Management**: Schedule with Discord events, forum threads, announcements, Google Calendar sync, and per-event suppress flags for historical data entry
+- **Notes & Reports**: Markdown notes on events/meetings with WYSIWYG editor (EasyMDE). Publish reports to Discord forum channels with attendance (virtual/in-person split for meetings, multi-day for events)
+- **Attendance Tracking**: Admin/lead/event-manager managed attendance with virtual support, year-filtered overview with search/sort/pagination, per-member detail view, perk tier display, and hide-inactive toggle
+- **Perk Levels**: Admin-defined attendance tiers per year with Discord role rewards, FOL requirements, and paid dues prerequisites. Clone tiers between years. Members see progress on dashboard.
+- **Discord Integration**: OAuth2 login, scheduled events, forum threads, announcements, role sync, perk role assignment
+- **Google Calendar Integration**: Push events directly to a shared Google Calendar via service account, import existing events
+- **iCal Feed**: RFC 5545 calendar subscription for personal calendar apps
+- **Responsive UI**: Mobile-friendly HTMX + Tailwind CSS interface with dynamic nav highlights, page title updates, and EasyMDE markdown editor
 
 ## Technology Stack
 
 - **Backend**: C++20 with CrowCPP v1.2.0 (header-only HTTP server)
 - **Database**: SQLite with WAL mode and automatic migrations
-- **Frontend**: HTMX + Tailwind CSS (CDN, no build step)
+- **Frontend**: HTMX + Tailwind CSS + TomSelect + EasyMDE (CDN, no build step)
 - **External APIs**: Discord OAuth2 + REST, Google Calendar API v3
-- **Dependencies**: asio, nlohmann/json, libcurl, OpenSSL
+- **Dependencies**: asio, nlohmann/json, md4c, libcurl, OpenSSL, Google Test
+- **CI/CD**: GitHub Actions (test gate + Docker build/push)
 
 ## Prerequisites
 
@@ -58,7 +61,12 @@ brew install cmake curl sqlite openssl pkg-config
    cmake --build build -j$(nproc)
    ```
 
-2. **Configure**:
+2. **Run tests**:
+   ```bash
+   ctest --test-dir build --output-on-failure
+   ```
+
+3. **Configure**:
    ```bash
    cp .env.example .env
    # Edit .env with your Discord credentials
@@ -80,11 +88,36 @@ brew install cmake curl sqlite openssl pkg-config
    | `ICAL_CALENDAR_NAME` | Calendar display name | `LUG Events` |
    | `DISCORD_GUILD_ID` | Discord server ID | *(set in Settings)* |
 
-3. **Run**:
+4. **Run**:
    ```bash
    ./build/lug_manager
    ```
-   Open `http://localhost:8080` and log in with Discord. The first user matching `BOOTSTRAP_ADMIN_DISCORD_ID` is automatically made admin.
+   Open `http://localhost:8080` and log in with Discord. The first user matching `BOOTSTRAP_ADMIN_DISCORD_ID` is automatically made admin. All other guild members can log in as regular members.
+
+## Roles & Permissions
+
+### Global Roles (mapped via Discord roles in Settings > Role Mappings)
+
+| Role | Access |
+|------|--------|
+| **admin** | Full access to everything |
+| **chapter_lead** | Can see PII, manage chapter members, assign event managers. Cannot add/remove leads or edit chapter/system settings. |
+| **member** | View events, meetings, chapters, own attendance. Cannot see PII unless member opted in. |
+
+### Chapter Roles (assigned per-chapter by admins/leads)
+
+| Role | Access |
+|------|--------|
+| **lead** | Manage chapter members + assign event_manager + everything event_manager can do |
+| **event_manager** | Create/edit/delete events and meetings in their chapter, take attendance |
+| **member** | Basic chapter membership |
+
+### PII Visibility
+
+PII fields (email, phone, birthday, address) are visible based on:
+- **Admin/chapter_lead**: always see all PII
+- **Regular member**: only sees PII for members who have opted in (`pii_public` toggle in member edit form)
+- **Phone/address**: only visible in admin-only member edit form (not in the members list)
 
 ## Discord Setup
 
@@ -102,130 +135,72 @@ brew install cmake curl sqlite openssl pkg-config
    - Scopes: `bot`, `identify`, `guilds`
    - Bot permissions: `Manage Events`, `Create Public Threads`, `Send Messages`, `Manage Roles`, `Manage Channels`
 
-5. **Important**: In your Discord server's role settings, drag the bot's role **above** any roles it needs to manage (chapter lead roles, etc.). Discord requires the bot role to be higher in the hierarchy.
+5. **Important**: In your Discord server's role settings, drag the bot's role **above** any roles it needs to manage. Discord requires the bot role to be higher in the hierarchy.
 
-6. After first login, go to **Settings** in the web UI to configure:
-   - Guild ID (Discord server ID)
-   - Announcements channel
-   - Event forum channel
-   - Announcement roles
-   - Timezone
+6. After first login, go to **Settings** in the web UI to configure guild ID, channels, roles, and timezone.
 
 ## Google Calendar Integration
 
-LUG Manager can push meetings and events directly to a shared Google Calendar, so they appear instantly (unlike iCal which polls every few hours).
+LUG Manager can push meetings and events directly to a shared Google Calendar.
 
 ### Setup
 
-1. **Create a Google Cloud project**:
-   - Go to [console.cloud.google.com](https://console.cloud.google.com)
-   - Create a new project (or use an existing one)
-   - Enable the **Google Calendar API**: APIs & Services > Library > search "Calendar" > Enable
+1. **Create a Google Cloud project** and enable the **Google Calendar API**
+2. **Create a service account** with a JSON key file
+3. **Share your Google Calendar** with the service account email as an editor
+4. **Configure in Settings**: enter the JSON path and Calendar ID
 
-2. **Create a service account**:
-   - Go to APIs & Services > Credentials
-   - Create Credentials > Service Account
-   - Give it a name (e.g. "LUG Manager")
-   - **Skip** the "Grant this service account access" step (no project roles needed — access is granted by sharing the calendar directly)
-   - Click Done, then click into the new service account
-   - Keys tab > Add Key > Create new key > JSON
-   - Download the JSON key file and place it on your server (e.g. `/etc/lug-manager/service-account.json`)
-   - Note the `client_email` field in the JSON — you'll need it in the next step
-
-3. **Create or choose a Google Calendar**:
-   - In Google Calendar, create a new calendar for your LUG (or use an existing one)
-   - Go to Calendar Settings > Share with specific people
-   - Add the service account's email (found in the JSON file as `client_email`, looks like `name@project.iam.gserviceaccount.com`)
-   - Set permission to **Make changes to events**
-   - Copy the **Calendar ID** from the Calendar Settings page (looks like `abc123@group.calendar.google.com`)
-
-4. **Configure in LUG Manager**:
-   - Go to Settings in the web UI
-   - Under "Google Calendar", enter:
-     - **Service Account JSON Path**: absolute path to the key file on the server
-     - **Google Calendar ID**: the calendar ID from step 3
-   - Click Save Settings
-   - The green "Connected" indicator confirms the integration is working
-
-5. **Import existing events** (optional):
-   - Once connected, click "Import Events from Google Calendar" to pull in upcoming events
-   - Imported events appear as LUG-wide events and won't be re-imported on subsequent imports
-
-### How it works
-
-- When you **create** a meeting or event, it's automatically added to Google Calendar
-- When you **edit** a meeting or event, the Google Calendar entry is updated
-- When you **delete** a meeting or event, the Google Calendar entry is removed
-- If Google Calendar is not configured, all Google Calendar operations are silently skipped
-
-## Calendar Subscription (iCal)
-
-Members can subscribe to the LUG calendar in their personal calendar app. The subscription URL is shown on the Dashboard after login.
-
-- **URL**: `https://your-server/calendar.ics` (public, no auth required)
-- **Google Calendar**: Other calendars (+) > From URL > paste the URL
-- **Apple Calendar**: File > New Calendar Subscription > paste the URL
-- **Outlook**: Add calendar > Subscribe from web > paste the URL
-
-The feed includes all meetings and events with proper timezone handling (`DTSTART;TZID=...`) and updates within 5 minutes of any change.
+See the Settings page for detailed instructions. Import existing events with the "Import from Google Calendar" button.
 
 ## Chapters
 
-Chapters allow you to organize your LUG into sub-groups (e.g. by city, theme, or age group). Each chapter can have:
+Chapters allow you to organize your LUG into sub-groups. Each chapter can have:
 
 - **Chapter leads** with a mapped Discord role (automatically synced)
-- **Event managers** who can create events for their chapter
+- **Event managers** who can create/edit events and meetings for their chapter
 - **A Discord announcement channel** for chapter-specific announcements
-- **Members** assigned via the member management page
+- **Members** assigned via the chapter management page
 
-Chapter leads and event managers can create meetings and events scoped to their chapter. Admins can create LUG-wide events.
+Chapter leads can manage members and assign event managers. Only admins can add/remove chapter leads or edit chapter settings.
 
-## Attendance
+## Attendance & Perk Levels
 
-Attendance is managed by admins, chapter leads, and event leads (for their events):
+### Attendance
+- **Admin/lead/event-manager managed**: searchable multi-select to check in members
+- **Virtual support**: meetings track in-person vs. virtual attendance
+- **Overview**: year-filtered, paginated, searchable, sortable table with last-seen date and perk tier
+- **Per-member detail**: expandable view of attended events/meetings for the selected year
+- **Hide inactive**: toggle to hide members with no attendance and no dues
 
-- **Add members**: Searchable multi-select dropdown to check in one or more members at once
-- **Virtual attendance**: Meetings support marking attendees as virtual (in-person vs. remote)
-- **Toggle**: Admins can switch between virtual and in-person for any attendee
-- **Remove**: Remove attendees with confirmation
-- **Counts**: Live-updating attendance counts on meeting and event cards
+### Perk Levels
+- Admin-defined tiers per calendar year (e.g. Bronze, Silver, Gold)
+- Separate meeting and event attendance thresholds
+- Optional paid dues and minimum FOL status requirements
+- Discord role auto-assigned when a member qualifies
+- Clone tiers between years for easy setup
+- Members see progress on their dashboard
 
-## Database
+## Event Reports
 
-SQLite with WAL mode for concurrent reads. Migrations are applied automatically on startup from `sql/migrations/`.
+Events and meetings support markdown notes and structured report fields:
 
-To reset the database:
-```bash
-rm lug.db
-./build/lug_manager
+**Meeting reports** (published to Discord forum):
+```
+Chapter: [chapter name]
+Meeting date: [date]
+Members by name: [in-person]; Virtual: [virtual]
+Topics: [notes]
 ```
 
-## Project Structure
-
+**Event reports** (published to Discord forum):
 ```
-.
-├── src/
-│   ├── main.cpp                 # Entry point, server setup
-│   ├── config/                  # Configuration (env vars, .env loading)
-│   ├── middleware/               # Auth middleware (Discord session)
-│   ├── routes/                  # HTTP route handlers
-│   ├── services/                # Business logic
-│   ├── repositories/            # Database access layer
-│   ├── models/                  # Data structs (Member, Meeting, LugEvent, etc.)
-│   ├── integrations/            # Discord, Google Calendar, iCal
-│   ├── auth/                    # OAuth2 service
-│   ├── async/                   # Thread pool for async Discord calls
-│   ├── db/                      # SQLite abstraction
-│   ├── templates/               # Mustache HTML templates
-│   └── static/                  # CSS, JS assets
-├── sql/
-│   └── migrations/              # Auto-applied database migrations
-├── CMakeLists.txt
-├── CMakePresets.json
-├── Dockerfile
-├── docker-compose.yml
-├── .env.example
-└── README.md
+Event name: [title]
+Start date / End date
+Entrance fee: [fee]
+Member names day1: [names by check-in date]
+Public kids / teens / adults: [counts]
+Social media links: [links]
+What you liked best: [feedback]
 ```
 
 ## Settings (Admin)
@@ -235,17 +210,42 @@ All runtime configuration is managed from the Settings page (`/settings`):
 | Setting | Description |
 |---------|-------------|
 | Discord Guild ID | Your Discord server ID |
-| Announcements Channel | Channel for LUG-wide event/meeting announcements |
+| Announcements Channel | Channel for LUG-wide announcements |
 | Event Forum Channel | Forum channel for event discussion threads |
-| Event Announcement Role | Role @mentioned in announcements |
-| Non-LUG Event Role | Role @mentioned for non-LUG events |
-| Timezone | IANA timezone (e.g. `America/Chicago`) — used for Discord, Google Calendar, and iCal |
+| Event/Meeting Reports Forum | Forum channels for published reports |
+| Announcement/Non-LUG Roles | Roles @mentioned in announcements |
+| Timezone | IANA timezone for Discord/Calendar |
 | Calendar Name | Display name in calendar apps |
-| Suppress Pings | Disable all @mentions in Discord announcements |
-| Google Calendar SA Path | Path to Google service account JSON key |
-| Google Calendar ID | Target Google Calendar ID |
+| Suppress Pings/Updates | Disable @mentions or update notifications |
+| Google Calendar | Service account JSON path and Calendar ID |
+| Role Mappings | Map Discord roles to admin/member |
+| Perk Levels | Attendance tiers with Discord role rewards (per year) |
 
-Settings are seeded from environment variables on first run, then managed exclusively from the web UI.
+## Testing
+
+The project includes comprehensive tests across 8 test suites:
+
+```bash
+# Build with tests
+cmake -B build -S . -DBUILD_TESTS=ON
+cmake --build build -j$(nproc)
+
+# Run all tests
+ctest --test-dir build --output-on-failure
+```
+
+| Suite | Coverage |
+|-------|----------|
+| test_utils | Database operations, migrations, data persistence |
+| test_discord_content | Announcement content generation, ping suppression |
+| test_repositories | CRUD for all repositories, pagination, search |
+| test_services | Service layer logic, calendar generation |
+| test_role_system | Role mappings, FOL ranks, perk levels, member fields |
+| test_suppression | Suppress flags, notes persistence, attendance summaries |
+| test_markdown | Markdown-to-HTML rendering (md4c) |
+| test_integration | Full HTTP stack: auth, permissions, CRUD, PII visibility |
+
+CI runs all tests before Docker build — failing tests block deployment.
 
 ## Docker
 
@@ -262,59 +262,35 @@ cp .env.example .env
 docker compose up -d
 ```
 
-See [DOCKER.md](DOCKER.md) for detailed deployment instructions including Google Calendar service account mounting, reverse proxy setup, and Kubernetes examples.
+See [DOCKER.md](DOCKER.md) for detailed deployment instructions.
 
-## API Endpoints
+## Project Structure
 
-### Authentication
-- `GET /login` – Login page
-- `GET /auth/login` – Redirect to Discord OAuth
-- `GET /auth/callback` – OAuth callback
-- `POST /auth/logout` – Logout
-
-### Meetings
-- `GET /meetings` – List meetings (paginated, searchable)
-- `POST /meetings` – Create meeting
-- `GET /meetings/<id>/edit` – Edit form
-- `PUT /meetings/<id>` – Update meeting
-- `POST /meetings/<id>/cancel` – Delete meeting
-- `POST /meetings/<id>/discord-sync` – Force sync to Discord
-
-### Events
-- `GET /events` – List upcoming events (paginated, searchable)
-- `GET /events/all` – List all events
-- `POST /events` – Create event
-- `GET /events/<id>/edit` – Edit form
-- `PUT /events/<id>` – Update event
-- `POST /events/<id>/cancel` – Delete event
-- `POST /events/<id>/discord-sync` – Force sync to Discord
-- `POST /events/<id>/status` – Change event status (open/closed)
-- `POST /events/<id>/convert-to-meeting` – Convert event to meeting
-
-### Attendance
-- `GET /attendance` – Personal attendance history
-- `GET /attendance/count/<type>/<id>` – Live count
-- `GET /attendance/list/<type>/<id>` – Attendee list with admin controls
-- `POST /attendance/admin/checkin` – Admin add members
-- `POST /attendance/admin/<id>/remove` – Admin remove attendee
-- `POST /attendance/admin/<id>/toggle-virtual` – Toggle virtual status
-
-### Members
-- `GET /members` – Member list (DataTables, searchable)
-- `POST /members` – Create member
-- `POST /members/<id>` – Update member
-- `DELETE /members/<id>` – Delete member
-- `POST /members/<id>/paid` – Set dues status
-
-### Calendar
-- `GET /calendar.ics` – iCal feed (public, no auth)
-
-### Settings (Admin)
-- `GET /settings` – Settings page
-- `POST /settings` – Save settings
-- `POST /api/google-calendar/import` – Import events from Google Calendar
-- `POST /api/discord/sync-members` – Sync members from Discord
-- `POST /api/discord/test-announcement` – Send test announcement
+```
+.
+├── src/
+│   ├── main.cpp                 # Entry point, server setup
+│   ├── config/                  # Configuration (env vars, .env loading)
+│   ├── middleware/               # Auth middleware (Discord session)
+│   ├── routes/                  # HTTP route handlers
+│   ├── services/                # Business logic
+│   ├── repositories/            # Database access layer
+│   ├── models/                  # Data structs
+│   ├── integrations/            # Discord, Google Calendar, iCal
+│   ├── auth/                    # OAuth2 + session management
+│   ├── utils/                   # Markdown renderer
+│   ├── async/                   # Thread pool
+│   ├── db/                      # SQLite abstraction + migrations
+│   ├── templates/               # Mustache HTML templates
+│   └── static/                  # CSS, JS assets
+├── tests/                       # Google Test suites
+├── sql/migrations/              # Auto-applied database migrations
+├── .github/workflows/           # CI/CD pipeline
+├── CMakeLists.txt
+├── Dockerfile
+├── docker-compose.yml
+└── README.md
+```
 
 ## Troubleshooting
 
@@ -323,24 +299,24 @@ Ensure `LUG_TEMPLATES_DIR` points to the templates directory and the working dir
 
 ### Discord OAuth fails
 - Verify `DISCORD_CLIENT_ID` and `DISCORD_CLIENT_SECRET`
-- Ensure redirect URI matches exactly (including trailing slash or lack thereof)
+- Ensure redirect URI matches exactly
 - Check that the bot has been added to the server
 
 ### Discord "Missing Permissions" (50013)
-The bot's role must be **higher** in the Discord role hierarchy than any roles it tries to manage. Drag it up in Server Settings > Roles.
+The bot's role must be **higher** in the Discord role hierarchy than any roles it manages.
 
 ### Google Calendar not creating events
-- Verify the service account JSON file path is correct and readable by the app
-- Ensure the service account email has been shared as an editor on the target calendar
-- Check the Calendar ID (should look like `abc123@group.calendar.google.com`, not the calendar name)
+- Verify the service account JSON file path is correct and readable
+- Ensure the service account email has editor access on the target calendar
+- Check the Calendar ID format (`abc123@group.calendar.google.com`)
 
 ### Database locked
-SQLite WAL mode supports concurrent reads but only one writer. Ensure no other process has the database open.
+SQLite WAL mode supports concurrent reads but only one writer.
 
 ## License
 
-[Choose your license here]
+This project is licensed under the [GNU Affero General Public License v3.0](LICENSE) (AGPL-3.0). You are free to fork, modify, and distribute this software, but any modifications — including those deployed as a network service — must be made available under the same license.
 
 ## Contributing
 
-Pull requests welcome! Please ensure code compiles cleanly with `-Wall -Wextra` and follows the existing patterns.
+Pull requests welcome! Please ensure all tests pass (`ctest --test-dir build`) and code compiles cleanly with `-Wall -Wextra`.
