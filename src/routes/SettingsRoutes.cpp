@@ -95,6 +95,40 @@ void register_settings_routes(LugApp& app, SettingsRepository& settings,
         return res;
     });
 
+    // GET /api/discord/voice-channel-options?selected=<channel_id>
+    // Returns <option> elements for all voice channels in the configured guild.
+    // Any authenticated user can fetch (needed for meeting form).
+    CROW_ROUTE(app, "/api/discord/voice-channel-options")(
+        [&](const crow::request& req) {
+        crow::response res;
+        auto& ctx = app.get_context<AuthMiddleware>(req);
+        if (!ctx.auth.authenticated) { res.code = 401; return res; }
+
+        std::string selected;
+        {
+            auto qs = crow::query_string(req.url_params);
+            const char* s = qs.get("selected");
+            if (s) selected = s;
+        }
+
+        auto channels = discord.fetch_voice_channels();
+        std::ostringstream html;
+        html << "<option value=\"\">-- No voice channel --</option>\n";
+        for (auto& ch : channels) {
+            html << "<option value=\"" << ch.id << "\"";
+            if (ch.id == selected) html << " selected";
+            html << ">" << ch.name << "</option>\n";
+        }
+        if (channels.empty()) {
+            html.str("");
+            html << "<option value=\"\">No voice channels found</option>";
+        }
+
+        res.add_header("Content-Type", "text/html; charset=utf-8");
+        res.write(html.str());
+        return res;
+    });
+
     // POST /api/discord/test-announcement - send a test message to the LUG-wide channel
     CROW_ROUTE(app, "/api/discord/test-announcement").methods("POST"_method)(
         [&](const crow::request& req) {

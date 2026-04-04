@@ -92,6 +92,33 @@ std::vector<DiscordChannel> DiscordClient::fetch_text_channels() const {
     return result;
 }
 
+std::vector<DiscordChannel> DiscordClient::fetch_voice_channels() const {
+    if (guild_id_.empty()) return {};
+    std::string resp = discord_api_request("GET", "/guilds/" + guild_id_ + "/channels");
+    std::vector<DiscordChannel> result;
+    try {
+        auto j = json::parse(resp);
+        if (!j.is_array()) return result;
+        for (auto& ch : j) {
+            if (!ch.contains("id") || !ch.contains("name") || !ch.contains("type")) continue;
+            int type = ch["type"].get<int>();
+            if (type != 2 && type != 13) continue; // GUILD_VOICE (2) and GUILD_STAGE_VOICE (13)
+            DiscordChannel c;
+            c.id   = ch["id"].get<std::string>();
+            c.name = ch["name"].get<std::string>();
+            c.type = type;
+            result.push_back(std::move(c));
+        }
+        std::sort(result.begin(), result.end(),
+                  [](const DiscordChannel& a, const DiscordChannel& b) {
+                      return a.name < b.name;
+                  });
+    } catch (const std::exception& e) {
+        std::cerr << "[DiscordClient] fetch_voice_channels parse error: " << e.what() << "\n";
+    }
+    return result;
+}
+
 std::string DiscordClient::discord_api_request(const std::string& method,
                                                 const std::string& endpoint,
                                                 const std::string& json_body) const {

@@ -62,6 +62,7 @@ public:
     // Fetch text channels (type 0/5) or forum channels (type 15) from the configured guild
     std::vector<DiscordChannel> fetch_text_channels()  const;
     std::vector<DiscordChannel> fetch_forum_channels() const;
+    std::vector<DiscordChannel> fetch_voice_channels() const;
 
     // Fetch all roles defined in the guild
     std::vector<DiscordRole> fetch_guild_roles() const;

@@ -41,6 +41,7 @@ static crow::mustache::context build_meeting_list_ctx(
         const std::vector<Meeting>& meeting_list,
         AttendanceService& attendance,
         ChapterMemberRepository& chapter_members,
+        ChapterService& chapters_svc,
         bool is_admin,
         bool can_create,
         int64_t current_member_id,
@@ -57,6 +58,11 @@ static crow::mustache::context build_meeting_list_ctx(
         for (const auto& cm : memberships)
             user_chapter_roles[cm.chapter_id] = cm.chapter_role;
     }
+
+    // Build chapter name lookup
+    std::map<int64_t, std::string> chapter_names;
+    for (const auto& ch : chapters_svc.list_all())
+        chapter_names[ch.id] = ch.name;
 
     crow::json::wvalue arr;
     for (size_t i = 0; i < meeting_list.size(); ++i) {
@@ -87,6 +93,10 @@ static crow::mustache::context build_meeting_list_ctx(
         arr[i]["scope"]          = m.scope;
         arr[i]["scope_lug_wide"] = (m.scope == "lug_wide");
         arr[i]["scope_non_lug"]  = (m.scope == "non_lug");
+        {
+            auto cn = chapter_names.find(m.chapter_id);
+            arr[i]["chapter_name"] = (cn != chapter_names.end()) ? cn->second : "";
+        }
         arr[i]["discord_event_id"] = m.discord_event_id;
         arr[i]["is_virtual"]       = m.is_virtual;
         arr[i]["discord_voice_channel_id"] = m.discord_voice_channel_id;
@@ -119,7 +129,8 @@ static std::string render_meeting_page(const crow::request& req,
                                         LugApp& app,
                                         MeetingService& meetings,
                                         AttendanceService& attendance,
-                                        ChapterMemberRepository& chapter_members) {
+                                        ChapterMemberRepository& chapter_members,
+                                        ChapterService& chapters) {
     auto& auth = app.get_context<AuthMiddleware>(req);
     bool is_admin = auth.auth.role == "admin";
     int64_t member_id = auth.auth.member_id;
@@ -155,7 +166,7 @@ static std::string render_meeting_page(const crow::request& req,
     int offset = (page - 1) * kPerPage;
 
     auto meeting_list = meetings.list_paginated(search, kPerPage, offset, sort_col, sort_dir);
-    auto ctx = build_meeting_list_ctx(meeting_list, attendance, chapter_members, is_admin, can_create, member_id);
+    auto ctx = build_meeting_list_ctx(meeting_list, attendance, chapter_members, chapters, is_admin, can_create, member_id);
 
     ctx["search"]      = search;
     ctx["page"]        = page;
@@ -200,7 +211,7 @@ void register_meeting_routes(LugApp& app, MeetingService& meetings, AttendanceSe
         crow::response res;
         if (!require_auth(req, res, app)) return res;
         res.add_header("Content-Type", "text/html; charset=utf-8");
-        res.write(render_meeting_page(req, app, meetings, attendance, chapter_members));
+        res.write(render_meeting_page(req, app, meetings, attendance, chapter_members, chapters));
         return res;
     });
 
@@ -434,7 +445,7 @@ void register_meeting_routes(LugApp& app, MeetingService& meetings, AttendanceSe
             res.add_header("HX-Trigger", "closeModal");
             res.add_header("HX-Redirect", "/meetings");
             res.code = 200;
-            res.write(render_meeting_page(req, app, meetings, attendance, chapter_members));
+            res.write(render_meeting_page(req, app, meetings, attendance, chapter_members, chapters));
         } catch (const std::exception& e) {
             res.code = 400;
             res.write(std::string(
@@ -498,7 +509,7 @@ void register_meeting_routes(LugApp& app, MeetingService& meetings, AttendanceSe
                 res.add_header("HX-Trigger", "closeModal");
                 res.add_header("HX-Redirect", "/meetings");
                 res.code = 200;
-                res.write(render_meeting_page(req, app, meetings, attendance, chapter_members));
+                res.write(render_meeting_page(req, app, meetings, attendance, chapter_members, chapters));
             } catch (const std::exception& e) {
                 res.code = 400;
                 res.write(std::string(

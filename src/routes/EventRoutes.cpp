@@ -31,6 +31,7 @@ static crow::mustache::context build_event_list_ctx(
         const std::vector<LugEvent>& event_list,
         AttendanceService& attendance,
         ChapterMemberRepository& chapter_members,
+        ChapterService& chapters_svc,
         bool is_admin,
         bool can_create,
         int64_t current_member_id,
@@ -47,6 +48,11 @@ static crow::mustache::context build_event_list_ctx(
         for (const auto& cm : memberships)
             user_chapter_roles[cm.chapter_id] = cm.chapter_role;
     }
+
+    // Build chapter name lookup
+    std::map<int64_t, std::string> chapter_names;
+    for (const auto& ch : chapters_svc.list_all())
+        chapter_names[ch.id] = ch.name;
 
     crow::json::wvalue arr;
     for (size_t i = 0; i < event_list.size(); ++i) {
@@ -75,6 +81,10 @@ static crow::mustache::context build_event_list_ctx(
         arr[i]["scope"]            = e.scope;
         arr[i]["scope_lug_wide"]   = (e.scope == "lug_wide");
         arr[i]["scope_non_lug"]    = (e.scope == "non_lug");
+        {
+            auto cn = chapter_names.find(e.chapter_id);
+            arr[i]["chapter_name"] = (cn != chapter_names.end()) ? cn->second : "";
+        }
         arr[i]["event_lead_id"]    = e.event_lead_id;
         arr[i]["event_lead_name"]  = e.event_lead_name;
         arr[i]["has_event_lead"]   = (e.event_lead_id > 0);
@@ -127,6 +137,7 @@ static std::string render_event_page(const crow::request& req,
                                       EventService& events,
                                       AttendanceService& attendance,
                                       ChapterMemberRepository& chapter_members,
+                                      ChapterService& chapters,
                                       bool all_events = false) {
     auto& auth     = app.get_context<AuthMiddleware>(req);
     bool is_admin  = auth.auth.role == "admin";
@@ -165,7 +176,7 @@ static std::string render_event_page(const crow::request& req,
     int offset = (page - 1) * kEvPerPage;
 
     auto event_list = events.list_paginated(search, kEvPerPage, offset, upcoming_only, sort_col, sort_dir);
-    auto ctx = build_event_list_ctx(event_list, attendance, chapter_members, is_admin, can_create, mbr_id);
+    auto ctx = build_event_list_ctx(event_list, attendance, chapter_members, chapters, is_admin, can_create, mbr_id);
 
     ctx["show_all"]    = all_events;
     ctx["search"]      = search;
@@ -263,7 +274,7 @@ void register_event_routes(LugApp& app, EventService& events, AttendanceService&
         crow::response res;
         if (!require_auth(req, res, app)) return res;
         res.add_header("Content-Type", "text/html; charset=utf-8");
-        res.write(render_event_page(req, app, events, attendance, chapter_members, false));
+        res.write(render_event_page(req, app, events, attendance, chapter_members, chapters, false));
         return res;
     });
 
@@ -272,7 +283,7 @@ void register_event_routes(LugApp& app, EventService& events, AttendanceService&
         crow::response res;
         if (!require_auth(req, res, app, "admin")) return res;
         res.add_header("Content-Type", "text/html; charset=utf-8");
-        res.write(render_event_page(req, app, events, attendance, chapter_members, true));
+        res.write(render_event_page(req, app, events, attendance, chapter_members, chapters, true));
         return res;
     });
 
@@ -597,7 +608,7 @@ void register_event_routes(LugApp& app, EventService& events, AttendanceService&
             res.add_header("HX-Trigger", "closeModal");
             res.add_header("HX-Redirect", "/events");
             res.code = 200;
-            res.write(render_event_page(req, app, events, attendance, chapter_members, false));
+            res.write(render_event_page(req, app, events, attendance, chapter_members, chapters, false));
         } catch (const std::exception& ex) {
             res.code = 400;
             res.write(std::string(
@@ -697,7 +708,7 @@ void register_event_routes(LugApp& app, EventService& events, AttendanceService&
                 res.add_header("HX-Trigger", "closeModal");
                 res.add_header("HX-Redirect", "/events");
                 res.code = 200;
-                res.write(render_event_page(req, app, events, attendance, chapter_members, false));
+                res.write(render_event_page(req, app, events, attendance, chapter_members, chapters, false));
             } catch (const std::exception& ex) {
                 res.code = 400;
                 std::cerr << "[EventRoutes] PUT /events/" << id << " error: " << ex.what() << "\n";

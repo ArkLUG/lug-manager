@@ -52,7 +52,7 @@
     <div class="px-6 py-3 flex items-center gap-4 border-b border-gray-50 last:border-0">
       <div class="flex-1 min-w-0">
         <div class="font-medium text-gray-900 text-sm">{{display_name}}</div>
-        <div class="text-xs text-gray-400">@{{discord_username}}</div>
+        {{#discord_username}}<div class="text-xs text-gray-400">@{{discord_username}}</div>{{/discord_username}}
       </div>
 
       <!-- Role badge + selector -->

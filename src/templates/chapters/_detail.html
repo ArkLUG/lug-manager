@@ -51,7 +51,7 @@
       <div class="flex items-center justify-between py-2 px-3 bg-purple-50 border border-purple-200 rounded-lg">
         <div>
           <span class="text-sm font-medium text-purple-900">{{display_name}}</span>
-          <span class="text-xs text-purple-500 ml-1">@{{discord_username}}</span>
+          {{#discord_username}}<span class="text-xs text-purple-500 ml-1">@{{discord_username}}</span>{{/discord_username}}
         </div>
         {{#can_manage}}
         <form hx-post="/chapters/{{chapter_id}}/lead/{{member_id}}/demote"
