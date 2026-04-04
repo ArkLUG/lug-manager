@@ -181,9 +181,9 @@ MemberService::SyncResult MemberService::sync_nicknames_to_discord() {
             ++result.skipped;
             continue;
         }
-        // Wait between requests to respect Discord's rate limit
+        // Brief pause between requests; DiscordClient handles retry_after if rate-limited
         if (!first) {
-            std::this_thread::sleep_for(std::chrono::seconds(10));
+            std::this_thread::sleep_for(std::chrono::milliseconds(250));
         }
         first = false;
         try {

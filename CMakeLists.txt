@@ -142,7 +142,7 @@ if(BUILD_TESTS)
     get_filename_component(test_name ${test_file} NAME_WE)
     add_executable(${test_name} ${test_file})
     target_link_libraries(${test_name} PRIVATE lug_lib gtest gtest_main)
-    target_include_directories(${test_name} PRIVATE ${CMAKE_SOURCE_DIR}/src)
+    target_include_directories(${test_name} PRIVATE ${CMAKE_SOURCE_DIR}/src ${CMAKE_SOURCE_DIR}/tests)
     add_test(NAME ${test_name} COMMAND ${test_name}
              WORKING_DIRECTORY ${CMAKE_SOURCE_DIR})
   endforeach()
