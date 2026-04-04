@@ -33,6 +33,8 @@
 #include "services/ChapterService.hpp"
 #include "services/AttendanceService.hpp"
 #include "services/MemberSyncService.hpp"
+#include "repositories/AuditLogRepository.hpp"
+#include "services/AuditService.hpp"
 #include "routes/Router.hpp"
 
 using LugApp = crow::App<AuthMiddleware>;
@@ -57,6 +59,7 @@ protected:
     std::unique_ptr<RoleMappingRepository> role_mapping_repo;
     std::unique_ptr<ChapterMemberRepository> chapter_member_repo;
     std::unique_ptr<PerkLevelRepository> perk_level_repo;
+    std::unique_ptr<AuditLogRepository> audit_log_repo;
     std::unique_ptr<SessionStore> session_store;
 
     // Integrations
@@ -73,6 +76,7 @@ protected:
     std::unique_ptr<ChapterService> chapter_svc;
     std::unique_ptr<AttendanceService> attendance_svc;
     std::unique_ptr<MemberSyncService> member_sync_svc;
+    std::unique_ptr<AuditService> audit_svc;
 
     // App
     std::unique_ptr<LugApp> app;
@@ -108,6 +112,7 @@ protected:
         role_mapping_repo = std::make_unique<RoleMappingRepository>(*db);
         chapter_member_repo = std::make_unique<ChapterMemberRepository>(*db);
         perk_level_repo = std::make_unique<PerkLevelRepository>(*db);
+        audit_log_repo = std::make_unique<AuditLogRepository>(*db);
         session_store = std::make_unique<SessionStore>(*db);
 
         // Integrations
@@ -125,6 +130,7 @@ protected:
         attendance_svc = std::make_unique<AttendanceService>(*attendance_repo, *member_repo);
         member_sync_svc = std::make_unique<MemberSyncService>(*discord_client, *member_repo, *role_mapping_repo,
                                                                 *chapter_repo, *chapter_member_repo);
+        audit_svc = std::make_unique<AuditService>(*audit_log_repo);
 
         // Create test members and sessions
         Member admin_m;
@@ -194,7 +200,8 @@ protected:
             *calendar, *settings_repo, *role_mapping_repo, *chapter_member_repo,
             *member_sync_svc, *gcal_client,
             *perk_level_repo, *attendance_repo, *member_repo,
-            *meeting_repo, *event_repo
+            *meeting_repo, *event_repo,
+            *audit_svc
         };
         register_all_routes(*app, svc);
 

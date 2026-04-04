@@ -216,7 +216,7 @@ static std::string render_event_page(const crow::request& req,
 void register_event_routes(LugApp& app, EventService& events, AttendanceService& attendance,
                             ChapterMemberRepository& chapter_members, DiscordClient& discord,
                             MemberService& members, MeetingService& meetings,
-                            ChapterService& chapters) {
+                            ChapterService& chapters, AuditService& audit) {
 
     // GET /api/discord/forum-threads - returns <option> elements for active forum threads
     CROW_ROUTE(app, "/api/discord/forum-threads")(
@@ -622,6 +622,7 @@ void register_event_routes(LugApp& app, EventService& events, AttendanceService&
 
         try {
             events.create(e);
+            audit.log(req, app, "event.create", "event", e.id, e.title, "Created event");
             res.add_header("HX-Trigger", "closeModal");
             res.add_header("HX-Redirect", "/events");
             res.code = 200;
@@ -722,6 +723,7 @@ void register_event_routes(LugApp& app, EventService& events, AttendanceService&
             }
             try {
                 events.update(static_cast<int64_t>(id), updates);
+                audit.log(req, app, "event.update", "event", static_cast<int64_t>(id), updates.title, "Updated event");
                 res.add_header("HX-Trigger", "closeModal");
                 res.add_header("HX-Redirect", "/events");
                 res.code = 200;
@@ -753,6 +755,7 @@ void register_event_routes(LugApp& app, EventService& events, AttendanceService&
             if (body.has("discord_ping_role_ids")) updates.discord_ping_role_ids = body["discord_ping_role_ids"].s();
             try {
                 auto updated = events.update(static_cast<int64_t>(id), updates);
+                audit.log(req, app, "event.update", "event", updated.id, updated.title, "Updated event (JSON)");
                 crow::json::wvalue resp;
                 resp["id"]      = updated.id;
                 resp["title"]   = updated.title;
@@ -806,6 +809,7 @@ void register_event_routes(LugApp& app, EventService& events, AttendanceService&
 
         try {
             events.cancel(static_cast<int64_t>(id));
+            audit.log(req, app, "event.delete", "event", static_cast<int64_t>(id), "", "Cancelled event");
             res.add_header("HX-Redirect", "/events");
             res.code = 200;
         } catch (const std::exception& ex) {
@@ -846,6 +850,7 @@ void register_event_routes(LugApp& app, EventService& events, AttendanceService&
 
         try {
             events.update_status(static_cast<int64_t>(id), status);
+            audit.log(req, app, "event.status", "event", static_cast<int64_t>(id), "", "Status changed to " + status);
             res.add_header("HX-Redirect", "/events");
             res.code = 200;
         } catch (const std::exception& ex) {
@@ -872,6 +877,7 @@ void register_event_routes(LugApp& app, EventService& events, AttendanceService&
         bool already = attendance.is_checked_in(mbr_id, "event", static_cast<int64_t>(id));
         if (already) {
             attendance.check_out(mbr_id, "event", static_cast<int64_t>(id));
+            audit.log(req, app, "event.self_checkout", "event", static_cast<int64_t>(id), "", "Self check-out");
             res.write(R"(<button hx-post="/events/)" + std::to_string(id) +
                 R"(/checkin" hx-swap="outerHTML" hx-target="this")"
                 R"( class="inline-flex items-center gap-1 px-3 py-1.5 bg-green-600 text-white text-sm font-medium rounded hover:bg-green-700">)"
@@ -884,6 +890,7 @@ void register_event_routes(LugApp& app, EventService& events, AttendanceService&
                 res.add_header("Content-Type", "text/html");
                 return res;
             }
+            audit.log(req, app, "event.self_checkin", "event", static_cast<int64_t>(id), "", "Self check-in");
             res.write(R"(<button hx-post="/events/)" + std::to_string(id) +
                 R"(/checkin" hx-swap="outerHTML" hx-target="this")"
                 R"( class="inline-flex items-center gap-1 px-3 py-1.5 bg-gray-500 text-white text-sm font-medium rounded hover:bg-gray-600">)"
@@ -931,6 +938,7 @@ void register_event_routes(LugApp& app, EventService& events, AttendanceService&
             // Delete the event (cleans up Discord, Google Calendar, attendance)
             events.cancel(static_cast<int64_t>(id));
 
+            audit.log(req, app, "event.convert_to_meeting", "event", static_cast<int64_t>(id), ev->title, "Converted to meeting");
             res.add_header("HX-Redirect", "/meetings");
             res.code = 200;
         } catch (const std::exception& ex) {
@@ -1016,6 +1024,7 @@ void register_event_routes(LugApp& app, EventService& events, AttendanceService&
             events.repo().update_notes_discord_post_id(ev->id, thread_id);
         }
 
+        audit.log(req, app, "event.publish_report", "event", ev->id, "", "Published report");
         res.add_header("Content-Type", "text/html; charset=utf-8");
         res.write(R"(<span class="text-green-600 text-xs">Report published!</span>)");
         return res;

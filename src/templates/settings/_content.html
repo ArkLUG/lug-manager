@@ -264,6 +264,18 @@
   </div>
 
   <div class="bg-white rounded-xl border border-gray-200 p-6">
+    <h2 class="text-xl font-bold text-gray-900 mb-1">Audit Log</h2>
+    <p class="text-sm text-gray-500 mb-4">View a history of all actions taken by admins, chapter leads, and event managers.</p>
+    <a hx-get="/settings/audit" hx-target="#main-content" hx-push-url="true" hx-swap="innerHTML"
+       class="inline-flex items-center gap-2 px-4 py-2 bg-gray-800 text-white rounded-lg text-sm font-medium hover:bg-gray-700 transition-colors cursor-pointer">
+      <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01"/>
+      </svg>
+      View Audit Log
+    </a>
+  </div>
+
+  <div class="bg-white rounded-xl border border-gray-200 p-6">
     <h2 class="text-xl font-bold text-gray-900 mb-1">Bulk Sync</h2>
     <p class="text-sm text-gray-500 mb-4">Force-push all events and meetings to Discord and/or Google Calendar. Useful after initial setup or bulk edits.</p>
     <div class="flex flex-wrap items-center gap-3">

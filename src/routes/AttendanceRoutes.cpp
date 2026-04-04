@@ -70,7 +70,7 @@ static std::string render_attendance_list(AttendanceService& attendance,
 void register_attendance_routes(LugApp& app, AttendanceService& attendance,
                                 EventService& events, MeetingService& meetings,
                                 ChapterMemberRepository& chapter_members,
-                                PerkLevelRepository& perks) {
+                                PerkLevelRepository& perks, AuditService& audit) {
 
     // GET /attendance/overview - admin/lead attendance overview for all members
     // Query param: ?year=YYYY (defaults to current year)
@@ -358,6 +358,8 @@ void register_attendance_routes(LugApp& app, AttendanceService& attendance,
             try {
                 int64_t member_id = std::stoll(mid_str);
                 attendance.check_in(member_id, entity_type, entity_id, "", is_virtual);
+                audit.log(req, app, "attendance.checkin", entity_type, entity_id, "",
+                          "Admin checked in member_id=" + std::to_string(member_id));
             } catch (...) {}
         }
 
@@ -397,6 +399,8 @@ void register_attendance_routes(LugApp& app, AttendanceService& attendance,
         }
 
         attendance.remove_by_id(static_cast<int64_t>(id));
+        audit.log(req, app, "attendance.remove", entity_type, entity_id, "",
+                  "Admin removed attendance record id=" + std::to_string(id));
         res.write(render_attendance_list(attendance, entity_type, entity_id,
                                          true, entity_type == "meeting"));
         res.add_header("Content-Type", "text/html");
@@ -434,6 +438,7 @@ void register_attendance_routes(LugApp& app, AttendanceService& attendance,
         }
 
         attendance.set_virtual(static_cast<int64_t>(id), !current);
+        audit.log(req, app, "attendance.toggle_virtual", entity_type, entity_id, "", "Toggled virtual");
         res.write(render_attendance_list(attendance, entity_type, entity_id,
                                          true, entity_type == "meeting"));
         res.add_header("Content-Type", "text/html");

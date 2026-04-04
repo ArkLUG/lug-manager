@@ -5,7 +5,8 @@
 #include "services/ChapterService.hpp"
 #include "repositories/ChapterMemberRepository.hpp"
 #include "integrations/DiscordClient.hpp"
+#include "services/AuditService.hpp"
 
 void register_meeting_routes(LugApp& app, MeetingService& meetings, AttendanceService& attendance,
                               ChapterMemberRepository& chapter_members, ChapterService& chapters,
-                              DiscordClient& discord);
+                              DiscordClient& discord, AuditService& audit);

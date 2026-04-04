@@ -82,7 +82,7 @@ static std::string render_members_page(const crow::request& req,
     return layout.render(layout_ctx).dump();
 }
 
-void register_member_routes(LugApp& app, MemberService& members, AttendanceRepository& attendance_repo) {
+void register_member_routes(LugApp& app, MemberService& members, AttendanceRepository& attendance_repo, AuditService& audit) {
 
     // GET /members - members page (table shell; data loaded via AJAX)
     CROW_ROUTE(app, "/members")([&](const crow::request& req) {
@@ -246,6 +246,7 @@ void register_member_routes(LugApp& app, MemberService& members, AttendanceRepos
         res.add_header("Content-Type", "text/html; charset=utf-8");
         try {
             members.update(auth.member_id, updates);
+            audit.log(req, app, "member.self_edit", "member", auth.member_id, auth.display_name, "Updated own profile");
             res.add_header("HX-Trigger", "{\"closeModal\":true,\"membersUpdated\":true}");
             res.code = 200;
         } catch (const std::exception& e) {
@@ -374,7 +375,9 @@ void register_member_routes(LugApp& app, MemberService& members, AttendanceRepos
 
         res.add_header("Content-Type", "text/html; charset=utf-8");
         try {
-            members.create(m);
+            auto created = members.create(m);
+            audit.log(req, app, "member.create", "member", created.id, created.display_name,
+                      "Created member: " + created.first_name + " " + created.last_name);
             res.add_header("HX-Trigger", "{\"closeModal\":true,\"membersUpdated\":true}");
             res.code = 200;
         } catch (const std::exception& e) {
@@ -425,10 +428,11 @@ void register_member_routes(LugApp& app, MemberService& members, AttendanceRepos
 
         res.add_header("Content-Type", "text/html; charset=utf-8");
         try {
-            members.update(static_cast<int64_t>(id), updates);
+            auto updated_m = members.update(static_cast<int64_t>(id), updates);
             std::string chapter_str = get_param("chapter_id");
             int64_t chapter_id = chapter_str.empty() ? 0 : std::stoll(chapter_str);
             members.set_chapter(static_cast<int64_t>(id), chapter_id);
+            audit.log(req, app, "member.update", "member", id, updated_m.display_name, "Updated member");
             res.add_header("HX-Trigger", "{\"closeModal\":true,\"membersUpdated\":true}");
             res.code = 200;
         } catch (const std::exception& e) {
@@ -484,7 +488,10 @@ void register_member_routes(LugApp& app, MemberService& members, AttendanceRepos
         if (!require_auth(req, res, app, "admin")) return res;
 
         try {
+            auto del_member = members.get(static_cast<int64_t>(id));
+            std::string del_name = del_member ? del_member->display_name : "ID:" + std::to_string(id);
             members.delete_member(static_cast<int64_t>(id));
+            audit.log(req, app, "member.delete", "member", id, del_name, "Deleted member");
             res.add_header("HX-Trigger", "membersUpdated");
             res.code = 200;
         } catch (const std::exception& e) {
@@ -508,6 +515,12 @@ void register_member_routes(LugApp& app, MemberService& members, AttendanceRepos
 
         try {
             members.set_paid(static_cast<int64_t>(id), is_paid, paid_until);
+            {
+                auto pm = members.get(static_cast<int64_t>(id));
+                std::string pname = pm ? pm->display_name : "ID:" + std::to_string(id);
+                audit.log(req, app, "member.dues", "member", id, pname,
+                          is_paid ? "Marked paid until " + paid_until : "Marked unpaid");
+            }
             res.add_header("HX-Trigger", "duesUpdated");
             res.code = 200;
         } catch (const std::exception& e) {

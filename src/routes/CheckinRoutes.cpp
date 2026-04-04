@@ -13,7 +13,8 @@ void register_checkin_routes(LugApp& app,
                               MemberRepository& member_repo,
                               ChapterMemberRepository& chapter_members,
                               DiscordOAuth& oauth,
-                              DiscordClient& discord) {
+                              DiscordClient& discord,
+                              AuditService& audit) {
 
     // POST /meetings/<id>/generate-checkin — generate or return existing QR check-in token
     CROW_ROUTE(app, "/meetings/<int>/generate-checkin").methods("POST"_method)(
@@ -161,6 +162,7 @@ void register_checkin_routes(LugApp& app,
                 checkin_msg = "You're already checked in!";
             } else {
                 attendance.check_in(mbr_id, entity_type, entity_id);
+                audit.log_system("checkin.discord", entity_type, entity_id, entity_title, "Discord check-in: " + auth_ctx.auth.display_name);
                 checkin_msg = "Welcome, " + auth_ctx.auth.display_name + "! You're checked in.";
             }
         }
@@ -248,6 +250,7 @@ void register_checkin_routes(LugApp& app,
         const char* virt_raw = params.get("is_virtual");
         bool is_virtual = virt_raw && std::string(virt_raw) == "1";
         attendance.check_in(member_id, entity_type, entity_id, "", is_virtual);
+        audit.log_system("checkin.select", entity_type, entity_id, "", "Select check-in: " + member->display_name);
 
         res.write("<div class=\"bg-green-50 border border-green-200 text-green-700 px-4 py-3 rounded text-sm\">"
                   + member->display_name + " checked in successfully!</div>");
@@ -302,6 +305,7 @@ void register_checkin_routes(LugApp& app,
                 const char* virt_raw = params.get("is_virtual");
                 bool is_virtual = virt_raw && std::string(virt_raw) == "1";
                 attendance.check_in(m.id, entity_type, entity_id, "", is_virtual);
+                audit.log_system("checkin.manual", entity_type, entity_id, "", "Manual check-in (existing): " + m.display_name);
                 res.write("<div class=\"bg-green-50 border border-green-200 text-green-700 px-4 py-3 rounded text-sm\">"
                           "Welcome back, " + m.display_name + "! Checked in successfully.</div>");
                 return res;
@@ -318,6 +322,7 @@ void register_checkin_routes(LugApp& app,
         const char* virt_raw = params.get("is_virtual");
         bool is_virtual = virt_raw && std::string(virt_raw) == "1";
         attendance.check_in(created.id, entity_type, entity_id, "", is_virtual);
+        audit.log_system("checkin.manual", entity_type, entity_id, "", "Manual check-in (new member): " + created.display_name);
 
         res.write("<div class=\"bg-green-50 border border-green-200 text-green-700 px-4 py-3 rounded text-sm\">"
                   "Welcome, " + created.display_name + "! You've been checked in.</div>");

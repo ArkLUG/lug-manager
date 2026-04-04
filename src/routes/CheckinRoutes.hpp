@@ -4,6 +4,7 @@
 #include "services/EventService.hpp"
 #include "services/AttendanceService.hpp"
 #include "services/MemberService.hpp"
+#include "services/AuditService.hpp"
 #include "repositories/MeetingRepository.hpp"
 #include "repositories/EventRepository.hpp"
 #include "repositories/ChapterMemberRepository.hpp"
@@ -20,4 +21,5 @@ void register_checkin_routes(LugApp& app,
                               MemberRepository& member_repo,
                               ChapterMemberRepository& chapter_members,
                               DiscordOAuth& oauth,
-                              DiscordClient& discord);
+                              DiscordClient& discord,
+                              AuditService& audit);

@@ -17,6 +17,8 @@
 #include "repositories/RoleMappingRepository.hpp"
 #include "repositories/ChapterMemberRepository.hpp"
 #include "repositories/PerkLevelRepository.hpp"
+#include "repositories/AuditLogRepository.hpp"
+#include "services/AuditService.hpp"
 #include "services/ChapterService.hpp"
 #include "services/MemberService.hpp"
 #include "services/MeetingService.hpp"
@@ -61,6 +63,7 @@ int main() {
         RoleMappingRepository   role_mapping_repo(db);
         ChapterMemberRepository chapter_member_repo(db);
         PerkLevelRepository     perk_level_repo(db);
+        AuditLogRepository      audit_log_repo(db);
 
         // Async thread pool for non-blocking Discord API calls
         ThreadPool pool(4);
@@ -133,6 +136,7 @@ int main() {
         MeetingService    meeting_service(meeting_repo, discord_client, calendar, &chapter_repo, &gcal_client);
         EventService      event_service(event_repo, discord_client, calendar, &chapter_repo, &gcal_client);
         AttendanceService attendance_service(attendance_repo, member_repo);
+        AuditService      audit_service(audit_log_repo);
 
         // Build the Crow app with AuthMiddleware
         LugApp app;
@@ -158,7 +162,8 @@ int main() {
             attendance_repo,
             member_repo,
             meeting_repo,
-            event_repo
+            event_repo,
+            audit_service
         };
         register_all_routes(app, svc);
 

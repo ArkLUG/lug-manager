@@ -7,7 +7,8 @@
 void register_role_routes(LugApp& app,
                            RoleMappingRepository& role_mappings,
                            ChapterService& chapters,
-                           DiscordClient& discord) {
+                           DiscordClient& discord,
+                           AuditService& audit) {
 
     // GET /api/discord/roles
     // Returns JSON array of Discord guild roles (for role mapping UI).
@@ -141,6 +142,8 @@ void register_role_routes(LugApp& app,
                 role_mappings.remove(gr.id);
             }
         }
+
+        audit.log(req, app, "roles.update", "settings", 0, "", "Updated role mappings");
 
         bool is_htmx = req.get_header_value("HX-Request") == "true";
         if (is_htmx) {

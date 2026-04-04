@@ -1,0 +1,105 @@
+<div class="max-w-4xl space-y-4" data-page-title="Audit Log">
+  <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+    <div>
+      <div class="flex items-center gap-3">
+        <a hx-get="/settings" hx-target="#main-content" hx-push-url="true" hx-swap="innerHTML"
+           class="text-sm text-gray-500 hover:text-gray-700 cursor-pointer">&larr; Settings</a>
+        <span class="text-gray-300">/</span>
+        <span class="text-sm font-medium text-gray-700">Audit Log</span>
+      </div>
+      <h2 class="text-xl font-bold text-gray-900 mt-1">Audit Log</h2>
+      <p class="text-sm text-gray-500">{{total_count}} entries</p>
+    </div>
+  </div>
+
+  <!-- Filters -->
+  <div class="flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
+    <input type="search" name="search" value="{{search}}" placeholder="Search actions, members, details..."
+           hx-get="/settings/audit" hx-target="#main-content" hx-swap="innerHTML" hx-push-url="true"
+           hx-trigger="input changed delay:300ms, search"
+           hx-include="this,[name=action_filter]"
+           class="flex-1 px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-yellow-400">
+    <select name="action_filter"
+            hx-get="/settings/audit" hx-target="#main-content" hx-swap="innerHTML" hx-push-url="true"
+            hx-trigger="change" hx-include="[name=search],this"
+            class="px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-yellow-400">
+      <option value="" {{^action_filter}}selected{{/action_filter}}>All actions</option>
+      <option value="member" {{#filter_member}}selected{{/filter_member}}>Members</option>
+      <option value="meeting" {{#filter_meeting}}selected{{/filter_meeting}}>Meetings</option>
+      <option value="event" {{#filter_event}}selected{{/filter_event}}>Events</option>
+      <option value="chapter" {{#filter_chapter}}selected{{/filter_chapter}}>Chapters</option>
+      <option value="attendance" {{#filter_attendance}}selected{{/filter_attendance}}>Attendance</option>
+      <option value="settings" {{#filter_settings}}selected{{/filter_settings}}>Settings</option>
+      <option value="sync" {{#filter_sync}}selected{{/filter_sync}}>Sync</option>
+      <option value="checkin" {{#filter_checkin}}selected{{/filter_checkin}}>Check-in</option>
+    </select>
+  </div>
+
+  <!-- Log table -->
+  <div class="bg-white rounded-xl border border-gray-200 overflow-hidden">
+    <div class="overflow-x-auto">
+      <table class="min-w-full text-sm">
+        <thead class="bg-gray-50 border-b border-gray-200">
+          <tr>
+            <th class="px-4 py-3 text-left font-medium text-gray-600">When</th>
+            <th class="px-4 py-3 text-left font-medium text-gray-600">Who</th>
+            <th class="px-4 py-3 text-left font-medium text-gray-600">Action</th>
+            <th class="px-4 py-3 text-left font-medium text-gray-600 hidden md:table-cell">Target</th>
+            <th class="px-4 py-3 text-left font-medium text-gray-600 hidden lg:table-cell">Details</th>
+          </tr>
+        </thead>
+        <tbody class="divide-y divide-gray-100">
+          {{#entries}}
+          <tr class="hover:bg-gray-50">
+            <td class="px-4 py-2.5 whitespace-nowrap text-xs text-gray-500">{{created_at}}</td>
+            <td class="px-4 py-2.5 whitespace-nowrap">
+              <span class="font-medium text-gray-800 text-sm">{{actor_name}}</span>
+            </td>
+            <td class="px-4 py-2.5 whitespace-nowrap">
+              <span class="px-2 py-0.5 rounded text-xs font-medium
+                {{#action_is_create}}bg-green-100 text-green-700{{/action_is_create}}
+                {{#action_is_delete}}bg-red-100 text-red-700{{/action_is_delete}}
+                {{#action_is_update}}bg-blue-100 text-blue-700{{/action_is_update}}
+                {{#action_is_other}}bg-gray-100 text-gray-600{{/action_is_other}}">{{action}}</span>
+            </td>
+            <td class="px-4 py-2.5 text-gray-600 hidden md:table-cell">
+              {{#entity_name}}{{entity_name}}{{/entity_name}}
+              {{^entity_name}}<span class="text-gray-300">&mdash;</span>{{/entity_name}}
+            </td>
+            <td class="px-4 py-2.5 text-xs text-gray-500 hidden lg:table-cell truncate max-w-xs">{{details}}</td>
+          </tr>
+          {{/entries}}
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  {{^entries}}
+  <div class="bg-white rounded-xl border border-dashed border-gray-300 p-8 text-center text-gray-400">
+    <p class="font-medium">No audit log entries found</p>
+  </div>
+  {{/entries}}
+
+  <!-- Pagination -->
+  <div class="flex items-center justify-between text-sm text-gray-500">
+    <span>Page {{page}} of {{total_pages}}</span>
+    <div class="flex items-center gap-2">
+      {{#has_prev}}
+      <button hx-get="/settings/audit?page={{prev_page}}&search={{search}}&action_filter={{action_filter}}"
+              hx-target="#main-content" hx-swap="innerHTML" hx-push-url="true"
+              class="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50">Previous</button>
+      {{/has_prev}}
+      {{^has_prev}}
+      <span class="px-4 py-2 border border-gray-200 rounded-lg text-gray-300 cursor-not-allowed">Previous</span>
+      {{/has_prev}}
+      {{#has_next}}
+      <button hx-get="/settings/audit?page={{next_page}}&search={{search}}&action_filter={{action_filter}}"
+              hx-target="#main-content" hx-swap="innerHTML" hx-push-url="true"
+              class="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50">Next</button>
+      {{/has_next}}
+      {{^has_next}}
+      <span class="px-4 py-2 border border-gray-200 rounded-lg text-gray-300 cursor-not-allowed">Next</span>
+      {{/has_next}}
+    </div>
+  </div>
+</div>

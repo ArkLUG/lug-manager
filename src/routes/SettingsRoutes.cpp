@@ -6,7 +6,7 @@ void register_settings_routes(LugApp& app, SettingsRepository& settings,
                                DiscordClient& discord, MemberSyncService& member_sync,
                                CalendarGenerator& calendar, GoogleCalendarClient& gcal,
                                EventService& events, MeetingService& meetings,
-                               MemberService& members) {
+                               MemberService& members, AuditService& audit) {
 
     // GET /api/discord/channel-options
     // Returns <option> elements for all text channels in the configured guild.
@@ -195,6 +195,8 @@ void register_settings_routes(LugApp& app, SettingsRepository& settings,
         }
 
         SyncResult r = member_sync.sync_from_guild();
+        audit.log(req, app, "sync.members", "settings", 0, "",
+                  "Member sync: " + std::to_string(r.imported) + " imported, " + std::to_string(r.updated) + " updated");
 
         std::ostringstream html;
         if (!r.error_message.empty()) {
@@ -503,6 +505,8 @@ void register_settings_routes(LugApp& app, SettingsRepository& settings,
         if (!gcal_sa_path.empty() && !gcal_cal_id.empty())
             gcal.reconfigure(gcal_sa_path, gcal_cal_id, timezone);
 
+        audit.log(req, app, "settings.update", "settings", 0, "", "Updated settings");
+
         bool is_htmx = req.get_header_value("HX-Request") == "true";
         if (is_htmx) {
             res.add_header("HX-Redirect", "/settings");
@@ -568,6 +572,8 @@ void register_settings_routes(LugApp& app, SettingsRepository& settings,
                     ++mtg_imported;
                 }
             }
+            audit.log(req, app, "sync.gcal_import", "settings", 0, "",
+                      std::to_string(ev_imported) + " events, " + std::to_string(mtg_imported) + " meetings imported, " + std::to_string(skipped) + " skipped");
             std::ostringstream html;
             html << "<span class=\"text-green-700 font-medium\">"
                  << ev_imported << " events, " << mtg_imported << " meetings imported, "
@@ -609,6 +615,8 @@ void register_settings_routes(LugApp& app, SettingsRepository& settings,
                  << " · Meetings: " << mtg_result.created << " created, " << mtg_result.synced << " updated"
                  << (mtg_result.errors > 0 ? ", <span class=\"text-red-600\">" + std::to_string(mtg_result.errors) + " errors</span>" : "")
                  << "</span>";
+            audit.log(req, app, "sync.gcal", "settings", 0, "",
+                      "Events: " + std::to_string(ev_result.created) + " created, " + std::to_string(ev_result.synced) + " updated; Meetings: " + std::to_string(mtg_result.created) + " created, " + std::to_string(mtg_result.synced) + " updated");
             res.write(html.str());
         } catch (const std::exception& ex) {
             res.write("<span class=\"text-red-600\">Error: " + std::string(ex.what()) + "</span>");
@@ -643,6 +651,8 @@ void register_settings_routes(LugApp& app, SettingsRepository& settings,
                  << " · Nicknames: " << nick_result.synced << " updated"
                  << (nick_result.errors > 0 ? ", <span class=\"text-red-600\">" + std::to_string(nick_result.errors) + " errors</span>" : "")
                  << "</span>";
+            audit.log(req, app, "sync.all", "settings", 0, "",
+                      "Events: " + std::to_string(ev_result.synced) + " synced, Meetings: " + std::to_string(mtg_result.synced) + " synced, Nicknames: " + std::to_string(nick_result.synced) + " updated");
             res.write(html.str());
         } catch (const std::exception& ex) {
             res.write("<span class=\"text-red-600\">Error: " + std::string(ex.what()) + "</span>");
@@ -664,6 +674,8 @@ void register_settings_routes(LugApp& app, SettingsRepository& settings,
         }
 
         auto result = members.regenerate_all_nicknames();
+        audit.log(req, app, "sync.regen_nicknames", "settings", 0, "",
+                  std::to_string(result.updated) + " regenerated, " + std::to_string(result.skipped) + " skipped");
         std::ostringstream html;
         html << "<div><span class=\"text-green-700 font-medium\">"
              << result.updated << " nicknames regenerated, "
@@ -720,6 +732,8 @@ void register_settings_routes(LugApp& app, SettingsRepository& settings,
 
         try {
             auto result = members.sync_nicknames_to_discord();
+            audit.log(req, app, "sync.nicknames", "settings", 0, "",
+                      "Nicknames: " + std::to_string(result.synced) + " updated, " + std::to_string(result.skipped) + " skipped");
             std::ostringstream html;
             html << "<div><span class=\"text-green-700 font-medium\">"
                  << "Nicknames: " << result.synced << " updated, "

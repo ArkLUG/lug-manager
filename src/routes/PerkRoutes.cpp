@@ -27,7 +27,8 @@ static std::optional<PerkLevel> compute_perk_level(
 void register_perk_routes(LugApp& app, PerkLevelRepository& perks,
                            AttendanceRepository& attendance,
                            MemberRepository& members,
-                           DiscordClient& discord) {
+                           DiscordClient& discord,
+                           AuditService& audit) {
 
     // GET /settings/perks — list perk levels for a year (admin only)
     CROW_ROUTE(app, "/settings/perks")([&](const crow::request& req) {
@@ -139,6 +140,7 @@ void register_perk_routes(LugApp& app, PerkLevelRepository& perks,
         }
 
         perks.create(p);
+        audit.log(req, app, "perk.create", "perk", 0, p.name, "Created perk level");
         res.add_header("HX-Redirect", "/settings/perks?year=" + std::to_string(p.year));
         res.code = 200;
         return res;
@@ -229,6 +231,7 @@ void register_perk_routes(LugApp& app, PerkLevelRepository& perks,
         try { p.sort_order = std::stoi(gp("sort_order")); } catch (...) {}
 
         perks.update(p);
+        audit.log(req, app, "perk.update", "perk", p.id, p.name, "Updated perk level");
         res.add_header("HX-Redirect", "/settings/perks");
         res.code = 200;
         return res;
@@ -241,6 +244,7 @@ void register_perk_routes(LugApp& app, PerkLevelRepository& perks,
         if (!require_auth(req, res, app, "admin")) return res;
 
         perks.remove(static_cast<int64_t>(id));
+        audit.log(req, app, "perk.delete", "perk", static_cast<int64_t>(id), "", "Deleted perk level");
         res.add_header("HX-Redirect", "/settings/perks");
         res.code = 200;
         return res;
@@ -277,6 +281,7 @@ void register_perk_routes(LugApp& app, PerkLevelRepository& perks,
         }
 
         perks.clone_year(source_year, target_year);
+        audit.log(req, app, "perk.clone", "perk", 0, "", "Cloned from year " + std::to_string(source_year) + " to year " + std::to_string(target_year));
         res.add_header("HX-Redirect", "/settings/perks?year=" + std::to_string(target_year));
         res.code = 200;
         return res;
@@ -332,6 +337,7 @@ void register_perk_routes(LugApp& app, PerkLevelRepository& perks,
             ++synced;
         }
 
+        audit.log(req, app, "perk.sync_roles", "perk", 0, "", "Synced " + std::to_string(synced) + " members");
         res.add_header("Content-Type", "text/html; charset=utf-8");
         res.write("<span class=\"text-green-600 text-xs\">Synced " +
                   std::to_string(synced) + " members.</span>");

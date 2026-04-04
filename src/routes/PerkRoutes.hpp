@@ -4,8 +4,10 @@
 #include "repositories/AttendanceRepository.hpp"
 #include "repositories/MemberRepository.hpp"
 #include "integrations/DiscordClient.hpp"
+#include "services/AuditService.hpp"
 
 void register_perk_routes(LugApp& app, PerkLevelRepository& perks,
                            AttendanceRepository& attendance,
                            MemberRepository& members,
-                           DiscordClient& discord);
+                           DiscordClient& discord,
+                           AuditService& audit);
