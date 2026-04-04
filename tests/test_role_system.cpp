@@ -522,34 +522,40 @@ TEST_F(MemberModelTest, PiiPublicDefaultsFalse) {
 
     auto found = members->find_by_id(created.id);
     ASSERT_TRUE(found.has_value());
-    EXPECT_EQ(found->pii_sharing, "none");
+    EXPECT_EQ(found->sharing_email, "none");
+    EXPECT_EQ(found->sharing_phone, "none");
+    EXPECT_EQ(found->sharing_discord, "none");
 }
 
-TEST_F(MemberModelTest, PiiSharingPersists) {
+TEST_F(MemberModelTest, PerFieldSharingPersists) {
     Member m;
     m.discord_user_id = "pii_pub";
     m.discord_username = "pii_pub";
     m.display_name = "PII Pub U.";
-    m.pii_sharing = "all";
+    m.sharing_email = "all";
+    m.sharing_phone = "verified";
+    m.sharing_address = "none";
+    m.sharing_birthday = "all";
+    m.sharing_discord = "verified";
     auto created = members->create(m);
 
     auto found = members->find_by_id(created.id);
     ASSERT_TRUE(found.has_value());
-    EXPECT_EQ(found->pii_sharing, "all");
+    EXPECT_EQ(found->sharing_email, "all");
+    EXPECT_EQ(found->sharing_phone, "verified");
+    EXPECT_EQ(found->sharing_address, "none");
+    EXPECT_EQ(found->sharing_birthday, "all");
+    EXPECT_EQ(found->sharing_discord, "verified");
 
-    // Change to verified
-    found->pii_sharing = "verified";
+    // Change some fields
+    found->sharing_email = "none";
+    found->sharing_discord = "all";
     members->update(*found);
     auto found2 = members->find_by_id(created.id);
     ASSERT_TRUE(found2.has_value());
-    EXPECT_EQ(found2->pii_sharing, "verified");
-
-    // Change to none
-    found2->pii_sharing = "none";
-    members->update(*found2);
-    auto found3 = members->find_by_id(created.id);
-    ASSERT_TRUE(found3.has_value());
-    EXPECT_EQ(found3->pii_sharing, "none");
+    EXPECT_EQ(found2->sharing_email, "none");
+    EXPECT_EQ(found2->sharing_phone, "verified"); // unchanged
+    EXPECT_EQ(found2->sharing_discord, "all");
 }
 
 TEST_F(MemberModelTest, MultipleNullDiscordIdsAllowed) {

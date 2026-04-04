@@ -197,9 +197,9 @@ protected:
         };
         register_all_routes(*app, svc);
 
-        // Pick a unique port using PID + test counter to avoid collisions in parallel runs
-        static std::atomic<int> port_counter{0};
-        port = 19000 + (static_cast<int>(getpid()) % 10000) + port_counter.fetch_add(1) * 100;
+        // Pick a unique port using PID to avoid collisions between parallel test binaries.
+        // Each test within a binary reuses the same port (sequential execution).
+        port = 19000 + (static_cast<int>(getpid()) % 10000);
         app->port(port).concurrency(1);
         server_thread = std::thread([this]() { app->run(); });
         // Wait for server to be ready

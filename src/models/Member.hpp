@@ -19,7 +19,12 @@ struct Member {
     std::string city;
     std::string state;
     std::string zip;
-    std::string pii_sharing       = "none";   // "none"|"verified"|"all" — who can see PII
+    // Per-field PII sharing: "none"|"verified"|"all" (empty = use DB default "none")
+    std::string sharing_email;
+    std::string sharing_phone;
+    std::string sharing_address;
+    std::string sharing_birthday;
+    std::string sharing_discord;
     std::string birthday;                   // "YYYY-MM-DD", empty if unknown
     std::string fol_status       = "afol";  // "kfol"|"tfol"|"afol"
     int64_t     chapter_id        = 0;       // FK to chapters, 0 if not in a chapter

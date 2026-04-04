@@ -33,29 +33,35 @@
     </div>
     {{/chapter_id_str}}
 
-    <!-- PII: shown if member opted in or viewer has permission -->
-    {{#show_pii}}
+    <!-- Per-field PII visibility -->
+    {{#show_discord}}
     {{#discord_username}}
     <div class="grid grid-cols-3 gap-1">
       <dt class="text-gray-500 font-medium">Discord</dt>
       <dd class="col-span-2 text-gray-800">@{{discord_username}}</dd>
     </div>
     {{/discord_username}}
+    {{/show_discord}}
 
+    {{#show_email}}
     {{#email}}
     <div class="grid grid-cols-3 gap-1">
       <dt class="text-gray-500 font-medium">Email</dt>
       <dd class="col-span-2 text-gray-800">{{email}}</dd>
     </div>
     {{/email}}
+    {{/show_email}}
 
+    {{#show_phone}}
     {{#phone}}
     <div class="grid grid-cols-3 gap-1">
       <dt class="text-gray-500 font-medium">Phone</dt>
       <dd class="col-span-2 text-gray-800">{{phone}}</dd>
     </div>
     {{/phone}}
+    {{/show_phone}}
 
+    {{#show_address}}
     {{#address_line1}}
     <div class="grid grid-cols-3 gap-1">
       <dt class="text-gray-500 font-medium">Address</dt>
@@ -66,20 +72,22 @@
       </dd>
     </div>
     {{/address_line1}}
+    {{/show_address}}
 
+    {{#show_birthday}}
     {{#birthday}}
     <div class="grid grid-cols-3 gap-1">
       <dt class="text-gray-500 font-medium">Birthday</dt>
       <dd class="col-span-2 text-gray-800">{{birthday}}</dd>
     </div>
     {{/birthday}}
-    {{/show_pii}}
+    {{/show_birthday}}
 
-    {{^show_pii}}
+    {{^show_any_pii}}
     <div class="text-xs text-gray-400 italic py-2">
-      This member's contact info is not visible to you.
+      This member has not shared any contact info with you.
     </div>
-    {{/show_pii}}
+    {{/show_any_pii}}
 
     <!-- Dues: shown to chapter leads+ or self -->
     {{#show_dues}}

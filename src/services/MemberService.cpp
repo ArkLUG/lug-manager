@@ -133,7 +133,12 @@ Member MemberService::update(int64_t id, const Member& updates) {
     m.state        = normalize_state(updates.state);
     m.zip          = normalize_zip(updates.zip);
     m.birthday     = updates.birthday;
-    if (!updates.pii_sharing.empty()) m.pii_sharing = updates.pii_sharing;
+    // Per-field sharing: only update if explicitly set (non-empty and not "none" default)
+    if (!updates.sharing_email.empty())    m.sharing_email    = updates.sharing_email;
+    if (!updates.sharing_phone.empty())    m.sharing_phone    = updates.sharing_phone;
+    if (!updates.sharing_address.empty())  m.sharing_address  = updates.sharing_address;
+    if (!updates.sharing_birthday.empty()) m.sharing_birthday = updates.sharing_birthday;
+    if (!updates.sharing_discord.empty())  m.sharing_discord  = updates.sharing_discord;
     if (!updates.fol_status.empty()) m.fol_status = updates.fol_status;
 
     // Regenerate display_name if first/last names are set

@@ -383,7 +383,7 @@ TEST_F(IntegrationTest, ChapterLeadCanSeePII) {
 TEST_F(IntegrationTest, MemberCannotSeePIIWhenNotPublic) {
     auto admin = member_repo->find_by_id(admin_member_id);
     admin->email = "hidden_pii@example.com";
-    admin->pii_sharing = "none";
+    admin->sharing_email = "none";
     member_repo->update(*admin);
 
     auto r = POST("/api/members/datatable", "draw=1&start=0&length=25&search=", member_token);
@@ -392,10 +392,10 @@ TEST_F(IntegrationTest, MemberCannotSeePIIWhenNotPublic) {
 }
 
 TEST_F(IntegrationTest, MemberCanSeePIIWhenPublic) {
-    // Set admin member's PII to all
+    // Set admin member's email sharing to all
     auto admin = member_repo->find_by_id(admin_member_id);
     admin->email = "public_pii@example.com";
-    admin->pii_sharing = "all";
+    admin->sharing_email = "all";
     member_repo->update(*admin);
 
     // Regular member should now see the email
@@ -404,7 +404,7 @@ TEST_F(IntegrationTest, MemberCanSeePIIWhenPublic) {
     expect_contains(r, "public_pii@example.com");
 
     // Clean up
-    admin->pii_sharing = "none";
+    admin->sharing_email = "none";
     member_repo->update(*admin);
 }
 
@@ -412,8 +412,7 @@ TEST_F(IntegrationTest, MemberCreateWithContactFields) {
     auto r = POST("/members",
         "first_name=Contact&last_name=Test&discord_user_id=contact-int-test"
         "&discord_username=contacttest&role=member"
-        "&phone=(555)+999-0000&address_line1=456+Oak+St&city=Conway&state=AR&zip=72032"
-        "&pii_sharing=all",
+        "&phone=(555)+999-0000&address_line1=456+Oak+St&city=Conway&state=AR&zip=72032",
         admin_token);
     EXPECT_EQ(r.code, 200);
 
@@ -426,7 +425,251 @@ TEST_F(IntegrationTest, MemberCreateWithContactFields) {
     EXPECT_EQ(it->city, "Conway");
     EXPECT_EQ(it->state, "AR");
     EXPECT_EQ(it->zip, "72032");
-    EXPECT_EQ(it->pii_sharing, "all");
+    // Sharing defaults to "none" — only member can change via self-edit
+    EXPECT_EQ(it->sharing_email, "none");
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// Per-field PII sharing
+// ═══════════════════════════════════════════════════════════════════════════
+
+TEST_F(IntegrationTest, PIISharingDefaultsToNoneOnCreate) {
+    auto r = POST("/members",
+        "first_name=PiiDef&last_name=Test&discord_user_id=piidef-001&discord_username=piidef&role=member",
+        admin_token);
+    EXPECT_EQ(r.code, 200);
+    auto m = member_repo->find_by_discord_id("piidef-001");
+    ASSERT_TRUE(m.has_value());
+    EXPECT_EQ(m->sharing_email, "none");
+    EXPECT_EQ(m->sharing_phone, "none");
+    EXPECT_EQ(m->sharing_address, "none");
+    EXPECT_EQ(m->sharing_birthday, "none");
+    EXPECT_EQ(m->sharing_discord, "none");
+}
+
+TEST_F(IntegrationTest, SelfEditCanChangePerFieldSharing) {
+    auto r = POST("/members/me",
+        "first_name=Regular&last_name=User"
+        "&sharing_email=all&sharing_phone=verified&sharing_address=none"
+        "&sharing_birthday=all&sharing_discord=verified",
+        member_token);
+    EXPECT_EQ(r.code, 200);
+
+    auto m = member_repo->find_by_id(regular_member_id);
+    ASSERT_TRUE(m.has_value());
+    EXPECT_EQ(m->sharing_email, "all");
+    EXPECT_EQ(m->sharing_phone, "verified");
+    EXPECT_EQ(m->sharing_address, "none");
+    EXPECT_EQ(m->sharing_birthday, "all");
+    EXPECT_EQ(m->sharing_discord, "verified");
+
+    // Reset
+    m->sharing_email = "none"; m->sharing_phone = "none";
+    m->sharing_birthday = "none"; m->sharing_discord = "none";
+    member_repo->update(*m);
+}
+
+TEST_F(IntegrationTest, AdminCannotChangeSharingViaEditForm) {
+    // Set sharing via direct DB first
+    auto m = member_repo->find_by_id(regular_member_id);
+    m->sharing_email = "all";
+    member_repo->update(*m);
+
+    // Admin edits the member — sharing should not change
+    auto r = POST("/members/" + std::to_string(regular_member_id),
+        "first_name=Regular&last_name=User&discord_username=regular_user&role=member",
+        admin_token);
+    EXPECT_EQ(r.code, 200);
+
+    auto after = member_repo->find_by_id(regular_member_id);
+    EXPECT_EQ(after->sharing_email, "all"); // preserved, not reset to none
+
+    // Clean up
+    after->sharing_email = "none";
+    member_repo->update(*after);
+}
+
+TEST_F(IntegrationTest, DatatableRespectsPerFieldSharing) {
+    // Set admin: email=all, discord=none
+    auto admin = member_repo->find_by_id(admin_member_id);
+    admin->email = "perfield@example.com";
+    admin->discord_username = "secret_discord";
+    admin->sharing_email = "all";
+    admin->sharing_discord = "none";
+    member_repo->update(*admin);
+
+    // Regular member should see email but NOT discord
+    auto r = POST("/api/members/datatable", "draw=1&start=0&length=25&search=", member_token);
+    EXPECT_EQ(r.code, 200);
+    expect_contains(r, "perfield@example.com");
+    expect_not_contains(r, "secret_discord");
+
+    // Clean up
+    admin->sharing_email = "none";
+    admin->email = "";
+    admin->discord_username = "admin_user";
+    member_repo->update(*admin);
+}
+
+TEST_F(IntegrationTest, ViewModalRespectsPerFieldSharing) {
+    auto admin = member_repo->find_by_id(admin_member_id);
+    admin->email = "view_email@test.com";
+    admin->phone = "(555) 111-2222";
+    admin->sharing_email = "all";
+    admin->sharing_phone = "none";
+    member_repo->update(*admin);
+
+    // Regular member views admin's profile
+    auto r = GET("/members/" + std::to_string(admin_member_id) + "/view", member_token);
+    EXPECT_EQ(r.code, 200);
+    expect_contains(r, "view_email@test.com"); // email shared
+    expect_not_contains(r, "(555) 111-2222");  // phone not shared
+
+    // Clean up
+    admin->sharing_email = "none";
+    admin->email = "";
+    admin->phone = "";
+    member_repo->update(*admin);
+}
+
+TEST_F(IntegrationTest, VerifiedSharingShowsToAttendees) {
+    // Set admin's email to verified-only
+    auto admin = member_repo->find_by_id(admin_member_id);
+    admin->email = "verified_only@test.com";
+    admin->sharing_email = "verified";
+    member_repo->update(*admin);
+
+    // Create a meeting and check in the regular member (makes them verified)
+    Meeting mtg;
+    mtg.title = "Verify Meeting";
+    mtg.start_time = "2026-01-01T19:00:00";
+    mtg.end_time = "2026-01-01T21:00:00";
+    mtg.scope = "lug_wide";
+    auto created = meeting_repo->create(mtg);
+    attendance_repo->check_in(regular_member_id, "meeting", created.id);
+
+    // Regular member (now verified) should see the email
+    auto r = POST("/api/members/datatable", "draw=1&start=0&length=25&search=", member_token);
+    EXPECT_EQ(r.code, 200);
+    expect_contains(r, "verified_only@test.com");
+
+    // Clean up
+    attendance_repo->check_out(regular_member_id, "meeting", created.id);
+    admin->sharing_email = "none";
+    admin->email = "";
+    member_repo->update(*admin);
+}
+
+TEST_F(IntegrationTest, VerifiedSharingHidesFromUnverified) {
+    auto admin = member_repo->find_by_id(admin_member_id);
+    admin->email = "unverified_hidden@test.com";
+    admin->sharing_email = "verified";
+    member_repo->update(*admin);
+
+    // Create a brand new member with no attendance
+    Member newm;
+    newm.discord_user_id = "unverified-001";
+    newm.discord_username = "unverified";
+    newm.display_name = "Unverified U.";
+    newm.role = "member";
+    auto created = member_repo->create(newm);
+    auto unverified_token = session_store->create(created.id, "member", created.display_name);
+
+    // Unverified member should NOT see the email
+    auto r = POST("/api/members/datatable", "draw=1&start=0&length=25&search=", unverified_token);
+    EXPECT_EQ(r.code, 200);
+    expect_not_contains(r, "unverified_hidden@test.com");
+
+    // Clean up
+    admin->sharing_email = "none";
+    admin->email = "";
+    member_repo->update(*admin);
+}
+
+TEST_F(IntegrationTest, AdminAlwaysSeesAllPIIRegardlessOfSharing) {
+    auto reg = member_repo->find_by_id(regular_member_id);
+    reg->email = "admin_sees_all@test.com";
+    reg->discord_username = "admin_sees_discord";
+    reg->sharing_email = "none";
+    reg->sharing_discord = "none";
+    member_repo->update(*reg);
+
+    // Admin should see everything regardless of sharing settings
+    auto r = POST("/api/members/datatable", "draw=1&start=0&length=25&search=", admin_token);
+    EXPECT_EQ(r.code, 200);
+    expect_contains(r, "admin_sees_all@test.com");
+    expect_contains(r, "admin_sees_discord");
+
+    // Clean up
+    reg->email = "";
+    reg->discord_username = "regular_user";
+    member_repo->update(*reg);
+}
+
+TEST_F(IntegrationTest, MemberCanSeeOwnPIIInViewModal) {
+    auto reg = member_repo->find_by_id(regular_member_id);
+    reg->email = "self_view@test.com";
+    reg->sharing_email = "none";
+    member_repo->update(*reg);
+
+    // Member views their own profile — should see their own PII regardless of sharing
+    auto r = GET("/members/" + std::to_string(regular_member_id) + "/view", member_token);
+    EXPECT_EQ(r.code, 200);
+    expect_contains(r, "self_view@test.com");
+
+    // Clean up
+    reg->email = "";
+    member_repo->update(*reg);
+}
+
+TEST_F(IntegrationTest, VirtualAttendanceDoesNotCountAsVerified) {
+    auto admin = member_repo->find_by_id(admin_member_id);
+    admin->email = "virtual_no_verify@test.com";
+    admin->sharing_email = "verified";
+    member_repo->update(*admin);
+
+    // Create a member who only attended virtually
+    Member vm;
+    vm.discord_user_id = "virtual-only-001";
+    vm.discord_username = "virtualonly";
+    vm.display_name = "Virtual U.";
+    vm.role = "member";
+    auto created = member_repo->create(vm);
+    auto virt_token = session_store->create(created.id, "member", created.display_name);
+
+    // Check in virtually
+    Meeting mtg;
+    mtg.title = "Virtual Only Meeting";
+    mtg.start_time = "2026-02-01T19:00:00";
+    mtg.end_time = "2026-02-01T21:00:00";
+    mtg.scope = "lug_wide";
+    auto mtg_created = meeting_repo->create(mtg);
+    attendance_repo->check_in(created.id, "meeting", mtg_created.id, "", true); // virtual=true
+
+    // Virtual-only member should NOT see verified-only PII
+    auto r = POST("/api/members/datatable", "draw=1&start=0&length=25&search=", virt_token);
+    EXPECT_EQ(r.code, 200);
+    expect_not_contains(r, "virtual_no_verify@test.com");
+
+    // Clean up
+    admin->sharing_email = "none";
+    admin->email = "";
+    member_repo->update(*admin);
+}
+
+TEST_F(IntegrationTest, ChapterLeadAlwaysSeesAllPII) {
+    auto reg = member_repo->find_by_id(regular_member_id);
+    reg->email = "lead_sees@test.com";
+    reg->sharing_email = "none";
+    member_repo->update(*reg);
+
+    auto r = POST("/api/members/datatable", "draw=1&start=0&length=25&search=", chapter_lead_token);
+    EXPECT_EQ(r.code, 200);
+    expect_contains(r, "lead_sees@test.com");
+
+    // Clean up
+    reg->email = "";
+    member_repo->update(*reg);
 }
 
 TEST_F(IntegrationTest, MemberEditFormAdminOnly) {

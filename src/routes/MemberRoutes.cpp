@@ -29,10 +29,17 @@ static crow::mustache::context member_to_ctx(const Member& m) {
     ctx["fol_kfol"]          = m.fol_status == "kfol";
     ctx["fol_tfol"]          = m.fol_status == "tfol";
     ctx["fol_afol"]          = m.fol_status == "afol" || m.fol_status.empty();
-    ctx["pii_sharing"]        = m.pii_sharing;
-    ctx["pii_none"]           = (m.pii_sharing == "none" || m.pii_sharing.empty());
-    ctx["pii_verified"]       = (m.pii_sharing == "verified");
-    ctx["pii_all"]            = (m.pii_sharing == "all");
+    auto sharing_ctx = [&](const std::string& prefix, const std::string& val) {
+        ctx[prefix]               = val;
+        ctx[prefix + "_none"]     = (val == "none" || val.empty());
+        ctx[prefix + "_verified"] = (val == "verified");
+        ctx[prefix + "_all"]      = (val == "all");
+    };
+    sharing_ctx("sharing_email",    m.sharing_email);
+    sharing_ctx("sharing_phone",    m.sharing_phone);
+    sharing_ctx("sharing_address",  m.sharing_address);
+    sharing_ctx("sharing_birthday", m.sharing_birthday);
+    sharing_ctx("sharing_discord",  m.sharing_discord);
     ctx["phone"]             = m.phone;
     ctx["address_line1"]     = m.address_line1;
     ctx["address_line2"]     = m.address_line2;
@@ -145,16 +152,17 @@ void register_member_routes(LugApp& app, MemberService& members, AttendanceRepos
         for (size_t i = 0; i < result.data.size(); ++i) {
             if (i > 0) json << ",";
             const auto& m = result.data[i];
-            bool show_pii = role_can_see_pii
-                          || m.pii_sharing == "all"
-                          || (m.pii_sharing == "verified" && viewer_is_verified);
+            auto can_see = [&](const std::string& sharing) {
+                return role_can_see_pii || sharing == "all"
+                    || (sharing == "verified" && viewer_is_verified);
+            };
             json << "{\"DT_RowId\":\"member-row-" << m.id << "\""
                  << ",\"id\":"               << m.id
                  << ",\"display_name\":\""   << esc_json(m.display_name) << "\""
                  << ",\"first_name\":\""     << esc_json(m.first_name) << "\""
                  << ",\"last_name\":\""      << esc_json(m.last_name) << "\""
-                 << ",\"discord_username\":\"" << (show_pii ? esc_json(m.discord_username) : "") << "\""
-                 << ",\"email\":\""          << (show_pii ? esc_json(m.email) : "") << "\""
+                 << ",\"discord_username\":\"" << (can_see(m.sharing_discord) ? esc_json(m.discord_username) : "") << "\""
+                 << ",\"email\":\""          << (can_see(m.sharing_email) ? esc_json(m.email) : "") << "\""
                  << ",\"is_paid\":"          << (can_see_dues ? (m.is_paid ? "true" : "false") : "null")
                  << ",\"paid_until\":\""     << (can_see_dues ? esc_json(m.paid_until) : "") << "\""
                  << ",\"role\":\""           << esc_json(m.role) << "\""
@@ -223,9 +231,16 @@ void register_member_routes(LugApp& app, MemberService& members, AttendanceRepos
         updates.state          = get_param("state");
         updates.zip            = get_param("zip");
         updates.birthday       = get_param("birthday");
-                {
-            std::string ps = get_param("pii_sharing");
-            updates.pii_sharing = (ps == "verified" || ps == "all") ? ps : "none";
+        {
+            auto parse_sharing = [&](const char* name) -> std::string {
+                std::string v = get_param(name);
+                return (v == "verified" || v == "all") ? v : "none";
+            };
+            updates.sharing_email    = parse_sharing("sharing_email");
+            updates.sharing_phone    = parse_sharing("sharing_phone");
+            updates.sharing_address  = parse_sharing("sharing_address");
+            updates.sharing_birthday = parse_sharing("sharing_birthday");
+            updates.sharing_discord  = parse_sharing("sharing_discord");
         }
 
         res.add_header("Content-Type", "text/html; charset=utf-8");
@@ -256,17 +271,26 @@ void register_member_routes(LugApp& app, MemberService& members, AttendanceRepos
         }
 
         auto& auth = app.get_context<AuthMiddleware>(req).auth;
-        bool viewer_verified = auth.is_chapter_lead() || attendance_repo.is_verified_member(auth.member_id);
-        bool show_pii = auth.is_chapter_lead()
-                      || m->pii_sharing == "all"
-                      || (m->pii_sharing == "verified" && viewer_verified);
-        bool show_dues = auth.is_chapter_lead();
+        bool privileged = auth.is_chapter_lead();
+        bool viewer_verified = privileged || attendance_repo.is_verified_member(auth.member_id);
         bool is_self = (auth.member_id == m->id);
 
+        auto can_see = [&](const std::string& sharing) {
+            return is_self || privileged || sharing == "all"
+                || (sharing == "verified" && viewer_verified);
+        };
+
         auto ctx = member_to_ctx(*m);
-        ctx["show_pii"]  = show_pii || is_self;
-        ctx["show_dues"] = show_dues || is_self;
-        ctx["is_self"]   = is_self;
+        ctx["show_email"]    = can_see(m->sharing_email);
+        ctx["show_phone"]    = can_see(m->sharing_phone);
+        ctx["show_address"]  = can_see(m->sharing_address);
+        ctx["show_birthday"] = can_see(m->sharing_birthday);
+        ctx["show_discord"]  = can_see(m->sharing_discord);
+        ctx["show_any_pii"]  = can_see(m->sharing_email) || can_see(m->sharing_phone)
+                             || can_see(m->sharing_address) || can_see(m->sharing_birthday)
+                             || can_see(m->sharing_discord);
+        ctx["show_dues"]     = privileged || is_self;
+        ctx["is_self"]       = is_self;
 
         res.add_header("Content-Type", "text/html; charset=utf-8");
         auto tmpl = crow::mustache::load("members/_view.html");
@@ -346,10 +370,7 @@ void register_member_routes(LugApp& app, MemberService& members, AttendanceRepos
         m.city             = get_param("city");
         m.state            = get_param("state");
         m.zip              = get_param("zip");
-        {
-            std::string ps = get_param("pii_sharing");
-            m.pii_sharing = (ps == "verified" || ps == "all") ? ps : "none";
-        }
+        // PII sharing defaults to "none" — only the member can change via self-edit
 
         res.add_header("Content-Type", "text/html; charset=utf-8");
         try {
@@ -396,10 +417,7 @@ void register_member_routes(LugApp& app, MemberService& members, AttendanceRepos
         updates.city             = get_param("city");
         updates.state            = get_param("state");
         updates.zip              = get_param("zip");
-        {
-            std::string ps = get_param("pii_sharing");
-            updates.pii_sharing = (ps == "verified" || ps == "all") ? ps : "none";
-        }
+        // PII sharing settings are NOT editable by admins — only the member can change their own
 
         std::string paid_until = get_param("paid_until");
         updates.paid_until = paid_until;

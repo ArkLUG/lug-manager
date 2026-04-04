@@ -99,9 +99,9 @@ int AttendanceRepository::count_by_entity(const std::string& entity_type, int64_
 }
 
 bool AttendanceRepository::is_verified_member(int64_t member_id) {
-    // Verified = has attended any meeting/event OR has ever been marked as paid
+    // Verified = has attended any meeting/event IN PERSON (not virtual) OR has ever been marked as paid
     auto stmt = db_.prepare(
-        "SELECT EXISTS(SELECT 1 FROM attendance WHERE member_id=?) "
+        "SELECT EXISTS(SELECT 1 FROM attendance WHERE member_id=? AND is_virtual=0) "
         "OR EXISTS(SELECT 1 FROM members WHERE id=? AND is_paid=1)");
     stmt.bind(1, member_id);
     stmt.bind(2, member_id);
