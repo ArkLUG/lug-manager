@@ -167,7 +167,8 @@ void register_settings_routes(LugApp& app, SettingsRepository& settings,
             html << "<span class=\"text-red-600 font-medium\">Error: "
                  << r.error_message << "</span>";
         } else {
-            html << "<span class=\"text-green-700 font-medium\">"
+            html << "<div>"
+                 << "<span class=\"text-green-700 font-medium\">"
                  << "Sync complete &mdash; "
                  << r.imported << " imported, "
                  << r.updated  << " updated, "
@@ -175,10 +176,127 @@ void register_settings_routes(LugApp& app, SettingsRepository& settings,
             if (r.errors > 0)
                 html << ", <span class=\"text-red-600\">" << r.errors << " errors</span>";
             html << "</span>";
+
+            if (!r.changes.empty()) {
+                html << "<details class=\"mt-3\">"
+                     << "<summary class=\"cursor-pointer text-sm text-indigo-600 hover:text-indigo-800 font-medium\">"
+                     << "Show details (" << r.changes.size() << " change" << (r.changes.size() != 1 ? "s" : "") << ")"
+                     << "</summary>"
+                     << "<div class=\"mt-2 border border-gray-200 rounded-lg overflow-hidden\">"
+                     << "<table class=\"min-w-full text-xs\">"
+                     << "<thead class=\"bg-gray-50\">"
+                     << "<tr><th class=\"px-3 py-2 text-left text-gray-600\">Member</th>"
+                     << "<th class=\"px-3 py-2 text-left text-gray-600\">Change</th>"
+                     << "<th class=\"px-3 py-2 text-left text-gray-600\">From</th>"
+                     << "<th class=\"px-3 py-2 text-left text-gray-600\">To</th>"
+                     << "<th class=\"px-3 py-2\"></th></tr></thead><tbody>";
+
+                for (const auto& c : r.changes) {
+                    html << "<tr class=\"border-t border-gray-100\" id=\"sync-change-" << c.member_id << "-" << c.field << "\">";
+                    html << "<td class=\"px-3 py-2 text-gray-900\">" << c.member_name << "</td>";
+
+                    if (c.change_type == "created") {
+                        html << "<td class=\"px-3 py-2\"><span class=\"inline-flex items-center px-1.5 py-0.5 rounded bg-green-100 text-green-700\">new member</span></td>"
+                             << "<td class=\"px-3 py-2 text-gray-400\">&mdash;</td>"
+                             << "<td class=\"px-3 py-2 text-gray-400\">&mdash;</td>"
+                             << "<td class=\"px-3 py-2 text-right\">"
+                             << "<button hx-post=\"/api/discord/revert-sync-change\" "
+                             << "hx-vals='{\"member_id\": " << c.member_id << ", \"change_type\": \"created\"}' "
+                             << "hx-target=\"#sync-change-" << c.member_id << "-\" "
+                             << "hx-swap=\"outerHTML\" "
+                             << "class=\"text-red-600 hover:text-red-800 font-medium\">Delete</button></td>";
+                    } else {
+                        std::string label = c.field;
+                        if (c.field == "discord_username") label = "username";
+                        else if (c.field == "display_name") label = "display name";
+                        else if (c.field == "chapter_role") label = "chapter role";
+
+                        html << "<td class=\"px-3 py-2\"><span class=\"inline-flex items-center px-1.5 py-0.5 rounded bg-blue-100 text-blue-700\">" << label << "</span></td>"
+                             << "<td class=\"px-3 py-2 text-gray-500 font-mono\">" << c.old_value << "</td>"
+                             << "<td class=\"px-3 py-2 text-gray-900 font-mono\">" << c.new_value << "</td>"
+                             << "<td class=\"px-3 py-2 text-right\">"
+                             << "<button hx-post=\"/api/discord/revert-sync-change\" "
+                             << "hx-vals='{\"member_id\": " << c.member_id
+                             << ", \"change_type\": \"" << c.change_type
+                             << "\", \"field\": \"" << c.field
+                             << "\", \"old_value\": \"" << c.old_value << "\"}' "
+                             << "hx-target=\"#sync-change-" << c.member_id << "-" << c.field << "\" "
+                             << "hx-swap=\"outerHTML\" "
+                             << "hx-confirm=\"Revert " << label << " for " << c.member_name << "?\" "
+                             << "class=\"text-amber-600 hover:text-amber-800 font-medium\">Revert</button></td>";
+                    }
+                    html << "</tr>";
+                }
+
+                html << "</tbody></table></div></details>";
+            }
+            html << "</div>";
         }
 
         res.add_header("Content-Type", "text/html; charset=utf-8");
         res.write(html.str());
+        return res;
+    });
+
+    // POST /api/discord/revert-sync-change - revert a single member sync change
+    CROW_ROUTE(app, "/api/discord/revert-sync-change").methods("POST"_method)(
+        [&](const crow::request& req) {
+        crow::response res;
+        auto& ctx = app.get_context<AuthMiddleware>(req);
+        if (ctx.auth.role != "admin") {
+            res.code = 403;
+            res.write(R"(<span class="text-red-600">Forbidden</span>)");
+            res.add_header("Content-Type", "text/html; charset=utf-8");
+            return res;
+        }
+
+        auto body = crow::query_string("?" + req.body);
+        int64_t member_id = 0;
+        std::string change_type, field, old_value;
+
+        if (auto v = body.get("member_id"))  member_id = std::stoll(v);
+        if (auto v = body.get("change_type")) change_type = v;
+        if (auto v = body.get("field"))       field = v;
+        if (auto v = body.get("old_value"))   old_value = v;
+
+        if (member_id == 0) {
+            res.write(R"(<tr class="border-t border-gray-100"><td colspan="5" class="px-3 py-2 text-red-600">Invalid member ID</td></tr>)");
+            res.add_header("Content-Type", "text/html; charset=utf-8");
+            return res;
+        }
+
+        auto member = members.get(member_id);
+
+        if (change_type == "created") {
+            // Revert creation = delete the member
+            members.delete_member(member_id);
+            res.write(R"(<tr class="border-t border-gray-100 bg-red-50"><td colspan="5" class="px-3 py-2 text-red-700 text-center">Member deleted</td></tr>)");
+            res.add_header("Content-Type", "text/html; charset=utf-8");
+            return res;
+        }
+
+        if (!member) {
+            res.write(R"(<tr class="border-t border-gray-100"><td colspan="5" class="px-3 py-2 text-red-600">Member not found</td></tr>)");
+            res.add_header("Content-Type", "text/html; charset=utf-8");
+            return res;
+        }
+
+        Member m = *member;
+        if (field == "discord_username")    m.discord_username = old_value;
+        else if (field == "display_name")   m.display_name = old_value;
+        else if (field == "role")           m.role = old_value;
+
+        members.update(member_id, m);
+
+        std::string label = field;
+        if (field == "discord_username") label = "username";
+        else if (field == "display_name") label = "display name";
+
+        res.write("<tr class=\"border-t border-gray-100 bg-amber-50\">"
+                  "<td colspan=\"5\" class=\"px-3 py-2 text-amber-700 text-center\">"
+                  "Reverted " + label + " for " + m.display_name + " back to &ldquo;" + old_value + "&rdquo;"
+                  "</td></tr>");
+        res.add_header("Content-Type", "text/html; charset=utf-8");
         return res;
     });
 
@@ -513,10 +631,42 @@ void register_settings_routes(LugApp& app, SettingsRepository& settings,
 
         auto result = members.regenerate_all_nicknames();
         std::ostringstream html;
-        html << "<span class=\"text-green-700 font-medium\">"
+        html << "<div><span class=\"text-green-700 font-medium\">"
              << result.updated << " nicknames regenerated, "
              << result.skipped << " skipped (no first/last name or unchanged)"
              << "</span>";
+
+        if (!result.changes.empty()) {
+            html << "<details class=\"mt-3\">"
+                 << "<summary class=\"cursor-pointer text-sm text-indigo-600 hover:text-indigo-800 font-medium\">"
+                 << "Show details (" << result.changes.size() << " change" << (result.changes.size() != 1 ? "s" : "") << ")"
+                 << "</summary>"
+                 << "<div class=\"mt-2 border border-gray-200 rounded-lg overflow-hidden\">"
+                 << "<table class=\"min-w-full text-xs\">"
+                 << "<thead class=\"bg-gray-50\">"
+                 << "<tr><th class=\"px-3 py-2 text-left text-gray-600\">Old Name</th>"
+                 << "<th class=\"px-3 py-2 text-left text-gray-600\">New Name</th>"
+                 << "<th class=\"px-3 py-2\"></th></tr></thead><tbody>";
+
+            for (const auto& c : result.changes) {
+                html << "<tr class=\"border-t border-gray-100\" id=\"nick-change-" << c.member_id << "\">"
+                     << "<td class=\"px-3 py-2 text-gray-500 font-mono\">" << c.old_name << "</td>"
+                     << "<td class=\"px-3 py-2 text-gray-900 font-mono\">" << c.new_name << "</td>"
+                     << "<td class=\"px-3 py-2 text-right\">"
+                     << "<button hx-post=\"/api/discord/revert-sync-change\" "
+                     << "hx-vals='{\"member_id\": " << c.member_id
+                     << ", \"change_type\": \"updated\", \"field\": \"display_name\""
+                     << ", \"old_value\": \"" << c.old_name << "\"}' "
+                     << "hx-target=\"#nick-change-" << c.member_id << "\" "
+                     << "hx-swap=\"outerHTML\" "
+                     << "hx-confirm=\"Revert nickname for " << c.new_name << "?\" "
+                     << "class=\"text-amber-600 hover:text-amber-800 font-medium\">Revert</button></td>"
+                     << "</tr>";
+            }
+
+            html << "</tbody></table></div></details>";
+        }
+        html << "</div>";
         res.write(html.str());
         res.add_header("Content-Type", "text/html; charset=utf-8");
         return res;

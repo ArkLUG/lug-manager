@@ -47,6 +47,20 @@ SyncResult MemberSyncService::sync_from_guild() {
                             || (existing->display_name != display)
                             || (existing->role != new_role);
                 if (changed) {
+                    // Track each field change
+                    if (existing->discord_username != gm.username) {
+                        result.changes.push_back({existing->id, display, "updated",
+                            "discord_username", existing->discord_username, gm.username});
+                    }
+                    if (existing->display_name != display) {
+                        result.changes.push_back({existing->id, display, "updated",
+                            "display_name", existing->display_name, display});
+                    }
+                    if (existing->role != new_role) {
+                        result.changes.push_back({existing->id, display, "updated",
+                            "role", existing->role, new_role});
+                    }
+
                     Member updated = *existing;
                     updated.discord_username = gm.username;
                     updated.display_name     = display;
@@ -66,6 +80,7 @@ SyncResult MemberSyncService::sync_from_guild() {
                 m.role             = new_role;
                 Member created = member_repo_.create(m);
                 discord_to_member_id[gm.discord_user_id] = created.id;
+                result.changes.push_back({created.id, display, "created", "", "", ""});
                 ++result.imported;
             }
 
@@ -110,7 +125,11 @@ SyncResult MemberSyncService::sync_from_guild() {
             // Discord role holder but not a web lead → promote in web
             for (int64_t mid : has_discord_role) {
                 if (!current_lead_ids.count(mid)) {
+                    auto member = member_repo_.find_by_id(mid);
+                    std::string name = member ? member->display_name : "ID:" + std::to_string(mid);
                     chapter_member_repo_.upsert(mid, ch.id, "lead", 0);
+                    result.changes.push_back({mid, name, "chapter_lead_added",
+                        "chapter_role", "member", "lead (ch: " + ch.name + ")"});
                     ++result.updated;
                 }
             }

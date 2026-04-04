@@ -5,6 +5,16 @@
 #include "repositories/ChapterRepository.hpp"
 #include "repositories/ChapterMemberRepository.hpp"
 #include <string>
+#include <vector>
+
+struct SyncChangeDetail {
+    int64_t     member_id = 0;
+    std::string member_name;       // display name for UI
+    std::string change_type;       // "created"|"updated"|"chapter_lead_added"
+    std::string field;             // which field changed (e.g. "role", "display_name")
+    std::string old_value;
+    std::string new_value;
+};
 
 struct SyncResult {
     int imported = 0;  // New member records created
@@ -12,6 +22,7 @@ struct SyncResult {
     int skipped  = 0;  // No role mapping match — not a LUG member
     int errors   = 0;
     std::string error_message;
+    std::vector<SyncChangeDetail> changes;
 };
 
 class MemberSyncService {

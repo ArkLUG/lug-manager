@@ -79,7 +79,12 @@ inline bool require_auth(const crow::request& req, crow::response& res, App& app
         }
         return false;
     }
-    if (min_role == "admin" && ctx.auth.role != "admin") {
+    if (min_role == "admin" && !ctx.auth.is_admin()) {
+        res.code = 403;
+        res.write(R"({"error":"forbidden"})");
+        return false;
+    }
+    if (min_role == "chapter_lead" && !ctx.auth.is_chapter_lead()) {
         res.code = 403;
         res.write(R"({"error":"forbidden"})");
         return false;

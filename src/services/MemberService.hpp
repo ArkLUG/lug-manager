@@ -45,7 +45,16 @@ public:
                                    int64_t exclude_id = 0);
 
     // Regenerate all display names from first/last name and save to DB
-    struct NicknameResult { int updated = 0; int skipped = 0; };
+    struct NicknameChangeDetail {
+        int64_t     member_id;
+        std::string old_name;
+        std::string new_name;
+    };
+    struct NicknameResult {
+        int updated = 0;
+        int skipped = 0;
+        std::vector<NicknameChangeDetail> changes;
+    };
     NicknameResult regenerate_all_nicknames();
 
     // Sync all member nicknames to Discord

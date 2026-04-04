@@ -78,13 +78,24 @@ Member MemberService::update(int64_t id, const Member& updates) {
         throw std::runtime_error("Member not found: " + std::to_string(id));
     }
     Member m = *existing;
+    std::string old_display_name = m.display_name;
+
     if (!updates.discord_username.empty()) m.discord_username = updates.discord_username;
     if (!updates.first_name.empty())       m.first_name       = updates.first_name;
     if (!updates.last_name.empty())        m.last_name        = updates.last_name;
-    if (!updates.email.empty())            m.email            = updates.email;
+    m.email            = updates.email;
     if (!updates.role.empty())             m.role             = updates.role;
     if (!updates.paid_until.empty())       m.paid_until       = updates.paid_until;
-    m.is_paid = updates.is_paid;
+    m.is_paid      = updates.is_paid;
+    m.phone        = updates.phone;
+    m.address_line1 = updates.address_line1;
+    m.address_line2 = updates.address_line2;
+    m.city         = updates.city;
+    m.state        = updates.state;
+    m.zip          = updates.zip;
+    m.birthday     = updates.birthday;
+    m.pii_public   = updates.pii_public;
+    if (!updates.fol_status.empty()) m.fol_status = updates.fol_status;
 
     // Regenerate display_name if first/last names are set
     if (!m.first_name.empty() && !m.last_name.empty()) {
@@ -94,6 +105,16 @@ Member MemberService::update(int64_t id, const Member& updates) {
     }
 
     repo_.update(m);
+
+    // Sync nickname to Discord if display name changed
+    if (discord_ && !m.discord_user_id.empty() && m.display_name != old_display_name) {
+        try {
+            discord_->set_member_nickname(m.discord_user_id, m.display_name);
+        } catch (const std::exception& ex) {
+            std::cerr << "[MemberService] Warning: failed to sync nickname to Discord: " << ex.what() << "\n";
+        }
+    }
+
     return repo_.find_by_id(id).value_or(m);
 }
 
@@ -134,6 +155,7 @@ MemberService::NicknameResult MemberService::regenerate_all_nicknames() {
         }
         std::string new_nick = generate_nickname(m.first_name, m.last_name, m.id);
         if (new_nick != m.display_name) {
+            result.changes.push_back({m.id, m.display_name, new_nick});
             m.display_name = new_nick;
             repo_.update(m);
             ++result.updated;
