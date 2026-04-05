@@ -16,7 +16,7 @@ env:
   IMAGE_NAME: arklug/lug-manager
 
 jobs:
-  # ── SAST: static analysis on source code ──────────────────────────────────
+  # ── SAST: CodeQL static analysis ──────────────────────────────────────────
   sast:
     runs-on: ubuntu-latest
     permissions:
@@ -49,6 +49,41 @@ jobs:
         uses: github/codeql-action/analyze@v3
         with:
           category: "/language:cpp"
+
+  # ── Lint: Dockerfile + secrets + cppcheck ─────────────────────────────────
+  lint:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v5
+
+      - name: Lint Dockerfile
+        uses: hadolint/hadolint-action@v3.1.0
+        with:
+          dockerfile: Dockerfile
+          failure-threshold: warning
+
+      - name: Scan for secrets
+        uses: trufflesecurity/trufflehog@main
+        with:
+          extra_args: --only-verified
+
+      - name: Install cppcheck
+        run: sudo apt-get update && sudo apt-get install -y cppcheck
+
+      - name: Run cppcheck
+        run: |
+          cppcheck --enable=warning,style,performance,portability \
+            --suppress=missingInclude --suppress=unmatchedSuppression \
+            --error-exitcode=0 \
+            --inline-suppr \
+            --quiet \
+            -I src/ \
+            src/ 2>&1 | tee cppcheck-results.txt
+          # Show results but don't fail the build
+          cat cppcheck-results.txt
 
   # ── Build, test & push Docker image ───────────────────────────────────────
   build:
@@ -98,6 +133,50 @@ jobs:
           labels: ${{ steps.meta.outputs.labels }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
+
+  # ── Test coverage report ──────────────────────────────────────────────────
+  coverage:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v5
+
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            cmake g++ make pkg-config \
+            libcurl4-openssl-dev libsqlite3-dev libssl-dev \
+            git ca-certificates lcov
+
+      - name: Build with coverage
+        run: |
+          cmake -B build -S . -DBUILD_TESTS=ON \
+            -DCMAKE_CXX_FLAGS="--coverage -fprofile-arcs -ftest-coverage" \
+            -DCMAKE_EXE_LINKER_FLAGS="--coverage"
+          cmake --build build -j$(nproc)
+
+      - name: Run tests
+        run: ctest --test-dir build --output-on-failure -j$(nproc)
+
+      - name: Generate coverage report
+        run: |
+          lcov --capture --directory build --output-file coverage.info \
+            --ignore-errors mismatch
+          lcov --remove coverage.info \
+            '*/build/_deps/*' '*/tests/*' '/usr/*' '*/gtest/*' \
+            --output-file coverage-filtered.info \
+            --ignore-errors unused
+          lcov --list coverage-filtered.info
+
+      - name: Upload coverage to Codecov
+        uses: codecov/codecov-action@v4
+        with:
+          files: coverage-filtered.info
+          fail_ci_if_error: false
+          token: ${{ secrets.CODECOV_TOKEN }}
 
   # ── SCA: scan Docker image for known CVEs ──────────────────────────────────
   image-scan:
