@@ -1,4 +1,5 @@
 #include "routes/ChapterRoutes.hpp"
+#include "utils/AuditDiff.hpp"
 #include <crow/mustache.h>
 #include <sstream>
 #include <unordered_set>
@@ -314,6 +315,8 @@ void register_chapter_routes(LugApp& app, ChapterService& chapters,
             return res;
         }
 
+        auto ch_before = chapters.get(static_cast<int64_t>(id));
+
         // Support both form-encoded (from modal) and JSON (from API clients)
         Chapter updates;
         std::string content_type = req.get_header_value("Content-Type");
@@ -349,7 +352,19 @@ void register_chapter_routes(LugApp& app, ChapterService& chapters,
 
         try {
             auto updated = chapters.update(static_cast<int64_t>(id), updates);
-            audit.log(req, app, "chapter.update", "chapter", static_cast<int64_t>(id), updates.name, "Updated chapter");
+            {
+                AuditDiff diff;
+                if (ch_before) {
+                    diff.field("name", ch_before->name, updated.name);
+                    diff.field("shorthand", ch_before->shorthand, updated.shorthand);
+                    diff.field("description", ch_before->description, updated.description);
+                    diff.field("discord_announcement_channel_id", ch_before->discord_announcement_channel_id, updated.discord_announcement_channel_id);
+                    diff.field("discord_lead_role_id", ch_before->discord_lead_role_id, updated.discord_lead_role_id);
+                    diff.field("discord_member_role_id", ch_before->discord_member_role_id, updated.discord_member_role_id);
+                }
+                audit.log(req, app, "chapter.update", "chapter", static_cast<int64_t>(id), updated.name,
+                          diff.has_changes() ? diff.str() : "No field changes");
+            }
             res.write("{\"success\":true}");
             res.add_header("Content-Type", "application/json");
         } catch (const std::exception& e) {

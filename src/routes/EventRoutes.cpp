@@ -725,12 +725,25 @@ void register_event_routes(LugApp& app, EventService& events, AttendanceService&
                 {
                     AuditDiff diff;
                     diff.field("title", ev_before->title, ev_after.title);
+                    diff.field("description", ev_before->description, ev_after.description);
                     diff.field("location", ev_before->location, ev_after.location);
                     diff.field("start_time", ev_before->start_time, ev_after.start_time);
                     diff.field("end_time", ev_before->end_time, ev_after.end_time);
-                    diff.field("scope", ev_before->scope, ev_after.scope);
                     diff.field("status", ev_before->status, ev_after.status);
+                    diff.field("scope", ev_before->scope, ev_after.scope);
+                    diff.field("chapter_id", ev_before->chapter_id, ev_after.chapter_id);
+                    diff.field("event_lead_id", ev_before->event_lead_id, ev_after.event_lead_id);
+                    diff.field("signup_deadline", ev_before->signup_deadline, ev_after.signup_deadline);
                     diff.field("max_attendees", ev_before->max_attendees, ev_after.max_attendees);
+                    diff.field("entrance_fee", ev_before->entrance_fee, ev_after.entrance_fee);
+                    diff.field("suppress_discord", ev_before->suppress_discord, ev_after.suppress_discord);
+                    diff.field("suppress_calendar", ev_before->suppress_calendar, ev_after.suppress_calendar);
+                    diff.field("notes", ev_before->notes, ev_after.notes);
+                    diff.field("public_kids", ev_before->public_kids, ev_after.public_kids);
+                    diff.field("public_teens", ev_before->public_teens, ev_after.public_teens);
+                    diff.field("public_adults", ev_before->public_adults, ev_after.public_adults);
+                    diff.field("social_media_links", ev_before->social_media_links, ev_after.social_media_links);
+                    diff.field("event_feedback", ev_before->event_feedback, ev_after.event_feedback);
                     audit.log(req, app, "event.update", "event", static_cast<int64_t>(id), ev_after.title,
                               diff.has_changes() ? diff.str() : "No field changes");
                 }
@@ -797,6 +810,7 @@ void register_event_routes(LugApp& app, EventService& events, AttendanceService&
 
         try {
             events.update(static_cast<int64_t>(id), *ev);
+            audit.log(req, app, "event.discord_sync", "event", static_cast<int64_t>(id), ev->title, "Discord sync");
             res.add_header("Content-Type", "text/html; charset=utf-8");
             res.write(R"(<span class="text-green-600 text-xs">Synced</span>)");
         } catch (const std::exception& ex) {

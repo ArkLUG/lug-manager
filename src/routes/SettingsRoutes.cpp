@@ -305,7 +305,10 @@ void register_settings_routes(LugApp& app, SettingsRepository& settings,
 
         if (change_type == "created") {
             // Revert creation = delete the member
+            auto del_m = members.get(member_id);
+            std::string del_name = del_m ? del_m->display_name : "ID:" + std::to_string(member_id);
             members.delete_member(member_id);
+            audit.log(req, app, "member.revert_sync_delete", "member", member_id, del_name, "Reverted sync — deleted member");
             res.write(R"(<tr class="border-t border-gray-100 bg-red-50"><td colspan="5" class="px-3 py-2 text-red-700 text-center">Member deleted</td></tr>)");
             res.add_header("Content-Type", "text/html; charset=utf-8");
             return res;
@@ -323,6 +326,8 @@ void register_settings_routes(LugApp& app, SettingsRepository& settings,
         else if (field == "role")           m.role = old_value;
 
         members.update(member_id, m);
+        audit.log(req, app, "member.revert_sync", "member", member_id, m.display_name,
+                  "Reverted " + field + " to \"" + old_value + "\"");
 
         std::string label = field;
         if (field == "discord_username") label = "username";

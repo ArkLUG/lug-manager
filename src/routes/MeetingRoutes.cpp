@@ -541,12 +541,18 @@ void register_meeting_routes(LugApp& app, MeetingService& meetings, AttendanceSe
                 {
                     AuditDiff diff;
                     diff.field("title", mtg_before->title, mtg_after.title);
+                    diff.field("description", mtg_before->description, mtg_after.description);
                     diff.field("location", mtg_before->location, mtg_after.location);
                     diff.field("start_time", mtg_before->start_time, mtg_after.start_time);
                     diff.field("end_time", mtg_before->end_time, mtg_after.end_time);
-                    diff.field("scope", mtg_before->scope, mtg_after.scope);
-                    diff.field("is_virtual", mtg_before->is_virtual, mtg_after.is_virtual);
                     diff.field("status", mtg_before->status, mtg_after.status);
+                    diff.field("scope", mtg_before->scope, mtg_after.scope);
+                    diff.field("chapter_id", mtg_before->chapter_id, mtg_after.chapter_id);
+                    diff.field("is_virtual", mtg_before->is_virtual, mtg_after.is_virtual);
+                    diff.field("discord_voice_channel_id", mtg_before->discord_voice_channel_id, mtg_after.discord_voice_channel_id);
+                    diff.field("suppress_discord", mtg_before->suppress_discord, mtg_after.suppress_discord);
+                    diff.field("suppress_calendar", mtg_before->suppress_calendar, mtg_after.suppress_calendar);
+                    diff.field("notes", mtg_before->notes, mtg_after.notes);
                     audit.log(req, app, "meeting.update", "meeting", static_cast<int64_t>(id), mtg_after.title,
                               diff.has_changes() ? diff.str() : "No field changes");
                 }
@@ -608,6 +614,7 @@ void register_meeting_routes(LugApp& app, MeetingService& meetings, AttendanceSe
 
         try {
             meetings.update(static_cast<int64_t>(id), *m);
+            audit.log(req, app, "meeting.discord_sync", "meeting", static_cast<int64_t>(id), m->title, "Discord sync");
             res.add_header("Content-Type", "text/html; charset=utf-8");
             res.write(R"(<span class="text-green-600 text-xs">Synced</span>)");
         } catch (const std::exception& ex) {

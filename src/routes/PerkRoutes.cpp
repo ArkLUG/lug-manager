@@ -1,4 +1,5 @@
 #include "routes/PerkRoutes.hpp"
+#include "utils/AuditDiff.hpp"
 #include <crow.h>
 #include <crow/mustache.h>
 #include <sstream>
@@ -231,7 +232,19 @@ void register_perk_routes(LugApp& app, PerkLevelRepository& perks,
         try { p.sort_order = std::stoi(gp("sort_order")); } catch (...) {}
 
         perks.update(p);
-        audit.log(req, app, "perk.update", "perk", p.id, p.name, "Updated perk level");
+        {
+            AuditDiff diff;
+            diff.field("name", existing->name, p.name);
+            diff.field("description", existing->description, p.description);
+            diff.field("discord_role_id", existing->discord_role_id, p.discord_role_id);
+            diff.field("meeting_attendance_required", existing->meeting_attendance_required, p.meeting_attendance_required);
+            diff.field("event_attendance_required", existing->event_attendance_required, p.event_attendance_required);
+            diff.field("requires_paid_dues", existing->requires_paid_dues, p.requires_paid_dues);
+            diff.field("min_fol_status", existing->min_fol_status, p.min_fol_status);
+            diff.field("sort_order", existing->sort_order, p.sort_order);
+            audit.log(req, app, "perk.update", "perk", p.id, p.name,
+                      diff.has_changes() ? diff.str() : "No field changes");
+        }
         res.add_header("HX-Redirect", "/perks");
         res.code = 200;
         return res;
