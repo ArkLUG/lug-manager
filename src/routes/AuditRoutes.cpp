@@ -6,8 +6,8 @@ static constexpr int kAuditPerPage = 50;
 
 void register_audit_routes(LugApp& app, AuditService& audit) {
 
-    // GET /settings/audit — admin-only audit log viewer
-    CROW_ROUTE(app, "/settings/audit")([&](const crow::request& req) {
+    // GET /audit — admin-only audit log viewer
+    CROW_ROUTE(app, "/audit")([&](const crow::request& req) {
         crow::response res;
         if (!require_auth(req, res, app, "admin")) return res;
 
@@ -86,7 +86,7 @@ void register_audit_routes(LugApp& app, AuditService& audit) {
             crow::mustache::context layout_ctx;
             layout_ctx["content"]         = content;
             layout_ctx["page_title"]      = "Audit Log";
-            layout_ctx["active_settings"] = true;
+            layout_ctx["active_audit"]    = true;
             layout_ctx["is_admin"]        = true;
             set_layout_auth(req, app, layout_ctx);
             auto layout = crow::mustache::load("layout.html");

@@ -1,13 +1,7 @@
 <div class="max-w-4xl space-y-4" data-page-title="Audit Log">
   <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
     <div>
-      <div class="flex items-center gap-3">
-        <a hx-get="/settings" hx-target="#main-content" hx-push-url="true" hx-swap="innerHTML"
-           class="text-sm text-gray-500 hover:text-gray-700 cursor-pointer">&larr; Settings</a>
-        <span class="text-gray-300">/</span>
-        <span class="text-sm font-medium text-gray-700">Audit Log</span>
-      </div>
-      <h2 class="text-xl font-bold text-gray-900 mt-1">Audit Log</h2>
+      <h2 class="text-xl font-bold text-gray-900">Audit Log</h2>
       <p class="text-sm text-gray-500">{{total_count}} entries</p>
     </div>
   </div>
@@ -15,12 +9,12 @@
   <!-- Filters -->
   <div class="flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
     <input type="search" name="search" value="{{search}}" placeholder="Search actions, members, details..."
-           hx-get="/settings/audit" hx-target="#main-content" hx-swap="innerHTML" hx-push-url="true"
+           hx-get="/audit" hx-target="#main-content" hx-swap="innerHTML" hx-push-url="true"
            hx-trigger="input changed delay:300ms, search"
            hx-include="this,[name=action_filter]"
            class="flex-1 px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-yellow-400">
     <select name="action_filter"
-            hx-get="/settings/audit" hx-target="#main-content" hx-swap="innerHTML" hx-push-url="true"
+            hx-get="/audit" hx-target="#main-content" hx-swap="innerHTML" hx-push-url="true"
             hx-trigger="change" hx-include="[name=search],this"
             class="px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-yellow-400">
       <option value="" {{^action_filter}}selected{{/action_filter}}>All actions</option>
@@ -85,7 +79,7 @@
     <span>Page {{page}} of {{total_pages}}</span>
     <div class="flex items-center gap-2">
       {{#has_prev}}
-      <button hx-get="/settings/audit?page={{prev_page}}&search={{search}}&action_filter={{action_filter}}"
+      <button hx-get="/audit?page={{prev_page}}&search={{search}}&action_filter={{action_filter}}"
               hx-target="#main-content" hx-swap="innerHTML" hx-push-url="true"
               class="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50">Previous</button>
       {{/has_prev}}
@@ -93,7 +87,7 @@
       <span class="px-4 py-2 border border-gray-200 rounded-lg text-gray-300 cursor-not-allowed">Previous</span>
       {{/has_prev}}
       {{#has_next}}
-      <button hx-get="/settings/audit?page={{next_page}}&search={{search}}&action_filter={{action_filter}}"
+      <button hx-get="/audit?page={{next_page}}&search={{search}}&action_filter={{action_filter}}"
               hx-target="#main-content" hx-swap="innerHTML" hx-push-url="true"
               class="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50">Next</button>
       {{/has_next}}

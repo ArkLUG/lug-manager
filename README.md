@@ -17,6 +17,7 @@ A modern web application for managing LEGO User Groups (LUGs). Built with **C++ 
 - **Notes & Reports**: Markdown notes on events/meetings with WYSIWYG editor (EasyMDE). Publish reports to Discord forum channels with attendance (virtual/in-person split for meetings, multi-day for events).
 - **Attendance Tracking**: Admin/lead/event-manager managed attendance with virtual support, year-filtered overview with search/sort/pagination, per-member detail view, perk tier display, and hide-inactive toggle. Members cannot self-check-in — only managers can add attendees (or via QR check-in).
 - **Perk Levels**: Admin-defined attendance tiers per year with Discord role rewards, minimum age range requirements, and paid dues prerequisites. Clone tiers between years. Dashboard shows progress with meetings attended, events attended, dues status, and what's needed for the next tier.
+- **Audit Log**: Every action is tracked — who did what, when, to which entity, from what IP. Admin-only viewer with search, category filtering, and pagination. 47 distinct audited actions covering members, meetings, events, chapters, attendance, check-ins, perks, settings, syncs, and role mappings.
 - **Discord Integration**: OAuth2 login, scheduled events, forum threads, announcements, role sync, perk role assignment, voice channel selection for virtual meetings, member sync every 6 hours
 - **Google Calendar Integration**: Push events directly to a shared Google Calendar via service account, import existing events
 - **iCal Feed**: RFC 5545 calendar subscription for personal calendar apps (collapsible on dashboard)
@@ -25,7 +26,7 @@ A modern web application for managing LEGO User Groups (LUGs). Built with **C++ 
 ## Technology Stack
 
 - **Backend**: C++20 with CrowCPP v1.2.0 (header-only HTTP server)
-- **Database**: SQLite with WAL mode and automatic migrations (34 migrations)
+- **Database**: SQLite with WAL mode and automatic migrations (36 migrations)
 - **Frontend**: HTMX + Tailwind CSS + TomSelect + EasyMDE + QRCode.js + DataTables (CDN, no build step)
 - **External APIs**: Discord OAuth2 + REST, Google Calendar API v3
 - **Dependencies**: asio, nlohmann/json, md4c, libcurl, OpenSSL, Google Test
@@ -249,10 +250,11 @@ All runtime configuration is managed from the Settings page (`/settings`):
 | Google Calendar | Service account JSON path and Calendar ID |
 | Role Mappings | Map Discord roles to admin/member |
 | Perk Levels | Attendance tiers with Discord role rewards (per year) |
+| Audit Log | Searchable history of all actions taken by all users |
 
 ## Testing
 
-The project includes comprehensive tests across 16 test suites (8 unit + 8 integration):
+The project includes comprehensive tests across 17 test suites (8 unit + 9 integration):
 
 ```bash
 # Build with tests
@@ -280,6 +282,7 @@ ctest --test-dir build --output-on-failure -j$(nproc)
 | test_integration_attendance | Attendance check-in, virtual toggle, overview |
 | test_integration_settings | Settings save, Discord API, sync, nicknames |
 | test_integration_permissions | Per-field PII sharing, role-based access, chapter permissions, verified member logic |
+| test_integration_audit | Audit log entries for all action types, search, filtering, pagination |
 | test_integration_ui | Content validation, calendar output, badge rendering |
 
 CI runs all tests inside the Docker build — failing tests block image creation.
@@ -328,10 +331,10 @@ See [DOCKER.md](DOCKER.md) for detailed deployment instructions.
 │   │   ├── settings/            # Admin settings, roles, perks
 │   │   └── dashboard/           # Dashboard with member info, perk progress
 │   └── static/                  # CSS, JS assets
-├── tests/                       # Google Test suites (8 unit + 8 integration)
+├── tests/                       # Google Test suites (8 unit + 9 integration)
 │   ├── integration_test_base.hpp # Shared fixture for integration tests
 │   └── test_integration_*.cpp   # Split integration tests by feature
-├── sql/migrations/              # Auto-applied database migrations (34)
+├── sql/migrations/              # Auto-applied database migrations (36)
 ├── .github/workflows/           # CI/CD pipeline (single Docker build job)
 ├── CMakeLists.txt
 ├── Dockerfile

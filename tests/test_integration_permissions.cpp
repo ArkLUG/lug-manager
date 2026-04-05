@@ -258,18 +258,18 @@ TEST_F(IntegrationTest, NotesInEventCreate) {
 }
 
 TEST_F(IntegrationTest, PerkLevelsAdminOnly) {
-    auto r = GET("/settings/perks", member_token);
+    auto r = GET("/perks", member_token);
     EXPECT_EQ(r.code, 403);
 }
 
 TEST_F(IntegrationTest, PerkLevelsAdminCanAccess) {
-    auto r = GET("/settings/perks", admin_token);
+    auto r = GET("/perks", admin_token);
     EXPECT_EQ(r.code, 200);
     expect_contains(r, "Perk Levels");
 }
 
 TEST_F(IntegrationTest, PerkLevelCreateAndList) {
-    auto r = POST("/settings/perks",
+    auto r = POST("/perks",
         "name=Bronze&meeting_attendance_required=3&event_attendance_required=1&sort_order=1"
         "&min_fol_status=tfol",
         admin_token);
@@ -294,7 +294,7 @@ TEST_F(IntegrationTest, PerkLevelEditForm) {
     auto created = perk_level_repo->create(p);
 
     // GET edit form
-    auto r = GET("/settings/perks/" + std::to_string(created.id) + "/edit", admin_token);
+    auto r = GET("/perks/" + std::to_string(created.id) + "/edit", admin_token);
     EXPECT_EQ(r.code, 200);
     expect_contains(r, "Edit Perk Level");
     expect_contains(r, "Editable Tier");
@@ -306,7 +306,7 @@ TEST_F(IntegrationTest, PerkLevelEditFormNonAdmin) {
     p.sort_order = 1;
     auto created = perk_level_repo->create(p);
 
-    auto r = GET("/settings/perks/" + std::to_string(created.id) + "/edit", member_token);
+    auto r = GET("/perks/" + std::to_string(created.id) + "/edit", member_token);
     EXPECT_EQ(r.code, 403);
 }
 
@@ -318,7 +318,7 @@ TEST_F(IntegrationTest, PerkLevelUpdate) {
     p.sort_order = 1;
     auto created = perk_level_repo->create(p);
 
-    auto r = PUT("/settings/perks/" + std::to_string(created.id),
+    auto r = PUT("/perks/" + std::to_string(created.id),
         "name=Updated+Tier&meeting_attendance_required=5&event_attendance_required=2"
         "&min_fol_status=afol&sort_order=3",
         admin_token);
@@ -835,7 +835,7 @@ TEST_F(IntegrationTest, ChapterLeadCannotAccessSettings) {
 }
 
 TEST_F(IntegrationTest, ChapterLeadCannotAccessPerks) {
-    auto r = GET("/settings/perks", chapter_lead_token);
+    auto r = GET("/perks", chapter_lead_token);
     EXPECT_EQ(r.code, 403);
 }
 
@@ -846,7 +846,7 @@ TEST_F(IntegrationTest, EventManagerCannotAccessAdmin) {
     auto r2 = GET("/attendance/overview", event_manager_token);
     EXPECT_EQ(r2.code, 403);
 
-    auto r3 = GET("/settings/perks", event_manager_token);
+    auto r3 = GET("/perks", event_manager_token);
     EXPECT_EQ(r3.code, 403);
 }
 

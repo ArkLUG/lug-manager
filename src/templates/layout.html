@@ -215,6 +215,38 @@
         Attendance Overview
       </a>
 
+      <!-- Perk Levels (admin) -->
+      <a hx-get="/perks"
+         hx-target="#main-content"
+         hx-push-url="true"
+         hx-swap="innerHTML"
+         hx-indicator="#nav-spinner"
+         class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm cursor-pointer transition-colors
+                {{#active_perks}}nav-active{{/active_perks}}
+                {{^active_perks}}nav-inactive{{/active_perks}}">
+        <svg class="w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                d="M5 3v4M3 5h4M6 17v4m-2-2h4m5-16l2.286 6.857L21 12l-5.714 2.143L13 21l-2.286-6.857L5 12l5.714-2.143L13 3z"/>
+        </svg>
+        Perk Levels
+      </a>
+
+      <!-- Audit Log (admin) -->
+      <a hx-get="/audit"
+         hx-target="#main-content"
+         hx-push-url="true"
+         hx-swap="innerHTML"
+         hx-indicator="#nav-spinner"
+         class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm cursor-pointer transition-colors
+                {{#active_audit}}nav-active{{/active_audit}}
+                {{^active_audit}}nav-inactive{{/active_audit}}">
+        <svg class="w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01"/>
+        </svg>
+        Audit Log
+      </a>
+
       <!-- Settings (admin) -->
       <a hx-get="/settings"
          hx-target="#main-content"

@@ -30,8 +30,8 @@ void register_perk_routes(LugApp& app, PerkLevelRepository& perks,
                            DiscordClient& discord,
                            AuditService& audit) {
 
-    // GET /settings/perks — list perk levels for a year (admin only)
-    CROW_ROUTE(app, "/settings/perks")([&](const crow::request& req) {
+    // GET /perks — list perk levels for a year (admin only)
+    CROW_ROUTE(app, "/perks")([&](const crow::request& req) {
         crow::response res;
         if (!require_auth(req, res, app, "admin")) return res;
 
@@ -100,7 +100,7 @@ void register_perk_routes(LugApp& app, PerkLevelRepository& perks,
         crow::mustache::context layout_ctx;
         layout_ctx["content"]         = content;
         layout_ctx["page_title"]      = "Perk Levels";
-        layout_ctx["active_settings"] = true;
+        layout_ctx["active_perks"]    = true;
         layout_ctx["is_admin"]        = true;
         set_layout_auth(req, app, layout_ctx);
         auto layout = crow::mustache::load("layout.html");
@@ -109,8 +109,8 @@ void register_perk_routes(LugApp& app, PerkLevelRepository& perks,
         return res;
     });
 
-    // POST /settings/perks — create perk level
-    CROW_ROUTE(app, "/settings/perks").methods("POST"_method)(
+    // POST /perks — create perk level
+    CROW_ROUTE(app, "/perks").methods("POST"_method)(
         [&](const crow::request& req) {
         crow::response res;
         if (!require_auth(req, res, app, "admin")) return res;
@@ -141,13 +141,13 @@ void register_perk_routes(LugApp& app, PerkLevelRepository& perks,
 
         perks.create(p);
         audit.log(req, app, "perk.create", "perk", 0, p.name, "Created perk level");
-        res.add_header("HX-Redirect", "/settings/perks?year=" + std::to_string(p.year));
+        res.add_header("HX-Redirect", "/perks?year=" + std::to_string(p.year));
         res.code = 200;
         return res;
     });
 
-    // GET /settings/perks/<id>/edit — edit form in modal
-    CROW_ROUTE(app, "/settings/perks/<int>/edit")([&](const crow::request& req, int id) {
+    // GET /perks/<id>/edit — edit form in modal
+    CROW_ROUTE(app, "/perks/<int>/edit")([&](const crow::request& req, int id) {
         crow::response res;
         if (!require_auth(req, res, app, "admin")) return res;
 
@@ -167,7 +167,7 @@ void register_perk_routes(LugApp& app, PerkLevelRepository& perks,
           << "<h3 class=\"text-lg font-semibold text-gray-800\">Edit Perk Level</h3>"
           << "<button onclick=\"closeModal()\" class=\"text-gray-400 hover:text-gray-600 p-1 rounded\">"
           << "<svg class=\"w-5 h-5\" fill=\"none\" stroke=\"currentColor\" viewBox=\"0 0 24 24\"><path stroke-linecap=\"round\" stroke-linejoin=\"round\" stroke-width=\"2\" d=\"M6 18L18 6M6 6l12 12\"/></svg></button></div>"
-          << "<form hx-put=\"/settings/perks/" << id << "\" hx-swap=\"none\" class=\"space-y-4\">"
+          << "<form hx-put=\"/perks/" << id << "\" hx-swap=\"none\" class=\"space-y-4\">"
           << "<div class=\"grid grid-cols-2 gap-4\">"
           << "<div><label class=\"block text-sm font-medium text-gray-700\">Name</label>"
           << "<input type=\"text\" name=\"name\" value=\"" << p->name << "\" required class=\"" << cls_input << "\"></div>"
@@ -205,8 +205,8 @@ void register_perk_routes(LugApp& app, PerkLevelRepository& perks,
         return res;
     });
 
-    // PUT /settings/perks/<id> — update perk level
-    CROW_ROUTE(app, "/settings/perks/<int>").methods("PUT"_method)(
+    // PUT /perks/<id> — update perk level
+    CROW_ROUTE(app, "/perks/<int>").methods("PUT"_method)(
         [&](const crow::request& req, int id) {
         crow::response res;
         if (!require_auth(req, res, app, "admin")) return res;
@@ -232,26 +232,26 @@ void register_perk_routes(LugApp& app, PerkLevelRepository& perks,
 
         perks.update(p);
         audit.log(req, app, "perk.update", "perk", p.id, p.name, "Updated perk level");
-        res.add_header("HX-Redirect", "/settings/perks");
+        res.add_header("HX-Redirect", "/perks");
         res.code = 200;
         return res;
     });
 
-    // DELETE /settings/perks/<id>
-    CROW_ROUTE(app, "/settings/perks/<int>").methods("DELETE"_method)(
+    // DELETE /perks/<id>
+    CROW_ROUTE(app, "/perks/<int>").methods("DELETE"_method)(
         [&](const crow::request& req, int id) {
         crow::response res;
         if (!require_auth(req, res, app, "admin")) return res;
 
         perks.remove(static_cast<int64_t>(id));
         audit.log(req, app, "perk.delete", "perk", static_cast<int64_t>(id), "", "Deleted perk level");
-        res.add_header("HX-Redirect", "/settings/perks");
+        res.add_header("HX-Redirect", "/perks");
         res.code = 200;
         return res;
     });
 
-    // POST /settings/perks/clone — clone tiers from one year to another
-    CROW_ROUTE(app, "/settings/perks/clone").methods("POST"_method)(
+    // POST /perks/clone — clone tiers from one year to another
+    CROW_ROUTE(app, "/perks/clone").methods("POST"_method)(
         [&](const crow::request& req) {
         crow::response res;
         if (!require_auth(req, res, app, "admin")) return res;
@@ -282,7 +282,7 @@ void register_perk_routes(LugApp& app, PerkLevelRepository& perks,
 
         perks.clone_year(source_year, target_year);
         audit.log(req, app, "perk.clone", "perk", 0, "", "Cloned from year " + std::to_string(source_year) + " to year " + std::to_string(target_year));
-        res.add_header("HX-Redirect", "/settings/perks?year=" + std::to_string(target_year));
+        res.add_header("HX-Redirect", "/perks?year=" + std::to_string(target_year));
         res.code = 200;
         return res;
     });

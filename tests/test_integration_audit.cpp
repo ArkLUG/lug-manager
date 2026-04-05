@@ -5,12 +5,12 @@
 // ═══════════════════════════════════════════════════════════════════════════
 
 TEST_F(IntegrationTest, AuditLogPageAdminOnly) {
-    auto r = GET("/settings/audit", member_token);
+    auto r = GET("/audit", member_token);
     EXPECT_EQ(r.code, 403);
 }
 
 TEST_F(IntegrationTest, AuditLogPageLoads) {
-    auto r = GET("/settings/audit", admin_token);
+    auto r = GET("/audit", admin_token);
     EXPECT_EQ(r.code, 200);
     expect_contains(r, "Audit Log");
 }
@@ -194,7 +194,7 @@ TEST_F(IntegrationTest, AuditLogSearch) {
         "first_name=SearchAudit&last_name=Test&discord_user_id=audit-search-001&discord_username=auditsearch&role=member",
         admin_token);
 
-    auto r = GET("/settings/audit?search=SearchAudit", admin_token);
+    auto r = GET("/audit?search=SearchAudit", admin_token);
     EXPECT_EQ(r.code, 200);
     expect_contains(r, "SearchAudit");
 }
@@ -205,7 +205,7 @@ TEST_F(IntegrationTest, AuditLogFilterByAction) {
         "first_name=FilterAudit&last_name=Test&discord_user_id=audit-filter-001&discord_username=auditfilter&role=member",
         admin_token);
 
-    auto r = GET("/settings/audit?action_filter=member", admin_token);
+    auto r = GET("/audit?action_filter=member", admin_token);
     EXPECT_EQ(r.code, 200);
     expect_contains(r, "member.create");
 }
@@ -231,7 +231,7 @@ TEST_F(IntegrationTest, AuditLogPagination) {
             admin_token);
     }
 
-    auto r = GET("/settings/audit?page=1", admin_token);
+    auto r = GET("/audit?page=1", admin_token);
     EXPECT_EQ(r.code, 200);
     expect_contains(r, "Page 1");
 }

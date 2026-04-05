@@ -1,10 +1,4 @@
-<div class="max-w-4xl mx-auto p-6">
-    <div class="flex items-center gap-3 mb-6">
-        <a hx-get="/settings" hx-target="#main-content" hx-push-url="true" hx-swap="innerHTML"
-           class="text-sm text-gray-500 hover:text-gray-700 transition-colors cursor-pointer">&larr; Settings</a>
-        <span class="text-gray-300">/</span>
-        <span class="text-sm font-medium text-gray-700">Perk Levels</span>
-    </div>
+<div class="max-w-4xl mx-auto p-6" data-page-title="Perk Levels">
 
     <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-6">
         <div>
@@ -13,7 +7,7 @@
         </div>
         <div class="flex items-center gap-2">
             <select name="year"
-                    hx-get="/settings/perks" hx-target="#main-content" hx-swap="innerHTML" hx-push-url="true"
+                    hx-get="/perks" hx-target="#main-content" hx-swap="innerHTML" hx-push-url="true"
                     hx-trigger="change" hx-include="this"
                     class="px-2 py-1.5 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-yellow-400">
                 {{#years}}
@@ -58,9 +52,9 @@
                     <td class="px-4 py-3 text-sm text-gray-700 uppercase hidden md:table-cell">{{min_fol_status}}</td>
                     <td class="px-4 py-3 text-sm text-gray-500 hidden lg:table-cell">{{discord_role_name}}</td>
                     <td class="px-4 py-3 text-right space-x-2">
-                        <button hx-get="/settings/perks/{{id}}/edit" hx-target="#modal" hx-swap="innerHTML"
+                        <button hx-get="/perks/{{id}}/edit" hx-target="#modal" hx-swap="innerHTML"
                                 class="text-blue-600 hover:text-blue-800 text-sm">Edit</button>
-                        <button hx-delete="/settings/perks/{{id}}" hx-confirm="Delete perk level '{{name}}'?"
+                        <button hx-delete="/perks/{{id}}" hx-confirm="Delete perk level '{{name}}'?"
                                 class="text-red-600 hover:text-red-800 text-sm">Delete</button>
                     </td>
                 </tr>
@@ -79,7 +73,7 @@
     <!-- Clone from another year -->
     <div class="bg-white rounded-xl border border-gray-200 p-4 flex flex-col sm:flex-row sm:items-center gap-3">
         <span class="text-sm font-medium text-gray-700">Clone tiers from another year:</span>
-        <form hx-post="/settings/perks/clone" hx-target="#sync-result" hx-swap="innerHTML" class="flex items-center gap-2">
+        <form hx-post="/perks/clone" hx-target="#sync-result" hx-swap="innerHTML" class="flex items-center gap-2">
             <input type="hidden" name="target_year" value="{{selected_year}}">
             <select name="source_year" class="px-2 py-1.5 border border-gray-300 rounded-lg text-sm">
                 {{#years}}
@@ -93,7 +87,7 @@
 
     <div class="bg-white rounded-xl border border-gray-200 p-6">
         <h3 class="text-lg font-semibold text-gray-800 mb-4">Add Perk Level for {{selected_year}}</h3>
-        <form hx-post="/settings/perks" hx-swap="none" class="space-y-4">
+        <form hx-post="/perks" hx-swap="none" class="space-y-4">
             <input type="hidden" name="year" value="{{selected_year}}">
             <div class="grid grid-cols-2 gap-4">
                 <div>
