@@ -478,7 +478,14 @@ void register_member_routes(LugApp& app, MemberService& members, AttendanceRepos
                     diff.field("is_paid", before->is_paid, after->is_paid);
                     diff.field("paid_until", before->paid_until, after->paid_until);
                     diff.field("fol_status", before->fol_status, after->fol_status);
-                    diff.field("chapter_id", before->chapter_id, after->chapter_id);
+                    {
+                        // Resolve chapter names for the diff
+                        std::string old_ch = before->chapter_id > 0 ? before->chapter_name : "none";
+                        std::string new_ch = after->chapter_id > 0 ? after->chapter_name : "none";
+                        if (old_ch.empty() && before->chapter_id > 0) old_ch = "chapter #" + std::to_string(before->chapter_id);
+                        if (new_ch.empty() && after->chapter_id > 0) new_ch = "chapter #" + std::to_string(after->chapter_id);
+                        diff.field("chapter", old_ch, new_ch);
+                    }
                 }
                 std::string name = after ? after->display_name : (before ? before->display_name : "");
                 audit.log(req, app, "member.update", "member", id, name,

@@ -731,8 +731,20 @@ void register_event_routes(LugApp& app, EventService& events, AttendanceService&
                     diff.field("end_time", ev_before->end_time, ev_after.end_time);
                     diff.field("status", ev_before->status, ev_after.status);
                     diff.field("scope", ev_before->scope, ev_after.scope);
-                    diff.field("chapter_id", ev_before->chapter_id, ev_after.chapter_id);
-                    diff.field("event_lead_id", ev_before->event_lead_id, ev_after.event_lead_id);
+                    {
+                        auto rch = [&](int64_t cid) -> std::string {
+                            if (cid <= 0) return "none";
+                            auto c = chapters.get(cid); return c ? c->name : "#" + std::to_string(cid);
+                        };
+                        diff.field("chapter", rch(ev_before->chapter_id), rch(ev_after.chapter_id));
+                    }
+                    {
+                        auto rlead = [&](int64_t lid) -> std::string {
+                            if (lid <= 0) return "none";
+                            auto m = members.get(lid); return m ? m->display_name : "#" + std::to_string(lid);
+                        };
+                        diff.field("event_lead", rlead(ev_before->event_lead_id), rlead(ev_after.event_lead_id));
+                    }
                     diff.field("signup_deadline", ev_before->signup_deadline, ev_after.signup_deadline);
                     diff.field("max_attendees", ev_before->max_attendees, ev_after.max_attendees);
                     diff.field("entrance_fee", ev_before->entrance_fee, ev_after.entrance_fee);

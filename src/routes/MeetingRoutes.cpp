@@ -547,7 +547,13 @@ void register_meeting_routes(LugApp& app, MeetingService& meetings, AttendanceSe
                     diff.field("end_time", mtg_before->end_time, mtg_after.end_time);
                     diff.field("status", mtg_before->status, mtg_after.status);
                     diff.field("scope", mtg_before->scope, mtg_after.scope);
-                    diff.field("chapter_id", mtg_before->chapter_id, mtg_after.chapter_id);
+                    {
+                        auto rch = [&](int64_t cid) -> std::string {
+                            if (cid <= 0) return "none";
+                            auto c = chapters.get(cid); return c ? c->name : "#" + std::to_string(cid);
+                        };
+                        diff.field("chapter", rch(mtg_before->chapter_id), rch(mtg_after.chapter_id));
+                    }
                     diff.field("is_virtual", mtg_before->is_virtual, mtg_after.is_virtual);
                     diff.field("discord_voice_channel_id", mtg_before->discord_voice_channel_id, mtg_after.discord_voice_channel_id);
                     diff.field("suppress_discord", mtg_before->suppress_discord, mtg_after.suppress_discord);

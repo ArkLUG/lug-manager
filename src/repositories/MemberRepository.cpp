@@ -11,7 +11,8 @@ static const char* kSelectAllCols =
     "COALESCE(m.city,''), COALESCE(m.state,''), COALESCE(m.zip,''), "
     "COALESCE(m.sharing_email,'none'), COALESCE(m.sharing_phone,'none'), "
     "COALESCE(m.sharing_address,'none'), COALESCE(m.sharing_birthday,'none'), "
-    "COALESCE(m.sharing_discord,'none') "
+    "COALESCE(m.sharing_discord,'none'), "
+    "COALESCE((SELECT c.name FROM chapters c JOIN chapter_members cm ON cm.chapter_id=c.id WHERE cm.member_id=m.id LIMIT 1),'') "
     "FROM members m";
 
 MemberRepository::MemberRepository(SqliteDatabase& db) : db_(db) {}
@@ -44,6 +45,7 @@ Member MemberRepository::row_to_member(Statement& stmt) {
     m.sharing_address  = stmt.col_text(23);
     m.sharing_birthday = stmt.col_text(24);
     m.sharing_discord  = stmt.col_text(25);
+    m.chapter_name     = stmt.col_text(26);
     return m;
 }
 
