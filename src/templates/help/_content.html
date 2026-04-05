@@ -1,0 +1,302 @@
+<div class="max-w-4xl mx-auto space-y-6" data-page-title="Help &amp; Getting Started">
+
+  <div class="bg-gradient-to-r from-gray-800 to-gray-700 rounded-xl p-6 text-white">
+    <h2 class="text-2xl font-bold">Welcome to LUG Manager</h2>
+    <p class="text-gray-300 text-sm mt-1">Here's everything you need to know for your role as <strong>{{role_label}}</strong>.</p>
+  </div>
+
+  <!-- Interactive tour -->
+  <div class="bg-blue-50 border border-blue-200 rounded-xl p-4 flex items-center gap-3">
+    <svg class="w-8 h-8 text-blue-500 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/>
+    </svg>
+    <div class="flex-1">
+      <div class="font-medium text-blue-800 text-sm">Interactive Tour</div>
+      <p class="text-xs text-blue-600">Take a guided walkthrough that navigates you through each page and highlights key features.</p>
+    </div>
+    <button onclick="startTour()"
+            class="px-4 py-2 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700 transition-colors whitespace-nowrap">
+      Start Tour
+    </button>
+  </div>
+
+  <script>
+  function navigateTo(path) {
+    return new Promise(function(resolve) {
+      var link = document.querySelector('a[hx-get="' + path + '"]');
+      if (link) {
+        var done = function() {
+          document.removeEventListener('htmx:afterSettle', done);
+          setTimeout(resolve, 200);
+        };
+        document.addEventListener('htmx:afterSettle', done);
+        htmx.trigger(link, 'click');
+      } else {
+        resolve();
+      }
+    });
+  }
+
+  /* Build a step that auto-navigates to `path` via HTMX, then advances
+     to the next tour step once the page has loaded. The user sees a brief
+     loading popover — no clicking required for page transitions. */
+  function navStep(path, title) {
+    return {
+      popover: { title: title, description: 'Navigating...' },
+      onHighlightStarted: function() {
+        navigateTo(path).then(function() { window.tourDriver.moveNext(); });
+      },
+      onNextClick: function() { /* swallow — auto-advancing */ },
+      onPrevClick: function() { window.tourDriver.movePrevious(); }
+    };
+  }
+
+  function startTour() {
+    if (typeof driver === 'undefined' || !driver.js) { alert('Tour library not loaded'); return; }
+
+    var isAdmin = {{#is_admin}}true{{/is_admin}}{{^is_admin}}false{{/is_admin}};
+    var isChapterLead = {{#is_chapter_lead_role}}true{{/is_chapter_lead_role}}{{^is_chapter_lead_role}}false{{/is_chapter_lead_role}};
+    var isEventManager = {{#is_event_manager}}true{{/is_event_manager}}{{^is_event_manager}}false{{/is_event_manager}};
+
+    var steps = [
+      // --- Intro on Help page ---
+      { element: '#sidebar nav', popover: { title: 'Sidebar Navigation', description: 'This is your main navigation. The tour will automatically take you through each page and highlight key features. Just click Next to continue!', side: 'right' }},
+
+      // --- Auto-navigate to Dashboard ---
+      navStep('/dashboard', 'Going to Dashboard...'),
+      { element: '#main-content', popover: { title: 'Your Dashboard', description: 'This is your personal dashboard. It shows your profile info, perk progress, and quick links to the rest of the app.' }},
+      { element: 'button[hx-get="/members/me"]', popover: { title: 'Edit My Profile', description: 'Click this button to update your name, contact info, and privacy settings. You control who can see each field.' }},
+      { element: 'a[href="/calendar.ics"]', popover: { title: 'Calendar Subscription', description: 'Click here to download the iCal feed. Add it to Google Calendar, Apple Calendar, or Outlook to stay up to date with LUG meetings and events.' }},
+
+      // --- Auto-navigate to Members ---
+      navStep('/members', 'Going to Members...'),
+      { element: '#members-table', popover: { title: 'Members Table', description: 'All registered LUG members are listed here. Click column headers to sort. Use "View" to see a member\'s shared contact info.' }},
+    ];
+
+    if (isChapterLead || isAdmin) {
+      steps.push(
+        { element: 'button[hx-get="/members/new"]', popover: { title: 'Add Member', description: 'Add a new member manually. Useful for people who haven\'t logged in via Discord yet.' }},
+        { element: '#members-table', popover: { title: 'Member Management', description: 'As a lead or admin, you\'ll see Edit and Dues buttons in the Actions column for each member. Use Edit to update their info, and Dues to mark them as paid or unpaid.' }}
+      );
+    }
+
+      // --- Auto-navigate to Meetings ---
+    steps.push(
+      navStep('/meetings', 'Going to Meetings...'),
+      { element: '#main-content', popover: { title: 'Meetings Page', description: 'All scheduled meetings are listed here with date, time, location, and attendance counts. Click "View" on any meeting for full details and check-in options.' }}
+    );
+
+    if (isEventManager) {
+      steps.push(
+        { element: 'button[hx-get="/meetings/new"]', popover: { title: 'New Meeting', description: 'As an event manager, click here to schedule a new meeting. Set the title, location, date/time, and chapter. For virtual meetings, you can pick a Discord voice channel instead.' }}
+      );
+    }
+
+    // --- Auto-navigate to Events ---
+    steps.push(
+      navStep('/events', 'Going to Events...'),
+      { element: '#main-content', popover: { title: 'Events Page', description: 'Events are date-based activities (no specific times). They can be Chapter-scoped, LUG Wide, or Non-LUG. Click "View" for details and attendance tracking.' }}
+    );
+
+    if (isEventManager) {
+      steps.push(
+        { element: 'button[hx-get="/events/new"]', popover: { title: 'New Event', description: 'Create a new event here. Choose the scope and dates. After the event, you can take attendance and publish a report to Discord.' }}
+      );
+    }
+
+    // --- Auto-navigate to Chapters ---
+    steps.push(
+      navStep('/chapters', 'Going to Chapters...'),
+      { element: '#main-content', popover: { title: 'Chapters Page', description: 'Each chapter has its own leads, event managers, and announcement channel. Meetings and events are scoped to chapters or the whole LUG.' }}
+    );
+
+    // Admin: auto-navigate to each admin page
+    if (isAdmin) {
+      steps.push(
+        navStep('/settings', 'Going to Settings...'),
+        { element: '#main-content', popover: { title: 'Settings', description: 'Configure your Discord Guild ID, announcement channels, forum channels, timezone, and role mappings. Use "Sync Now" to pull Discord members into the system.' }},
+        navStep('/perks', 'Going to Perk Levels...'),
+        { element: '#main-content', popover: { title: 'Perk Levels', description: 'Define attendance tiers (e.g. Bronze, Silver, Gold) with meeting/event requirements, dues prerequisites, and Discord role rewards.' }},
+        navStep('/audit', 'Going to Audit Log...'),
+        { element: '#main-content', popover: { title: 'Audit Log', description: 'Track all admin and manager actions: member changes, meeting/event CRUD, attendance, and more. Search and filter by action type.' }},
+        navStep('/attendance/overview', 'Going to Attendance Overview...'),
+        { element: '#main-content', popover: { title: 'Attendance Overview', description: 'See attendance stats across all members. Useful for tracking engagement and perk eligibility.' }}
+      );
+    }
+
+    if (isChapterLead && !isAdmin) {
+      steps.push(
+        { popover: { title: 'Chapter Lead Powers', description: 'As a chapter lead, you can add/edit members, manage dues, and see all contact info regardless of privacy settings. You also have all event manager capabilities.' }}
+      );
+    }
+
+    // --- Auto-navigate back to Help ---
+    steps.push(
+      navStep('/help', 'Heading back to Help...'),
+      { popover: { title: 'Tour Complete!', description: 'You\'ve seen all the key pages. Check the role-specific guides below for detailed instructions on each feature. Happy LUG-ing!' }}
+    );
+
+    window.tourDriver = driver.js.driver({
+      showProgress: true,
+      animate: true,
+      allowClose: true,
+      overlayColor: 'rgba(0,0,0,0.5)',
+      stagePadding: 8,
+      stageRadius: 8,
+      onDestroyStarted: function() {
+        tourDriver.destroy();
+      },
+      steps: steps
+    });
+    tourDriver.drive();
+  }
+  </script>
+
+  <!-- Everyone sees this -->
+  <details class="bg-white rounded-xl border border-gray-200" open>
+    <summary class="px-6 py-4 cursor-pointer font-semibold text-gray-800 hover:bg-gray-50 rounded-xl">
+      Getting Started (All Members)
+    </summary>
+    <div class="px-6 pb-5 space-y-3 text-sm text-gray-600">
+      <div class="flex gap-3">
+        <span class="flex-shrink-0 w-6 h-6 bg-yellow-400 text-gray-900 rounded-full flex items-center justify-center text-xs font-bold">1</span>
+        <div><strong>Edit your profile</strong> — Click the yellow "Edit My Profile" button on the dashboard or members page. Add your name, contact info, and choose your privacy settings for each field.</div>
+      </div>
+      <div class="flex gap-3">
+        <span class="flex-shrink-0 w-6 h-6 bg-yellow-400 text-gray-900 rounded-full flex items-center justify-center text-xs font-bold">2</span>
+        <div><strong>Subscribe to the calendar</strong> — On the dashboard, expand the calendar card and copy the iCal URL into your calendar app (Google Calendar, Apple Calendar, Outlook, etc.).</div>
+      </div>
+      <div class="flex gap-3">
+        <span class="flex-shrink-0 w-6 h-6 bg-yellow-400 text-gray-900 rounded-full flex items-center justify-center text-xs font-bold">3</span>
+        <div><strong>Browse members</strong> — Go to the Members page to see who's in the LUG. Click "View" on any member to see their shared contact info.</div>
+      </div>
+      <div class="flex gap-3">
+        <span class="flex-shrink-0 w-6 h-6 bg-yellow-400 text-gray-900 rounded-full flex items-center justify-center text-xs font-bold">4</span>
+        <div><strong>Privacy settings</strong> — You control who sees your contact info. Set each field (email, phone, address, birthday, Discord) to "Don't share", "Verified members only", or "All members". Verified = has attended in person or paid dues.</div>
+      </div>
+    </div>
+  </details>
+
+  <!-- Event Manager guide -->
+  {{#is_event_manager}}
+  <details class="bg-white rounded-xl border border-blue-200">
+    <summary class="px-6 py-4 cursor-pointer font-semibold text-gray-800 hover:bg-blue-50 rounded-xl">
+      <span class="text-blue-600">Event Manager Guide</span>
+    </summary>
+    <div class="px-6 pb-5 space-y-3 text-sm text-gray-600">
+      <div class="flex gap-3">
+        <span class="flex-shrink-0 w-6 h-6 bg-blue-500 text-white rounded-full flex items-center justify-center text-xs font-bold">1</span>
+        <div><strong>Create meetings</strong> — Go to Meetings and click "New Meeting". Fill in the title, location, date/time, and select your chapter. Virtual meetings hide the location and show a Discord voice channel picker instead.</div>
+      </div>
+      <div class="flex gap-3">
+        <span class="flex-shrink-0 w-6 h-6 bg-blue-500 text-white rounded-full flex items-center justify-center text-xs font-bold">2</span>
+        <div><strong>Create events</strong> — Go to Events and click "New Event". Events are date-based (no times). Choose scope: Chapter, LUG Wide, or Non-LUG. Non-LUG events don't have status tracking.</div>
+      </div>
+      <div class="flex gap-3">
+        <span class="flex-shrink-0 w-6 h-6 bg-blue-500 text-white rounded-full flex items-center justify-center text-xs font-bold">3</span>
+        <div><strong>Take attendance</strong> — Click "View" on a meeting or event to open the detail modal. The attendance panel at the bottom lets you search and add members. Use the multi-select dropdown to check in multiple people at once.</div>
+      </div>
+      <div class="flex gap-3">
+        <span class="flex-shrink-0 w-6 h-6 bg-blue-500 text-white rounded-full flex items-center justify-center text-xs font-bold">4</span>
+        <div><strong>QR code check-in</strong> — In the detail modal, click "Show QR Code" to generate a scannable check-in link. Attendees scan it on their phone and can check in via Discord, by finding their name, or by entering their info as a new member.</div>
+      </div>
+      <div class="flex gap-3">
+        <span class="flex-shrink-0 w-6 h-6 bg-blue-500 text-white rounded-full flex items-center justify-center text-xs font-bold">5</span>
+        <div><strong>Publish reports</strong> — After a meeting or event, click "Publish Report" to post an attendance summary to the Discord forum channel.</div>
+      </div>
+      <p class="text-xs text-gray-400 mt-2 italic">Note: You can only manage meetings/events for chapters where you have the event_manager or lead role.</p>
+    </div>
+  </details>
+  {{/is_event_manager}}
+
+  <!-- Chapter Lead guide -->
+  {{#is_chapter_lead_role}}
+  <details class="bg-white rounded-xl border border-purple-200">
+    <summary class="px-6 py-4 cursor-pointer font-semibold text-gray-800 hover:bg-purple-50 rounded-xl">
+      <span class="text-purple-600">Chapter Lead Guide</span>
+    </summary>
+    <div class="px-6 pb-5 space-y-3 text-sm text-gray-600">
+      <div class="flex gap-3">
+        <span class="flex-shrink-0 w-6 h-6 bg-purple-500 text-white rounded-full flex items-center justify-center text-xs font-bold">1</span>
+        <div><strong>Manage members</strong> — You can add new members, edit existing ones, and manage dues (mark paid/unpaid). Go to the Members page — you'll see Edit, Dues, and Add Member buttons.</div>
+      </div>
+      <div class="flex gap-3">
+        <span class="flex-shrink-0 w-6 h-6 bg-purple-500 text-white rounded-full flex items-center justify-center text-xs font-bold">2</span>
+        <div><strong>View all PII</strong> — As a chapter lead, you can see all member contact info regardless of their privacy settings. This is for chapter management purposes.</div>
+      </div>
+      <div class="flex gap-3">
+        <span class="flex-shrink-0 w-6 h-6 bg-purple-500 text-white rounded-full flex items-center justify-center text-xs font-bold">3</span>
+        <div><strong>Everything event managers can do</strong> — You also have all event manager capabilities: create/edit meetings and events, take attendance, generate QR codes, and publish reports.</div>
+      </div>
+      <p class="text-xs text-gray-400 mt-2 italic">Note: Only admins can change member roles, delete members, or edit chapter settings.</p>
+    </div>
+  </details>
+  {{/is_chapter_lead_role}}
+
+  <!-- Admin guide -->
+  {{#is_admin}}
+  <details class="bg-white rounded-xl border border-yellow-200">
+    <summary class="px-6 py-4 cursor-pointer font-semibold text-gray-800 hover:bg-yellow-50 rounded-xl">
+      <span class="text-yellow-700">Admin Guide</span>
+    </summary>
+    <div class="px-6 pb-5 space-y-3 text-sm text-gray-600">
+      <div class="flex gap-3">
+        <span class="flex-shrink-0 w-6 h-6 bg-yellow-500 text-white rounded-full flex items-center justify-center text-xs font-bold">1</span>
+        <div><strong>Configure Discord</strong> — Go to Settings to set your Guild ID, announcement channels, forum channels, and timezone. The bot needs to be invited to your server with proper permissions first.</div>
+      </div>
+      <div class="flex gap-3">
+        <span class="flex-shrink-0 w-6 h-6 bg-yellow-500 text-white rounded-full flex items-center justify-center text-xs font-bold">2</span>
+        <div><strong>Map Discord roles</strong> — Go to Settings > Role Mappings to map Discord roles to admin or member LUG roles. Members are auto-provisioned when they log in based on these mappings.</div>
+      </div>
+      <div class="flex gap-3">
+        <span class="flex-shrink-0 w-6 h-6 bg-yellow-500 text-white rounded-full flex items-center justify-center text-xs font-bold">3</span>
+        <div><strong>Set up chapters</strong> — Go to Chapters to create sub-groups. Assign leads (who get synced Discord roles) and event managers. Each chapter gets its own announcement channel.</div>
+      </div>
+      <div class="flex gap-3">
+        <span class="flex-shrink-0 w-6 h-6 bg-yellow-500 text-white rounded-full flex items-center justify-center text-xs font-bold">4</span>
+        <div><strong>Configure perk levels</strong> — Go to Perk Levels to define attendance tiers (e.g. Bronze, Silver, Gold) with meeting/event requirements, dues prerequisites, and Discord role rewards.</div>
+      </div>
+      <div class="flex gap-3">
+        <span class="flex-shrink-0 w-6 h-6 bg-yellow-500 text-white rounded-full flex items-center justify-center text-xs font-bold">5</span>
+        <div><strong>Monitor activity</strong> — Use the Attendance Overview to see who's attending, and the Audit Log to track all actions taken by admins and managers.</div>
+      </div>
+      <div class="flex gap-3">
+        <span class="flex-shrink-0 w-6 h-6 bg-yellow-500 text-white rounded-full flex items-center justify-center text-xs font-bold">6</span>
+        <div><strong>Sync members</strong> — In Settings, use "Sync Now" to pull all Discord guild members into the system. This runs automatically every 6 hours. Use "Sync All to Discord" to push meetings/events to Discord.</div>
+      </div>
+    </div>
+  </details>
+  {{/is_admin}}
+
+  <!-- Quick reference -->
+  <details class="bg-white rounded-xl border border-gray-200">
+    <summary class="px-6 py-4 cursor-pointer font-semibold text-gray-800 hover:bg-gray-50 rounded-xl">
+      Quick Reference
+    </summary>
+    <div class="px-6 pb-5 text-sm text-gray-600 overflow-x-auto">
+      <table class="w-full text-sm">
+        <thead><tr class="border-b border-gray-200">
+          <th class="py-2 pr-4 text-left font-medium text-gray-500">Feature</th>
+          <th class="py-2 px-3 text-center font-medium text-gray-500">Member</th>
+          <th class="py-2 px-3 text-center font-medium text-gray-500">Event Mgr</th>
+          <th class="py-2 px-3 text-center font-medium text-gray-500">Ch. Lead</th>
+          <th class="py-2 px-3 text-center font-medium text-gray-500">Admin</th>
+        </tr></thead>
+        <tbody class="divide-y divide-gray-100">
+          <tr><td class="py-2 pr-4">View meetings/events</td><td class="text-center text-green-600">&#10003;</td><td class="text-center text-green-600">&#10003;</td><td class="text-center text-green-600">&#10003;</td><td class="text-center text-green-600">&#10003;</td></tr>
+          <tr><td class="py-2 pr-4">Edit own profile</td><td class="text-center text-green-600">&#10003;</td><td class="text-center text-green-600">&#10003;</td><td class="text-center text-green-600">&#10003;</td><td class="text-center text-green-600">&#10003;</td></tr>
+          <tr><td class="py-2 pr-4">Create meetings/events</td><td class="text-center text-gray-300">&mdash;</td><td class="text-center text-green-600">&#10003;</td><td class="text-center text-green-600">&#10003;</td><td class="text-center text-green-600">&#10003;</td></tr>
+          <tr><td class="py-2 pr-4">Take attendance / QR</td><td class="text-center text-gray-300">&mdash;</td><td class="text-center text-green-600">&#10003;</td><td class="text-center text-green-600">&#10003;</td><td class="text-center text-green-600">&#10003;</td></tr>
+          <tr><td class="py-2 pr-4">Add/edit members</td><td class="text-center text-gray-300">&mdash;</td><td class="text-center text-gray-300">&mdash;</td><td class="text-center text-green-600">&#10003;</td><td class="text-center text-green-600">&#10003;</td></tr>
+          <tr><td class="py-2 pr-4">Manage dues</td><td class="text-center text-gray-300">&mdash;</td><td class="text-center text-gray-300">&mdash;</td><td class="text-center text-green-600">&#10003;</td><td class="text-center text-green-600">&#10003;</td></tr>
+          <tr><td class="py-2 pr-4">See all PII</td><td class="text-center text-gray-300">&mdash;</td><td class="text-center text-gray-300">&mdash;</td><td class="text-center text-green-600">&#10003;</td><td class="text-center text-green-600">&#10003;</td></tr>
+          <tr><td class="py-2 pr-4">Delete members</td><td class="text-center text-gray-300">&mdash;</td><td class="text-center text-gray-300">&mdash;</td><td class="text-center text-gray-300">&mdash;</td><td class="text-center text-green-600">&#10003;</td></tr>
+          <tr><td class="py-2 pr-4">Manage chapters</td><td class="text-center text-gray-300">&mdash;</td><td class="text-center text-gray-300">&mdash;</td><td class="text-center text-gray-300">&mdash;</td><td class="text-center text-green-600">&#10003;</td></tr>
+          <tr><td class="py-2 pr-4">System settings</td><td class="text-center text-gray-300">&mdash;</td><td class="text-center text-gray-300">&mdash;</td><td class="text-center text-gray-300">&mdash;</td><td class="text-center text-green-600">&#10003;</td></tr>
+          <tr><td class="py-2 pr-4">Audit log</td><td class="text-center text-gray-300">&mdash;</td><td class="text-center text-gray-300">&mdash;</td><td class="text-center text-gray-300">&mdash;</td><td class="text-center text-green-600">&#10003;</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </details>
+
+</div>

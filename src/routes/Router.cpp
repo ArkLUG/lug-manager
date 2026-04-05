@@ -15,4 +15,5 @@ void register_all_routes(LugApp& app, Services& svc) {
                             svc.meetings, svc.events, svc.attendance, svc.members,
                             svc.member_repo, svc.chapter_members, svc.oauth, svc.audit);
     register_audit_routes(app, svc.audit);
+    register_help_routes(app, svc.chapter_members);
 }

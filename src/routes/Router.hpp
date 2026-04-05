@@ -11,6 +11,7 @@
 #include "routes/PerkRoutes.hpp"
 #include "routes/CheckinRoutes.hpp"
 #include "routes/AuditRoutes.hpp"
+#include "routes/HelpRoutes.hpp"
 #include "repositories/PerkLevelRepository.hpp"
 #include "repositories/AttendanceRepository.hpp"
 #include "services/MemberService.hpp"
