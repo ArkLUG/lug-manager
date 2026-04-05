@@ -154,29 +154,33 @@ jobs:
       - name: Build with coverage
         run: |
           cmake -B build -S . -DBUILD_TESTS=ON \
-            -DCMAKE_CXX_FLAGS="--coverage -fprofile-arcs -ftest-coverage" \
-            -DCMAKE_EXE_LINKER_FLAGS="--coverage"
-          cmake --build build -j$(nproc)
+            -DCMAKE_C_FLAGS="--coverage" \
+            -DCMAKE_CXX_FLAGS="--coverage" \
+            -DCMAKE_EXE_LINKER_FLAGS="--coverage" \
+            -DCMAKE_SHARED_LINKER_FLAGS="--coverage"
+          cmake --build build -j"$(nproc)"
 
       - name: Run tests
-        run: ctest --test-dir build --output-on-failure -j$(nproc)
+        run: ctest --test-dir build --output-on-failure -j"$(nproc)"
 
       - name: Generate coverage report
         run: |
           lcov --capture --directory build --output-file coverage.info \
-            --ignore-errors mismatch
+            --ignore-errors mismatch,gcov,source,unused \
+            --rc lcov_branch_coverage=1
           lcov --remove coverage.info \
-            '*/build/_deps/*' '*/tests/*' '/usr/*' '*/gtest/*' \
+            '*/build/_deps/*' '*/tests/*' '/usr/*' '*/gtest/*' '*/googletest/*' \
             --output-file coverage-filtered.info \
-            --ignore-errors unused
-          lcov --list coverage-filtered.info
+            --ignore-errors mismatch,gcov,source,unused
+          lcov --list coverage-filtered.info || true
 
       - name: Upload coverage to Codecov
-        uses: codecov/codecov-action@v4
+        uses: codecov/codecov-action@v5
         with:
           files: coverage-filtered.info
           fail_ci_if_error: false
-          token: ${{ secrets.CODECOV_TOKEN }}
+        env:
+          CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
 
   # ── SCA: scan Docker image for known CVEs ──────────────────────────────────
   image-scan:
