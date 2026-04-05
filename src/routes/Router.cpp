@@ -13,6 +13,6 @@ void register_all_routes(LugApp& app, Services& svc) {
     register_perk_routes(app, svc.perks, svc.attendance_repo, svc.member_repo, svc.discord, svc.audit);
     register_checkin_routes(app, svc.meeting_repo, svc.event_repo,
                             svc.meetings, svc.events, svc.attendance, svc.members,
-                            svc.member_repo, svc.chapter_members, svc.oauth, svc.discord, svc.audit);
+                            svc.member_repo, svc.chapter_members, svc.oauth, svc.audit);
     register_audit_routes(app, svc.audit);
 }

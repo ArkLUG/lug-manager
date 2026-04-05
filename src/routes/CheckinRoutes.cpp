@@ -13,7 +13,6 @@ void register_checkin_routes(LugApp& app,
                               MemberRepository& member_repo,
                               ChapterMemberRepository& chapter_members,
                               DiscordOAuth& oauth,
-                              DiscordClient& discord,
                               AuditService& audit) {
 
     // POST /meetings/<id>/generate-checkin — generate or return existing QR check-in token
@@ -333,6 +332,7 @@ void register_checkin_routes(LugApp& app,
 
     // GET /checkin/<token>/search?q= — search members for the select dropdown
     CROW_ROUTE(app, "/checkin/<str>/search")([&](const crow::request& req, const std::string& token) {
+        (void)token; // required by route pattern but not used
         crow::response res;
         res.add_header("Content-Type", "text/html; charset=utf-8");
 

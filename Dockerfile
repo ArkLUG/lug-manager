@@ -28,7 +28,7 @@ RUN mkdir -p src/static && \
       -o src/static/tailwind.min.css \
       --minify
 
-RUN cmake -B build -S . -DCMAKE_BUILD_TYPE=Release -DBUILD_TESTS=ON && cmake --build build -j$(nproc)
+RUN cmake -B build -S . -DCMAKE_BUILD_TYPE=Release -DBUILD_TESTS=ON && cmake --build build -j"$(nproc)"
 
 # Run tests inside the build (skip integration tests that need a running server)
 RUN ctest --test-dir build --output-on-failure

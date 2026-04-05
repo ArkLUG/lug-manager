@@ -1,0 +1,4 @@
+ignored:
+  # We use ubuntu:24.04 as base — pinning apt package versions is impractical
+  # since they change with every security update. The upgrade step handles patching.
+  - DL3008
