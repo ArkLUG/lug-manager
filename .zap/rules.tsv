@@ -1,0 +1,4 @@
+10003	IGNORE	(Retrievable Email Addresses - expected in member data)
+10010	IGNORE	(Cookie No HttpOnly Flag - session cookie already sets HttpOnly)
+10011	IGNORE	(Cookie Without Secure Flag - handled by reverse proxy in production)
+10015	IGNORE	(Re-examine Cache-control Directives - static assets cached intentionally)
