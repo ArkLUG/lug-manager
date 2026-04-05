@@ -1,4 +1,5 @@
 #include "routes/MemberRoutes.hpp"
+#include "utils/AuditDiff.hpp"
 #include <crow.h>
 #include <crow/mustache.h>
 #include <sstream>
@@ -244,9 +245,25 @@ void register_member_routes(LugApp& app, MemberService& members, AttendanceRepos
         }
 
         res.add_header("Content-Type", "text/html; charset=utf-8");
+        auto before_self = members.get(auth.member_id);
         try {
-            members.update(auth.member_id, updates);
-            audit.log(req, app, "member.self_edit", "member", auth.member_id, auth.display_name, "Updated own profile");
+            auto after_self = members.update(auth.member_id, updates);
+            {
+                AuditDiff diff;
+                if (before_self) {
+                    diff.field("first_name", before_self->first_name, after_self.first_name);
+                    diff.field("last_name", before_self->last_name, after_self.last_name);
+                    diff.field("email", before_self->email, after_self.email);
+                    diff.field("phone", before_self->phone, after_self.phone);
+                    diff.field("sharing_email", before_self->sharing_email, after_self.sharing_email);
+                    diff.field("sharing_phone", before_self->sharing_phone, after_self.sharing_phone);
+                    diff.field("sharing_address", before_self->sharing_address, after_self.sharing_address);
+                    diff.field("sharing_birthday", before_self->sharing_birthday, after_self.sharing_birthday);
+                    diff.field("sharing_discord", before_self->sharing_discord, after_self.sharing_discord);
+                }
+                audit.log(req, app, "member.self_edit", "member", auth.member_id, auth.display_name,
+                          diff.has_changes() ? diff.str() : "No field changes");
+            }
             res.add_header("HX-Trigger", "{\"closeModal\":true,\"membersUpdated\":true}");
             res.code = 200;
         } catch (const std::exception& e) {
@@ -427,12 +444,31 @@ void register_member_routes(LugApp& app, MemberService& members, AttendanceRepos
         updates.is_paid    = !paid_until.empty();
 
         res.add_header("Content-Type", "text/html; charset=utf-8");
+        auto before = members.get(static_cast<int64_t>(id));
         try {
             auto updated_m = members.update(static_cast<int64_t>(id), updates);
             std::string chapter_str = get_param("chapter_id");
             int64_t chapter_id = chapter_str.empty() ? 0 : std::stoll(chapter_str);
             members.set_chapter(static_cast<int64_t>(id), chapter_id);
-            audit.log(req, app, "member.update", "member", id, updated_m.display_name, "Updated member");
+            {
+                AuditDiff diff;
+                if (before) {
+                    diff.field("first_name", before->first_name, updated_m.first_name);
+                    diff.field("last_name", before->last_name, updated_m.last_name);
+                    diff.field("display_name", before->display_name, updated_m.display_name);
+                    diff.field("email", before->email, updated_m.email);
+                    diff.field("role", before->role, updated_m.role);
+                    diff.field("phone", before->phone, updated_m.phone);
+                    diff.field("city", before->city, updated_m.city);
+                    diff.field("state", before->state, updated_m.state);
+                    diff.field("zip", before->zip, updated_m.zip);
+                    diff.field("is_paid", before->is_paid, updated_m.is_paid);
+                    diff.field("paid_until", before->paid_until, updated_m.paid_until);
+                    diff.field("fol_status", before->fol_status, updated_m.fol_status);
+                }
+                audit.log(req, app, "member.update", "member", id, updated_m.display_name,
+                          diff.has_changes() ? diff.str() : "No field changes");
+            }
             res.add_header("HX-Trigger", "{\"closeModal\":true,\"membersUpdated\":true}");
             res.code = 200;
         } catch (const std::exception& e) {

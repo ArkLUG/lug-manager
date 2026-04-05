@@ -1,5 +1,6 @@
 #include "routes/EventRoutes.hpp"
 #include "utils/MarkdownRenderer.hpp"
+#include "utils/AuditDiff.hpp"
 #include <crow.h>
 #include <crow/mustache.h>
 #include <stdexcept>
@@ -641,11 +642,9 @@ void register_event_routes(LugApp& app, EventService& events, AttendanceService&
         [&](const crow::request& req, int id) {
         crow::response res;
         if (!require_auth(req, res, app)) return res;
-        {
-            auto ev = events.get(static_cast<int64_t>(id));
-            if (!ev) { res.code = 404; res.write(R"({"error":"not found"})"); res.end(); return res; }
-            if (!can_manage_chapter_content(req, res, app, ev->chapter_id, chapter_members)) return res;
-        }
+        auto ev_before = events.get(static_cast<int64_t>(id));
+        if (!ev_before) { res.code = 404; res.write(R"({"error":"not found"})"); res.end(); return res; }
+        if (!can_manage_chapter_content(req, res, app, ev_before->chapter_id, chapter_members)) return res;
 
         std::string content_type = req.get_header_value("Content-Type");
         bool is_form = content_type.find("application/x-www-form-urlencoded") != std::string::npos;
@@ -722,8 +721,19 @@ void register_event_routes(LugApp& app, EventService& events, AttendanceService&
                 return res;
             }
             try {
-                events.update(static_cast<int64_t>(id), updates);
-                audit.log(req, app, "event.update", "event", static_cast<int64_t>(id), updates.title, "Updated event");
+                auto ev_after = events.update(static_cast<int64_t>(id), updates);
+                {
+                    AuditDiff diff;
+                    diff.field("title", ev_before->title, ev_after.title);
+                    diff.field("location", ev_before->location, ev_after.location);
+                    diff.field("start_time", ev_before->start_time, ev_after.start_time);
+                    diff.field("end_time", ev_before->end_time, ev_after.end_time);
+                    diff.field("scope", ev_before->scope, ev_after.scope);
+                    diff.field("status", ev_before->status, ev_after.status);
+                    diff.field("max_attendees", ev_before->max_attendees, ev_after.max_attendees);
+                    audit.log(req, app, "event.update", "event", static_cast<int64_t>(id), ev_after.title,
+                              diff.has_changes() ? diff.str() : "No field changes");
+                }
                 res.add_header("HX-Trigger", "closeModal");
                 res.add_header("HX-Redirect", "/events");
                 res.code = 200;

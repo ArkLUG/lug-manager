@@ -1,5 +1,6 @@
 #include "routes/MeetingRoutes.hpp"
 #include "utils/MarkdownRenderer.hpp"
+#include "utils/AuditDiff.hpp"
 #include <crow.h>
 #include <crow/mustache.h>
 #include <map>
@@ -493,11 +494,9 @@ void register_meeting_routes(LugApp& app, MeetingService& meetings, AttendanceSe
         [&](const crow::request& req, int id) {
         crow::response res;
         if (!require_auth(req, res, app)) return res;
-        {
-            auto mtg = meetings.get(static_cast<int64_t>(id));
-            if (!mtg) { res.code = 404; res.write(R"({"error":"not found"})"); res.end(); return res; }
-            if (!can_manage_chapter_content(req, res, app, mtg->chapter_id, chapter_members)) return res;
-        }
+        auto mtg_before = meetings.get(static_cast<int64_t>(id));
+        if (!mtg_before) { res.code = 404; res.write(R"({"error":"not found"})"); res.end(); return res; }
+        if (!can_manage_chapter_content(req, res, app, mtg_before->chapter_id, chapter_members)) return res;
 
         std::string content_type = req.get_header_value("Content-Type");
         bool is_form = content_type.find("application/x-www-form-urlencoded") != std::string::npos;
@@ -538,8 +537,19 @@ void register_meeting_routes(LugApp& app, MeetingService& meetings, AttendanceSe
                 return res;
             }
             try {
-                meetings.update(static_cast<int64_t>(id), updates);
-                audit.log(req, app, "meeting.update", "meeting", static_cast<int64_t>(id), updates.title, "Updated meeting");
+                auto mtg_after = meetings.update(static_cast<int64_t>(id), updates);
+                {
+                    AuditDiff diff;
+                    diff.field("title", mtg_before->title, mtg_after.title);
+                    diff.field("location", mtg_before->location, mtg_after.location);
+                    diff.field("start_time", mtg_before->start_time, mtg_after.start_time);
+                    diff.field("end_time", mtg_before->end_time, mtg_after.end_time);
+                    diff.field("scope", mtg_before->scope, mtg_after.scope);
+                    diff.field("is_virtual", mtg_before->is_virtual, mtg_after.is_virtual);
+                    diff.field("status", mtg_before->status, mtg_after.status);
+                    audit.log(req, app, "meeting.update", "meeting", static_cast<int64_t>(id), mtg_after.title,
+                              diff.has_changes() ? diff.str() : "No field changes");
+                }
                 res.add_header("HX-Trigger", "closeModal");
                 res.add_header("HX-Redirect", "/meetings");
                 res.code = 200;
