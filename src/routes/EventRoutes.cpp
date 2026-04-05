@@ -825,15 +825,17 @@ void register_event_routes(LugApp& app, EventService& events, AttendanceService&
         [&](const crow::request& req, int id) {
         crow::response res;
         if (!require_auth(req, res, app)) return res;
+        std::string cancel_title;
         {
             auto ev = events.get(static_cast<int64_t>(id));
             if (!ev) { res.code = 404; res.write(R"({"error":"not found"})"); return res; }
             if (!can_manage_chapter_content(req, res, app, ev->chapter_id, chapter_members)) return res;
+            cancel_title = ev->title;
         }
 
         try {
             events.cancel(static_cast<int64_t>(id));
-            audit.log(req, app, "event.delete", "event", static_cast<int64_t>(id), "", "Cancelled event");
+            audit.log(req, app, "event.delete", "event", static_cast<int64_t>(id), cancel_title, "Cancelled event");
             res.add_header("HX-Redirect", "/events");
             res.code = 200;
         } catch (const std::exception& ex) {
@@ -849,10 +851,12 @@ void register_event_routes(LugApp& app, EventService& events, AttendanceService&
         [&](const crow::request& req, int id) {
         crow::response res;
         if (!require_auth(req, res, app)) return res;
+        std::string status_ev_title;
         {
             auto ev = events.get(static_cast<int64_t>(id));
             if (!ev) { res.code = 404; res.write(R"({"error":"not found"})"); return res; }
             if (!can_manage_chapter_content(req, res, app, ev->chapter_id, chapter_members)) return res;
+            status_ev_title = ev->title;
         }
 
         auto params = crow::query_string("?" + req.body);
@@ -874,7 +878,7 @@ void register_event_routes(LugApp& app, EventService& events, AttendanceService&
 
         try {
             events.update_status(static_cast<int64_t>(id), status);
-            audit.log(req, app, "event.status", "event", static_cast<int64_t>(id), "", "Status changed to " + status);
+            audit.log(req, app, "event.status", "event", static_cast<int64_t>(id), status_ev_title, "Status changed to " + status);
             res.add_header("HX-Redirect", "/events");
             res.code = 200;
         } catch (const std::exception& ex) {
@@ -898,10 +902,13 @@ void register_event_routes(LugApp& app, EventService& events, AttendanceService&
         const char* notes_raw = params.get("notes");
         std::string notes = notes_raw ? std::string(notes_raw) : "";
 
+        auto ev_checkin = events.get(static_cast<int64_t>(id));
+        std::string ev_checkin_title = ev_checkin ? ev_checkin->title : "";
+
         bool already = attendance.is_checked_in(mbr_id, "event", static_cast<int64_t>(id));
         if (already) {
             attendance.check_out(mbr_id, "event", static_cast<int64_t>(id));
-            audit.log(req, app, "event.self_checkout", "event", static_cast<int64_t>(id), "", "Self check-out");
+            audit.log(req, app, "event.self_checkout", "event", static_cast<int64_t>(id), ev_checkin_title, "Self check-out");
             res.write(R"(<button hx-post="/events/)" + std::to_string(id) +
                 R"(/checkin" hx-swap="outerHTML" hx-target="this")"
                 R"( class="inline-flex items-center gap-1 px-3 py-1.5 bg-green-600 text-white text-sm font-medium rounded hover:bg-green-700">)"
@@ -914,7 +921,7 @@ void register_event_routes(LugApp& app, EventService& events, AttendanceService&
                 res.add_header("Content-Type", "text/html");
                 return res;
             }
-            audit.log(req, app, "event.self_checkin", "event", static_cast<int64_t>(id), "", "Self check-in");
+            audit.log(req, app, "event.self_checkin", "event", static_cast<int64_t>(id), ev_checkin_title, "Self check-in");
             res.write(R"(<button hx-post="/events/)" + std::to_string(id) +
                 R"(/checkin" hx-swap="outerHTML" hx-target="this")"
                 R"( class="inline-flex items-center gap-1 px-3 py-1.5 bg-gray-500 text-white text-sm font-medium rounded hover:bg-gray-600">)"
@@ -1048,7 +1055,7 @@ void register_event_routes(LugApp& app, EventService& events, AttendanceService&
             events.repo().update_notes_discord_post_id(ev->id, thread_id);
         }
 
-        audit.log(req, app, "event.publish_report", "event", ev->id, "", "Published report");
+        audit.log(req, app, "event.publish_report", "event", ev->id, ev->title, "Published report");
         res.add_header("Content-Type", "text/html; charset=utf-8");
         res.write(R"(<span class="text-green-600 text-xs">Report published!</span>)");
         return res;

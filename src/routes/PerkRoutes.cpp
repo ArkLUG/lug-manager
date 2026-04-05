@@ -256,8 +256,10 @@ void register_perk_routes(LugApp& app, PerkLevelRepository& perks,
         crow::response res;
         if (!require_auth(req, res, app, "admin")) return res;
 
+        auto perk_del = perks.find_by_id(static_cast<int64_t>(id));
+        std::string perk_del_name = perk_del ? perk_del->name : "";
         perks.remove(static_cast<int64_t>(id));
-        audit.log(req, app, "perk.delete", "perk", static_cast<int64_t>(id), "", "Deleted perk level");
+        audit.log(req, app, "perk.delete", "perk", static_cast<int64_t>(id), perk_del_name, "Deleted perk level");
         res.add_header("HX-Redirect", "/perks");
         res.code = 200;
         return res;

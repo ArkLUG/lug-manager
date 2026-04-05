@@ -67,8 +67,22 @@ static std::string render_attendance_list(AttendanceService& attendance,
     return tmpl.render(ctx).dump();
 }
 
+// Helper to look up the title of an event or meeting by type and ID
+static std::string get_entity_title(EventService& events, MeetingService& meetings,
+                                     const std::string& entity_type, int64_t entity_id) {
+    if (entity_type == "event") {
+        auto ev = events.get(entity_id);
+        return ev ? ev->title : "";
+    } else if (entity_type == "meeting") {
+        auto mtg = meetings.get(entity_id);
+        return mtg ? mtg->title : "";
+    }
+    return "";
+}
+
 void register_attendance_routes(LugApp& app, AttendanceService& attendance,
                                 EventService& events, MeetingService& meetings,
+                                MemberService& members,
                                 ChapterMemberRepository& chapter_members,
                                 PerkLevelRepository& perks, AuditService& audit) {
 
@@ -358,8 +372,11 @@ void register_attendance_routes(LugApp& app, AttendanceService& attendance,
             try {
                 int64_t member_id = std::stoll(mid_str);
                 attendance.check_in(member_id, entity_type, entity_id, "", is_virtual);
-                audit.log(req, app, "attendance.checkin", entity_type, entity_id, "",
-                          "Admin checked in member_id=" + std::to_string(member_id));
+                auto checkin_mbr = members.get(member_id);
+                std::string checkin_mbr_name = checkin_mbr ? checkin_mbr->display_name : std::to_string(member_id);
+                audit.log(req, app, "attendance.checkin", entity_type, entity_id,
+                          get_entity_title(events, meetings, entity_type, entity_id),
+                          "Admin checked in " + checkin_mbr_name);
             } catch (...) {}
         }
 
@@ -399,8 +416,9 @@ void register_attendance_routes(LugApp& app, AttendanceService& attendance,
         }
 
         attendance.remove_by_id(static_cast<int64_t>(id));
-        audit.log(req, app, "attendance.remove", entity_type, entity_id, "",
-                  "Admin removed attendance record id=" + std::to_string(id));
+        audit.log(req, app, "attendance.remove", entity_type, entity_id,
+                  get_entity_title(events, meetings, entity_type, entity_id),
+                  "Admin removed attendance record");
         res.write(render_attendance_list(attendance, entity_type, entity_id,
                                          true, entity_type == "meeting"));
         res.add_header("Content-Type", "text/html");
@@ -438,7 +456,8 @@ void register_attendance_routes(LugApp& app, AttendanceService& attendance,
         }
 
         attendance.set_virtual(static_cast<int64_t>(id), !current);
-        audit.log(req, app, "attendance.toggle_virtual", entity_type, entity_id, "", "Toggled virtual");
+        audit.log(req, app, "attendance.toggle_virtual", entity_type, entity_id,
+                  get_entity_title(events, meetings, entity_type, entity_id), "Toggled virtual");
         res.write(render_attendance_list(attendance, entity_type, entity_id,
                                          true, entity_type == "meeting"));
         res.add_header("Content-Type", "text/html");

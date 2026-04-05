@@ -629,15 +629,17 @@ void register_meeting_routes(LugApp& app, MeetingService& meetings, AttendanceSe
         [&](const crow::request& req, int id) {
         crow::response res;
         if (!require_auth(req, res, app)) return res;
+        std::string cancel_mtg_title;
         {
             auto mtg = meetings.get(static_cast<int64_t>(id));
             if (!mtg) { res.code = 404; res.write(R"({"error":"not found"})"); return res; }
             if (!can_manage_chapter_content(req, res, app, mtg->chapter_id, chapter_members)) return res;
+            cancel_mtg_title = mtg->title;
         }
 
         try {
             meetings.cancel(static_cast<int64_t>(id));
-            audit.log(req, app, "meeting.delete", "meeting", static_cast<int64_t>(id), "", "Cancelled meeting");
+            audit.log(req, app, "meeting.delete", "meeting", static_cast<int64_t>(id), cancel_mtg_title, "Cancelled meeting");
             res.add_header("HX-Redirect", "/meetings");
             res.code = 200;
         } catch (const std::exception& e) {
@@ -653,15 +655,17 @@ void register_meeting_routes(LugApp& app, MeetingService& meetings, AttendanceSe
         [&](const crow::request& req, int id) {
         crow::response res;
         if (!require_auth(req, res, app)) return res;
+        std::string complete_mtg_title;
         {
             auto mtg = meetings.get(static_cast<int64_t>(id));
             if (!mtg) { res.code = 404; res.write(R"({"error":"not found"})"); return res; }
             if (!can_manage_chapter_content(req, res, app, mtg->chapter_id, chapter_members)) return res;
+            complete_mtg_title = mtg->title;
         }
 
         try {
             meetings.complete(static_cast<int64_t>(id));
-            audit.log(req, app, "meeting.complete", "meeting", static_cast<int64_t>(id), "", "Marked complete");
+            audit.log(req, app, "meeting.complete", "meeting", static_cast<int64_t>(id), complete_mtg_title, "Marked complete");
             res.add_header("HX-Trigger", "meetingsUpdated");
             res.code = 200;
             res.write(R"({"success":true})");
@@ -731,10 +735,13 @@ void register_meeting_routes(LugApp& app, MeetingService& meetings, AttendanceSe
 
         res.add_header("Content-Type", "text/html; charset=utf-8");
         res.add_header("HX-Trigger", "attendanceUpdated");
+        auto mtg_checkin = meetings.get(static_cast<int64_t>(id));
+        std::string mtg_checkin_title = mtg_checkin ? mtg_checkin->title : "";
+
         bool already = attendance.is_checked_in(mbr_id, "meeting", static_cast<int64_t>(id));
         if (already) {
             attendance.check_out(mbr_id, "meeting", static_cast<int64_t>(id));
-            audit.log(req, app, "meeting.self_checkout", "meeting", static_cast<int64_t>(id), "", "Self check-out");
+            audit.log(req, app, "meeting.self_checkout", "meeting", static_cast<int64_t>(id), mtg_checkin_title, "Self check-out");
             // Return the segmented check-in button group
             res.write(
                 R"(<div id="mtg-checkin-)" + sid + R"(" class="inline-flex rounded-full overflow-hidden border border-gray-300">)"
@@ -751,7 +758,7 @@ void register_meeting_routes(LugApp& app, MeetingService& meetings, AttendanceSe
                 R"(</div>)");
         } else {
             attendance.check_in(mbr_id, "meeting", static_cast<int64_t>(id), notes, is_virtual);
-            audit.log(req, app, "meeting.self_checkin", "meeting", static_cast<int64_t>(id), "", "Self check-in");
+            audit.log(req, app, "meeting.self_checkin", "meeting", static_cast<int64_t>(id), mtg_checkin_title, "Self check-in");
             std::string icon = is_virtual
                 ? R"(<svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/></svg>)"
                 : R"(<svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>)";
@@ -835,7 +842,7 @@ void register_meeting_routes(LugApp& app, MeetingService& meetings, AttendanceSe
             meetings.repo().update_notes_discord_post_id(mtg->id, thread_id);
         }
 
-        audit.log(req, app, "meeting.publish_report", "meeting", mtg->id, "", "Published report");
+        audit.log(req, app, "meeting.publish_report", "meeting", mtg->id, mtg->title, "Published report");
         res.add_header("Content-Type", "text/html; charset=utf-8");
         res.write(R"(<span class="text-green-600 text-xs">Report published!</span>)");
         return res;

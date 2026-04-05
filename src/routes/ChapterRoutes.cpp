@@ -252,15 +252,17 @@ void register_chapter_routes(LugApp& app, ChapterService& chapters,
 
         int64_t new_lead_id = std::stoll(mid_raw);
         chapter_members.upsert(new_lead_id, chapter_id, "lead", ctx.auth.member_id);
-        audit.log(req, app, "chapter.lead_assign", "chapter", chapter_id, "", "Assigned lead member_id=" + std::to_string(new_lead_id));
 
         // Assign the chapter's lead Discord role if configured
         auto ch = chapters.get(chapter_id);
+        auto lead_member = members.get(new_lead_id);
+        std::string ch_name = ch ? ch->name : "";
+        std::string lead_name = lead_member ? lead_member->display_name : std::to_string(new_lead_id);
+        audit.log(req, app, "chapter.lead_assign", "chapter", chapter_id, ch_name, "Assigned lead: " + lead_name);
         if (ch && !ch->discord_lead_role_id.empty()) {
-            auto member = members.get(new_lead_id);
-            if (member && !member->discord_user_id.empty()) {
+            if (lead_member && !lead_member->discord_user_id.empty()) {
                 try {
-                    discord.add_member_role(member->discord_user_id, ch->discord_lead_role_id);
+                    discord.add_member_role(lead_member->discord_user_id, ch->discord_lead_role_id);
                 } catch (const std::exception& e) {
                     std::cerr << "[ChapterRoutes] Failed to add lead role: " << e.what() << "\n";
                 }
@@ -283,12 +285,14 @@ void register_chapter_routes(LugApp& app, ChapterService& chapters,
 
         chapter_members.upsert(static_cast<int64_t>(member_id), chapter_id,
                                "member", ctx.auth.member_id);
-        audit.log(req, app, "chapter.lead_demote", "chapter", chapter_id, "", "Demoted lead member_id=" + std::to_string(member_id));
 
         // Remove the chapter's lead Discord role if configured
         auto ch = chapters.get(chapter_id);
+        auto m = members.get(static_cast<int64_t>(member_id));
+        std::string ch_name = ch ? ch->name : "";
+        std::string demoted_name = m ? m->display_name : std::to_string(member_id);
+        audit.log(req, app, "chapter.lead_demote", "chapter", chapter_id, ch_name, "Demoted lead: " + demoted_name);
         if (ch && !ch->discord_lead_role_id.empty()) {
-            auto m = members.get(static_cast<int64_t>(member_id));
             if (m && !m->discord_user_id.empty()) {
                 try {
                     discord.remove_member_role(m->discord_user_id, ch->discord_lead_role_id);
@@ -388,8 +392,10 @@ void register_chapter_routes(LugApp& app, ChapterService& chapters,
         }
 
         try {
+            auto ch_del = chapters.get(static_cast<int64_t>(id));
+            std::string del_name = ch_del ? ch_del->name : "";
             chapters.delete_chapter(static_cast<int64_t>(id));
-            audit.log(req, app, "chapter.delete", "chapter", static_cast<int64_t>(id), "", "Deleted chapter");
+            audit.log(req, app, "chapter.delete", "chapter", static_cast<int64_t>(id), del_name, "Deleted chapter");
             res.add_header("HX-Redirect", "/chapters");
             res.code = 200;
         } catch (const std::exception& e) {
@@ -542,14 +548,18 @@ void register_chapter_routes(LugApp& app, ChapterService& chapters,
 
         chapter_members.upsert(member_id, chapter_id, chapter_role, ctx.auth.member_id);
 
-        if (!prev_role) {
-            audit.log(req, app, "chapter.member_add", "chapter", chapter_id, "", "Added member " + member_id_str);
-        } else if (*prev_role != chapter_role) {
-            audit.log(req, app, "chapter.member_role", "chapter", chapter_id, "", "Changed member " + member_id_str + " role to " + chapter_role);
-        }
-
         // Sync Discord lead role if the chapter has one configured
         auto ch = chapters.get(chapter_id);
+        auto mbr = members.get(member_id);
+        std::string ch_name = ch ? ch->name : "";
+        std::string mbr_name = mbr ? mbr->display_name : member_id_str;
+
+        if (!prev_role) {
+            audit.log(req, app, "chapter.member_add", "chapter", chapter_id, ch_name, "Added member " + mbr_name);
+        } else if (*prev_role != chapter_role) {
+            audit.log(req, app, "chapter.member_role", "chapter", chapter_id, ch_name, "Changed " + mbr_name + " role to " + chapter_role);
+        }
+
         if (ch && !ch->discord_lead_role_id.empty()) {
             auto member = members.get(member_id);
             if (member && !member->discord_user_id.empty()) {
@@ -592,8 +602,12 @@ void register_chapter_routes(LugApp& app, ChapterService& chapters,
             }
         }
 
+        auto ch_rm = chapters.get(chapter_id);
+        auto mbr_rm = members.get(static_cast<int64_t>(member_id));
+        std::string ch_rm_name = ch_rm ? ch_rm->name : "";
+        std::string mbr_rm_name = mbr_rm ? mbr_rm->display_name : std::to_string(member_id);
         chapter_members.remove(static_cast<int64_t>(member_id), chapter_id);
-        audit.log(req, app, "chapter.member_remove", "chapter", chapter_id, "", "Removed member " + std::to_string(member_id));
+        audit.log(req, app, "chapter.member_remove", "chapter", chapter_id, ch_rm_name, "Removed member " + mbr_rm_name);
         res.add_header("HX-Redirect", "/chapters/" + std::to_string(id) + "/members");
         res.code = 200;
         return res;

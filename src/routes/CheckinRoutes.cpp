@@ -228,12 +228,13 @@ void register_checkin_routes(LugApp& app,
 
         // Find entity
         std::string entity_type;
+        std::string entity_title;
         int64_t entity_id = 0;
         auto mtg = meeting_repo.find_by_checkin_token(token);
-        if (mtg) { entity_type = "meeting"; entity_id = mtg->id; }
+        if (mtg) { entity_type = "meeting"; entity_id = mtg->id; entity_title = mtg->title; }
         else {
             auto ev = event_repo.find_by_checkin_token(token);
-            if (ev) { entity_type = "event"; entity_id = ev->id; }
+            if (ev) { entity_type = "event"; entity_id = ev->id; entity_title = ev->title; }
         }
         if (entity_id == 0) {
             res.write(R"(<div class="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded text-sm">Invalid check-in link.</div>)");
@@ -250,7 +251,7 @@ void register_checkin_routes(LugApp& app,
         const char* virt_raw = params.get("is_virtual");
         bool is_virtual = virt_raw && std::string(virt_raw) == "1";
         attendance.check_in(member_id, entity_type, entity_id, "", is_virtual);
-        audit.log_system("checkin.select", entity_type, entity_id, "", "Select check-in: " + member->display_name);
+        audit.log_system("checkin.select", entity_type, entity_id, entity_title, "Select check-in: " + member->display_name);
 
         res.write("<div class=\"bg-green-50 border border-green-200 text-green-700 px-4 py-3 rounded text-sm\">"
                   + member->display_name + " checked in successfully!</div>");
@@ -278,12 +279,13 @@ void register_checkin_routes(LugApp& app,
 
         // Find entity
         std::string entity_type;
+        std::string entity_title;
         int64_t entity_id = 0;
         auto mtg = meeting_repo.find_by_checkin_token(token);
-        if (mtg) { entity_type = "meeting"; entity_id = mtg->id; }
+        if (mtg) { entity_type = "meeting"; entity_id = mtg->id; entity_title = mtg->title; }
         else {
             auto ev = event_repo.find_by_checkin_token(token);
-            if (ev) { entity_type = "event"; entity_id = ev->id; }
+            if (ev) { entity_type = "event"; entity_id = ev->id; entity_title = ev->title; }
         }
         if (entity_id == 0) {
             res.write(R"(<div class="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded text-sm">Invalid check-in link.</div>)");
@@ -305,7 +307,7 @@ void register_checkin_routes(LugApp& app,
                 const char* virt_raw = params.get("is_virtual");
                 bool is_virtual = virt_raw && std::string(virt_raw) == "1";
                 attendance.check_in(m.id, entity_type, entity_id, "", is_virtual);
-                audit.log_system("checkin.manual", entity_type, entity_id, "", "Manual check-in (existing): " + m.display_name);
+                audit.log_system("checkin.manual", entity_type, entity_id, entity_title, "Manual check-in (existing): " + m.display_name);
                 res.write("<div class=\"bg-green-50 border border-green-200 text-green-700 px-4 py-3 rounded text-sm\">"
                           "Welcome back, " + m.display_name + "! Checked in successfully.</div>");
                 return res;
@@ -322,7 +324,7 @@ void register_checkin_routes(LugApp& app,
         const char* virt_raw = params.get("is_virtual");
         bool is_virtual = virt_raw && std::string(virt_raw) == "1";
         attendance.check_in(created.id, entity_type, entity_id, "", is_virtual);
-        audit.log_system("checkin.manual", entity_type, entity_id, "", "Manual check-in (new member): " + created.display_name);
+        audit.log_system("checkin.manual", entity_type, entity_id, entity_title, "Manual check-in (new member): " + created.display_name);
 
         res.write("<div class=\"bg-green-50 border border-green-200 text-green-700 px-4 py-3 rounded text-sm\">"
                   "Welcome, " + created.display_name + "! You've been checked in.</div>");
