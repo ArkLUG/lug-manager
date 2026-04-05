@@ -1,9 +1,20 @@
 <div class="space-y-4" id="main-content" data-page-title="Events">
   <!-- Header -->
   <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
-    <div>
-      <h2 class="text-xl font-semibold text-gray-800">Events</h2>
-      <p class="text-sm text-gray-500 mt-0.5">{{total_count}} total</p>
+    <div class="flex items-center gap-2">
+      <div>
+        <h2 class="text-xl font-semibold text-gray-800">Events</h2>
+        <p class="text-sm text-gray-500 mt-0.5">{{total_count}} total</p>
+      </div>
+      <button onclick="pageTour([
+        {element:'[data-page-title]', popover:{title:'Events', description:'All events listed by date. Events are date-based (no specific times) and can be Chapter, LUG Wide, or Non-LUG scope.'}},
+        {element:'input[name=&quot;search&quot;]', popover:{title:'Search', description:'Filter events by title, location, or any text.'}},
+        {{#can_create}}{element:'button[hx-get=&quot;/events/new&quot;]', popover:{title:'New Event', description:'Create a new event. You can assign an Event Lead who gets edit, attendance, and QR permissions for that specific event.'}},{{/can_create}}
+        {popover:{title:'Event Leads', description:'Any member can be assigned as an Event Lead for a specific event. The lead can edit the event, take attendance, generate QR codes, and publish reports — even if they are not an event manager.'}},
+        {popover:{title:'Event Details', description:'Click View to see full details including the assigned lead, attendance list, notes, and status (Tentative/Confirmed).'}},
+      ])" class="inline-flex items-center gap-1 px-2 py-1 text-xs text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors" title="Page tour">
+        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+      </button>
     </div>
     <div class="flex items-center gap-2">
       {{#is_admin}}

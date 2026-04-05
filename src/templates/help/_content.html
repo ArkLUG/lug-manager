@@ -95,7 +95,7 @@
     // --- Auto-navigate to Events ---
     steps.push(
       navStep('/events', 'Going to Events...'),
-      { element: '#main-content', popover: { title: 'Events Page', description: 'Events are date-based activities (no specific times). They can be Chapter-scoped, LUG Wide, or Non-LUG. Click "View" for details and attendance tracking.' }}
+      { element: '#main-content', popover: { title: 'Events Page', description: 'Events are date-based activities (no specific times). They can be Chapter-scoped, LUG Wide, or Non-LUG. Each event can have an assigned Event Lead who gets management permissions for that event. Click "View" for details and attendance tracking.' }}
     );
 
     if (isEventManager) {
@@ -177,6 +177,28 @@
     </div>
   </details>
 
+  <!-- Event Lead guide (shown to everyone since any member can be assigned as event lead) -->
+  <details class="bg-white rounded-xl border border-green-200">
+    <summary class="px-6 py-4 cursor-pointer font-semibold text-gray-800 hover:bg-green-50 rounded-xl">
+      <span class="text-green-600">Event Lead Guide</span>
+    </summary>
+    <div class="px-6 pb-5 space-y-3 text-sm text-gray-600">
+      <div class="flex gap-3">
+        <span class="flex-shrink-0 w-6 h-6 bg-green-500 text-white rounded-full flex items-center justify-center text-xs font-bold">1</span>
+        <div><strong>What is an event lead?</strong> — Any member can be assigned as the lead for a specific event. This gives you management permissions for that one event only, even if you're not an event manager or chapter lead.</div>
+      </div>
+      <div class="flex gap-3">
+        <span class="flex-shrink-0 w-6 h-6 bg-green-500 text-white rounded-full flex items-center justify-center text-xs font-bold">2</span>
+        <div><strong>Your powers</strong> — As event lead you can edit the event, take attendance, generate QR check-in codes, and publish reports to Discord — the same capabilities as an event manager, but scoped to your assigned event.</div>
+      </div>
+      <div class="flex gap-3">
+        <span class="flex-shrink-0 w-6 h-6 bg-green-500 text-white rounded-full flex items-center justify-center text-xs font-bold">3</span>
+        <div><strong>How you're assigned</strong> — An admin, chapter lead, or event manager selects you from the "Event Lead" dropdown when creating or editing an event. You'll see the Edit/Attendance/QR buttons on events where you're the lead.</div>
+      </div>
+      <p class="text-xs text-gray-400 mt-2 italic">Note: Event lead permissions apply only to the specific event(s) you're assigned to, not to all events.</p>
+    </div>
+  </details>
+
   <!-- Event Manager guide -->
   {{#is_event_manager}}
   <details class="bg-white rounded-xl border border-blue-200">
@@ -190,7 +212,7 @@
       </div>
       <div class="flex gap-3">
         <span class="flex-shrink-0 w-6 h-6 bg-blue-500 text-white rounded-full flex items-center justify-center text-xs font-bold">2</span>
-        <div><strong>Create events</strong> — Go to Events and click "New Event". Events are date-based (no times). Choose scope: Chapter, LUG Wide, or Non-LUG. Non-LUG events don't have status tracking.</div>
+        <div><strong>Create events</strong> — Go to Events and click "New Event". Events are date-based (no times). Choose scope: Chapter, LUG Wide, or Non-LUG. Non-LUG events don't have status tracking. You can assign an event lead to delegate management of the event.</div>
       </div>
       <div class="flex gap-3">
         <span class="flex-shrink-0 w-6 h-6 bg-blue-500 text-white rounded-full flex items-center justify-center text-xs font-bold">3</span>
@@ -202,6 +224,10 @@
       </div>
       <div class="flex gap-3">
         <span class="flex-shrink-0 w-6 h-6 bg-blue-500 text-white rounded-full flex items-center justify-center text-xs font-bold">5</span>
+        <div><strong>Assign event leads</strong> — When creating or editing an event, use the "Event Lead" dropdown to assign a member as lead. That person gains edit, attendance, and QR permissions for that specific event.</div>
+      </div>
+      <div class="flex gap-3">
+        <span class="flex-shrink-0 w-6 h-6 bg-blue-500 text-white rounded-full flex items-center justify-center text-xs font-bold">6</span>
         <div><strong>Publish reports</strong> — After a meeting or event, click "Publish Report" to post an attendance summary to the Discord forum channel.</div>
       </div>
       <p class="text-xs text-gray-400 mt-2 italic">Note: You can only manage meetings/events for chapters where you have the event_manager or lead role.</p>
@@ -277,23 +303,27 @@
       <table class="w-full text-sm">
         <thead><tr class="border-b border-gray-200">
           <th class="py-2 pr-4 text-left font-medium text-gray-500">Feature</th>
-          <th class="py-2 px-3 text-center font-medium text-gray-500">Member</th>
-          <th class="py-2 px-3 text-center font-medium text-gray-500">Event Mgr</th>
-          <th class="py-2 px-3 text-center font-medium text-gray-500">Ch. Lead</th>
-          <th class="py-2 px-3 text-center font-medium text-gray-500">Admin</th>
+          <th class="py-2 px-2 text-center font-medium text-gray-500">Member</th>
+          <th class="py-2 px-2 text-center font-medium text-gray-500">Evt Lead</th>
+          <th class="py-2 px-2 text-center font-medium text-gray-500">Evt Mgr</th>
+          <th class="py-2 px-2 text-center font-medium text-gray-500">Ch. Lead</th>
+          <th class="py-2 px-2 text-center font-medium text-gray-500">Admin</th>
         </tr></thead>
         <tbody class="divide-y divide-gray-100">
-          <tr><td class="py-2 pr-4">View meetings/events</td><td class="text-center text-green-600">&#10003;</td><td class="text-center text-green-600">&#10003;</td><td class="text-center text-green-600">&#10003;</td><td class="text-center text-green-600">&#10003;</td></tr>
-          <tr><td class="py-2 pr-4">Edit own profile</td><td class="text-center text-green-600">&#10003;</td><td class="text-center text-green-600">&#10003;</td><td class="text-center text-green-600">&#10003;</td><td class="text-center text-green-600">&#10003;</td></tr>
-          <tr><td class="py-2 pr-4">Create meetings/events</td><td class="text-center text-gray-300">&mdash;</td><td class="text-center text-green-600">&#10003;</td><td class="text-center text-green-600">&#10003;</td><td class="text-center text-green-600">&#10003;</td></tr>
-          <tr><td class="py-2 pr-4">Take attendance / QR</td><td class="text-center text-gray-300">&mdash;</td><td class="text-center text-green-600">&#10003;</td><td class="text-center text-green-600">&#10003;</td><td class="text-center text-green-600">&#10003;</td></tr>
-          <tr><td class="py-2 pr-4">Add/edit members</td><td class="text-center text-gray-300">&mdash;</td><td class="text-center text-gray-300">&mdash;</td><td class="text-center text-green-600">&#10003;</td><td class="text-center text-green-600">&#10003;</td></tr>
-          <tr><td class="py-2 pr-4">Manage dues</td><td class="text-center text-gray-300">&mdash;</td><td class="text-center text-gray-300">&mdash;</td><td class="text-center text-green-600">&#10003;</td><td class="text-center text-green-600">&#10003;</td></tr>
-          <tr><td class="py-2 pr-4">See all PII</td><td class="text-center text-gray-300">&mdash;</td><td class="text-center text-gray-300">&mdash;</td><td class="text-center text-green-600">&#10003;</td><td class="text-center text-green-600">&#10003;</td></tr>
-          <tr><td class="py-2 pr-4">Delete members</td><td class="text-center text-gray-300">&mdash;</td><td class="text-center text-gray-300">&mdash;</td><td class="text-center text-gray-300">&mdash;</td><td class="text-center text-green-600">&#10003;</td></tr>
-          <tr><td class="py-2 pr-4">Manage chapters</td><td class="text-center text-gray-300">&mdash;</td><td class="text-center text-gray-300">&mdash;</td><td class="text-center text-gray-300">&mdash;</td><td class="text-center text-green-600">&#10003;</td></tr>
-          <tr><td class="py-2 pr-4">System settings</td><td class="text-center text-gray-300">&mdash;</td><td class="text-center text-gray-300">&mdash;</td><td class="text-center text-gray-300">&mdash;</td><td class="text-center text-green-600">&#10003;</td></tr>
-          <tr><td class="py-2 pr-4">Audit log</td><td class="text-center text-gray-300">&mdash;</td><td class="text-center text-gray-300">&mdash;</td><td class="text-center text-gray-300">&mdash;</td><td class="text-center text-green-600">&#10003;</td></tr>
+          <tr><td class="py-2 pr-4">View meetings/events</td><td class="text-center text-green-600">&#10003;</td><td class="text-center text-green-600">&#10003;</td><td class="text-center text-green-600">&#10003;</td><td class="text-center text-green-600">&#10003;</td><td class="text-center text-green-600">&#10003;</td></tr>
+          <tr><td class="py-2 pr-4">Edit own profile</td><td class="text-center text-green-600">&#10003;</td><td class="text-center text-green-600">&#10003;</td><td class="text-center text-green-600">&#10003;</td><td class="text-center text-green-600">&#10003;</td><td class="text-center text-green-600">&#10003;</td></tr>
+          <tr><td class="py-2 pr-4">Edit/manage assigned event</td><td class="text-center text-gray-300">&mdash;</td><td class="text-center text-green-600">&#10003;</td><td class="text-center text-green-600">&#10003;</td><td class="text-center text-green-600">&#10003;</td><td class="text-center text-green-600">&#10003;</td></tr>
+          <tr><td class="py-2 pr-4">Attendance/QR (assigned event)</td><td class="text-center text-gray-300">&mdash;</td><td class="text-center text-green-600">&#10003;</td><td class="text-center text-green-600">&#10003;</td><td class="text-center text-green-600">&#10003;</td><td class="text-center text-green-600">&#10003;</td></tr>
+          <tr><td class="py-2 pr-4">Create meetings/events</td><td class="text-center text-gray-300">&mdash;</td><td class="text-center text-gray-300">&mdash;</td><td class="text-center text-green-600">&#10003;</td><td class="text-center text-green-600">&#10003;</td><td class="text-center text-green-600">&#10003;</td></tr>
+          <tr><td class="py-2 pr-4">Manage all chapter events</td><td class="text-center text-gray-300">&mdash;</td><td class="text-center text-gray-300">&mdash;</td><td class="text-center text-green-600">&#10003;</td><td class="text-center text-green-600">&#10003;</td><td class="text-center text-green-600">&#10003;</td></tr>
+          <tr><td class="py-2 pr-4">Assign event leads</td><td class="text-center text-gray-300">&mdash;</td><td class="text-center text-gray-300">&mdash;</td><td class="text-center text-green-600">&#10003;</td><td class="text-center text-green-600">&#10003;</td><td class="text-center text-green-600">&#10003;</td></tr>
+          <tr><td class="py-2 pr-4">Add/edit members</td><td class="text-center text-gray-300">&mdash;</td><td class="text-center text-gray-300">&mdash;</td><td class="text-center text-gray-300">&mdash;</td><td class="text-center text-green-600">&#10003;</td><td class="text-center text-green-600">&#10003;</td></tr>
+          <tr><td class="py-2 pr-4">Manage dues</td><td class="text-center text-gray-300">&mdash;</td><td class="text-center text-gray-300">&mdash;</td><td class="text-center text-gray-300">&mdash;</td><td class="text-center text-green-600">&#10003;</td><td class="text-center text-green-600">&#10003;</td></tr>
+          <tr><td class="py-2 pr-4">See all PII</td><td class="text-center text-gray-300">&mdash;</td><td class="text-center text-gray-300">&mdash;</td><td class="text-center text-gray-300">&mdash;</td><td class="text-center text-green-600">&#10003;</td><td class="text-center text-green-600">&#10003;</td></tr>
+          <tr><td class="py-2 pr-4">Delete members</td><td class="text-center text-gray-300">&mdash;</td><td class="text-center text-gray-300">&mdash;</td><td class="text-center text-gray-300">&mdash;</td><td class="text-center text-gray-300">&mdash;</td><td class="text-center text-green-600">&#10003;</td></tr>
+          <tr><td class="py-2 pr-4">Manage chapters</td><td class="text-center text-gray-300">&mdash;</td><td class="text-center text-gray-300">&mdash;</td><td class="text-center text-gray-300">&mdash;</td><td class="text-center text-gray-300">&mdash;</td><td class="text-center text-green-600">&#10003;</td></tr>
+          <tr><td class="py-2 pr-4">System settings</td><td class="text-center text-gray-300">&mdash;</td><td class="text-center text-gray-300">&mdash;</td><td class="text-center text-gray-300">&mdash;</td><td class="text-center text-gray-300">&mdash;</td><td class="text-center text-green-600">&#10003;</td></tr>
+          <tr><td class="py-2 pr-4">Audit log</td><td class="text-center text-gray-300">&mdash;</td><td class="text-center text-gray-300">&mdash;</td><td class="text-center text-gray-300">&mdash;</td><td class="text-center text-gray-300">&mdash;</td><td class="text-center text-green-600">&#10003;</td></tr>
         </tbody>
       </table>
     </div>

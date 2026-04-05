@@ -1,7 +1,18 @@
 <div class="max-w-2xl space-y-6" data-page-title="Settings">
 
   <div class="bg-white rounded-xl border border-gray-200 p-6">
-    <h2 class="text-xl font-bold text-gray-900 mb-1">Discord Settings</h2>
+    <div class="flex items-center justify-between mb-1">
+      <h2 class="text-xl font-bold text-gray-900">Discord Settings</h2>
+      <button onclick="pageTour([
+        {element:'[data-page-title]', popover:{title:'Settings', description:'Admin-only configuration for Discord integration and system-wide settings.'}},
+        {popover:{title:'Discord Server', description:'Set your Guild ID so the bot knows which Discord server to interact with. The bot must be invited with proper permissions first.'}},
+        {popover:{title:'Channels', description:'Configure announcement channels (where meeting/event notifications post), forum channels (where attendance reports go), and timezone for date formatting.'}},
+        {popover:{title:'Role Mappings', description:'Map Discord server roles to LUG roles (admin or member). When members log in, their Discord roles determine their LUG permissions. Highest-privilege match wins.'}},
+        {popover:{title:'Sync', description:'Use Sync Now to pull all Discord guild members. Sync All to Discord pushes meetings/events. Sync Nicknames updates Discord display names. Auto-sync runs every 6 hours.'}},
+      ])" class="inline-flex items-center gap-1 px-2 py-1 text-xs text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors" title="Page tour">
+        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+      </button>
+    </div>
     <p class="text-sm text-gray-500 mb-6">Configure which Discord server and channels the LUG Manager posts to. Changes take effect immediately.</p>
 
     <form hx-post="/settings" hx-target="#settings-feedback" hx-swap="innerHTML" class="space-y-5">

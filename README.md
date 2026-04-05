@@ -21,13 +21,14 @@ A modern web application for managing LEGO User Groups (LUGs). Built with **C++ 
 - **Discord Integration**: OAuth2 login, scheduled events, forum threads, announcements, role sync, perk role assignment, voice channel selection for virtual meetings, member sync every 6 hours
 - **Google Calendar Integration**: Push events directly to a shared Google Calendar via service account, import existing events
 - **iCal Feed**: RFC 5545 calendar subscription for personal calendar apps (collapsible on dashboard)
+- **Help & Onboarding**: Role-aware help page with getting-started guides for each role (Member, Event Manager, Chapter Lead, Admin). Interactive multi-page tour powered by driver.js auto-navigates through the app, highlighting features the user actually has access to. Permissions quick-reference table.
 - **Responsive UI**: Mobile-friendly tables that progressively hide columns on smaller screens. HTMX + Tailwind CSS interface with proper browser back/forward support. Detail modals for viewing full meeting/event info including attendance panel.
 
 ## Technology Stack
 
 - **Backend**: C++20 with CrowCPP v1.2.0 (header-only HTTP server)
 - **Database**: SQLite with WAL mode and automatic migrations (36 migrations)
-- **Frontend**: HTMX + Tailwind CSS + TomSelect + EasyMDE + QRCode.js + DataTables (CDN, no build step)
+- **Frontend**: HTMX + Tailwind CSS + TomSelect + EasyMDE + QRCode.js + DataTables + Driver.js (CDN, no build step)
 - **External APIs**: Discord OAuth2 + REST, Google Calendar API v3
 - **Dependencies**: asio, nlohmann/json, md4c, libcurl, OpenSSL, Google Test
 - **CI/CD**: GitHub Actions (tests run inside Docker build, single-job pipeline)

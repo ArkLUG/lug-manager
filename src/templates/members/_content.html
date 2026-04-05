@@ -1,9 +1,19 @@
 <div class="space-y-4" data-page-title="Members">
   <!-- Header + Add button -->
   <div class="flex items-center justify-between">
-    <div>
-      <h2 class="text-xl font-semibold text-gray-800">Members</h2>
-      <p class="text-sm text-gray-500 mt-0.5">All registered LUG members</p>
+    <div class="flex items-center gap-2">
+      <div>
+        <h2 class="text-xl font-semibold text-gray-800">Members</h2>
+        <p class="text-sm text-gray-500 mt-0.5">All registered LUG members</p>
+      </div>
+      <button onclick="pageTour([
+        {element:'#members-table', popover:{title:'Members Table', description:'All registered LUG members. Click column headers to sort. Use View to see shared contact info.'}},
+        {element:'button[hx-get=&quot;/members/me&quot;]', popover:{title:'Edit My Profile', description:'Update your own name, contact info, and per-field privacy settings.'}},
+        {{#can_see_dues}}{element:'button[hx-get=&quot;/members/new&quot;]', popover:{title:'Add Member', description:'Manually add a new member. Useful for people who haven\\'t logged in via Discord yet.'}},{{/can_see_dues}}
+        {popover:{title:'Privacy', description:'Each member controls who sees their contact info. Fields can be set to Don\\'t share, Verified members only, or All members.'}},
+      ])" class="inline-flex items-center gap-1 px-2 py-1 text-xs text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors" title="Page tour">
+        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+      </button>
     </div>
     <div class="flex items-center gap-2">
       <button hx-get="/members/me" hx-target="#modal" hx-swap="innerHTML"

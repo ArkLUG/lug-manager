@@ -1,7 +1,16 @@
 <div class="space-y-4" data-page-title="My Attendance">
-  <div>
-    <h2 class="text-xl font-semibold text-gray-800">My Attendance</h2>
-    <p class="text-sm text-gray-500 mt-0.5">Your personal check-in history</p>
+  <div class="flex items-center gap-2">
+    <div>
+      <h2 class="text-xl font-semibold text-gray-800">My Attendance</h2>
+      <p class="text-sm text-gray-500 mt-0.5">Your personal check-in history</p>
+    </div>
+    <button onclick="pageTour([
+      {element:'[data-page-title]', popover:{title:'My Attendance', description:'Your personal check-in history for meetings and events.'}},
+      {popover:{title:'How Check-ins Work', description:'Managers or event leads check you in at meetings and events — either by searching your name in the attendance panel or via QR code scan. You cannot self-check-in.'}},
+      {popover:{title:'Virtual vs In-Person', description:'Meetings track whether attendance was virtual or in-person. Only in-person attendance counts toward &quot;verified member&quot; status for privacy purposes.'}},
+    ])" class="inline-flex items-center gap-1 px-2 py-1 text-xs text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors" title="Page tour">
+      <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+    </button>
   </div>
 
   <div class="bg-white rounded-xl border border-gray-200 overflow-hidden">

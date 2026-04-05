@@ -23,6 +23,24 @@
   <script src="https://cdn.jsdelivr.net/npm/qrcodejs@1.0.0/qrcode.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/driver.js@1.3.1/dist/driver.js.iife.js"></script>
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/driver.js@1.3.1/dist/driver.css">
+  <script>
+  /* Shared page-level tour helper — each page passes its own steps array */
+  function pageTour(steps) {
+    if (typeof driver === 'undefined' || !driver.js) { alert('Tour library not loaded'); return; }
+    if (window._pageTourDriver) { window._pageTourDriver.destroy(); }
+    window._pageTourDriver = driver.js.driver({
+      showProgress: true,
+      animate: true,
+      allowClose: true,
+      overlayColor: 'rgba(0,0,0,0.5)',
+      stagePadding: 8,
+      stageRadius: 8,
+      onDestroyStarted: function() { window._pageTourDriver.destroy(); }
+    });
+    window._pageTourDriver.setSteps(steps);
+    window._pageTourDriver.drive();
+  }
+  </script>
   <style>
     /* HTMX loading indicator */
     .htmx-indicator          { opacity: 0; transition: opacity 200ms ease-in; }
