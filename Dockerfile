@@ -36,7 +36,9 @@ RUN ctest --test-dir build --output-on-failure
 # --- Runtime stage ---
 FROM ubuntu:24.04
 
-RUN apt-get update && apt-get install -y --no-install-recommends \
+RUN apt-get update && \
+    apt-get upgrade -y && \
+    apt-get install -y --no-install-recommends \
     libcurl4t64 \
     sqlite3 \
     libssl3t64 \
