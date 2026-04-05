@@ -254,7 +254,7 @@ All runtime configuration is managed from the Settings page (`/settings`):
 
 ## Testing
 
-The project includes comprehensive tests across 17 test suites (8 unit + 9 integration):
+The project includes comprehensive tests across 18 test suites (8 unit + 10 integration):
 
 ```bash
 # Build with tests
@@ -283,6 +283,7 @@ ctest --test-dir build --output-on-failure -j$(nproc)
 | test_integration_settings | Settings save, Discord API, sync, nicknames |
 | test_integration_permissions | Per-field PII sharing, role-based access, chapter permissions, verified member logic |
 | test_integration_audit | Audit log entries for all action types, search, filtering, pagination |
+| test_integration_checkin | QR check-in token generation, public page, search, select, manual entry, duplicates |
 | test_integration_ui | Content validation, calendar output, badge rendering |
 
 CI runs all tests inside the Docker build — failing tests block image creation.
