@@ -13,6 +13,8 @@
 #include "repositories/MeetingRepository.hpp"
 #include "repositories/EventRepository.hpp"
 #include "repositories/AttendanceRepository.hpp"
+#include "repositories/EventDayRepository.hpp"
+#include "repositories/EventDayAttendanceRepository.hpp"
 #include "repositories/SettingsRepository.hpp"
 #include "repositories/RoleMappingRepository.hpp"
 #include "repositories/ChapterMemberRepository.hpp"
@@ -59,6 +61,8 @@ int main() {
         MeetingRepository    meeting_repo(db);
         EventRepository      event_repo(db);
         AttendanceRepository attendance_repo(db);
+        EventDayRepository   event_day_repo(db);
+        EventDayAttendanceRepository event_day_attendance_repo(db);
         SettingsRepository      settings_repo(db);
         RoleMappingRepository   role_mapping_repo(db);
         ChapterMemberRepository chapter_member_repo(db);
@@ -134,8 +138,8 @@ int main() {
         MemberSyncService member_sync_service(discord_client, member_repo, role_mapping_repo,
                                               chapter_repo, chapter_member_repo);
         MeetingService    meeting_service(meeting_repo, discord_client, calendar, &chapter_repo, &gcal_client);
-        EventService      event_service(event_repo, discord_client, calendar, &chapter_repo, &gcal_client);
-        AttendanceService attendance_service(attendance_repo, member_repo);
+        EventService      event_service(event_repo, discord_client, calendar, &chapter_repo, &gcal_client, &event_day_repo);
+        AttendanceService attendance_service(attendance_repo, member_repo, event_repo, event_day_repo, event_day_attendance_repo);
         AuditService      audit_service(audit_log_repo);
 
         // Build the Crow app with AuthMiddleware
@@ -163,6 +167,8 @@ int main() {
             member_repo,
             meeting_repo,
             event_repo,
+            event_day_repo,
+            event_day_attendance_repo,
             audit_service
         };
         register_all_routes(app, svc);

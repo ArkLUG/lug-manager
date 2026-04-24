@@ -240,10 +240,12 @@ TEST_F(IntegrationTest, CheckinMemberNonAdminForbidden) {
 }
 
 TEST_F(IntegrationTest, CheckinEventFlow) {
+    // Use today's date so the public check-in gate (today-in-range) allows the flow.
+    std::string today = AttendanceService::today_ymd();
     LugEvent ev;
     ev.title = "Checkin Event Flow";
-    ev.start_time = "2026-11-01T00:00:00";
-    ev.end_time = "2026-11-02T00:00:00";
+    ev.start_time = today + "T00:00:00";
+    ev.end_time   = today + "T23:59:59";
     ev.scope = "lug_wide";
     auto created = event_svc->create(ev);
 

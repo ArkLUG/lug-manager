@@ -6,8 +6,10 @@
 
 EventService::EventService(EventRepository& repo, DiscordClient& discord,
                             CalendarGenerator& cal,
-                            ChapterRepository* chapter_repo, GoogleCalendarClient* gcal)
-    : repo_(repo), discord_(discord), cal_(cal), chapter_repo_(chapter_repo), gcal_(gcal) {}
+                            ChapterRepository* chapter_repo, GoogleCalendarClient* gcal,
+                            EventDayRepository* event_day_repo)
+    : repo_(repo), discord_(discord), cal_(cal), chapter_repo_(chapter_repo), gcal_(gcal),
+      event_day_repo_(event_day_repo) {}
 
 // static
 std::string EventService::generate_uuid() {
@@ -138,6 +140,9 @@ LugEvent EventService::create_imported(const LugEvent& e) {
         repo_.update_google_calendar_event_id(created.id, to_create.google_calendar_event_id);
         created.google_calendar_event_id = to_create.google_calendar_event_id;
     }
+    if (event_day_repo_) {
+        event_day_repo_->sync_for_event(created.id, created.start_time, created.end_time);
+    }
     cal_.invalidate();
     return created;
 }
@@ -147,6 +152,10 @@ LugEvent EventService::create(const LugEvent& e) {
     to_create.ical_uid = generate_uuid();
 
     LugEvent created = repo_.create(to_create);
+
+    if (event_day_repo_) {
+        event_day_repo_->sync_for_event(created.id, created.start_time, created.end_time);
+    }
 
     if (!created.suppress_discord) {
         try {
@@ -306,6 +315,10 @@ LugEvent EventService::update(int64_t id, const LugEvent& updates) {
     updated.event_feedback    = updates.event_feedback;
 
     repo_.update(updated);
+
+    if (event_day_repo_) {
+        event_day_repo_->sync_for_event(updated.id, updated.start_time, updated.end_time);
+    }
 
     if (!updated.suppress_discord) {
         try {

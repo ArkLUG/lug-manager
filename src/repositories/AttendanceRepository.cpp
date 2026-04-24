@@ -99,12 +99,15 @@ int AttendanceRepository::count_by_entity(const std::string& entity_type, int64_
 }
 
 bool AttendanceRepository::is_verified_member(int64_t member_id) {
-    // Verified = has attended any meeting/event IN PERSON (not virtual) OR has ever been marked as paid
+    // Verified = has any in-person meeting check-in, any event day check-in,
+    // OR has ever been marked as paid.
     auto stmt = db_.prepare(
         "SELECT EXISTS(SELECT 1 FROM attendance WHERE member_id=? AND is_virtual=0) "
+        "OR EXISTS(SELECT 1 FROM event_day_attendance WHERE member_id=?) "
         "OR EXISTS(SELECT 1 FROM members WHERE id=? AND is_paid=1)");
     stmt.bind(1, member_id);
     stmt.bind(2, member_id);
+    stmt.bind(3, member_id);
     if (stmt.step()) return stmt.col_int(0) != 0;
     return false;
 }
@@ -133,14 +136,17 @@ void AttendanceRepository::delete_by_entity(const std::string& entity_type, int6
 
 std::vector<AttendanceRepository::MemberAttendanceSummary>
 AttendanceRepository::get_all_member_summaries() {
+    // Event credit: 1 per event with any qualifying day of attendance.
     auto stmt = db_.prepare(
         "SELECT m.id, m.display_name, m.discord_username, "
-        "SUM(CASE WHEN a.entity_type='meeting' THEN 1 ELSE 0 END), "
-        "SUM(CASE WHEN a.entity_type='meeting' AND a.is_virtual=1 THEN 1 ELSE 0 END), "
-        "SUM(CASE WHEN a.entity_type='event' THEN 1 ELSE 0 END) "
+        "  (SELECT COUNT(*) FROM attendance a "
+        "     WHERE a.member_id=m.id AND a.entity_type='meeting'), "
+        "  (SELECT COUNT(*) FROM attendance a "
+        "     WHERE a.member_id=m.id AND a.entity_type='meeting' AND a.is_virtual=1), "
+        "  (SELECT COUNT(DISTINCT ed.event_id) FROM event_day_attendance eda "
+        "     JOIN event_days ed ON ed.id = eda.event_day_id "
+        "     WHERE eda.member_id=m.id AND eda.qualifies=1) "
         "FROM members m "
-        "LEFT JOIN attendance a ON a.member_id = m.id "
-        "GROUP BY m.id "
         "ORDER BY m.display_name ASC");
 
     std::vector<MemberAttendanceSummary> result;
@@ -163,16 +169,21 @@ AttendanceRepository::get_all_member_summaries_by_year(int year) {
     std::string year_end   = std::to_string(year + 1) + "-01-01";
     auto stmt = db_.prepare(
         "SELECT m.id, m.display_name, m.discord_username, "
-        "SUM(CASE WHEN a.entity_type='meeting' THEN 1 ELSE 0 END), "
-        "SUM(CASE WHEN a.entity_type='meeting' AND a.is_virtual=1 THEN 1 ELSE 0 END), "
-        "SUM(CASE WHEN a.entity_type='event' THEN 1 ELSE 0 END) "
+        "  (SELECT COUNT(*) FROM attendance a "
+        "     WHERE a.member_id=m.id AND a.entity_type='meeting' "
+        "       AND a.checked_in_at >= ? AND a.checked_in_at < ?), "
+        "  (SELECT COUNT(*) FROM attendance a "
+        "     WHERE a.member_id=m.id AND a.entity_type='meeting' AND a.is_virtual=1 "
+        "       AND a.checked_in_at >= ? AND a.checked_in_at < ?), "
+        "  (SELECT COUNT(DISTINCT ed.event_id) FROM event_day_attendance eda "
+        "     JOIN event_days ed ON ed.id = eda.event_day_id "
+        "     WHERE eda.member_id=m.id AND eda.qualifies=1 "
+        "       AND ed.day_date >= ? AND ed.day_date < ?) "
         "FROM members m "
-        "LEFT JOIN attendance a ON a.member_id = m.id "
-        "AND a.checked_in_at >= ? AND a.checked_in_at < ? "
-        "GROUP BY m.id "
         "ORDER BY m.display_name ASC");
-    stmt.bind(1, year_start);
-    stmt.bind(2, year_end);
+    stmt.bind(1, year_start); stmt.bind(2, year_end);
+    stmt.bind(3, year_start); stmt.bind(4, year_end);
+    stmt.bind(5, year_start); stmt.bind(6, year_end);
 
     std::vector<MemberAttendanceSummary> result;
     while (stmt.step()) {
@@ -190,8 +201,12 @@ AttendanceRepository::get_all_member_summaries_by_year(int year) {
 
 std::vector<int> AttendanceRepository::get_attendance_years() {
     auto stmt = db_.prepare(
-        "SELECT DISTINCT CAST(strftime('%Y', checked_in_at) AS INTEGER) AS yr "
-        "FROM attendance ORDER BY yr DESC");
+        "SELECT DISTINCT yr FROM ( "
+        "  SELECT CAST(strftime('%Y', checked_in_at) AS INTEGER) AS yr FROM attendance "
+        "  UNION "
+        "  SELECT CAST(strftime('%Y', day_date) AS INTEGER) AS yr FROM event_days ed "
+        "    WHERE EXISTS (SELECT 1 FROM event_day_attendance WHERE event_day_id=ed.id) "
+        ") ORDER BY yr DESC");
     std::vector<int> result;
     while (stmt.step()) {
         result.push_back(static_cast<int>(stmt.col_int(0)));
@@ -205,24 +220,37 @@ static std::string build_overview_sql(const AttendanceRepository::OverviewParams
     std::string year_start = std::to_string(p.year) + "-01-01";
     std::string year_end   = std::to_string(p.year + 1) + "-01-01";
 
-    // CTE computes per-member attendance stats for the year
+    // CTE computes per-member attendance stats for the year.
+    // Event credit: 1 per event with any qualifying day.
     std::string sql =
         "WITH stats AS ("
         "  SELECT m.id AS member_id, m.display_name, "
         "         COALESCE(m.first_name,'') AS first_name, COALESCE(m.last_name,'') AS last_name, "
         "         m.discord_username, m.is_paid, "
         "         COALESCE(m.fol_status,'afol') AS fol_status, "
-        "         SUM(CASE WHEN a.entity_type='meeting' THEN 1 ELSE 0 END) AS meeting_count, "
-        "         SUM(CASE WHEN a.entity_type='meeting' AND a.is_virtual=1 THEN 1 ELSE 0 END) AS meeting_virtual_count, "
-        "         SUM(CASE WHEN a.entity_type='event' THEN 1 ELSE 0 END) AS event_count, "
-        "         MAX(SUBSTR(CASE WHEN a.entity_type='meeting' THEN COALESCE(mt.start_time,'') "
-        "                         ELSE COALESCE(ev.start_time,'') END, 1, 10)) AS last_attendance "
-        "  FROM members m "
-        "  LEFT JOIN attendance a ON a.member_id = m.id "
-        "    AND a.checked_in_at >= '" + year_start + "' AND a.checked_in_at < '" + year_end + "' "
-        "  LEFT JOIN meetings mt ON a.entity_type='meeting' AND mt.id = a.entity_id "
-        "  LEFT JOIN lug_events ev ON a.entity_type='event' AND ev.id = a.entity_id "
-        "  GROUP BY m.id"
+        "         (SELECT COUNT(*) FROM attendance a "
+        "            JOIN meetings mt ON mt.id = a.entity_id "
+        "            WHERE a.member_id=m.id AND a.entity_type='meeting' "
+        "              AND a.checked_in_at >= '" + year_start + "' AND a.checked_in_at < '" + year_end + "') AS meeting_count, "
+        "         (SELECT COUNT(*) FROM attendance a "
+        "            WHERE a.member_id=m.id AND a.entity_type='meeting' AND a.is_virtual=1 "
+        "              AND a.checked_in_at >= '" + year_start + "' AND a.checked_in_at < '" + year_end + "') AS meeting_virtual_count, "
+        "         (SELECT COUNT(DISTINCT ed.event_id) FROM event_day_attendance eda "
+        "            JOIN event_days ed ON ed.id = eda.event_day_id "
+        "            WHERE eda.member_id=m.id AND eda.qualifies=1 "
+        "              AND ed.day_date >= '" + year_start + "' AND ed.day_date < '" + year_end + "') AS event_count, "
+        "         (SELECT MAX(d) FROM ( "
+        "            SELECT SUBSTR(mt.start_time,1,10) AS d FROM attendance a "
+        "              JOIN meetings mt ON mt.id = a.entity_id "
+        "              WHERE a.member_id=m.id AND a.entity_type='meeting' "
+        "                AND a.checked_in_at >= '" + year_start + "' AND a.checked_in_at < '" + year_end + "' "
+        "            UNION ALL "
+        "            SELECT ed.day_date AS d FROM event_day_attendance eda "
+        "              JOIN event_days ed ON ed.id = eda.event_day_id "
+        "              WHERE eda.member_id=m.id "
+        "                AND ed.day_date >= '" + year_start + "' AND ed.day_date < '" + year_end + "' "
+        "         )) AS last_attendance "
+        "  FROM members m"
         ") ";
 
     if (count_only) {
@@ -292,6 +320,19 @@ int AttendanceRepository::count_member_by_year(int64_t member_id, int year,
                                                 const std::string& entity_type) {
     std::string year_start = std::to_string(year) + "-01-01";
     std::string year_end   = std::to_string(year + 1) + "-01-01";
+    if (entity_type == "event") {
+        // Event credit: 1 per event with any qualifying day of attendance.
+        auto stmt = db_.prepare(
+            "SELECT COUNT(DISTINCT ed.event_id) FROM event_day_attendance eda "
+            "JOIN event_days ed ON ed.id = eda.event_day_id "
+            "WHERE eda.member_id=? AND eda.qualifies=1 "
+            "  AND ed.day_date >= ? AND ed.day_date < ?");
+        stmt.bind(1, member_id);
+        stmt.bind(2, year_start);
+        stmt.bind(3, year_end);
+        if (stmt.step()) return static_cast<int>(stmt.col_int(0));
+        return 0;
+    }
     auto stmt = db_.prepare(
         "SELECT COUNT(*) FROM attendance "
         "WHERE member_id=? AND entity_type=? AND checked_in_at >= ? AND checked_in_at < ?");
@@ -308,21 +349,41 @@ AttendanceRepository::get_member_attendance_detail(int64_t member_id, int year,
                                                     int limit, int offset) {
     std::string year_start = std::to_string(year) + "-01-01";
     std::string year_end   = std::to_string(year + 1) + "-01-01";
+    // Union meeting check-ins with event day check-ins. Event rows are
+    // deduplicated by event_id (one row per event, using the latest qualifying
+    // day as representative) so the list matches the event-credit count.
     auto stmt = db_.prepare(
-        "SELECT a.entity_type, a.entity_id, "
-        "  CASE WHEN a.entity_type='meeting' THEN COALESCE(mt.title,'') ELSE COALESCE(ev.title,'') END, "
-        "  CASE WHEN a.entity_type='meeting' THEN SUBSTR(COALESCE(mt.start_time,''),1,10) ELSE SUBSTR(COALESCE(ev.start_time,''),1,10) END, "
-        "  SUBSTR(a.checked_in_at,1,10), a.is_virtual "
-        "FROM attendance a "
-        "LEFT JOIN meetings mt ON a.entity_type='meeting' AND mt.id=a.entity_id "
-        "LEFT JOIN lug_events ev ON a.entity_type='event' AND ev.id=a.entity_id "
-        "WHERE a.member_id=? AND a.checked_in_at >= ? AND a.checked_in_at < ? "
-        "ORDER BY a.checked_in_at DESC LIMIT ? OFFSET ?");
+        "SELECT entity_type, entity_id, title, date, checked_in_at, is_virtual FROM ("
+        "  SELECT 'meeting' AS entity_type, a.entity_id AS entity_id, "
+        "         COALESCE(mt.title,'') AS title, "
+        "         SUBSTR(COALESCE(mt.start_time,''),1,10) AS date, "
+        "         SUBSTR(a.checked_in_at,1,10) AS checked_in_at, "
+        "         a.is_virtual AS is_virtual "
+        "  FROM attendance a "
+        "  LEFT JOIN meetings mt ON mt.id = a.entity_id "
+        "  WHERE a.entity_type='meeting' AND a.member_id=? "
+        "    AND a.checked_in_at >= ? AND a.checked_in_at < ? "
+        "  UNION ALL "
+        "  SELECT 'event' AS entity_type, ed.event_id AS entity_id, "
+        "         COALESCE(ev.title,'') AS title, "
+        "         SUBSTR(COALESCE(ev.start_time,''),1,10) AS date, "
+        "         MAX(ed.day_date) AS checked_in_at, "
+        "         0 AS is_virtual "
+        "  FROM event_day_attendance eda "
+        "  JOIN event_days ed ON ed.id = eda.event_day_id "
+        "  LEFT JOIN lug_events ev ON ev.id = ed.event_id "
+        "  WHERE eda.member_id=? "
+        "    AND ed.day_date >= ? AND ed.day_date < ? "
+        "  GROUP BY ed.event_id "
+        ") ORDER BY checked_in_at DESC LIMIT ? OFFSET ?");
     stmt.bind(1, member_id);
     stmt.bind(2, year_start);
     stmt.bind(3, year_end);
-    stmt.bind(4, static_cast<int64_t>(limit));
-    stmt.bind(5, static_cast<int64_t>(offset));
+    stmt.bind(4, member_id);
+    stmt.bind(5, year_start);
+    stmt.bind(6, year_end);
+    stmt.bind(7, static_cast<int64_t>(limit));
+    stmt.bind(8, static_cast<int64_t>(offset));
 
     std::vector<AttendanceDetail> result;
     while (stmt.step()) {
@@ -342,10 +403,21 @@ int AttendanceRepository::count_member_attendance_detail(int64_t member_id, int 
     std::string year_start = std::to_string(year) + "-01-01";
     std::string year_end   = std::to_string(year + 1) + "-01-01";
     auto stmt = db_.prepare(
-        "SELECT COUNT(*) FROM attendance WHERE member_id=? AND checked_in_at >= ? AND checked_in_at < ?");
+        "SELECT "
+        "  (SELECT COUNT(*) FROM attendance a "
+        "     WHERE a.member_id=? AND a.entity_type='meeting' "
+        "       AND a.checked_in_at >= ? AND a.checked_in_at < ?) "
+        "  + "
+        "  (SELECT COUNT(DISTINCT ed.event_id) FROM event_day_attendance eda "
+        "     JOIN event_days ed ON ed.id = eda.event_day_id "
+        "     WHERE eda.member_id=? "
+        "       AND ed.day_date >= ? AND ed.day_date < ?)");
     stmt.bind(1, member_id);
     stmt.bind(2, year_start);
     stmt.bind(3, year_end);
+    stmt.bind(4, member_id);
+    stmt.bind(5, year_start);
+    stmt.bind(6, year_end);
     if (stmt.step()) return static_cast<int>(stmt.col_int(0));
     return 0;
 }

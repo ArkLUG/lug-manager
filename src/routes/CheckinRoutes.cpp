@@ -131,6 +131,17 @@ void register_checkin_routes(LugApp& app,
         } else {
             auto ev = event_repo.find_by_checkin_token(token);
             if (ev) {
+                // For events, require today to be within the event's day range.
+                std::string today = AttendanceService::today_ymd();
+                auto day = attendance.event_day_repo().find_by_event_and_date(ev->id, today);
+                if (!day) {
+                    res.code = 404;
+                    auto tmpl = crow::mustache::load("checkin/_page.html");
+                    crow::mustache::context ctx;
+                    ctx["not_found"] = true;
+                    res.write(tmpl.render(ctx).dump());
+                    return res;
+                }
                 entity_type = "event";
                 entity_id = ev->id;
                 entity_title = ev->title;

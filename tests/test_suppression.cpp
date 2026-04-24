@@ -4,6 +4,7 @@
 #include "repositories/EventRepository.hpp"
 #include "repositories/MeetingRepository.hpp"
 #include "repositories/AttendanceRepository.hpp"
+#include "repositories/EventDayAttendanceRepository.hpp"
 #include "repositories/MemberRepository.hpp"
 #include "models/LugEvent.hpp"
 #include "models/Meeting.hpp"
@@ -230,11 +231,15 @@ TEST_F(AttendanceSummaryTest, SummaryCountsCorrect) {
                 "VALUES ('Mtg 2', '2026-04-01T19:00:00', '2026-04-01T21:00:00', 'sum-m2', 'chapter')");
     db->execute("INSERT INTO lug_events (title, start_time, end_time, ical_uid, scope, status) "
                 "VALUES ('Evt 1', '2026-05-01', '2026-05-02', 'sum-e1', 'chapter', 'confirmed')");
+    // Event day for the event
+    db->execute("INSERT INTO event_days (event_id, day_date, day_number) "
+                "VALUES (1, '2026-05-01', 1)");
 
-    // Member 1 attends 2 meetings (1 virtual) and 1 event
+    // Member 1 attends 2 meetings (1 virtual) and 1 event (qualifying day)
     attendance->check_in(member1.id, "meeting", 1);
     attendance->check_in(member1.id, "meeting", 2, "", true); // virtual
-    attendance->check_in(member1.id, "event", 1);
+    EventDayAttendanceRepository eda_repo(*db);
+    eda_repo.check_in(/*event_day_id=*/1, member1.id);
 
     // Member 2 attends 1 meeting
     attendance->check_in(member2.id, "meeting", 1);

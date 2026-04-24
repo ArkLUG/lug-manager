@@ -36,9 +36,54 @@ static bool can_manage_attendance(const crow::request& req, LugApp& app,
 }
 
 // Build the attendance list context and render the template fragment.
+// Events use a per-day grouped template; meetings use the flat list.
 static std::string render_attendance_list(AttendanceService& attendance,
                                            const std::string& entity_type, int64_t entity_id,
                                            bool can_manage, bool is_meeting) {
+    if (entity_type == "event") {
+        auto days = attendance.event_day_repo().find_by_event(entity_id);
+        std::string today = AttendanceService::today_ymd();
+
+        crow::mustache::context ctx;
+        ctx["entity_type"]   = entity_type;
+        ctx["entity_id"]     = static_cast<int>(entity_id);
+        ctx["is_admin"]      = can_manage;
+
+        int distinct = attendance.event_day_attendance_repo().count_distinct_members_by_event(entity_id);
+        ctx["distinct_count"] = distinct;
+        ctx["one_member"]     = (distinct == 1);
+
+        crow::json::wvalue days_arr;
+        for (size_t i = 0; i < days.size(); ++i) {
+            const auto& d = days[i];
+            days_arr[i]["day_id"]     = d.id;
+            days_arr[i]["day_number"] = d.day_number;
+            days_arr[i]["day_date"]   = d.day_date;
+            days_arr[i]["is_today"]   = (d.day_date == today);
+            days_arr[i]["entity_id"]  = static_cast<int>(entity_id);
+            days_arr[i]["is_admin"]   = can_manage;
+
+            auto day_rows = attendance.event_day_attendance_repo().find_by_day(d.id);
+            crow::json::wvalue att_arr;
+            for (size_t j = 0; j < day_rows.size(); ++j) {
+                const auto& r = day_rows[j];
+                att_arr[j]["id"]                     = r.id;
+                att_arr[j]["member_id"]              = r.member_id;
+                att_arr[j]["member_display_name"]    = r.member_display_name;
+                att_arr[j]["member_discord_username"]= r.member_discord_username;
+                att_arr[j]["checked_in_at"]          = r.checked_in_at;
+                att_arr[j]["qualifies"]              = r.qualifies;
+                att_arr[j]["is_admin"]               = can_manage;
+                att_arr[j]["entity_id"]              = static_cast<int>(entity_id);
+                att_arr[j]["day_number"]             = d.day_number;
+            }
+            days_arr[i]["attendees"] = std::move(att_arr);
+        }
+        ctx["days"] = std::move(days_arr);
+        auto tmpl = crow::mustache::load("events/_attendance.html");
+        return tmpl.render(ctx).dump();
+    }
+
     auto attendees = attendance.get_attendees(entity_type, entity_id);
     crow::mustache::context ctx;
     ctx["entity_type"]      = entity_type;
@@ -527,6 +572,129 @@ void register_attendance_routes(LugApp& app, AttendanceService& attendance,
 
         res.add_header("Content-Type", "text/html; charset=utf-8");
         res.write(html.str());
+        return res;
+    });
+
+    // POST /attendance/admin/event-day/<day_id>/checkin — admin/lead adds one or more
+    // members directly to a specific event day.
+    CROW_ROUTE(app, "/attendance/admin/event-day/<int>/checkin").methods("POST"_method)(
+        [&](const crow::request& req, int day_id) {
+        crow::response res;
+        if (!require_auth(req, res, app)) return res;
+
+        auto day = attendance.event_day_repo().find_by_id(static_cast<int64_t>(day_id));
+        if (!day) {
+            res.code = 404;
+            res.add_header("Content-Type", "text/html");
+            res.write(R"(<span class="text-red-500 text-xs">Day not found</span>)");
+            return res;
+        }
+        int64_t event_id = day->event_id;
+
+        if (!can_manage_attendance(req, app, events, meetings, chapter_members, "event", event_id)) {
+            res.code = 403;
+            res.add_header("Content-Type", "text/html");
+            res.write(R"(<span class="text-red-500 text-xs">Forbidden</span>)");
+            return res;
+        }
+
+        auto params = crow::query_string("?" + req.body);
+        auto member_ids = params.get_list("member_id", false);
+        for (auto* mid_str : member_ids) {
+            if (!mid_str || !mid_str[0]) continue;
+            try {
+                int64_t member_id = std::stoll(mid_str);
+                attendance.check_in_to_day(member_id, static_cast<int64_t>(day_id));
+                auto mbr = members.get(member_id);
+                std::string mbr_name = mbr ? mbr->display_name : std::to_string(member_id);
+                audit.log(req, app, "attendance.event_day_checkin", "event", event_id,
+                          get_entity_title(events, meetings, "event", event_id),
+                          "Admin added " + mbr_name + " to day " + std::to_string(day->day_number));
+            } catch (...) {}
+        }
+
+        res.write(render_attendance_list(attendance, "event", event_id,
+                                         true, false));
+        res.add_header("Content-Type", "text/html");
+        res.add_header("HX-Trigger", "attendanceUpdated");
+        return res;
+    });
+
+    // POST /attendance/admin/event-day-att/<id>/toggle-qualifies
+    CROW_ROUTE(app, "/attendance/admin/event-day-att/<int>/toggle-qualifies").methods("POST"_method)(
+        [&](const crow::request& req, int id) {
+        crow::response res;
+        if (!require_auth(req, res, app)) return res;
+
+        auto row = attendance.event_day_attendance_repo().find_by_id(static_cast<int64_t>(id));
+        if (!row) {
+            res.code = 404;
+            res.add_header("Content-Type", "text/html");
+            res.write(R"(<span class="text-red-500 text-xs">Record not found</span>)");
+            return res;
+        }
+        auto day = attendance.event_day_repo().find_by_id(row->event_day_id);
+        if (!day) {
+            res.code = 404;
+            res.add_header("Content-Type", "text/html");
+            res.write(R"(<span class="text-red-500 text-xs">Day not found</span>)");
+            return res;
+        }
+        int64_t event_id = day->event_id;
+
+        if (!can_manage_attendance(req, app, events, meetings, chapter_members, "event", event_id)) {
+            res.code = 403;
+            res.add_header("Content-Type", "text/html");
+            res.write(R"(<span class="text-red-500 text-xs">Forbidden</span>)");
+            return res;
+        }
+
+        auto params = crow::query_string("?" + req.body);
+        auto gp = [&](const char* k) -> std::string {
+            const char* v = params.get(k); return v ? std::string(v) : "";
+        };
+        bool current = gp("current") == "1";
+        attendance.event_day_attendance_repo().set_qualifies(static_cast<int64_t>(id), !current);
+        audit.log(req, app, "attendance.toggle_qualifies", "event", event_id,
+                  get_entity_title(events, meetings, "event", event_id),
+                  std::string("Toggled qualifies on day ") + std::to_string(day->day_number));
+
+        res.write(render_attendance_list(attendance, "event", event_id, true, false));
+        res.add_header("Content-Type", "text/html");
+        res.add_header("HX-Trigger", "attendanceUpdated");
+        return res;
+    });
+
+    // POST /attendance/admin/event-day-att/<id>/remove
+    CROW_ROUTE(app, "/attendance/admin/event-day-att/<int>/remove").methods("POST"_method)(
+        [&](const crow::request& req, int id) {
+        crow::response res;
+        if (!require_auth(req, res, app)) return res;
+
+        auto row = attendance.event_day_attendance_repo().find_by_id(static_cast<int64_t>(id));
+        if (!row) {
+            res.code = 404;
+            res.add_header("Content-Type", "text/html");
+            res.write(R"(<span class="text-red-500 text-xs">Record not found</span>)");
+            return res;
+        }
+        auto day = attendance.event_day_repo().find_by_id(row->event_day_id);
+        int64_t event_id = day ? day->event_id : 0;
+
+        if (!can_manage_attendance(req, app, events, meetings, chapter_members, "event", event_id)) {
+            res.code = 403;
+            res.add_header("Content-Type", "text/html");
+            res.write(R"(<span class="text-red-500 text-xs">Forbidden</span>)");
+            return res;
+        }
+
+        attendance.event_day_attendance_repo().remove_by_id(static_cast<int64_t>(id));
+        audit.log(req, app, "attendance.event_day_remove", "event", event_id,
+                  get_entity_title(events, meetings, "event", event_id),
+                  "Admin removed event day attendance");
+        res.write(render_attendance_list(attendance, "event", event_id, true, false));
+        res.add_header("Content-Type", "text/html");
+        res.add_header("HX-Trigger", "attendanceUpdated");
         return res;
     });
 }

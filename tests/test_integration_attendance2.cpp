@@ -198,7 +198,10 @@ TEST_F(IntegrationTest, EventPublishReportGraceful) {
     ev.notes = "Some event notes here";
     auto created = event_svc->create(ev);
 
-    attendance_svc->check_in(admin_member_id, "event", created.id, "", false);
+    // Check in via event day API (service-level check_in requires today in range).
+    auto days = event_day_repo->find_by_event(created.id);
+    ASSERT_FALSE(days.empty());
+    attendance_svc->check_in_to_day(admin_member_id, days.front().id);
 
     auto r = POST("/events/" + std::to_string(created.id) + "/publish-report", "", admin_token);
     // May succeed (200) or fail gracefully — should not be 500

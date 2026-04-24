@@ -14,6 +14,8 @@
 #include "routes/HelpRoutes.hpp"
 #include "repositories/PerkLevelRepository.hpp"
 #include "repositories/AttendanceRepository.hpp"
+#include "repositories/EventDayRepository.hpp"
+#include "repositories/EventDayAttendanceRepository.hpp"
 #include "services/MemberService.hpp"
 #include "services/MemberSyncService.hpp"
 #include "services/MeetingService.hpp"
@@ -52,6 +54,8 @@ struct Services {
     MemberRepository&       member_repo;
     MeetingRepository&      meeting_repo;
     EventRepository&        event_repo;
+    EventDayRepository&     event_day_repo;
+    EventDayAttendanceRepository& event_day_attendance_repo;
     AuditService&           audit;
 };
 

@@ -75,6 +75,8 @@ public:
                                                                 int limit, int offset);
     int count_member_attendance_detail(int64_t member_id, int year);
 
+    SqliteDatabase& db() { return db_; }
+
 private:
     SqliteDatabase& db_;
 };

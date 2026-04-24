@@ -929,7 +929,7 @@ void register_event_routes(LugApp& app, EventService& events, AttendanceService&
             bool ok = attendance.check_in(mbr_id, "event", static_cast<int64_t>(id), notes);
             if (!ok) {
                 res.code = 400;
-                res.write(R"(<div class="text-red-500 text-sm">Could not check in (event may be full or closed).</div>)");
+                res.write(R"(<div class="text-red-500 text-sm">Check-in is only available during the event's day range.</div>)");
                 res.add_header("Content-Type", "text/html");
                 return res;
             }

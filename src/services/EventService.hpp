@@ -1,5 +1,6 @@
 #pragma once
 #include "repositories/EventRepository.hpp"
+#include "repositories/EventDayRepository.hpp"
 #include "repositories/ChapterRepository.hpp"
 #include "integrations/DiscordClient.hpp"
 #include "integrations/CalendarGenerator.hpp"
@@ -12,7 +13,8 @@
 class EventService {
 public:
     EventService(EventRepository& repo, DiscordClient& discord, CalendarGenerator& cal,
-                 ChapterRepository* chapter_repo = nullptr, GoogleCalendarClient* gcal = nullptr);
+                 ChapterRepository* chapter_repo = nullptr, GoogleCalendarClient* gcal = nullptr,
+                 EventDayRepository* event_day_repo = nullptr);
 
     std::vector<LugEvent>   list_upcoming();
     std::vector<LugEvent>   list_all();
@@ -44,6 +46,7 @@ private:
     CalendarGenerator&      cal_;
     ChapterRepository*      chapter_repo_;
     GoogleCalendarClient*   gcal_;
+    EventDayRepository*     event_day_repo_;
 
 public:
     EventRepository& repo() { return repo_; }

@@ -118,10 +118,12 @@ TEST_F(IntegrationTest, EventNonExistentReturns404) {
 }
 
 TEST_F(IntegrationTest, EventSelfCheckinToggle) {
+    // Event must include today's date for self check-in to work.
+    std::string today = AttendanceService::today_ymd();
     LugEvent e;
     e.title = "Self Checkin Event";
-    e.start_time = "2026-06-01T00:00:00";
-    e.end_time = "2026-06-02T00:00:00";
+    e.start_time = today + "T00:00:00";
+    e.end_time   = today + "T23:59:59";
     e.status = "confirmed";
     e.scope = "lug_wide";
     auto ev = event_svc->create(e);
@@ -129,26 +131,27 @@ TEST_F(IntegrationTest, EventSelfCheckinToggle) {
     // Check in
     auto r1 = POST("/events/" + std::to_string(ev.id) + "/checkin", "", admin_token);
     EXPECT_EQ(r1.code, 200);
-    EXPECT_EQ(attendance_repo->count_by_entity("event", ev.id), 1);
+    EXPECT_EQ(attendance_svc->get_count("event", ev.id), 1);
 
     // Toggle off
     auto r2 = POST("/events/" + std::to_string(ev.id) + "/checkin", "", admin_token);
     EXPECT_EQ(r2.code, 200);
-    EXPECT_EQ(attendance_repo->count_by_entity("event", ev.id), 0);
+    EXPECT_EQ(attendance_svc->get_count("event", ev.id), 0);
 }
 
 TEST_F(IntegrationTest, EventMemberCheckin) {
+    std::string today = AttendanceService::today_ymd();
     LugEvent e;
     e.title = "Member Checkin Event";
-    e.start_time = "2026-06-01T00:00:00";
-    e.end_time = "2026-06-02T00:00:00";
+    e.start_time = today + "T00:00:00";
+    e.end_time   = today + "T23:59:59";
     e.status = "confirmed";
     e.scope = "lug_wide";
     auto ev = event_svc->create(e);
 
     auto r = POST("/events/" + std::to_string(ev.id) + "/checkin", "", member_token);
     EXPECT_EQ(r.code, 200);
-    EXPECT_EQ(attendance_repo->count_by_entity("event", ev.id), 1);
+    EXPECT_EQ(attendance_svc->get_count("event", ev.id), 1);
 }
 
 TEST_F(IntegrationTest, EventDiscordSyncGraceful) {

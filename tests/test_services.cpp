@@ -5,6 +5,8 @@
 #include "services/ChapterService.hpp"
 #include "services/MemberService.hpp"
 #include "repositories/ChapterMemberRepository.hpp"
+#include "repositories/EventDayRepository.hpp"
+#include "repositories/EventDayAttendanceRepository.hpp"
 #include "integrations/DiscordClient.hpp"
 #include "integrations/CalendarGenerator.hpp"
 #include "async/ThreadPool.hpp"
@@ -24,6 +26,8 @@ protected:
     std::unique_ptr<EventRepository> event_repo;
     std::unique_ptr<ChapterRepository> chapter_repo;
     std::unique_ptr<AttendanceRepository> attendance_repo;
+    std::unique_ptr<EventDayRepository> event_day_repo;
+    std::unique_ptr<EventDayAttendanceRepository> event_day_attendance_repo;
     std::unique_ptr<ChapterMemberRepository> chapter_member_repo;
     std::unique_ptr<MemberService> member_svc;
     std::unique_ptr<MeetingService> meeting_svc;
@@ -40,12 +44,14 @@ protected:
         event_repo = std::make_unique<EventRepository>(*db);
         chapter_repo = std::make_unique<ChapterRepository>(*db);
         attendance_repo = std::make_unique<AttendanceRepository>(*db);
+        event_day_repo = std::make_unique<EventDayRepository>(*db);
+        event_day_attendance_repo = std::make_unique<EventDayAttendanceRepository>(*db);
         chapter_member_repo = std::make_unique<ChapterMemberRepository>(*db);
         calendar = std::make_unique<CalendarGenerator>(*meeting_repo, *event_repo, config, chapter_repo.get());
         member_svc = std::make_unique<MemberService>(*member_repo);
         meeting_svc = std::make_unique<MeetingService>(*meeting_repo, *discord, *calendar, chapter_repo.get());
-        event_svc = std::make_unique<EventService>(*event_repo, *discord, *calendar, chapter_repo.get());
-        attendance_svc = std::make_unique<AttendanceService>(*attendance_repo, *member_repo);
+        event_svc = std::make_unique<EventService>(*event_repo, *discord, *calendar, chapter_repo.get(), nullptr, event_day_repo.get());
+        attendance_svc = std::make_unique<AttendanceService>(*attendance_repo, *member_repo, *event_repo, *event_day_repo, *event_day_attendance_repo);
         chapter_svc = std::make_unique<ChapterService>(*chapter_repo);
     }
 

@@ -23,6 +23,8 @@
 #include "repositories/EventRepository.hpp"
 #include "repositories/ChapterRepository.hpp"
 #include "repositories/AttendanceRepository.hpp"
+#include "repositories/EventDayRepository.hpp"
+#include "repositories/EventDayAttendanceRepository.hpp"
 #include "repositories/ChapterMemberRepository.hpp"
 #include "repositories/SettingsRepository.hpp"
 #include "repositories/RoleMappingRepository.hpp"
@@ -55,6 +57,8 @@ protected:
     std::unique_ptr<EventRepository> event_repo;
     std::unique_ptr<ChapterRepository> chapter_repo;
     std::unique_ptr<AttendanceRepository> attendance_repo;
+    std::unique_ptr<EventDayRepository> event_day_repo;
+    std::unique_ptr<EventDayAttendanceRepository> event_day_attendance_repo;
     std::unique_ptr<SettingsRepository> settings_repo;
     std::unique_ptr<RoleMappingRepository> role_mapping_repo;
     std::unique_ptr<ChapterMemberRepository> chapter_member_repo;
@@ -108,6 +112,8 @@ protected:
         event_repo = std::make_unique<EventRepository>(*db);
         chapter_repo = std::make_unique<ChapterRepository>(*db);
         attendance_repo = std::make_unique<AttendanceRepository>(*db);
+        event_day_repo = std::make_unique<EventDayRepository>(*db);
+        event_day_attendance_repo = std::make_unique<EventDayAttendanceRepository>(*db);
         settings_repo = std::make_unique<SettingsRepository>(*db);
         role_mapping_repo = std::make_unique<RoleMappingRepository>(*db);
         chapter_member_repo = std::make_unique<ChapterMemberRepository>(*db);
@@ -125,9 +131,9 @@ protected:
         auth_service = std::make_unique<AuthService>(*session_store, *member_repo, *discord_oauth);
         member_svc = std::make_unique<MemberService>(*member_repo, discord_client.get());
         meeting_svc = std::make_unique<MeetingService>(*meeting_repo, *discord_client, *calendar, chapter_repo.get(), gcal_client.get());
-        event_svc = std::make_unique<EventService>(*event_repo, *discord_client, *calendar, chapter_repo.get(), gcal_client.get());
+        event_svc = std::make_unique<EventService>(*event_repo, *discord_client, *calendar, chapter_repo.get(), gcal_client.get(), event_day_repo.get());
         chapter_svc = std::make_unique<ChapterService>(*chapter_repo);
-        attendance_svc = std::make_unique<AttendanceService>(*attendance_repo, *member_repo);
+        attendance_svc = std::make_unique<AttendanceService>(*attendance_repo, *member_repo, *event_repo, *event_day_repo, *event_day_attendance_repo);
         member_sync_svc = std::make_unique<MemberSyncService>(*discord_client, *member_repo, *role_mapping_repo,
                                                                 *chapter_repo, *chapter_member_repo);
         audit_svc = std::make_unique<AuditService>(*audit_log_repo);
@@ -201,6 +207,7 @@ protected:
             *member_sync_svc, *gcal_client,
             *perk_level_repo, *attendance_repo, *member_repo,
             *meeting_repo, *event_repo,
+            *event_day_repo, *event_day_attendance_repo,
             *audit_svc
         };
         register_all_routes(*app, svc);

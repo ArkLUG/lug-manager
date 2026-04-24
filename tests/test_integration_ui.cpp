@@ -211,8 +211,11 @@ TEST_F(IntegrationTest, AttendanceCountEndpointForEvent) {
     e.scope = "lug_wide";
     auto ev = event_svc->create(e);
 
-    attendance_svc->check_in(admin_member_id, "event", ev.id);
-    attendance_svc->check_in(regular_member_id, "event", ev.id);
+    // Check in via event_day API (service-level check_in requires today in range).
+    auto days = event_day_repo->find_by_event(ev.id);
+    ASSERT_FALSE(days.empty());
+    attendance_svc->check_in_to_day(admin_member_id, days.front().id);
+    attendance_svc->check_in_to_day(regular_member_id, days.front().id);
 
     auto r = GET("/attendance/count/event/" + std::to_string(ev.id), admin_token);
     EXPECT_EQ(r.code, 200);

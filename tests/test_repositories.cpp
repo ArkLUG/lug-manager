@@ -4,6 +4,8 @@
 #include "repositories/MeetingRepository.hpp"
 #include "repositories/EventRepository.hpp"
 #include "repositories/AttendanceRepository.hpp"
+#include "repositories/EventDayRepository.hpp"
+#include "repositories/EventDayAttendanceRepository.hpp"
 #include "repositories/ChapterMemberRepository.hpp"
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -360,12 +362,18 @@ TEST_F(EventRepoTest, DeleteCascadesAttendance) {
     m.role = "member";
     auto member = members.create(m);
 
-    AttendanceRepository att(*db);
-    att.check_in(member.id, "event", ev.id);
-    EXPECT_EQ(count("attendance"), 1);
+    // Populate event_days for this event and attend day 1.
+    EventDayRepository day_repo(*db);
+    day_repo.sync_for_event(ev.id, ev.start_time, ev.end_time);
+    auto days = day_repo.find_by_event(ev.id);
+    ASSERT_FALSE(days.empty());
+    EventDayAttendanceRepository att_repo(*db);
+    att_repo.check_in(days.front().id, member.id);
+    EXPECT_EQ(count("event_day_attendance"), 1);
 
     repo->delete_by_id(ev.id);
-    EXPECT_EQ(count("attendance"), 0);
+    EXPECT_EQ(count("event_day_attendance"), 0);
+    EXPECT_EQ(count("event_days"), 0);
 }
 
 TEST_F(EventRepoTest, GoogleCalendarEventId) {
