@@ -26,7 +26,7 @@ bool EventDayAttendanceRepository::is_checked_in(int64_t event_day_id, int64_t m
 std::vector<EventDayAttendance> EventDayAttendanceRepository::find_by_event(int64_t event_id) {
     auto stmt = db_.prepare(
         "SELECT eda.id, eda.event_day_id, eda.member_id, eda.checked_in_at, eda.notes, "
-        "       eda.qualifies, m.display_name, m.discord_username, ed.day_date, ed.day_number "
+        "       m.display_name, m.discord_username, ed.day_date, ed.day_number "
         "FROM event_day_attendance eda "
         "JOIN event_days ed ON ed.id = eda.event_day_id "
         "JOIN members m ON m.id = eda.member_id "
@@ -41,11 +41,10 @@ std::vector<EventDayAttendance> EventDayAttendanceRepository::find_by_event(int6
         a.member_id               = stmt.col_int(2);
         a.checked_in_at           = stmt.col_text(3);
         a.notes                   = stmt.col_text(4);
-        a.qualifies               = stmt.col_int(5) != 0;
-        a.member_display_name     = stmt.col_text(6);
-        a.member_discord_username = stmt.col_text(7);
-        a.day_date                = stmt.col_text(8);
-        a.day_number              = static_cast<int>(stmt.col_int(9));
+        a.member_display_name     = stmt.col_text(5);
+        a.member_discord_username = stmt.col_text(6);
+        a.day_date                = stmt.col_text(7);
+        a.day_number              = static_cast<int>(stmt.col_int(8));
         result.push_back(a);
     }
     return result;
@@ -54,7 +53,7 @@ std::vector<EventDayAttendance> EventDayAttendanceRepository::find_by_event(int6
 std::vector<EventDayAttendance> EventDayAttendanceRepository::find_by_day(int64_t event_day_id) {
     auto stmt = db_.prepare(
         "SELECT eda.id, eda.event_day_id, eda.member_id, eda.checked_in_at, eda.notes, "
-        "       eda.qualifies, m.display_name, m.discord_username, ed.day_date, ed.day_number "
+        "       m.display_name, m.discord_username, ed.day_date, ed.day_number "
         "FROM event_day_attendance eda "
         "JOIN event_days ed ON ed.id = eda.event_day_id "
         "JOIN members m ON m.id = eda.member_id "
@@ -69,11 +68,10 @@ std::vector<EventDayAttendance> EventDayAttendanceRepository::find_by_day(int64_
         a.member_id               = stmt.col_int(2);
         a.checked_in_at           = stmt.col_text(3);
         a.notes                   = stmt.col_text(4);
-        a.qualifies               = stmt.col_int(5) != 0;
-        a.member_display_name     = stmt.col_text(6);
-        a.member_discord_username = stmt.col_text(7);
-        a.day_date                = stmt.col_text(8);
-        a.day_number              = static_cast<int>(stmt.col_int(9));
+        a.member_display_name     = stmt.col_text(5);
+        a.member_discord_username = stmt.col_text(6);
+        a.day_date                = stmt.col_text(7);
+        a.day_number              = static_cast<int>(stmt.col_int(8));
         result.push_back(a);
     }
     return result;
@@ -90,25 +88,17 @@ int EventDayAttendanceRepository::count_distinct_members_by_event(int64_t event_
     return 0;
 }
 
-bool EventDayAttendanceRepository::member_qualifies_for_event(int64_t member_id, int64_t event_id) {
+bool EventDayAttendanceRepository::member_attended_event(int64_t member_id, int64_t event_id) {
     auto stmt = db_.prepare(
         "SELECT EXISTS("
         "  SELECT 1 FROM event_day_attendance eda "
         "  JOIN event_days ed ON ed.id = eda.event_day_id "
-        "  WHERE eda.member_id=? AND ed.event_id=? AND eda.qualifies=1"
+        "  WHERE eda.member_id=? AND ed.event_id=?"
         ")");
     stmt.bind(1, member_id);
     stmt.bind(2, event_id);
     if (stmt.step()) return stmt.col_int(0) != 0;
     return false;
-}
-
-bool EventDayAttendanceRepository::set_qualifies(int64_t attendance_id, bool qualifies) {
-    auto stmt = db_.prepare("UPDATE event_day_attendance SET qualifies=? WHERE id=?");
-    stmt.bind(1, static_cast<int64_t>(qualifies ? 1 : 0));
-    stmt.bind(2, attendance_id);
-    stmt.step();
-    return true;
 }
 
 bool EventDayAttendanceRepository::remove_by_id(int64_t attendance_id) {
@@ -121,7 +111,7 @@ bool EventDayAttendanceRepository::remove_by_id(int64_t attendance_id) {
 std::optional<EventDayAttendance> EventDayAttendanceRepository::find_by_id(int64_t attendance_id) {
     auto stmt = db_.prepare(
         "SELECT eda.id, eda.event_day_id, eda.member_id, eda.checked_in_at, eda.notes, "
-        "       eda.qualifies, COALESCE(m.display_name,''), COALESCE(m.discord_username,''), "
+        "       COALESCE(m.display_name,''), COALESCE(m.discord_username,''), "
         "       ed.day_date, ed.day_number "
         "FROM event_day_attendance eda "
         "JOIN event_days ed ON ed.id = eda.event_day_id "
@@ -135,11 +125,10 @@ std::optional<EventDayAttendance> EventDayAttendanceRepository::find_by_id(int64
         a.member_id               = stmt.col_int(2);
         a.checked_in_at           = stmt.col_text(3);
         a.notes                   = stmt.col_text(4);
-        a.qualifies               = stmt.col_int(5) != 0;
-        a.member_display_name     = stmt.col_text(6);
-        a.member_discord_username = stmt.col_text(7);
-        a.day_date                = stmt.col_text(8);
-        a.day_number              = static_cast<int>(stmt.col_int(9));
+        a.member_display_name     = stmt.col_text(5);
+        a.member_discord_username = stmt.col_text(6);
+        a.day_date                = stmt.col_text(7);
+        a.day_number              = static_cast<int>(stmt.col_int(8));
         return a;
     }
     return std::nullopt;
@@ -152,7 +141,7 @@ int EventDayAttendanceRepository::count_events_credited_for_member(int64_t membe
         "SELECT COUNT(DISTINCT ed.event_id) "
         "FROM event_day_attendance eda "
         "JOIN event_days ed ON ed.id = eda.event_day_id "
-        "WHERE eda.member_id=? AND eda.qualifies=1 "
+        "WHERE eda.member_id=? "
         "  AND ed.day_date >= ? AND ed.day_date < ?");
     stmt.bind(1, member_id);
     stmt.bind(2, year_start);

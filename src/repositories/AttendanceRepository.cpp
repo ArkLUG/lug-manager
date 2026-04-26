@@ -136,7 +136,7 @@ void AttendanceRepository::delete_by_entity(const std::string& entity_type, int6
 
 std::vector<AttendanceRepository::MemberAttendanceSummary>
 AttendanceRepository::get_all_member_summaries() {
-    // Event credit: 1 per event with any qualifying day of attendance.
+    // Event credit: 1 per event with any day of attendance.
     auto stmt = db_.prepare(
         "SELECT m.id, m.display_name, m.discord_username, "
         "  (SELECT COUNT(*) FROM attendance a "
@@ -145,7 +145,7 @@ AttendanceRepository::get_all_member_summaries() {
         "     WHERE a.member_id=m.id AND a.entity_type='meeting' AND a.is_virtual=1), "
         "  (SELECT COUNT(DISTINCT ed.event_id) FROM event_day_attendance eda "
         "     JOIN event_days ed ON ed.id = eda.event_day_id "
-        "     WHERE eda.member_id=m.id AND eda.qualifies=1) "
+        "     WHERE eda.member_id=m.id) "
         "FROM members m "
         "ORDER BY m.display_name ASC");
 
@@ -177,7 +177,7 @@ AttendanceRepository::get_all_member_summaries_by_year(int year) {
         "       AND a.checked_in_at >= ? AND a.checked_in_at < ?), "
         "  (SELECT COUNT(DISTINCT ed.event_id) FROM event_day_attendance eda "
         "     JOIN event_days ed ON ed.id = eda.event_day_id "
-        "     WHERE eda.member_id=m.id AND eda.qualifies=1 "
+        "     WHERE eda.member_id=m.id "
         "       AND ed.day_date >= ? AND ed.day_date < ?) "
         "FROM members m "
         "ORDER BY m.display_name ASC");
@@ -221,7 +221,7 @@ static std::string build_overview_sql(const AttendanceRepository::OverviewParams
     std::string year_end   = std::to_string(p.year + 1) + "-01-01";
 
     // CTE computes per-member attendance stats for the year.
-    // Event credit: 1 per event with any qualifying day.
+    // Event credit: 1 per event with any day of attendance.
     std::string sql =
         "WITH stats AS ("
         "  SELECT m.id AS member_id, m.display_name, "
@@ -237,7 +237,7 @@ static std::string build_overview_sql(const AttendanceRepository::OverviewParams
         "              AND a.checked_in_at >= '" + year_start + "' AND a.checked_in_at < '" + year_end + "') AS meeting_virtual_count, "
         "         (SELECT COUNT(DISTINCT ed.event_id) FROM event_day_attendance eda "
         "            JOIN event_days ed ON ed.id = eda.event_day_id "
-        "            WHERE eda.member_id=m.id AND eda.qualifies=1 "
+        "            WHERE eda.member_id=m.id "
         "              AND ed.day_date >= '" + year_start + "' AND ed.day_date < '" + year_end + "') AS event_count, "
         "         (SELECT MAX(d) FROM ( "
         "            SELECT SUBSTR(mt.start_time,1,10) AS d FROM attendance a "
@@ -321,11 +321,11 @@ int AttendanceRepository::count_member_by_year(int64_t member_id, int year,
     std::string year_start = std::to_string(year) + "-01-01";
     std::string year_end   = std::to_string(year + 1) + "-01-01";
     if (entity_type == "event") {
-        // Event credit: 1 per event with any qualifying day of attendance.
+        // Event credit: 1 per event with any day of attendance.
         auto stmt = db_.prepare(
             "SELECT COUNT(DISTINCT ed.event_id) FROM event_day_attendance eda "
             "JOIN event_days ed ON ed.id = eda.event_day_id "
-            "WHERE eda.member_id=? AND eda.qualifies=1 "
+            "WHERE eda.member_id=? "
             "  AND ed.day_date >= ? AND ed.day_date < ?");
         stmt.bind(1, member_id);
         stmt.bind(2, year_start);
@@ -350,7 +350,7 @@ AttendanceRepository::get_member_attendance_detail(int64_t member_id, int year,
     std::string year_start = std::to_string(year) + "-01-01";
     std::string year_end   = std::to_string(year + 1) + "-01-01";
     // Union meeting check-ins with event day check-ins. Event rows are
-    // deduplicated by event_id (one row per event, using the latest qualifying
+    // deduplicated by event_id (one row per event, using the latest attended
     // day as representative) so the list matches the event-credit count.
     auto stmt = db_.prepare(
         "SELECT entity_type, entity_id, title, date, checked_in_at, is_virtual FROM ("

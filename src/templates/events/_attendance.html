@@ -8,28 +8,14 @@
     </div>
     {{#attendees}}
     <div class="flex flex-wrap items-center gap-x-2 gap-y-1 py-1.5 pl-2 text-xs text-gray-600 border-b border-gray-50 last:border-0">
-      {{#qualifies}}
-      <svg class="w-3 h-3 text-green-500 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20" title="Qualifies (4+ hours)">
+      <svg class="w-3 h-3 text-green-500 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20" title="Attended">
         <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"/>
       </svg>
-      {{/qualifies}}
-      {{^qualifies}}
-      <svg class="w-3 h-3 text-gray-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" title="Partial (less than 4 hours)">
-        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/>
-      </svg>
-      {{/qualifies}}
       <span class="font-medium truncate">{{member_display_name}}</span>
       {{#member_discord_username}}<span class="text-gray-400 hidden sm:inline">@{{member_discord_username}}</span>{{/member_discord_username}}
-      {{^qualifies}}<span class="ml-1 px-1.5 py-0.5 rounded text-[10px] font-medium bg-gray-100 text-gray-500">&lt; 4h</span>{{/qualifies}}
 
       {{#is_admin}}
       <div class="flex items-center gap-1 ml-auto">
-        <button hx-post="/attendance/admin/event-day-att/{{id}}/toggle-qualifies"
-                hx-vals='{"entity_id":"{{entity_id}}","current":"{{#qualifies}}1{{/qualifies}}{{^qualifies}}0{{/qualifies}}"}'
-                hx-target="#att-list-event-{{entity_id}}" hx-swap="outerHTML"
-                class="px-2 py-0.5 rounded text-xs font-medium {{#qualifies}}bg-gray-100 text-gray-700 hover:bg-gray-200{{/qualifies}}{{^qualifies}}bg-green-100 text-green-700 hover:bg-green-200{{/qualifies}}">
-          {{#qualifies}}Mark &lt; 4h{{/qualifies}}{{^qualifies}}Mark 4+ hours{{/qualifies}}
-        </button>
         <button hx-post="/attendance/admin/event-day-att/{{id}}/remove"
                 hx-vals='{"entity_id":"{{entity_id}}"}'
                 hx-target="#att-list-event-{{entity_id}}" hx-swap="outerHTML"
@@ -76,6 +62,6 @@
 
   <div class="mt-2 text-xs text-gray-400 font-medium">
     {{distinct_count}} member{{^one_member}}s{{/one_member}} with attendance
-    <span class="ml-2 text-gray-500">(1 event credit = any day of 4+ hours)</span>
+    <span class="ml-2 text-gray-500">(1 event credit per event attended)</span>
   </div>
 </div>

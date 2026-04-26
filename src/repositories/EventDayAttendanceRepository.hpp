@@ -27,15 +27,14 @@ public:
     // Distinct members with any attendance for the event.
     int count_distinct_members_by_event(int64_t event_id);
 
-    // Has the member qualified on at least one day of this event?
-    bool member_qualifies_for_event(int64_t member_id, int64_t event_id);
+    // Has the member attended at least one day of this event?
+    bool member_attended_event(int64_t member_id, int64_t event_id);
 
-    bool set_qualifies(int64_t attendance_id, bool qualifies);
     bool remove_by_id(int64_t attendance_id);
     std::optional<EventDayAttendance> find_by_id(int64_t attendance_id);
 
-    // Year-scoped helpers for counting — a member gets 1 event credit per event
-    // they have any qualifying day for, within the year.
+    // Year-scoped helper — a member gets 1 event credit per event they
+    // attended any day of, within the year.
     int count_events_credited_for_member(int64_t member_id, int year);
 
 private:

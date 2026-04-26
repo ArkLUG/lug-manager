@@ -235,7 +235,7 @@ TEST_F(AttendanceSummaryTest, SummaryCountsCorrect) {
     db->execute("INSERT INTO event_days (event_id, day_date, day_number) "
                 "VALUES (1, '2026-05-01', 1)");
 
-    // Member 1 attends 2 meetings (1 virtual) and 1 event (qualifying day)
+    // Member 1 attends 2 meetings (1 virtual) and 1 event day
     attendance->check_in(member1.id, "meeting", 1);
     attendance->check_in(member1.id, "meeting", 2, "", true); // virtual
     EventDayAttendanceRepository eda_repo(*db);
