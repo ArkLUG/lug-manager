@@ -92,6 +92,21 @@
   </div>
   {{/has_notes}}
 
+  {{#can_manage}}
+  <div class="mt-4 pt-4 border-t border-gray-200" id="mtg-publish-{{id}}">
+    <div class="flex items-center justify-between">
+      <h4 class="text-sm font-medium text-gray-500">Discord Report</h4>
+      <button hx-post="/meetings/{{id}}/publish-report"
+              hx-target="#mtg-publish-status-{{id}}" hx-swap="innerHTML"
+              hx-confirm="Publish this meeting's report to Discord?"
+              class="text-xs px-3 py-1.5 bg-indigo-600 text-white rounded-lg font-medium hover:bg-indigo-700 transition-colors">
+        Publish Report
+      </button>
+    </div>
+    <div id="mtg-publish-status-{{id}}" class="mt-2 text-right"></div>
+  </div>
+  {{/can_manage}}
+
   <!-- QR Check-in (managers only) -->
   {{#can_manage}}{{^is_virtual}}
   <div class="mt-4 pt-4 border-t border-gray-200">
