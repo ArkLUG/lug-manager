@@ -196,7 +196,10 @@ void register_chapter_routes(LugApp& app, ChapterService& chapters,
                 ++lead_count;
             } else {
                 add_lead_opts << "<option value=\"" << cm.member_id << "\">"
-                              << cm.display_name << " (@" << cm.discord_username << ")</option>\n";
+                              << cm.display_name;
+                if (!cm.discord_username.empty())
+                    add_lead_opts << " (@" << cm.discord_username << ")";
+                add_lead_opts << "</option>\n";
                 has_non_leads = true;
             }
         }
@@ -478,7 +481,10 @@ void register_chapter_routes(LugApp& app, ChapterService& chapters,
         for (auto& m : all_members) {
             if (in_chapter.count(m.id)) continue;
             member_opts << "<option value=\"" << m.id << "\">"
-                        << m.display_name << " (@" << m.discord_username << ")</option>\n";
+                        << m.display_name;
+            if (!m.discord_username.empty())
+                member_opts << " (@" << m.discord_username << ")";
+            member_opts << "</option>\n";
         }
         mctx["member_options"] = member_opts.str();
 
