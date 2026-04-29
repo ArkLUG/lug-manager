@@ -1001,10 +1001,21 @@ void register_event_routes(LugApp& app, EventService& events, AttendanceService&
         if (!ev) { res.code = 404; res.write("Not found"); return res; }
         if (!can_manage_chapter_content(req, res, app, ev->chapter_id, chapter_members)) return res;
 
+        std::string chapter_name;
+        if (ev->chapter_id > 0) {
+            auto ch = chapters.get(ev->chapter_id);
+            if (ch) chapter_name = ch->name;
+        }
+
         std::ostringstream report;
         report << "**Event name:** " << ev->title << "\n";
+        report << "**Chapter:** " << (chapter_name.empty() ? "LUG Wide" : chapter_name) << "\n";
         report << "**Start date:** " << ev->start_time.substr(0, 10) << "\n";
         report << "**End date:** " << ev->end_time.substr(0, 10) << "\n";
+        if (!ev->location.empty())
+            report << "**Location:** " << ev->location << "\n";
+        if (!ev->event_lead_name.empty())
+            report << "**Lead:** " << ev->event_lead_name << "\n";
         if (!ev->entrance_fee.empty())
             report << "**Entrance fee:** " << ev->entrance_fee << "\n";
 
@@ -1013,16 +1024,14 @@ void register_event_routes(LugApp& app, EventService& events, AttendanceService&
         auto days = attendance.event_day_repo().find_by_event(ev->id);
         for (const auto& d : days) {
             auto rows = attendance.event_day_attendance_repo().find_by_day(d.id);
-            report << "**Member names day" << d.day_number << ":** ";
+            report << "**Member names day" << d.day_number << ":**\n";
             if (rows.empty()) {
-                report << "(none)";
+                report << "- (none)\n";
             } else {
-                for (size_t i = 0; i < rows.size(); ++i) {
-                    if (i > 0) report << ", ";
-                    report << rows[i].member_display_name;
+                for (const auto& r : rows) {
+                    report << "- " << r.member_display_name << "\n";
                 }
             }
-            report << "\n";
         }
 
         report << "**Public kids:** " << ev->public_kids << "\n";
@@ -1032,6 +1041,8 @@ void register_event_routes(LugApp& app, EventService& events, AttendanceService&
             report << "**Social media links, ArkLUG mentions, announcements for show:** " << ev->social_media_links << "\n";
         if (!ev->event_feedback.empty())
             report << "**What you liked best about event:** " << ev->event_feedback << "\n";
+        if (!ev->description.empty())
+            report << "\n## Description\n" << ev->description << "\n";
         if (!ev->notes.empty())
             report << "\n## Notes\n" << ev->notes << "\n";
 
