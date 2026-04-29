@@ -1001,23 +1001,6 @@ void register_event_routes(LugApp& app, EventService& events, AttendanceService&
         if (!ev) { res.code = 404; res.write("Not found"); return res; }
         if (!can_manage_chapter_content(req, res, app, ev->chapter_id, chapter_members)) return res;
 
-        // Build report in required format
-        auto attendees = attendance.get_attendees("event", ev->id);
-
-        // Get chapter name
-        std::string chapter_name;
-        if (ev->chapter_id > 0) {
-            auto ch = chapters.get(ev->chapter_id);
-            if (ch) chapter_name = ch->name;
-        }
-
-        // Group attendees by date (day portion of checked_in_at)
-        std::map<std::string, std::vector<std::string>> by_day;
-        for (const auto& a : attendees) {
-            std::string day = a.checked_in_at.size() >= 10 ? a.checked_in_at.substr(0, 10) : a.checked_in_at;
-            by_day[day].push_back(a.member_display_name);
-        }
-
         std::ostringstream report;
         report << "**Event name:** " << ev->title << "\n";
         report << "**Start date:** " << ev->start_time.substr(0, 10) << "\n";
@@ -1025,22 +1008,19 @@ void register_event_routes(LugApp& app, EventService& events, AttendanceService&
         if (!ev->entrance_fee.empty())
             report << "**Entrance fee:** " << ev->entrance_fee << "\n";
 
-        // Multi-day attendance
-        int day_num = 1;
-        for (const auto& [day, names] : by_day) {
-            report << "**Member names day" << day_num << " (" << day << "):** ";
-            for (size_t i = 0; i < names.size(); ++i) {
-                if (i > 0) report << ", ";
-                report << names[i];
-            }
-            report << "\n";
-            ++day_num;
-        }
-        if (by_day.empty() && !attendees.empty()) {
-            report << "**Members:** ";
-            for (size_t i = 0; i < attendees.size(); ++i) {
-                if (i > 0) report << ", ";
-                report << attendees[i].member_display_name;
+        // Per-day attendance, driven by the canonical event_days list so empty
+        // days are still reported and day numbers match the event schedule.
+        auto days = attendance.event_day_repo().find_by_event(ev->id);
+        for (const auto& d : days) {
+            auto rows = attendance.event_day_attendance_repo().find_by_day(d.id);
+            report << "**Member names day" << d.day_number << ":** ";
+            if (rows.empty()) {
+                report << "(none)";
+            } else {
+                for (size_t i = 0; i < rows.size(); ++i) {
+                    if (i > 0) report << ", ";
+                    report << rows[i].member_display_name;
+                }
             }
             report << "\n";
         }
