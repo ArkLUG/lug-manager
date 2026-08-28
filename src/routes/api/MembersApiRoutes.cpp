@@ -67,6 +67,8 @@ void register_members_api_routes(LugApp& app, MemberService& members,
         if (body.has("birthday"))         m.birthday         = body["birthday"].s();
         if (body.has("fol_status"))       m.fol_status       = body["fol_status"].s();
         if (body.has("chapter_id"))       m.chapter_id       = body["chapter_id"].i();
+        if (body.has("is_paid"))          m.is_paid          = body["is_paid"].b();
+        if (body.has("paid_until"))       m.paid_until       = body["paid_until"].s();
         if (body.has("role"))             m.role             = body["role"].s();
 
         try {
@@ -110,6 +112,8 @@ void register_members_api_routes(LugApp& app, MemberService& members,
         if (body.has("birthday"))         updates.birthday         = body["birthday"].s();
         if (body.has("fol_status"))       updates.fol_status       = body["fol_status"].s();
         if (body.has("chapter_id"))       updates.chapter_id       = body["chapter_id"].i();
+        if (body.has("is_paid"))          updates.is_paid          = body["is_paid"].b();
+        if (body.has("paid_until"))       updates.paid_until       = body["paid_until"].s();
         if (body.has("role"))             updates.role             = body["role"].s();
         if (body.has("sharing_email"))    updates.sharing_email    = body["sharing_email"].s();
         if (body.has("sharing_phone"))    updates.sharing_phone    = body["sharing_phone"].s();

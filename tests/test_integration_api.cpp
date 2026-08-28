@@ -199,6 +199,34 @@ TEST_F(IntegrationTest, ApiMembersCreateAndUpdate) {
     EXPECT_EQ(m->city, "Fayetteville");
 }
 
+// Regression: PUT (and POST) /api/v1/members silently dropped is_paid and
+// paid_until - every other field was read from the request body, but not
+// these two, even though MemberService::update/create already apply them
+// correctly once set on the struct. Found while backfilling paid dues data.
+TEST_F(IntegrationTest, ApiMembersCreateAndUpdatePaidStatus) {
+    std::string key = make_api_key("write");
+
+    auto created = API_POST("/api/v1/members",
+        R"({"first_name":"Paid","last_name":"OnCreate","is_paid":true,"paid_until":"2027-01-01"})",
+        key);
+    EXPECT_EQ(created.code, 201);
+    auto created_body = json::parse(created.body);
+    EXPECT_EQ(created_body["data"]["is_paid"].get<bool>(), true);
+    EXPECT_EQ(created_body["data"]["paid_until"].get<std::string>(), "2027-01-01");
+    int64_t id = created_body["data"]["id"].get<int64_t>();
+
+    auto updated = API_PUT("/api/v1/members/" + std::to_string(id),
+        R"({"is_paid":false})", key);
+    EXPECT_EQ(updated.code, 200);
+    auto updated_body = json::parse(updated.body);
+    EXPECT_EQ(updated_body["data"]["is_paid"].get<bool>(), false);
+
+    auto m = member_repo->find_by_id(id);
+    ASSERT_TRUE(m.has_value());
+    EXPECT_FALSE(m->is_paid);
+    EXPECT_EQ(m->paid_until, "2027-01-01"); // untouched by the is_paid-only PUT
+}
+
 // ─────────────────────────────────────────────────────────────────────────
 // Events CRUD (+ event days)
 // ─────────────────────────────────────────────────────────────────────────
