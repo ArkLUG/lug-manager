@@ -37,6 +37,7 @@
 #include "services/MemberSyncService.hpp"
 #include "repositories/AuditLogRepository.hpp"
 #include "repositories/ApiKeyRepository.hpp"
+#include "repositories/PendingDiscordMatchRepository.hpp"
 #include "middleware/ApiKeyMiddleware.hpp"
 #include "services/AuditService.hpp"
 #include "routes/Router.hpp"
@@ -66,6 +67,7 @@ protected:
     std::unique_ptr<PerkLevelRepository> perk_level_repo;
     std::unique_ptr<AuditLogRepository> audit_log_repo;
     std::unique_ptr<ApiKeyRepository> api_key_repo;
+    std::unique_ptr<PendingDiscordMatchRepository> pending_discord_match_repo;
     std::unique_ptr<SessionStore> session_store;
 
     // Integrations
@@ -133,6 +135,7 @@ protected:
         perk_level_repo = std::make_unique<PerkLevelRepository>(*db);
         audit_log_repo = std::make_unique<AuditLogRepository>(*db);
         api_key_repo = std::make_unique<ApiKeyRepository>(*db);
+        pending_discord_match_repo = std::make_unique<PendingDiscordMatchRepository>(*db);
         session_store = std::make_unique<SessionStore>(*db);
 
         // Integrations
@@ -149,7 +152,8 @@ protected:
         chapter_svc = std::make_unique<ChapterService>(*chapter_repo);
         attendance_svc = std::make_unique<AttendanceService>(*attendance_repo, *member_repo, *event_repo, *event_day_repo, *event_day_attendance_repo);
         member_sync_svc = std::make_unique<MemberSyncService>(*discord_client, *member_repo, *role_mapping_repo,
-                                                                *chapter_repo, *chapter_member_repo);
+                                                                *chapter_repo, *chapter_member_repo,
+                                                                *pending_discord_match_repo);
         audit_svc = std::make_unique<AuditService>(*audit_log_repo);
 
         // Create test members and sessions
@@ -223,7 +227,7 @@ protected:
             *perk_level_repo, *attendance_repo, *member_repo,
             *meeting_repo, *event_repo,
             *event_day_repo, *event_day_attendance_repo,
-            *audit_svc, *api_key_repo
+            *audit_svc, *api_key_repo, *pending_discord_match_repo
         };
         register_all_routes(*app, svc);
 

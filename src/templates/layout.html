@@ -301,6 +301,24 @@
       </a>
       {{/is_admin}}
 
+      <!-- Discord Matches (admin + chapter lead) -->
+      {{#is_chapter_lead}}
+      <a hx-get="/settings/discord-matches"
+         hx-target="#main-content"
+         hx-push-url="true"
+         hx-swap="innerHTML"
+         hx-indicator="#nav-spinner"
+         class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm cursor-pointer transition-colors
+                {{#active_discord_matches}}nav-active{{/active_discord_matches}}
+                {{^active_discord_matches}}nav-inactive{{/active_discord_matches}}">
+        <svg class="w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                d="M17 20h5v-2a4 4 0 00-3-3.87M9 20H4v-2a4 4 0 013-3.87m6-1.13a4 4 0 10-4-4 4 4 0 004 4zm6-4a4 4 0 11-8 0 4 4 0 018 0z"/>
+        </svg>
+        Discord Matches
+      </a>
+      {{/is_chapter_lead}}
+
       <!-- Help (all users) -->
       <a hx-get="/help"
          hx-target="#main-content"

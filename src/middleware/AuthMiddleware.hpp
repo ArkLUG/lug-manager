@@ -56,7 +56,8 @@ template<typename App>
 inline void set_layout_auth(const crow::request& req, App& app,
                             crow::mustache::context& layout_ctx) {
     auto& ctx = app.template get_context<AuthMiddleware>(req);
-    layout_ctx["is_admin"]     = ctx.auth.is_admin();
+    layout_ctx["is_admin"]        = ctx.auth.is_admin();
+    layout_ctx["is_chapter_lead"] = ctx.auth.is_chapter_lead();
     layout_ctx["display_name"] = ctx.auth.display_name;
     layout_ctx["role"]         = ctx.auth.role;
     if (!ctx.auth.display_name.empty())

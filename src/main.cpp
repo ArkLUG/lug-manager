@@ -21,6 +21,7 @@
 #include "repositories/PerkLevelRepository.hpp"
 #include "repositories/AuditLogRepository.hpp"
 #include "repositories/ApiKeyRepository.hpp"
+#include "repositories/PendingDiscordMatchRepository.hpp"
 #include "middleware/ApiKeyMiddleware.hpp"
 #include "services/AuditService.hpp"
 #include "services/ChapterService.hpp"
@@ -71,6 +72,7 @@ int main() {
         PerkLevelRepository     perk_level_repo(db);
         AuditLogRepository      audit_log_repo(db);
         ApiKeyRepository        api_key_repo(db);
+        PendingDiscordMatchRepository pending_discord_match_repo(db);
 
         // Async thread pool for non-blocking Discord API calls
         ThreadPool pool(4);
@@ -139,7 +141,8 @@ int main() {
         ChapterService    chapter_service(chapter_repo);
         MemberService     member_service(member_repo, &discord_client);
         MemberSyncService member_sync_service(discord_client, member_repo, role_mapping_repo,
-                                              chapter_repo, chapter_member_repo);
+                                              chapter_repo, chapter_member_repo,
+                                              pending_discord_match_repo);
         MeetingService    meeting_service(meeting_repo, discord_client, calendar, &chapter_repo, &gcal_client);
         EventService      event_service(event_repo, discord_client, calendar, &chapter_repo, &gcal_client, &event_day_repo);
         AttendanceService attendance_service(attendance_repo, member_repo, event_repo, event_day_repo, event_day_attendance_repo);
@@ -174,7 +177,8 @@ int main() {
             event_day_repo,
             event_day_attendance_repo,
             audit_service,
-            api_key_repo
+            api_key_repo,
+            pending_discord_match_repo
         };
         register_all_routes(app, svc);
 
@@ -194,7 +198,7 @@ int main() {
         session_cleaner.detach();
 
         // Background thread: sync Discord guild members every 6 hours
-        std::thread member_syncer([&member_sync_service] {
+        std::thread member_syncer([&member_sync_service, &audit_service] {
             // Initial delay: wait 30 seconds after startup before first sync
             std::this_thread::sleep_for(std::chrono::seconds(30));
             while (true) {
@@ -207,7 +211,12 @@ int main() {
                         std::cout << "[member-sync] Done — imported=" << r.imported
                                   << " updated=" << r.updated
                                   << " skipped=" << r.skipped
+                                  << " held_for_review=" << r.held_for_review
                                   << " errors=" << r.errors << "\n";
+                        if (r.held_for_review > 0) {
+                            audit_service.log_system("member_sync.held_for_review", "member", 0, "",
+                                std::to_string(r.held_for_review) + " Discord member(s) held for admin review");
+                        }
                     }
                 } catch (const std::exception& e) {
                     std::cerr << "[member-sync] Unexpected error: " << e.what() << "\n";

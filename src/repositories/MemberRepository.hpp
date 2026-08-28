@@ -15,6 +15,7 @@ public:
     std::vector<Member>   find_paid();
     std::vector<Member>   find_by_role(const std::string& role);
     std::vector<Member>   find_by_chapter(int64_t chapter_id);
+    std::vector<Member>   find_without_discord_id();
     std::vector<Member>   find_search(const std::string& q);
     std::vector<Member>   find_paginated(const std::string& q,
                                          const std::string& sort_col,
@@ -31,6 +32,11 @@ public:
     bool set_paid(int64_t id, bool is_paid, const std::string& paid_until);
     // Convenience: set chapter assignment (0 = clear)
     bool set_chapter(int64_t id, int64_t chapter_id);
+    // Link an existing member (created without a Discord account) to a Discord
+    // identity. Deliberately narrow — does NOT go through update() so it can't
+    // accidentally overwrite unrelated fields.
+    bool link_discord_id(int64_t member_id, const std::string& discord_user_id,
+                          const std::string& discord_username);
 
 private:
     SqliteDatabase& db_;

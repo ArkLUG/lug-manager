@@ -303,7 +303,15 @@
   </div>
 
   <div class="bg-white rounded-xl border border-gray-200 p-6">
-    <h2 class="text-xl font-bold text-gray-900 mb-1">Member Import</h2>
+    <div class="flex items-start justify-between mb-1">
+      <h2 class="text-xl font-bold text-gray-900">Member Import</h2>
+      {{#has_pending_matches}}
+      <a hx-get="/settings/discord-matches" hx-target="#main-content" hx-push-url="true" hx-swap="innerHTML"
+         class="inline-flex items-center px-2 py-0.5 rounded-full bg-amber-100 text-amber-800 text-xs font-semibold cursor-pointer hover:bg-amber-200 transition-colors">
+        {{pending_match_count}} pending Discord match(es)
+      </a>
+      {{/has_pending_matches}}
+    </div>
     <p class="text-sm text-gray-500 mb-4">
       Pull all members from the Discord server and automatically create accounts for anyone
       whose Discord roles map to a LUG role. Existing members get their display name and role

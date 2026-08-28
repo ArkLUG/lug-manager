@@ -10,6 +10,7 @@
 #include "services/MeetingService.hpp"
 #include "services/MemberService.hpp"
 #include "services/AuditService.hpp"
+#include "repositories/PendingDiscordMatchRepository.hpp"
 #include <crow.h>
 
 using LugApp = crow::App<AuthMiddleware, ApiKeyMiddleware>;
@@ -18,4 +19,5 @@ void register_settings_routes(LugApp& app, SettingsRepository& settings,
                                DiscordClient& discord, MemberSyncService& member_sync,
                                CalendarGenerator& calendar, GoogleCalendarClient& gcal,
                                EventService& events, MeetingService& meetings,
-                               MemberService& members, AuditService& audit);
+                               MemberService& members, AuditService& audit,
+                               PendingDiscordMatchRepository& pending_discord_matches);

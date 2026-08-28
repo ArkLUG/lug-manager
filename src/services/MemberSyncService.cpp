@@ -1,6 +1,9 @@
 #include "services/MemberSyncService.hpp"
 #include "models/Member.hpp"
+#include "models/PendingDiscordMatch.hpp"
+#include "utils/NameMatch.hpp"
 #include <iostream>
+#include <sstream>
 #include <unordered_map>
 #include <unordered_set>
 
@@ -8,9 +11,11 @@ MemberSyncService::MemberSyncService(DiscordClient& discord,
                                      MemberRepository& member_repo,
                                      RoleMappingRepository& role_mappings,
                                      ChapterRepository& chapter_repo,
-                                     ChapterMemberRepository& chapter_member_repo)
+                                     ChapterMemberRepository& chapter_member_repo,
+                                     PendingDiscordMatchRepository& pending_matches_repo)
     : discord_(discord), member_repo_(member_repo), role_mappings_(role_mappings),
-      chapter_repo_(chapter_repo), chapter_member_repo_(chapter_member_repo) {}
+      chapter_repo_(chapter_repo), chapter_member_repo_(chapter_member_repo),
+      pending_matches_(pending_matches_repo) {}
 
 SyncResult MemberSyncService::sync_from_guild() {
     SyncResult result;
@@ -72,7 +77,44 @@ SyncResult MemberSyncService::sync_from_guild() {
                 }
                 discord_to_member_id[gm.discord_user_id] = existing->id;
             } else {
-                // Import all guild members; role mappings only affect role level
+                // No exact discord_user_id match — check for a plausible existing
+                // discord-less member before auto-creating a duplicate.
+                auto candidates = member_repo_.find_without_discord_id();
+                std::optional<int64_t> match_id;
+                for (const auto& cand : candidates) {
+                    if (classify_name_match(display, cand.display_name) != MatchConfidence::None) {
+                        match_id = cand.id;
+                        break; // first plausible hit; nothing here auto-links, just suggests
+                    }
+                }
+
+                if (match_id) {
+                    // Plausible match found — hold for admin review instead of
+                    // auto-creating a duplicate. Don't populate discord_to_member_id /
+                    // member_discord_roles for this guild member below; chapter-lead
+                    // sync naturally skips them until an admin resolves the match,
+                    // same as any other unmatched member today.
+                    if (!pending_matches_.find_unresolved_by_discord_id(gm.discord_user_id)) {
+                        PendingDiscordMatch p;
+                        p.discord_user_id      = gm.discord_user_id;
+                        p.discord_username     = gm.username;
+                        p.discord_display_name = display;
+
+                        std::ostringstream roles_oss;
+                        for (size_t i = 0; i < gm.role_ids.size(); ++i) {
+                            if (i) roles_oss << ",";
+                            roles_oss << gm.role_ids[i];
+                        }
+                        p.discord_role_ids    = roles_oss.str();
+                        p.suggested_member_id = *match_id;
+
+                        pending_matches_.create(p);
+                        ++result.held_for_review;
+                    }
+                    continue;
+                }
+
+                // No plausible match at all — preserve existing auto-import behavior.
                 Member m;
                 m.discord_user_id  = gm.discord_user_id;
                 m.discord_username = gm.username;

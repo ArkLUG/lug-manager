@@ -6,7 +6,8 @@ void register_settings_routes(LugApp& app, SettingsRepository& settings,
                                DiscordClient& discord, MemberSyncService& member_sync,
                                CalendarGenerator& calendar, GoogleCalendarClient& gcal,
                                EventService& events, MeetingService& meetings,
-                               MemberService& members, AuditService& audit) {
+                               MemberService& members, AuditService& audit,
+                               PendingDiscordMatchRepository& pending_discord_matches) {
 
     // GET /api/discord/channel-options
     // Returns <option> elements for all text channels in the configured guild.
@@ -196,7 +197,8 @@ void register_settings_routes(LugApp& app, SettingsRepository& settings,
 
         SyncResult r = member_sync.sync_from_guild();
         audit.log(req, app, "sync.members", "settings", 0, "",
-                  "Member sync: " + std::to_string(r.imported) + " imported, " + std::to_string(r.updated) + " updated");
+                  "Member sync: " + std::to_string(r.imported) + " imported, " + std::to_string(r.updated) + " updated, "
+                  + std::to_string(r.held_for_review) + " held for review");
 
         std::ostringstream html;
         if (!r.error_message.empty()) {
@@ -209,6 +211,12 @@ void register_settings_routes(LugApp& app, SettingsRepository& settings,
                  << r.imported << " imported, "
                  << r.updated  << " updated, "
                  << r.skipped  << " skipped";
+            if (r.held_for_review > 0) {
+                html << ", <a hx-get=\"/settings/discord-matches\" hx-target=\"#main-content\" "
+                     << "hx-push-url=\"true\" hx-swap=\"innerHTML\" "
+                     << "class=\"text-amber-600 hover:text-amber-800 underline\">"
+                     << r.held_for_review << " held for review</a>";
+            }
             if (r.errors > 0)
                 html << ", <span class=\"text-red-600\">" << r.errors << " errors</span>";
             html << "</span>";
@@ -429,6 +437,9 @@ void register_settings_routes(LugApp& app, SettingsRepository& settings,
         mctx["gcal_configured"]      = gcal.is_configured();
         mctx["event_reports_forum_id"]   = event_reports_forum;
         mctx["meeting_reports_forum_id"] = meeting_reports_forum;
+        int pending_match_count = static_cast<int>(pending_discord_matches.find_all_unresolved().size());
+        mctx["pending_match_count"] = pending_match_count;
+        mctx["has_pending_matches"] = pending_match_count > 0;
 
         bool is_htmx = req.get_header_value("HX-Request") == "true";
         if (is_htmx) {

@@ -13,6 +13,7 @@
 #include "routes/AuditRoutes.hpp"
 #include "routes/HelpRoutes.hpp"
 #include "routes/ApiKeyRoutes.hpp"
+#include "routes/DiscordMatchRoutes.hpp"
 #include "routes/api/MembersApiRoutes.hpp"
 #include "routes/api/EventsApiRoutes.hpp"
 #include "routes/api/MeetingsApiRoutes.hpp"
@@ -24,6 +25,7 @@
 #include "routes/api/AuditLogApiRoutes.hpp"
 #include "routes/api/SettingsApiRoutes.hpp"
 #include "repositories/ApiKeyRepository.hpp"
+#include "repositories/PendingDiscordMatchRepository.hpp"
 #include "repositories/PerkLevelRepository.hpp"
 #include "repositories/AttendanceRepository.hpp"
 #include "repositories/EventDayRepository.hpp"
@@ -70,6 +72,7 @@ struct Services {
     EventDayAttendanceRepository& event_day_attendance_repo;
     AuditService&           audit;
     ApiKeyRepository&       api_keys;
+    PendingDiscordMatchRepository& pending_discord_matches;
 };
 
 void register_all_routes(LugApp& app, Services& svc);

@@ -100,6 +100,16 @@ std::vector<Member> MemberRepository::find_by_role(const std::string& role) {
     return result;
 }
 
+std::vector<Member> MemberRepository::find_without_discord_id() {
+    auto stmt = db_.prepare(
+        std::string(kSelectAllCols) + " WHERE m.discord_user_id IS NULL ORDER BY m.display_name ASC");
+    std::vector<Member> result;
+    while (stmt.step()) {
+        result.push_back(row_to_member(stmt));
+    }
+    return result;
+}
+
 std::vector<Member> MemberRepository::find_by_chapter(int64_t chapter_id) {
     auto stmt = db_.prepare(
         "SELECT m.id, m.discord_user_id, m.discord_username, m.display_name, m.email, "
@@ -369,5 +379,18 @@ bool MemberRepository::set_paid(int64_t id, bool is_paid, const std::string& pai
     stmt.step();
 
     auto existing = find_by_id(id);
+    return existing.has_value();
+}
+
+bool MemberRepository::link_discord_id(int64_t member_id, const std::string& discord_user_id,
+                                        const std::string& discord_username) {
+    auto stmt = db_.prepare(
+        "UPDATE members SET discord_user_id=?, discord_username=?, updated_at=datetime('now') WHERE id=?");
+    stmt.bind(1, discord_user_id);
+    stmt.bind(2, discord_username);
+    stmt.bind(3, member_id);
+    stmt.step();
+
+    auto existing = find_by_id(member_id);
     return existing.has_value();
 }
