@@ -82,6 +82,31 @@
       background-color: #374151;
       color: #ffffff;
     }
+
+    /* Nav accordion (Settings, Chapter Tools) */
+    .nav-accordion-toggle {
+      width: 100%;
+      background: none;
+      border: none;
+      font: inherit;
+      text-align: left;
+      cursor: pointer;
+    }
+    .nav-accordion-chevron {
+      margin-left: auto;
+      transition: transform 150ms ease-in-out;
+      flex-shrink: 0;
+    }
+    .nav-accordion[data-open="true"] .nav-accordion-chevron {
+      transform: rotate(90deg);
+    }
+    .nav-accordion-children {
+      display: none;
+      padding-left: 1.75rem;
+    }
+    .nav-accordion[data-open="true"] .nav-accordion-children {
+      display: block;
+    }
   </style>
 </head>
 <body class="bg-gray-100 min-h-screen flex" hx-boost="false">
@@ -267,57 +292,85 @@
         Audit Log
       </a>
 
-      <!-- API Keys (admin) -->
-      <a hx-get="/settings/api-keys"
-         hx-target="#main-content"
-         hx-push-url="true"
-         hx-swap="innerHTML"
-         hx-indicator="#nav-spinner"
-         class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm cursor-pointer transition-colors
-                {{#active_api_keys}}nav-active{{/active_api_keys}}
-                {{^active_api_keys}}nav-inactive{{/active_api_keys}}">
-        <svg class="w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1121 9z"/>
-        </svg>
-        API Keys
-      </a>
-
-      <!-- Settings (admin) -->
-      <a hx-get="/settings"
-         hx-target="#main-content"
-         hx-push-url="true"
-         hx-swap="innerHTML"
-         hx-indicator="#nav-spinner"
-         class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm cursor-pointer transition-colors
-                {{#active_settings}}nav-active{{/active_settings}}
-                {{^active_settings}}nav-inactive{{/active_settings}}">
-        <svg class="w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/>
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
-        </svg>
-        Settings
-      </a>
+      <!-- Settings accordion (admin): API Keys, Settings, Discord Matches -->
+      <div class="nav-accordion" data-open="false">
+        <button type="button" onclick="toggleNavAccordion(this)"
+                class="nav-accordion-toggle flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm
+                       transition-colors nav-inactive">
+          <svg class="w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                  d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/>
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
+          </svg>
+          Settings
+          <svg class="nav-accordion-chevron w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
+          </svg>
+        </button>
+        <div class="nav-accordion-children space-y-1 mt-1">
+          <a hx-get="/settings"
+             hx-target="#main-content"
+             hx-push-url="true"
+             hx-swap="innerHTML"
+             hx-indicator="#nav-spinner"
+             class="block px-3 py-2 rounded-lg text-sm cursor-pointer transition-colors
+                    {{#active_settings}}nav-active{{/active_settings}}
+                    {{^active_settings}}nav-inactive{{/active_settings}}">
+            General
+          </a>
+          <a hx-get="/settings/api-keys"
+             hx-target="#main-content"
+             hx-push-url="true"
+             hx-swap="innerHTML"
+             hx-indicator="#nav-spinner"
+             class="block px-3 py-2 rounded-lg text-sm cursor-pointer transition-colors
+                    {{#active_api_keys}}nav-active{{/active_api_keys}}
+                    {{^active_api_keys}}nav-inactive{{/active_api_keys}}">
+            API Keys
+          </a>
+          <a hx-get="/settings/discord-matches"
+             hx-target="#main-content"
+             hx-push-url="true"
+             hx-swap="innerHTML"
+             hx-indicator="#nav-spinner"
+             class="block px-3 py-2 rounded-lg text-sm cursor-pointer transition-colors
+                    {{#active_discord_matches}}nav-active{{/active_discord_matches}}
+                    {{^active_discord_matches}}nav-inactive{{/active_discord_matches}}">
+            Discord Matches
+          </a>
+        </div>
+      </div>
       {{/is_admin}}
 
-      <!-- Discord Matches (admin + chapter lead) -->
-      {{#is_chapter_lead}}
-      <a hx-get="/settings/discord-matches"
-         hx-target="#main-content"
-         hx-push-url="true"
-         hx-swap="innerHTML"
-         hx-indicator="#nav-spinner"
-         class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm cursor-pointer transition-colors
-                {{#active_discord_matches}}nav-active{{/active_discord_matches}}
-                {{^active_discord_matches}}nav-inactive{{/active_discord_matches}}">
-        <svg class="w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                d="M17 20h5v-2a4 4 0 00-3-3.87M9 20H4v-2a4 4 0 013-3.87m6-1.13a4 4 0 10-4-4 4 4 0 004 4zm6-4a4 4 0 11-8 0 4 4 0 018 0z"/>
-        </svg>
-        Discord Matches
-      </a>
-      {{/is_chapter_lead}}
+      <!-- Chapter Tools accordion (chapter lead / moderator, non-admin): Discord Matches -->
+      {{#is_chapter_lead_not_admin}}
+      <div class="nav-accordion" data-open="false">
+        <button type="button" onclick="toggleNavAccordion(this)"
+                class="nav-accordion-toggle flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm
+                       transition-colors nav-inactive">
+          <svg class="w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                  d="M17 20h5v-2a4 4 0 00-3-3.87M9 20H4v-2a4 4 0 013-3.87m6-1.13a4 4 0 10-4-4 4 4 0 004 4zm6-4a4 4 0 11-8 0 4 4 0 018 0z"/>
+          </svg>
+          Chapter Tools
+          <svg class="nav-accordion-chevron w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
+          </svg>
+        </button>
+        <div class="nav-accordion-children space-y-1 mt-1">
+          <a hx-get="/settings/discord-matches"
+             hx-target="#main-content"
+             hx-push-url="true"
+             hx-swap="innerHTML"
+             hx-indicator="#nav-spinner"
+             class="block px-3 py-2 rounded-lg text-sm cursor-pointer transition-colors
+                    {{#active_discord_matches}}nav-active{{/active_discord_matches}}
+                    {{^active_discord_matches}}nav-inactive{{/active_discord_matches}}">
+            Discord Matches
+          </a>
+        </div>
+      </div>
+      {{/is_chapter_lead_not_admin}}
 
       <!-- Help (all users) -->
       <a hx-get="/help"
@@ -463,18 +516,17 @@
           document.title = t + ' — LUG Manager';
         }
       }
-      // Update nav highlights based on current URL
-      var path = window.location.pathname;
-      document.querySelectorAll('nav a[hx-get]').forEach(function(a) {
-        var href = a.getAttribute('hx-get');
-        var isActive = (path === href) || (href !== '/' && path.startsWith(href + '/'));
-        // Special case: /attendance vs /attendance/overview
-        if (href === '/attendance' && path.startsWith('/attendance/overview')) isActive = false;
-        if (href === '/attendance/overview' && path.startsWith('/attendance/overview')) isActive = true;
-        a.classList.remove('nav-active', 'nav-inactive');
-        a.classList.add(isActive ? 'nav-active' : 'nav-inactive');
-      });
+      updateActiveNav();
     });
+
+    // Nav accordion (Settings, Chapter Tools): click toggles; whichever one
+    // contains the active link auto-opens (see updateActiveNav below) so
+    // landing on e.g. /settings/api-keys directly always shows it expanded.
+    function toggleNavAccordion(button) {
+      var accordion = button.closest('.nav-accordion');
+      var isOpen = accordion.getAttribute('data-open') === 'true';
+      accordion.setAttribute('data-open', isOpen ? 'false' : 'true');
+    }
 
     // Sidebar toggle (mobile)
     function toggleSidebar() {
@@ -502,20 +554,45 @@
       if (e.target === document.getElementById('modal-backdrop')) closeModal();
     }
 
-    // Update active nav link based on current URL
+    // Update active nav link based on current URL.
+    //
+    // A link matches on exact path, or as a prefix ancestor (e.g. /chapters
+    // highlights for /chapters/5, which has no pill of its own) - EXCEPT when
+    // some other nav link is a longer/more specific match for the same path
+    // (e.g. /settings must not also light up for /settings/discord-matches,
+    // which has its own dedicated pill). Computing "most specific link wins"
+    // this way means a new settings-adjacent page with its own pill is
+    // automatically excluded from the parent's prefix match without needing
+    // a hardcoded exception list here - the single historical bug class this
+    // whole area has had (see git log for the /attendance vs
+    // /attendance/overview and /settings vs /settings/discord-matches fixes).
     function updateActiveNav() {
       var path = window.location.pathname;
-      document.querySelectorAll('nav a[hx-get]').forEach(function(a) {
-        var target = a.getAttribute('hx-get');
-        // Match exact path or sub-path (e.g. /chapters/5 highlights /chapters)
-        var isActive = path === target || path.startsWith(target + '/');
+      var links = Array.prototype.slice.call(document.querySelectorAll('nav a[hx-get]'));
+      var targets = links.map(function(a) { return a.getAttribute('hx-get'); });
+
+      links.forEach(function(a, i) {
+        var target = targets[i];
+        var isActive = path === target;
+        if (!isActive && path.startsWith(target + '/')) {
+          // Prefix match - but only if no other link is a more specific match.
+          isActive = !targets.some(function(other, j) {
+            return j !== i && other.length > target.length &&
+              (path === other || path.startsWith(other + '/'));
+          });
+        }
         a.classList.toggle('nav-active', isActive);
         a.classList.toggle('nav-inactive', !isActive);
+        if (isActive) {
+          var accordion = a.closest('.nav-accordion');
+          if (accordion) accordion.setAttribute('data-open', 'true');
+        }
       });
     }
     document.addEventListener('DOMContentLoaded', updateActiveNav);
     document.addEventListener('htmx:pushedIntoHistory', updateActiveNav);
     document.addEventListener('htmx:replacedInHistory', updateActiveNav);
+    document.addEventListener('htmx:afterSettle', updateActiveNav);
 
     // HTMX event handlers
     document.addEventListener('htmx:afterRequest', function(evt) {
@@ -551,35 +628,6 @@
       if (evt.detail.target && evt.detail.target.id === 'modal') {
         openModal();
       }
-    });
-
-    // Keep the sidebar's active-page highlight in sync with #main-content swaps.
-    // The sidebar itself is never re-rendered on HTMX navigation (only #main-content
-    // is), so without this the highlight stays stuck on whichever page was last
-    // loaded as a full page — e.g. clicking a nav link would leave the *previous*
-    // page's pill highlighted alongside the new one. Match each nav link's hx-get
-    // path against the path that was actually requested and swapped in.
-    document.addEventListener('htmx:afterSwap', function(evt) {
-      if (!evt.detail.target || evt.detail.target.id !== 'main-content') return;
-      var requestPath = evt.detail.pathInfo && evt.detail.pathInfo.requestPath;
-      if (!requestPath) return;
-      var currentPath = requestPath.split('?')[0];
-      // Sub-pages that count as "Settings" for nav purposes without having their
-      // own sidebar link (mirrors active_settings=true in RoleRoutes.cpp/SettingsRoutes.cpp;
-      // /settings/api-keys has its own dedicated pill, so it's excluded here).
-      var settingsSubpages = ['/settings', '/settings/roles'];
-      document.querySelectorAll('#sidebar a[hx-get]').forEach(function(link) {
-        var linkPath = link.getAttribute('hx-get').split('?')[0];
-        var isActive = (linkPath === currentPath) ||
-          (linkPath === '/settings' && settingsSubpages.indexOf(currentPath) !== -1);
-        if (isActive) {
-          link.classList.remove('nav-inactive');
-          link.classList.add('nav-active');
-        } else {
-          link.classList.remove('nav-active');
-          link.classList.add('nav-inactive');
-        }
-      });
     });
 
     // Keyboard: Escape closes modal

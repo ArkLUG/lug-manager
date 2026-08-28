@@ -61,6 +61,10 @@ inline void set_layout_auth(const crow::request& req, App& app,
     auto& ctx = app.template get_context<AuthMiddleware>(req);
     layout_ctx["is_admin"]        = ctx.auth.is_admin();
     layout_ctx["is_chapter_lead"] = ctx.auth.is_chapter_lead();
+    // Sidebar's "Chapter Tools" accordion: chapter leads/moderators who are NOT
+    // admin get their own small accordion (admins already see Discord Matches
+    // nested inside the "Settings" accordion, so they don't need a second copy).
+    layout_ctx["is_chapter_lead_not_admin"] = ctx.auth.is_chapter_lead() && !ctx.auth.is_admin();
     layout_ctx["display_name"] = ctx.auth.display_name;
     layout_ctx["role"]         = ctx.auth.role;
     if (!ctx.auth.display_name.empty())
