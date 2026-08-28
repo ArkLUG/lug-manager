@@ -36,10 +36,11 @@
 #include "services/AttendanceService.hpp"
 #include "services/MemberSyncService.hpp"
 #include "repositories/AuditLogRepository.hpp"
+#include "repositories/ApiKeyRepository.hpp"
+#include "middleware/ApiKeyMiddleware.hpp"
 #include "services/AuditService.hpp"
 #include "routes/Router.hpp"
-
-using LugApp = crow::App<AuthMiddleware>;
+#include "utils/Crypto.hpp"
 
 // ═══════════════════════════════════════════════════════════════════════════
 // Integration test fixture — boots a full Crow app on a random port
@@ -64,6 +65,7 @@ protected:
     std::unique_ptr<ChapterMemberRepository> chapter_member_repo;
     std::unique_ptr<PerkLevelRepository> perk_level_repo;
     std::unique_ptr<AuditLogRepository> audit_log_repo;
+    std::unique_ptr<ApiKeyRepository> api_key_repo;
     std::unique_ptr<SessionStore> session_store;
 
     // Integrations
@@ -98,6 +100,17 @@ protected:
     int64_t event_manager_member_id = 0;
     int64_t test_chapter_id = 0;
 
+    // Creates an API key with the given scope via the repository directly (bypassing
+    // the browser-only admin UI) and returns the raw plaintext key for test use.
+    // All API key tests operate against the in-memory (":memory:") SQLite DB set up
+    // in SetUp() below - no real/production data is ever touched.
+    std::string make_api_key(const std::string& scope, const std::string& label = "test-key") {
+        std::string raw_key  = generate_random_hex(32);
+        std::string key_hash = sha256_hex(raw_key);
+        api_key_repo->create(key_hash, label, scope, admin_member_id);
+        return raw_key;
+    }
+
     void SetUp() override {
         db = std::make_unique<SqliteDatabase>(":memory:");
         Migrations mig(*db);
@@ -119,6 +132,7 @@ protected:
         chapter_member_repo = std::make_unique<ChapterMemberRepository>(*db);
         perk_level_repo = std::make_unique<PerkLevelRepository>(*db);
         audit_log_repo = std::make_unique<AuditLogRepository>(*db);
+        api_key_repo = std::make_unique<ApiKeyRepository>(*db);
         session_store = std::make_unique<SessionStore>(*db);
 
         // Integrations
@@ -197,6 +211,7 @@ protected:
         // Boot Crow app
         app = std::make_unique<LugApp>();
         app->get_middleware<AuthMiddleware>().auth_service = auth_service.get();
+        app->get_middleware<ApiKeyMiddleware>().api_keys = api_key_repo.get();
 
         crow::mustache::set_global_base("src/templates");
 
@@ -208,7 +223,7 @@ protected:
             *perk_level_repo, *attendance_repo, *member_repo,
             *meeting_repo, *event_repo,
             *event_day_repo, *event_day_attendance_repo,
-            *audit_svc
+            *audit_svc, *api_key_repo
         };
         register_all_routes(*app, svc);
 
@@ -258,7 +273,9 @@ protected:
     Response http(const std::string& method, const std::string& path,
                   const std::string& body = "",
                   const std::string& session_token = "",
-                  bool htmx = false) {
+                  bool htmx = false,
+                  const std::string& api_key = "",
+                  bool json_body = false) {
         CURL* curl = curl_easy_init();
         Response resp;
         std::string url = "http://127.0.0.1:" + std::to_string(port) + path;
@@ -276,9 +293,13 @@ protected:
         struct curl_slist* headers = nullptr;
         if (!session_token.empty())
             headers = curl_slist_append(headers, ("Cookie: session=" + session_token).c_str());
+        if (!api_key.empty())
+            headers = curl_slist_append(headers, ("X-API-Key: " + api_key).c_str());
         if (htmx)
             headers = curl_slist_append(headers, "HX-Request: true");
-        if (method == "POST" || method == "PUT" || method == "PATCH")
+        if (json_body)
+            headers = curl_slist_append(headers, "Content-Type: application/json");
+        else if (method == "POST" || method == "PUT" || method == "PATCH")
             headers = curl_slist_append(headers, "Content-Type: application/x-www-form-urlencoded");
         if (headers)
             curl_easy_setopt(curl, CURLOPT_HTTPHEADER, headers);
@@ -328,6 +349,21 @@ protected:
     }
     Response DEL(const std::string& path, const std::string& body = "", const std::string& token = "") {
         return http("DELETE", path, body, token);
+    }
+
+    // API-key-authenticated JSON helpers for /api/v1/* routes. api_key is sent via
+    // X-API-Key; bodies are sent as application/json (empty body -> no body sent).
+    Response API_GET(const std::string& path, const std::string& api_key) {
+        return http("GET", path, "", "", false, api_key, true);
+    }
+    Response API_POST(const std::string& path, const std::string& json, const std::string& api_key) {
+        return http("POST", path, json, "", false, api_key, true);
+    }
+    Response API_PUT(const std::string& path, const std::string& json, const std::string& api_key) {
+        return http("PUT", path, json, "", false, api_key, true);
+    }
+    Response API_DELETE(const std::string& path, const std::string& api_key) {
+        return http("DELETE", path, "", "", false, api_key, true);
     }
     Response PUT_JSON(const std::string& path, const std::string& body, const std::string& token = "") {
         CURL* curl = curl_easy_init();

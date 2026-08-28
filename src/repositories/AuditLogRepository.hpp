@@ -2,6 +2,7 @@
 #include "db/SqliteDatabase.hpp"
 #include "models/AuditLog.hpp"
 #include <vector>
+#include <optional>
 #include <string>
 
 class AuditLogRepository {
@@ -21,6 +22,8 @@ public:
                                           const std::string& action_filter,
                                           int limit, int offset);
     int count_filtered(const std::string& search, const std::string& action_filter);
+
+    std::optional<AuditLog> find_by_id(int64_t id);
 
 private:
     SqliteDatabase& db_;

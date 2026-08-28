@@ -1,0 +1,158 @@
+#include "routes/api/EventsApiRoutes.hpp"
+#include "routes/api/ApiCommon.hpp"
+#include "routes/api/Serialize.hpp"
+#include <crow.h>
+#include <iostream>
+
+// ev_normalize_datetime mirrors EventRoutes.cpp's own normalization for start/end/signup
+// times; kept local (not shared) since the two files' normalization needs are identical
+// but this file should not depend on EventRoutes.cpp's internals.
+static std::string api_ev_normalize_datetime(const std::string& dt) {
+    if (dt.size() == 16) return dt + ":00"; // "YYYY-MM-DDTHH:MM" -> add seconds
+    return dt;
+}
+
+void register_events_api_routes(LugApp& app, EventService& events,
+                                 EventDayRepository& event_days, AuditService& audit) {
+
+    // GET /api/v1/events - paginated list
+    CROW_ROUTE(app, "/api/v1/events").methods("GET"_method)(
+        [&](const crow::request& req) {
+        crow::response res;
+        if (!require_api_scope(req, res, app, "read")) return res;
+
+        auto pg = parse_pagination(req, 25, 200);
+        const char* search_p = req.url_params.get("search");
+        std::string search = search_p ? search_p : "";
+        const char* upcoming_p = req.url_params.get("upcoming_only");
+        bool upcoming_only = !upcoming_p || std::string(upcoming_p) != "false";
+
+        auto items = events.list_paginated(search, pg.limit, pg.offset, upcoming_only);
+        int total = events.count_filtered(search, upcoming_only);
+        write_json(res, 200, envelope_list(to_json_list(items), total, pg.limit, pg.offset));
+        return res;
+    });
+
+    // GET /api/v1/events/<id>
+    CROW_ROUTE(app, "/api/v1/events/<int>").methods("GET"_method)(
+        [&](const crow::request& req, int id) {
+        crow::response res;
+        if (!require_api_scope(req, res, app, "read")) return res;
+
+        auto ev = events.get(static_cast<int64_t>(id));
+        if (!ev) { envelope_error(res, 404, "event not found", "not_found"); return res; }
+        write_json(res, 200, envelope_ok(to_json(*ev)));
+        return res;
+    });
+
+    // GET /api/v1/events/<id>/days - read-only, event days are server-derived (see plan 0.6)
+    CROW_ROUTE(app, "/api/v1/events/<int>/days").methods("GET"_method)(
+        [&](const crow::request& req, int id) {
+        crow::response res;
+        if (!require_api_scope(req, res, app, "read")) return res;
+
+        auto days = event_days.find_by_event(static_cast<int64_t>(id));
+        write_json(res, 200, envelope_ok(to_json_list(days)));
+        return res;
+    });
+
+    // POST /api/v1/events - create
+    CROW_ROUTE(app, "/api/v1/events").methods("POST"_method)(
+        [&](const crow::request& req) {
+        crow::response res;
+        if (!require_api_scope(req, res, app, "write")) return res;
+
+        auto body = crow::json::load(req.body);
+        if (!body) { envelope_error(res, 400, "invalid JSON body", "invalid_request"); return res; }
+
+        LugEvent e;
+        if (body.has("title"))            e.title            = body["title"].s();
+        if (body.has("description"))      e.description      = body["description"].s();
+        if (body.has("location"))         e.location         = body["location"].s();
+        if (body.has("start_time"))       e.start_time       = api_ev_normalize_datetime(body["start_time"].s());
+        if (body.has("end_time"))         e.end_time         = api_ev_normalize_datetime(body["end_time"].s());
+        if (body.has("signup_deadline"))  e.signup_deadline  = api_ev_normalize_datetime(body["signup_deadline"].s());
+        if (body.has("max_attendees"))    e.max_attendees    = static_cast<int>(body["max_attendees"].i());
+        if (body.has("scope"))            e.scope            = body["scope"].s();
+        if (body.has("chapter_id"))       e.chapter_id       = body["chapter_id"].i();
+        if (body.has("event_lead_id"))    e.event_lead_id    = body["event_lead_id"].i();
+        if (body.has("entrance_fee"))     e.entrance_fee     = body["entrance_fee"].s();
+        if (body.has("notes"))            e.notes            = body["notes"].s();
+        if (body.has("discord_ping_role_ids")) e.discord_ping_role_ids = body["discord_ping_role_ids"].s();
+        if (body.has("suppress_discord"))  e.suppress_discord  = body["suppress_discord"].b();
+        if (body.has("suppress_calendar")) e.suppress_calendar = body["suppress_calendar"].b();
+
+        try {
+            auto created = events.create(e);
+            audit.log_system("event.create", "event", created.id, created.title,
+                              "Created via " + actor_label(app.template get_context<ApiKeyMiddleware>(req).api_key));
+            write_json(res, 201, envelope_ok(to_json(created)));
+        } catch (const std::exception& ex) {
+            std::cerr << "[EventsApiRoutes] POST /api/v1/events error: " << ex.what() << "\n";
+            envelope_error(res, 400, "could not create event", "validation_error");
+        }
+        return res;
+    });
+
+    // PUT /api/v1/events/<id> - partial update
+    CROW_ROUTE(app, "/api/v1/events/<int>").methods("PUT"_method)(
+        [&](const crow::request& req, int id) {
+        crow::response res;
+        if (!require_api_scope(req, res, app, "write")) return res;
+
+        auto existing = events.get(static_cast<int64_t>(id));
+        if (!existing) { envelope_error(res, 404, "event not found", "not_found"); return res; }
+
+        auto body = crow::json::load(req.body);
+        if (!body) { envelope_error(res, 400, "invalid JSON body", "invalid_request"); return res; }
+
+        LugEvent updates = *existing;
+        if (body.has("title"))            updates.title            = body["title"].s();
+        if (body.has("description"))      updates.description      = body["description"].s();
+        if (body.has("location"))         updates.location         = body["location"].s();
+        if (body.has("start_time"))       updates.start_time       = api_ev_normalize_datetime(body["start_time"].s());
+        if (body.has("end_time"))         updates.end_time         = api_ev_normalize_datetime(body["end_time"].s());
+        if (body.has("signup_deadline"))  updates.signup_deadline  = api_ev_normalize_datetime(body["signup_deadline"].s());
+        if (body.has("max_attendees"))    updates.max_attendees    = static_cast<int>(body["max_attendees"].i());
+        if (body.has("scope"))            updates.scope            = body["scope"].s();
+        if (body.has("event_lead_id"))    updates.event_lead_id    = body["event_lead_id"].i();
+        if (body.has("entrance_fee"))     updates.entrance_fee     = body["entrance_fee"].s();
+        if (body.has("notes"))            updates.notes            = body["notes"].s();
+        if (body.has("status"))           updates.status           = body["status"].s();
+        if (body.has("discord_ping_role_ids")) updates.discord_ping_role_ids = body["discord_ping_role_ids"].s();
+
+        try {
+            auto updated = events.update(static_cast<int64_t>(id), updates);
+            audit.log_system("event.update", "event", updated.id, updated.title,
+                              "Updated via " + actor_label(app.template get_context<ApiKeyMiddleware>(req).api_key));
+            write_json(res, 200, envelope_ok(to_json(updated)));
+        } catch (const std::exception& ex) {
+            std::cerr << "[EventsApiRoutes] PUT /api/v1/events/" << id << " error: " << ex.what() << "\n";
+            envelope_error(res, 400, "could not update event", "validation_error");
+        }
+        return res;
+    });
+
+    // DELETE /api/v1/events/<id> - cancel (admin scope: destructive, has Discord/calendar side effects)
+    CROW_ROUTE(app, "/api/v1/events/<int>").methods("DELETE"_method)(
+        [&](const crow::request& req, int id) {
+        crow::response res;
+        if (!require_api_scope(req, res, app, "admin")) return res;
+
+        auto ev = events.get(static_cast<int64_t>(id));
+        if (!ev) { envelope_error(res, 404, "event not found", "not_found"); return res; }
+
+        try {
+            events.cancel(static_cast<int64_t>(id));
+            audit.log_system("event.delete", "event", ev->id, ev->title,
+                              "Cancelled via " + actor_label(app.template get_context<ApiKeyMiddleware>(req).api_key));
+            res.code = 200;
+            res.add_header("Content-Type", "application/json");
+            res.write(R"({"data":{"success":true}})");
+        } catch (const std::exception& ex) {
+            std::cerr << "[EventsApiRoutes] DELETE /api/v1/events/" << id << " error: " << ex.what() << "\n";
+            envelope_error(res, 500, "could not cancel event", "internal_error");
+        }
+        return res;
+    });
+}

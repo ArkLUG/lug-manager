@@ -20,6 +20,8 @@
 #include "repositories/ChapterMemberRepository.hpp"
 #include "repositories/PerkLevelRepository.hpp"
 #include "repositories/AuditLogRepository.hpp"
+#include "repositories/ApiKeyRepository.hpp"
+#include "middleware/ApiKeyMiddleware.hpp"
 #include "services/AuditService.hpp"
 #include "services/ChapterService.hpp"
 #include "services/MemberService.hpp"
@@ -68,6 +70,7 @@ int main() {
         ChapterMemberRepository chapter_member_repo(db);
         PerkLevelRepository     perk_level_repo(db);
         AuditLogRepository      audit_log_repo(db);
+        ApiKeyRepository        api_key_repo(db);
 
         // Async thread pool for non-blocking Discord API calls
         ThreadPool pool(4);
@@ -142,9 +145,10 @@ int main() {
         AttendanceService attendance_service(attendance_repo, member_repo, event_repo, event_day_repo, event_day_attendance_repo);
         AuditService      audit_service(audit_log_repo);
 
-        // Build the Crow app with AuthMiddleware
+        // Build the Crow app with AuthMiddleware + ApiKeyMiddleware
         LugApp app;
         app.get_middleware<AuthMiddleware>().auth_service = &auth_service;
+        app.get_middleware<ApiKeyMiddleware>().api_keys = &api_key_repo;
 
         // Wire up all route handlers
         Services svc{
@@ -169,7 +173,8 @@ int main() {
             event_repo,
             event_day_repo,
             event_day_attendance_repo,
-            audit_service
+            audit_service,
+            api_key_repo
         };
         register_all_routes(app, svc);
 

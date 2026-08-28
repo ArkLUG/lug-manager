@@ -6,9 +6,10 @@
 #include "services/MemberService.hpp"
 #include "integrations/DiscordClient.hpp"
 #include "middleware/AuthMiddleware.hpp"
+#include "middleware/ApiKeyMiddleware.hpp"
 #include "services/AuditService.hpp"
 
-using LugApp = crow::App<AuthMiddleware>;
+using LugApp = crow::App<AuthMiddleware, ApiKeyMiddleware>;
 
 void register_chapter_routes(LugApp& app, ChapterService& chapters,
                               ChapterMemberRepository& chapter_members,

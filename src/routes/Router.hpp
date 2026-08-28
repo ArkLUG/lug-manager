@@ -12,6 +12,18 @@
 #include "routes/CheckinRoutes.hpp"
 #include "routes/AuditRoutes.hpp"
 #include "routes/HelpRoutes.hpp"
+#include "routes/ApiKeyRoutes.hpp"
+#include "routes/api/MembersApiRoutes.hpp"
+#include "routes/api/EventsApiRoutes.hpp"
+#include "routes/api/MeetingsApiRoutes.hpp"
+#include "routes/api/ChaptersApiRoutes.hpp"
+#include "routes/api/ChapterMembersApiRoutes.hpp"
+#include "routes/api/AttendanceApiRoutes.hpp"
+#include "routes/api/PerkLevelsApiRoutes.hpp"
+#include "routes/api/RoleMappingsApiRoutes.hpp"
+#include "routes/api/AuditLogApiRoutes.hpp"
+#include "routes/api/SettingsApiRoutes.hpp"
+#include "repositories/ApiKeyRepository.hpp"
 #include "repositories/PerkLevelRepository.hpp"
 #include "repositories/AttendanceRepository.hpp"
 #include "repositories/EventDayRepository.hpp"
@@ -57,6 +69,7 @@ struct Services {
     EventDayRepository&     event_day_repo;
     EventDayAttendanceRepository& event_day_attendance_repo;
     AuditService&           audit;
+    ApiKeyRepository&       api_keys;
 };
 
 void register_all_routes(LugApp& app, Services& svc);

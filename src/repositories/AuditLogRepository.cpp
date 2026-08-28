@@ -72,6 +72,13 @@ std::vector<AuditLog> AuditLogRepository::find_paginated(const std::string& sear
     return result;
 }
 
+std::optional<AuditLog> AuditLogRepository::find_by_id(int64_t id) {
+    auto stmt = db_.prepare(std::string(kSelectAllCols) + " WHERE id = ?");
+    stmt.bind(1, id);
+    if (stmt.step()) return row_to_log(stmt);
+    return std::nullopt;
+}
+
 int AuditLogRepository::count_filtered(const std::string& search, const std::string& action_filter) {
     std::string sql = "SELECT COUNT(*) FROM audit_log";
     int idx = 1;

@@ -1,0 +1,97 @@
+<div class="max-w-4xl space-y-6">
+
+  <div class="flex items-center gap-3">
+    <a hx-get="/settings" hx-target="#main-content" hx-push-url="true" hx-swap="innerHTML"
+       class="text-sm text-gray-500 hover:text-gray-700 transition-colors cursor-pointer">← Settings</a>
+    <span class="text-gray-300">/</span>
+    <span class="text-sm font-medium text-gray-700">API Keys</span>
+  </div>
+
+  <div class="bg-white rounded-xl border border-gray-200 p-6">
+    <div class="flex items-start justify-between mb-1">
+      <h2 class="text-xl font-bold text-gray-900">API Keys</h2>
+      <a href="/static/api-docs.html" target="_blank"
+         class="text-sm text-blue-600 hover:text-blue-800 underline">View API documentation</a>
+    </div>
+    <p class="text-sm text-gray-500 mb-6">
+      Admin-issued keys for the JSON API at <code class="text-xs bg-gray-100 px-1 py-0.5 rounded">/api/v1/*</code>.
+      Each key has a scope (read, write, or admin) and is shown in full only once, at creation.
+    </p>
+
+    <div id="api-key-created-slot"></div>
+
+    <form hx-post="/settings/api-keys" hx-target="#api-key-created-slot" hx-swap="innerHTML"
+          class="flex items-end gap-3 pb-6 mb-6 border-b border-gray-100">
+      <div class="flex-1">
+        <label class="block text-xs font-semibold text-gray-600 mb-1">Label</label>
+        <input type="text" name="label" required placeholder="e.g. Zapier automation"
+               class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-yellow-400">
+      </div>
+      <div>
+        <label class="block text-xs font-semibold text-gray-600 mb-1">Scope</label>
+        <select name="scope" class="px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-yellow-400">
+          <option value="read">read</option>
+          <option value="write">write</option>
+          <option value="admin">admin</option>
+        </select>
+      </div>
+      <button type="submit"
+              class="px-5 py-2 bg-yellow-400 text-gray-900 rounded-lg text-sm font-semibold hover:bg-yellow-300 transition-colors">
+        Create key
+      </button>
+    </form>
+
+    {{^has_keys}}
+    <div class="text-sm text-gray-500 py-4 text-center">No API keys yet.</div>
+    {{/has_keys}}
+
+    {{#has_keys}}
+    <div class="overflow-x-auto">
+      <table class="w-full text-sm">
+        <thead>
+          <tr class="text-left text-xs font-semibold text-gray-500 uppercase border-b border-gray-100">
+            <th class="py-2 pr-4">Label</th>
+            <th class="py-2 pr-4">Scope</th>
+            <th class="py-2 pr-4">Created by</th>
+            <th class="py-2 pr-4">Created</th>
+            <th class="py-2 pr-4">Last used</th>
+            <th class="py-2 pr-4">Status</th>
+            <th class="py-2"></th>
+          </tr>
+        </thead>
+        <tbody>
+          {{#keys}}
+          <tr class="border-b border-gray-50">
+            <td class="py-2 pr-4 font-medium text-gray-800">{{label}}</td>
+            <td class="py-2 pr-4">
+              <span class="px-2 py-0.5 rounded-full text-xs font-semibold bg-gray-100 text-gray-700">{{scope}}</span>
+            </td>
+            <td class="py-2 pr-4 text-gray-500">{{created_by_name}}</td>
+            <td class="py-2 pr-4 text-gray-500">{{created_at}}</td>
+            <td class="py-2 pr-4 text-gray-500">{{last_used_at}}</td>
+            <td class="py-2 pr-4">
+              {{#is_active}}<span class="text-green-600 text-xs font-semibold">Active</span>{{/is_active}}
+              {{^is_active}}<span class="text-gray-400 text-xs font-semibold">Revoked</span>{{/is_active}}
+            </td>
+            <td class="py-2 text-right">
+              {{#is_active}}
+              <button hx-post="/settings/api-keys/{{id}}/revoke" hx-confirm="Revoke this API key? This cannot be undone."
+                      class="text-xs text-red-600 hover:text-red-800 hover:underline">Revoke</button>
+              {{/is_active}}
+            </td>
+          </tr>
+          {{/keys}}
+        </tbody>
+      </table>
+    </div>
+    {{/has_keys}}
+  </div>
+
+  <div class="bg-blue-50 border border-blue-200 rounded-xl p-4 text-sm text-blue-800">
+    <strong>Scopes:</strong> <code>read</code> allows GET requests only.
+    <code>write</code> adds create/update/delete for routine content (events, meetings, members, attendance).
+    <code>admin</code> is required for role/settings changes and destructive deletes.
+    Send the key via the <code>X-API-Key</code> header (or <code>Authorization: Bearer &lt;key&gt;</code>).
+  </div>
+
+</div>

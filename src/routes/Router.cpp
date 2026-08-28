@@ -16,4 +16,16 @@ void register_all_routes(LugApp& app, Services& svc) {
                             svc.member_repo, svc.chapter_members, svc.oauth, svc.audit);
     register_audit_routes(app, svc.audit);
     register_help_routes(app, svc.chapter_members);
+
+    register_api_key_routes(app, svc.api_keys, svc.audit);
+    register_members_api_routes(app, svc.members, svc.member_repo, svc.audit);
+    register_events_api_routes(app, svc.events, svc.event_day_repo, svc.audit);
+    register_meetings_api_routes(app, svc.meetings, svc.audit);
+    register_chapters_api_routes(app, svc.chapters, svc.audit);
+    register_chapter_members_api_routes(app, svc.chapter_members, svc.audit);
+    register_attendance_api_routes(app, svc.attendance_repo, svc.event_day_attendance_repo, svc.audit);
+    register_perk_levels_api_routes(app, svc.perks, svc.audit);
+    register_role_mappings_api_routes(app, svc.role_mappings, svc.audit);
+    register_audit_log_api_routes(app, svc.audit);
+    register_settings_api_routes(app, svc.settings, svc.audit);
 }

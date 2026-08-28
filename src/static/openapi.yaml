@@ -1,0 +1,716 @@
+openapi: 3.0.3
+info:
+  title: LUG Manager API
+  description: >
+    Admin-issued API-key-authenticated JSON API for LUG Manager. Every operation's
+    description states the minimum key scope required (read < write < admin).
+    Send the key via the X-API-Key header, or Authorization: Bearer <key>.
+  version: "1.0"
+servers:
+  - url: /api/v1
+security:
+  - ApiKeyAuth: []
+tags:
+  - name: members
+  - name: events
+  - name: meetings
+  - name: chapters
+  - name: chapter-members
+  - name: attendance
+  - name: perk-levels
+  - name: role-mappings
+  - name: audit-log
+  - name: settings
+
+components:
+  securitySchemes:
+    ApiKeyAuth:
+      type: apiKey
+      in: header
+      name: X-API-Key
+      description: >
+        Admin-issued API key. The Authorization: Bearer <key> header form is also
+        accepted as an alternate way to send the same key.
+
+  schemas:
+    Error:
+      type: object
+      properties:
+        error: { type: string }
+        code:  { type: string }
+
+    Member:
+      type: object
+      properties:
+        id: { type: integer }
+        discord_user_id: { type: string }
+        discord_username: { type: string }
+        first_name: { type: string }
+        last_name: { type: string }
+        display_name: { type: string }
+        email: { type: string }
+        is_paid: { type: boolean }
+        paid_until: { type: string }
+        role: { type: string, enum: [admin, chapter_lead, member] }
+        phone: { type: string }
+        address_line1: { type: string }
+        address_line2: { type: string }
+        city: { type: string }
+        state: { type: string }
+        zip: { type: string }
+        sharing_email: { type: string, enum: [none, verified, all] }
+        sharing_phone: { type: string, enum: [none, verified, all] }
+        sharing_address: { type: string, enum: [none, verified, all] }
+        sharing_birthday: { type: string, enum: [none, verified, all] }
+        sharing_discord: { type: string, enum: [none, verified, all] }
+        birthday: { type: string }
+        fol_status: { type: string, enum: [kfol, tfol, afol] }
+        chapter_id: { type: integer }
+        chapter_name: { type: string }
+        created_at: { type: string }
+        updated_at: { type: string }
+
+    LugEvent:
+      type: object
+      properties:
+        id: { type: integer }
+        title: { type: string }
+        description: { type: string }
+        location: { type: string }
+        start_time: { type: string }
+        end_time: { type: string }
+        status: { type: string, enum: [tentative, confirmed, cancelled] }
+        discord_thread_id: { type: string }
+        discord_event_id: { type: string }
+        google_calendar_event_id: { type: string }
+        discord_chapter_message_id: { type: string }
+        discord_lug_message_id: { type: string }
+        discord_ping_role_ids: { type: string }
+        ical_uid: { type: string }
+        signup_deadline: { type: string }
+        max_attendees: { type: integer }
+        scope: { type: string, enum: [lug_wide, chapter, non_lug] }
+        chapter_id: { type: integer }
+        event_lead_id: { type: integer }
+        event_lead_name: { type: string }
+        event_lead_discord_id: { type: string }
+        suppress_discord: { type: boolean }
+        suppress_calendar: { type: boolean }
+        notes: { type: string }
+        notes_discord_post_id: { type: string }
+        checkin_token: { type: string }
+        entrance_fee: { type: string }
+        public_kids: { type: integer }
+        public_teens: { type: integer }
+        public_adults: { type: integer }
+        social_media_links: { type: string }
+        event_feedback: { type: string }
+        created_at: { type: string }
+        updated_at: { type: string }
+
+    Meeting:
+      type: object
+      properties:
+        id: { type: integer }
+        title: { type: string }
+        description: { type: string }
+        location: { type: string }
+        start_time: { type: string }
+        end_time: { type: string }
+        status: { type: string, enum: [scheduled, cancelled, completed] }
+        discord_event_id: { type: string }
+        discord_lug_message_id: { type: string }
+        discord_chapter_message_id: { type: string }
+        google_calendar_event_id: { type: string }
+        ical_uid: { type: string }
+        scope: { type: string, enum: [lug_wide, chapter, non_lug] }
+        chapter_id: { type: integer }
+        is_virtual: { type: boolean }
+        discord_voice_channel_id: { type: string }
+        suppress_discord: { type: boolean }
+        suppress_calendar: { type: boolean }
+        notes: { type: string }
+        notes_discord_post_id: { type: string }
+        checkin_token: { type: string }
+        created_at: { type: string }
+        updated_at: { type: string }
+
+    Chapter:
+      type: object
+      properties:
+        id: { type: integer }
+        name: { type: string }
+        shorthand: { type: string }
+        description: { type: string }
+        discord_announcement_channel_id: { type: string }
+        discord_lead_role_id: { type: string }
+        discord_member_role_id: { type: string }
+        created_by: { type: integer }
+        created_at: { type: string }
+
+    ChapterMember:
+      type: object
+      properties:
+        member_id: { type: integer }
+        chapter_id: { type: integer }
+        chapter_role: { type: string, enum: [lead, event_manager, member] }
+        granted_by: { type: integer }
+        granted_at: { type: string }
+        display_name: { type: string }
+        discord_username: { type: string }
+        chapter_name: { type: string }
+
+    RoleMapping:
+      type: object
+      properties:
+        discord_role_id: { type: string }
+        discord_role_name: { type: string }
+        lug_role: { type: string, enum: [admin, chapter_lead, member] }
+
+    Attendance:
+      type: object
+      properties:
+        id: { type: integer }
+        member_id: { type: integer }
+        entity_type: { type: string, enum: [meeting, event] }
+        entity_id: { type: integer }
+        checked_in_at: { type: string }
+        notes: { type: string }
+        is_virtual: { type: boolean }
+        member_display_name: { type: string }
+        member_discord_username: { type: string }
+
+    EventDay:
+      type: object
+      properties:
+        id: { type: integer }
+        event_id: { type: integer }
+        day_date: { type: string }
+        day_number: { type: integer }
+
+    EventDayAttendance:
+      type: object
+      properties:
+        id: { type: integer }
+        event_day_id: { type: integer }
+        member_id: { type: integer }
+        checked_in_at: { type: string }
+        notes: { type: string }
+        member_display_name: { type: string }
+        member_discord_username: { type: string }
+        day_date: { type: string }
+        day_number: { type: integer }
+
+    PerkLevel:
+      type: object
+      properties:
+        id: { type: integer }
+        name: { type: string }
+        description: { type: string }
+        discord_role_id: { type: string }
+        meeting_attendance_required: { type: integer }
+        event_attendance_required: { type: integer }
+        requires_paid_dues: { type: boolean }
+        min_fol_status: { type: string, enum: [kfol, tfol, afol] }
+        sort_order: { type: integer }
+        year: { type: integer }
+        created_at: { type: string }
+        updated_at: { type: string }
+
+    AuditLog:
+      type: object
+      properties:
+        id: { type: integer }
+        actor_id: { type: integer }
+        actor_name: { type: string }
+        action: { type: string }
+        entity_type: { type: string }
+        entity_id: { type: integer }
+        entity_name: { type: string }
+        details: { type: string }
+        ip_address: { type: string }
+        created_at: { type: string }
+
+paths:
+  /members:
+    get:
+      tags: [members]
+      summary: List members (paginated)
+      description: "Requires `read` scope."
+      x-required-scope: read
+      parameters:
+        - { name: search, in: query, schema: { type: string } }
+        - { name: sort, in: query, schema: { type: string } }
+        - { name: dir, in: query, schema: { type: string } }
+        - { name: limit, in: query, schema: { type: integer } }
+        - { name: offset, in: query, schema: { type: integer } }
+      responses:
+        "200": { description: OK }
+    post:
+      tags: [members]
+      summary: Create a member
+      description: "Requires `write` scope; `admin` scope required if the body includes `role`."
+      x-required-scope: write
+      requestBody:
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/Member" }
+      responses:
+        "201": { description: Created }
+  /members/{id}:
+    get:
+      tags: [members]
+      summary: Get a member
+      description: "Requires `read` scope."
+      x-required-scope: read
+      parameters: [{ name: id, in: path, required: true, schema: { type: integer } }]
+      responses:
+        "200": { description: OK }
+        "404": { description: Not found }
+    put:
+      tags: [members]
+      summary: Update a member (partial)
+      description: "Requires `write` scope; `admin` scope required if the body includes `role`."
+      x-required-scope: write
+      parameters: [{ name: id, in: path, required: true, schema: { type: integer } }]
+      responses:
+        "200": { description: OK }
+    delete:
+      tags: [members]
+      summary: Delete a member
+      description: "Requires `admin` scope."
+      x-required-scope: admin
+      parameters: [{ name: id, in: path, required: true, schema: { type: integer } }]
+      responses:
+        "200": { description: OK }
+
+  /events:
+    get:
+      tags: [events]
+      summary: List events (paginated)
+      description: "Requires `read` scope."
+      x-required-scope: read
+      parameters:
+        - { name: search, in: query, schema: { type: string } }
+        - { name: upcoming_only, in: query, schema: { type: string } }
+        - { name: limit, in: query, schema: { type: integer } }
+        - { name: offset, in: query, schema: { type: integer } }
+      responses:
+        "200": { description: OK }
+    post:
+      tags: [events]
+      summary: Create an event
+      description: "Requires `write` scope."
+      x-required-scope: write
+      requestBody:
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/LugEvent" }
+      responses:
+        "201": { description: Created }
+  /events/{id}:
+    get:
+      tags: [events]
+      summary: Get an event
+      description: "Requires `read` scope."
+      x-required-scope: read
+      parameters: [{ name: id, in: path, required: true, schema: { type: integer } }]
+      responses:
+        "200": { description: OK }
+    put:
+      tags: [events]
+      summary: Update an event (partial)
+      description: "Requires `write` scope."
+      x-required-scope: write
+      parameters: [{ name: id, in: path, required: true, schema: { type: integer } }]
+      responses:
+        "200": { description: OK }
+    delete:
+      tags: [events]
+      summary: Cancel an event
+      description: "Requires `admin` scope (destructive, has Discord/calendar side effects)."
+      x-required-scope: admin
+      parameters: [{ name: id, in: path, required: true, schema: { type: integer } }]
+      responses:
+        "200": { description: OK }
+  /events/{id}/days:
+    get:
+      tags: [events]
+      summary: List an event's days (read-only; server-derived)
+      description: "Requires `read` scope."
+      x-required-scope: read
+      parameters: [{ name: id, in: path, required: true, schema: { type: integer } }]
+      responses:
+        "200": { description: OK }
+
+  /meetings:
+    get:
+      tags: [meetings]
+      summary: List meetings (paginated)
+      description: "Requires `read` scope."
+      x-required-scope: read
+      parameters:
+        - { name: search, in: query, schema: { type: string } }
+        - { name: limit, in: query, schema: { type: integer } }
+        - { name: offset, in: query, schema: { type: integer } }
+      responses:
+        "200": { description: OK }
+    post:
+      tags: [meetings]
+      summary: Create a meeting
+      description: "Requires `write` scope."
+      x-required-scope: write
+      requestBody:
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/Meeting" }
+      responses:
+        "201": { description: Created }
+  /meetings/{id}:
+    get:
+      tags: [meetings]
+      summary: Get a meeting
+      description: "Requires `read` scope."
+      x-required-scope: read
+      parameters: [{ name: id, in: path, required: true, schema: { type: integer } }]
+      responses:
+        "200": { description: OK }
+    put:
+      tags: [meetings]
+      summary: Update a meeting (partial)
+      description: "Requires `write` scope."
+      x-required-scope: write
+      parameters: [{ name: id, in: path, required: true, schema: { type: integer } }]
+      responses:
+        "200": { description: OK }
+    delete:
+      tags: [meetings]
+      summary: Cancel a meeting
+      description: "Requires `admin` scope."
+      x-required-scope: admin
+      parameters: [{ name: id, in: path, required: true, schema: { type: integer } }]
+      responses:
+        "200": { description: OK }
+
+  /chapters:
+    get:
+      tags: [chapters]
+      summary: List all chapters (not paginated)
+      description: "Requires `read` scope."
+      x-required-scope: read
+      responses:
+        "200": { description: OK }
+    post:
+      tags: [chapters]
+      summary: Create a chapter
+      description: "Requires `write` scope."
+      x-required-scope: write
+      requestBody:
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/Chapter" }
+      responses:
+        "201": { description: Created }
+  /chapters/{id}:
+    get:
+      tags: [chapters]
+      summary: Get a chapter
+      description: "Requires `read` scope."
+      x-required-scope: read
+      parameters: [{ name: id, in: path, required: true, schema: { type: integer } }]
+      responses:
+        "200": { description: OK }
+    put:
+      tags: [chapters]
+      summary: Update a chapter
+      description: "Requires `write` scope."
+      x-required-scope: write
+      parameters: [{ name: id, in: path, required: true, schema: { type: integer } }]
+      responses:
+        "200": { description: OK }
+    delete:
+      tags: [chapters]
+      summary: Delete a chapter
+      description: "Requires `admin` scope (cascades chapter_members/content)."
+      x-required-scope: admin
+      parameters: [{ name: id, in: path, required: true, schema: { type: integer } }]
+      responses:
+        "200": { description: OK }
+
+  /chapter-members:
+    get:
+      tags: [chapter-members]
+      summary: List chapter memberships, filtered by chapter_id or member_id
+      description: "Requires `read` scope. At least one of chapter_id/member_id is required."
+      x-required-scope: read
+      parameters:
+        - { name: chapter_id, in: query, schema: { type: integer } }
+        - { name: member_id, in: query, schema: { type: integer } }
+      responses:
+        "200": { description: OK }
+    post:
+      tags: [chapter-members]
+      summary: Upsert a member's chapter role
+      description: "Requires `write` scope; `admin` scope required if chapter_role is `lead`."
+      x-required-scope: write
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                member_id: { type: integer }
+                chapter_id: { type: integer }
+                chapter_role: { type: string, enum: [lead, event_manager, member] }
+      responses:
+        "201": { description: Created }
+    delete:
+      tags: [chapter-members]
+      summary: Remove a member from a chapter
+      description: "Requires `admin` scope. Composite key: no bare id."
+      x-required-scope: admin
+      parameters:
+        - { name: member_id, in: query, required: true, schema: { type: integer } }
+        - { name: chapter_id, in: query, required: true, schema: { type: integer } }
+      responses:
+        "200": { description: OK }
+  /chapter-members/{member_id}/{chapter_id}:
+    put:
+      tags: [chapter-members]
+      summary: Upsert a member's chapter role (alias of POST /chapter-members)
+      description: "Requires `write` scope; `admin` scope required if chapter_role is `lead`."
+      x-required-scope: write
+      parameters:
+        - { name: member_id, in: path, required: true, schema: { type: integer } }
+        - { name: chapter_id, in: path, required: true, schema: { type: integer } }
+      responses:
+        "200": { description: OK }
+
+  /attendance:
+    get:
+      tags: [attendance]
+      summary: List attendance for an entity
+      description: "Requires `read` scope."
+      x-required-scope: read
+      parameters:
+        - { name: entity_type, in: query, required: true, schema: { type: string, enum: [meeting, event] } }
+        - { name: entity_id, in: query, required: true, schema: { type: integer } }
+      responses:
+        "200": { description: OK }
+    post:
+      tags: [attendance]
+      summary: Check a member in
+      description: "Requires `write` scope."
+      x-required-scope: write
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                member_id: { type: integer }
+                entity_type: { type: string, enum: [meeting, event] }
+                entity_id: { type: integer }
+                notes: { type: string }
+                is_virtual: { type: boolean }
+      responses:
+        "201": { description: Created }
+  /attendance/member/{member_id}:
+    get:
+      tags: [attendance]
+      summary: List a member's attendance history
+      description: "Requires `read` scope."
+      x-required-scope: read
+      parameters: [{ name: member_id, in: path, required: true, schema: { type: integer } }]
+      responses:
+        "200": { description: OK }
+  /attendance/{id}:
+    delete:
+      tags: [attendance]
+      summary: Remove an attendance record (routine check-out correction)
+      description: "Requires `write` scope."
+      x-required-scope: write
+      parameters: [{ name: id, in: path, required: true, schema: { type: integer } }]
+      responses:
+        "200": { description: OK }
+  /event-day-attendance:
+    get:
+      tags: [attendance]
+      summary: List attendance for a specific event day
+      description: "Requires `read` scope."
+      x-required-scope: read
+      parameters:
+        - { name: event_day_id, in: query, required: true, schema: { type: integer } }
+      responses:
+        "200": { description: OK }
+    post:
+      tags: [attendance]
+      summary: Check a member in to a specific event day
+      description: "Requires `write` scope."
+      x-required-scope: write
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                event_day_id: { type: integer }
+                member_id: { type: integer }
+                notes: { type: string }
+      responses:
+        "201": { description: Created }
+  /event-day-attendance/event/{event_id}:
+    get:
+      tags: [attendance]
+      summary: List all day-attendance for an event, across all days
+      description: "Requires `read` scope."
+      x-required-scope: read
+      parameters: [{ name: event_id, in: path, required: true, schema: { type: integer } }]
+      responses:
+        "200": { description: OK }
+  /event-day-attendance/{id}:
+    delete:
+      tags: [attendance]
+      summary: Remove an event-day attendance record
+      description: "Requires `write` scope."
+      x-required-scope: write
+      parameters: [{ name: id, in: path, required: true, schema: { type: integer } }]
+      responses:
+        "200": { description: OK }
+
+  /perk-levels:
+    get:
+      tags: [perk-levels]
+      summary: List perk levels, optionally filtered by year
+      description: "Requires `read` scope."
+      x-required-scope: read
+      parameters:
+        - { name: year, in: query, schema: { type: integer } }
+      responses:
+        "200": { description: OK }
+    post:
+      tags: [perk-levels]
+      summary: Create a perk level
+      description: "Requires `write` scope."
+      x-required-scope: write
+      requestBody:
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/PerkLevel" }
+      responses:
+        "201": { description: Created }
+  /perk-levels/{id}:
+    get:
+      tags: [perk-levels]
+      summary: Get a perk level
+      description: "Requires `read` scope."
+      x-required-scope: read
+      parameters: [{ name: id, in: path, required: true, schema: { type: integer } }]
+      responses:
+        "200": { description: OK }
+    put:
+      tags: [perk-levels]
+      summary: Update a perk level
+      description: "Requires `write` scope."
+      x-required-scope: write
+      parameters: [{ name: id, in: path, required: true, schema: { type: integer } }]
+      responses:
+        "200": { description: OK }
+    delete:
+      tags: [perk-levels]
+      summary: Delete a perk level
+      description: "Requires `admin` scope (Discord-role-linked)."
+      x-required-scope: admin
+      parameters: [{ name: id, in: path, required: true, schema: { type: integer } }]
+      responses:
+        "200": { description: OK }
+
+  /role-mappings:
+    get:
+      tags: [role-mappings]
+      summary: List Discord role -> LUG role mappings
+      description: >
+        Requires `admin` scope (not `read` — role_mappings are privilege-granting
+        configuration, so even viewing them is treated as admin-sensitive).
+      x-required-scope: admin
+      responses:
+        "200": { description: OK }
+    post:
+      tags: [role-mappings]
+      summary: Upsert a role mapping
+      description: "Requires `admin` scope."
+      x-required-scope: admin
+      requestBody:
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/RoleMapping" }
+      responses:
+        "201": { description: Created }
+  /role-mappings/{discord_role_id}:
+    put:
+      tags: [role-mappings]
+      summary: Upsert a role mapping by Discord role id
+      description: "Requires `admin` scope."
+      x-required-scope: admin
+      parameters: [{ name: discord_role_id, in: path, required: true, schema: { type: string } }]
+      responses:
+        "200": { description: OK }
+    delete:
+      tags: [role-mappings]
+      summary: Remove a role mapping
+      description: "Requires `admin` scope."
+      x-required-scope: admin
+      parameters: [{ name: discord_role_id, in: path, required: true, schema: { type: string } }]
+      responses:
+        "200": { description: OK }
+
+  /audit-log:
+    get:
+      tags: [audit-log]
+      summary: List audit log entries (paginated, read-only)
+      description: "Requires `read` scope. No write endpoints exist for this resource."
+      x-required-scope: read
+      parameters:
+        - { name: search, in: query, schema: { type: string } }
+        - { name: action_filter, in: query, schema: { type: string } }
+        - { name: limit, in: query, schema: { type: integer } }
+        - { name: offset, in: query, schema: { type: integer } }
+      responses:
+        "200": { description: OK }
+  /audit-log/{id}:
+    get:
+      tags: [audit-log]
+      summary: Get an audit log entry
+      description: "Requires `read` scope."
+      x-required-scope: read
+      parameters: [{ name: id, in: path, required: true, schema: { type: integer } }]
+      responses:
+        "200": { description: OK }
+        "404": { description: Not found }
+
+  /settings/{key}:
+    get:
+      tags: [settings]
+      summary: Get a settings value by key
+      description: >
+        Requires `admin` scope (not `read` — settings can include operationally
+        sensitive values). No list-all-settings endpoint exists.
+      x-required-scope: admin
+      parameters: [{ name: key, in: path, required: true, schema: { type: string } }]
+      responses:
+        "200": { description: OK }
+    put:
+      tags: [settings]
+      summary: Set a settings value by key
+      description: "Requires `admin` scope."
+      x-required-scope: admin
+      parameters: [{ name: key, in: path, required: true, schema: { type: string } }]
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                value: { type: string }
+      responses:
+        "200": { description: OK }

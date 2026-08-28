@@ -1,5 +1,6 @@
 #pragma once
 #include "middleware/AuthMiddleware.hpp"
+#include "middleware/ApiKeyMiddleware.hpp"
 #include "repositories/SettingsRepository.hpp"
 #include "integrations/DiscordClient.hpp"
 #include "integrations/CalendarGenerator.hpp"
@@ -11,7 +12,7 @@
 #include "services/AuditService.hpp"
 #include <crow.h>
 
-using LugApp = crow::App<AuthMiddleware>;
+using LugApp = crow::App<AuthMiddleware, ApiKeyMiddleware>;
 
 void register_settings_routes(LugApp& app, SettingsRepository& settings,
                                DiscordClient& discord, MemberSyncService& member_sync,
