@@ -227,6 +227,39 @@ TEST_F(IntegrationTest, ApiMembersCreateAndUpdatePaidStatus) {
     EXPECT_EQ(m->paid_until, "2027-01-01"); // untouched by the is_paid-only PUT
 }
 
+// Regression: POST/PUT /api/v1/members read chapter_id from the request body
+// into the Member struct, but that field is entirely derived (joined from
+// chapter_members) - it has no column on the members table at all, so
+// MemberService::update()/create() silently never persist it. The route
+// handlers now call members.set_chapter(...) explicitly, same as the browser
+// member-edit form already does. This test asserts on chapter_member_repo
+// directly (not just the JSON response body) specifically because the
+// response body alone can look correct while the DB write silently no-ops -
+// that's exactly the failure mode being guarded against here.
+TEST_F(IntegrationTest, ApiMembersSetChapterOnCreateAndUpdate) {
+    std::string key = make_api_key("write");
+
+    auto created = API_POST("/api/v1/members",
+        R"({"first_name":"Chapter","last_name":"OnCreate","chapter_id":)" +
+            std::to_string(test_chapter_id) + "}", key);
+    EXPECT_EQ(created.code, 201);
+    auto created_body = json::parse(created.body);
+    EXPECT_EQ(created_body["data"]["chapter_id"].get<int64_t>(), test_chapter_id);
+    int64_t id = created_body["data"]["id"].get<int64_t>();
+
+    auto role = chapter_member_repo->get_chapter_role(id, test_chapter_id);
+    ASSERT_TRUE(role.has_value());
+    EXPECT_EQ(*role, "member");
+
+    // Now move them to no chapter (0) via PUT.
+    auto updated = API_PUT("/api/v1/members/" + std::to_string(id),
+        R"({"chapter_id":0})", key);
+    EXPECT_EQ(updated.code, 200);
+    auto updated_body = json::parse(updated.body);
+    EXPECT_EQ(updated_body["data"]["chapter_id"].get<int64_t>(), 0);
+    EXPECT_FALSE(chapter_member_repo->get_chapter_role(id, test_chapter_id).has_value());
+}
+
 // ─────────────────────────────────────────────────────────────────────────
 // Events CRUD (+ event days)
 // ─────────────────────────────────────────────────────────────────────────

@@ -66,13 +66,20 @@ void register_members_api_routes(LugApp& app, MemberService& members,
         if (body.has("zip"))              m.zip              = body["zip"].s();
         if (body.has("birthday"))         m.birthday         = body["birthday"].s();
         if (body.has("fol_status"))       m.fol_status       = body["fol_status"].s();
-        if (body.has("chapter_id"))       m.chapter_id       = body["chapter_id"].i();
         if (body.has("is_paid"))          m.is_paid          = body["is_paid"].b();
         if (body.has("paid_until"))       m.paid_until       = body["paid_until"].s();
         if (body.has("role"))             m.role             = body["role"].s();
 
         try {
             auto created = members.create(m);
+            // chapter_id lives in chapter_members, not the members table itself -
+            // members.create() can't set it (there's no such column to INSERT), so
+            // it needs its own call, same as the PUT handler below.
+            if (body.has("chapter_id")) {
+                members.set_chapter(created.id, body["chapter_id"].i());
+                auto refetched = members.get(created.id);
+                if (refetched) created = *refetched;
+            }
             audit.log_system("member.create", "member", created.id, created.display_name,
                               "Created via " + actor_label(app.template get_context<ApiKeyMiddleware>(req).api_key));
             write_json(res, 201, envelope_ok(to_json(created)));
@@ -111,7 +118,6 @@ void register_members_api_routes(LugApp& app, MemberService& members,
         if (body.has("zip"))              updates.zip              = body["zip"].s();
         if (body.has("birthday"))         updates.birthday         = body["birthday"].s();
         if (body.has("fol_status"))       updates.fol_status       = body["fol_status"].s();
-        if (body.has("chapter_id"))       updates.chapter_id       = body["chapter_id"].i();
         if (body.has("is_paid"))          updates.is_paid          = body["is_paid"].b();
         if (body.has("paid_until"))       updates.paid_until       = body["paid_until"].s();
         if (body.has("role"))             updates.role             = body["role"].s();
@@ -123,6 +129,14 @@ void register_members_api_routes(LugApp& app, MemberService& members,
 
         try {
             auto updated = members.update(static_cast<int64_t>(id), updates);
+            // chapter_id goes through its own dedicated call, not update() -
+            // MemberService::update() never touches chapter_id at all (same
+            // pattern the browser member-edit form already follows).
+            if (body.has("chapter_id")) {
+                members.set_chapter(static_cast<int64_t>(id), body["chapter_id"].i());
+                auto refetched = members.get(static_cast<int64_t>(id));
+                if (refetched) updated = *refetched;
+            }
             audit.log_system("member.update", "member", updated.id, updated.display_name,
                               "Updated via " + actor_label(app.template get_context<ApiKeyMiddleware>(req).api_key));
             write_json(res, 200, envelope_ok(to_json(updated)));
