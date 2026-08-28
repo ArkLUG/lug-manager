@@ -535,6 +535,35 @@
       }
     });
 
+    // Keep the sidebar's active-page highlight in sync with #main-content swaps.
+    // The sidebar itself is never re-rendered on HTMX navigation (only #main-content
+    // is), so without this the highlight stays stuck on whichever page was last
+    // loaded as a full page — e.g. clicking a nav link would leave the *previous*
+    // page's pill highlighted alongside the new one. Match each nav link's hx-get
+    // path against the path that was actually requested and swapped in.
+    document.addEventListener('htmx:afterSwap', function(evt) {
+      if (!evt.detail.target || evt.detail.target.id !== 'main-content') return;
+      var requestPath = evt.detail.pathInfo && evt.detail.pathInfo.requestPath;
+      if (!requestPath) return;
+      var currentPath = requestPath.split('?')[0];
+      // Sub-pages that count as "Settings" for nav purposes without having their
+      // own sidebar link (mirrors active_settings=true in RoleRoutes.cpp/SettingsRoutes.cpp;
+      // /settings/api-keys has its own dedicated pill, so it's excluded here).
+      var settingsSubpages = ['/settings', '/settings/roles'];
+      document.querySelectorAll('#sidebar a[hx-get]').forEach(function(link) {
+        var linkPath = link.getAttribute('hx-get').split('?')[0];
+        var isActive = (linkPath === currentPath) ||
+          (linkPath === '/settings' && settingsSubpages.indexOf(currentPath) !== -1);
+        if (isActive) {
+          link.classList.remove('nav-inactive');
+          link.classList.add('nav-active');
+        } else {
+          link.classList.remove('nav-active');
+          link.classList.add('nav-inactive');
+        }
+      });
+    });
+
     // Keyboard: Escape closes modal
     document.addEventListener('keydown', function(e) {
       if (e.key === 'Escape') closeModal();
