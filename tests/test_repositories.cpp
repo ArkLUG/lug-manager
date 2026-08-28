@@ -395,17 +395,36 @@ TEST_F(EventRepoTest, PaginatedSearch) {
 }
 
 TEST_F(EventRepoTest, FindUpcomingOnly) {
+    // "Upcoming" filters on end_time (not start_time) so multi-day events stay
+    // listed for their whole duration - see EventRepository::find_upcoming(). Both
+    // start_time and end_time must be set explicitly here so this test doesn't
+    // depend on make_event()'s fixed default end_time still being in the future.
     auto past = make_event("Past");
     past.start_time = "2020-01-01T00:00:00";
+    past.end_time   = "2020-01-02T00:00:00";
     repo->create(past);
 
     auto future = make_event("Future");
     future.start_time = "2030-06-15T00:00:00";
+    future.end_time   = "2030-06-16T00:00:00";
     repo->create(future);
 
     auto upcoming = repo->find_upcoming();
     EXPECT_EQ(upcoming.size(), 1);
     EXPECT_EQ(upcoming[0].title, "Future");
+}
+
+TEST_F(EventRepoTest, FindUpcomingIncludesMultiDayEventInProgress) {
+    // A multi-day event that started in the past but hasn't ended yet must still
+    // appear in "upcoming" - this is the bug fix under test.
+    auto in_progress = make_event("Multi-day In Progress");
+    in_progress.start_time = "2020-01-01T00:00:00"; // started long ago
+    in_progress.end_time   = "2030-06-16T00:00:00"; // still far in the future
+    repo->create(in_progress);
+
+    auto upcoming = repo->find_upcoming();
+    ASSERT_EQ(upcoming.size(), 1);
+    EXPECT_EQ(upcoming[0].title, "Multi-day In Progress");
 }
 
 // ═══════════════════════════════════════════════════════════════════════════

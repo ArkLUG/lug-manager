@@ -458,7 +458,11 @@ void register_event_routes(LugApp& app, EventService& events, AttendanceService&
         auto attendees  = attendance.get_attendees("event", static_cast<int64_t>(id));
         bool checked_in = mbr_id > 0 &&
             attendance.is_checked_in(mbr_id, "event", static_cast<int64_t>(id));
-        int count = static_cast<int>(attendees.size());
+        // Multi-day events: get_attendees() returns one row per event-day check-in, so
+        // attendees.size() would double-count someone who attended multiple days. The
+        // displayed count must be distinct attendees, so use get_count() instead (it
+        // already dedupes by member_id for events - see AttendanceService::get_count).
+        int count = attendance.get_count("event", static_cast<int64_t>(id));
 
         crow::mustache::context ctx;
         ctx["id"]               = ev->id;

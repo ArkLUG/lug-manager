@@ -21,8 +21,8 @@ TEST_F(IntegrationTest, MeetingCardShowsDateAndTime) {
 TEST_F(IntegrationTest, EventCardShowsBadges) {
     LugEvent e;
     e.title = "Badge Test Event";
-    e.start_time = "2026-07-01T00:00:00";
-    e.end_time = "2026-07-02T00:00:00";
+    e.start_time = "2030-07-01T00:00:00";
+    e.end_time = "2030-07-02T00:00:00";
     e.status = "tentative";
     e.scope = "lug_wide";
     event_svc->create(e);
@@ -37,8 +37,8 @@ TEST_F(IntegrationTest, EventCardShowsBadges) {
 TEST_F(IntegrationTest, NonLugEventHidesStatusButtons) {
     LugEvent e;
     e.title = "Non-LUG Test";
-    e.start_time = "2026-08-01T00:00:00";
-    e.end_time = "2026-08-02T00:00:00";
+    e.start_time = "2030-08-01T00:00:00";
+    e.end_time = "2030-08-02T00:00:00";
     e.status = "confirmed";
     e.scope = "non_lug";
     event_svc->create(e);
@@ -190,8 +190,8 @@ TEST_F(IntegrationTest, MeetingCardShowsEditButtonForAdmin) {
 TEST_F(IntegrationTest, EventsPageShowsConfirmedBadge) {
     LugEvent e;
     e.title = "Confirmed Badge Event";
-    e.start_time = "2026-07-01T00:00:00";
-    e.end_time = "2026-07-02T00:00:00";
+    e.start_time = "2030-07-01T00:00:00";
+    e.end_time = "2030-07-02T00:00:00";
     e.status = "confirmed";
     e.scope = "lug_wide";
     event_svc->create(e);
