@@ -15,6 +15,7 @@ static crow::mustache::context member_to_ctx(const Member& m) {
     ctx["id"]               = m.id;
     ctx["discord_user_id"]  = m.discord_user_id;
     ctx["discord_username"] = m.discord_username;
+    ctx["has_discord_username"] = !m.discord_username.empty();
     ctx["first_name"]       = m.first_name;
     ctx["last_name"]        = m.last_name;
     ctx["display_name"]     = m.display_name;

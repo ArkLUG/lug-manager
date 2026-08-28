@@ -130,6 +130,18 @@ void EventDayRepository::sync_for_event(int64_t event_id,
         stmt.step();
     }
 
+    // Renumbering existing days in date order can transiently collide with the
+    // UNIQUE(event_id, day_number) constraint — e.g. inserting an earlier day
+    // shifts every later day's number up by one, but the row currently holding
+    // that target number hasn't been moved yet. Bump all of this event's rows to
+    // negative, never-colliding numbers first so the real pass below is collision-free.
+    {
+        auto bump = db_.prepare(
+            "UPDATE event_days SET day_number = -day_number WHERE event_id=?");
+        bump.bind(1, event_id);
+        bump.step();
+    }
+
     // Upsert each wanted day with the correct day_number.
     for (size_t i = 0; i < wanted.size(); ++i) {
         int day_num = static_cast<int>(i) + 1;

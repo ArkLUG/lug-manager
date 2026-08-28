@@ -192,6 +192,7 @@ void register_chapter_routes(LugApp& app, ChapterService& chapters,
                 leads_arr[lead_count]["member_id"]       = cm.member_id;
                 leads_arr[lead_count]["display_name"]    = cm.display_name;
                 leads_arr[lead_count]["discord_username"]= cm.discord_username;
+                leads_arr[lead_count]["has_discord_username"]= !cm.discord_username.empty();
                 leads_arr[lead_count]["chapter_id"]      = ch->id;
                 ++lead_count;
             } else {
@@ -465,6 +466,7 @@ void register_chapter_routes(LugApp& app, ChapterService& chapters,
             cm_arr[i]["member_id"]       = cm.member_id;
             cm_arr[i]["display_name"]    = cm.display_name;
             cm_arr[i]["discord_username"]= cm.discord_username;
+            cm_arr[i]["has_discord_username"]= !cm.discord_username.empty();
             cm_arr[i]["chapter_role"]    = cm.chapter_role;
             cm_arr[i]["is_lead"]         = (cm.chapter_role == "lead");
             cm_arr[i]["is_event_manager"]= (cm.chapter_role == "event_manager");

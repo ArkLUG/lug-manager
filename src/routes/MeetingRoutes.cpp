@@ -390,6 +390,7 @@ void register_meeting_routes(LugApp& app, MeetingService& meetings, AttendanceSe
         for (size_t i = 0; i < attendees.size(); ++i) {
             att_arr[i]["member_display_name"]    = attendees[i].member_display_name;
             att_arr[i]["member_discord_username"]= attendees[i].member_discord_username;
+            att_arr[i]["has_discord_username"]   = !attendees[i].member_discord_username.empty();
             att_arr[i]["checked_in_at"]          = attendees[i].checked_in_at;
             att_arr[i]["notes"]                  = attendees[i].notes;
         }
@@ -706,6 +707,7 @@ void register_meeting_routes(LugApp& app, MeetingService& meetings, AttendanceSe
             arr[i]["member_id"]              = attendees[i].member_id;
             arr[i]["member_display_name"]    = attendees[i].member_display_name;
             arr[i]["member_discord_username"]= attendees[i].member_discord_username;
+            arr[i]["has_discord_username"]   = !attendees[i].member_discord_username.empty();
             arr[i]["checked_in_at"]          = attendees[i].checked_in_at;
             arr[i]["notes"]                  = attendees[i].notes;
             arr[i]["is_virtual"]             = attendees[i].is_virtual;

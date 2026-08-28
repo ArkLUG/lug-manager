@@ -527,6 +527,7 @@ void register_event_routes(LugApp& app, EventService& events, AttendanceService&
         for (size_t i = 0; i < attendees.size(); ++i) {
             att_arr[i]["member_display_name"]    = attendees[i].member_display_name;
             att_arr[i]["member_discord_username"]= attendees[i].member_discord_username;
+            att_arr[i]["has_discord_username"]   = !attendees[i].member_discord_username.empty();
             att_arr[i]["checked_in_at"]          = attendees[i].checked_in_at;
             att_arr[i]["notes"]                  = attendees[i].notes;
         }

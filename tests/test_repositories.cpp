@@ -376,6 +376,57 @@ TEST_F(EventRepoTest, DeleteCascadesAttendance) {
     EXPECT_EQ(count("event_days"), 0);
 }
 
+TEST_F(EventRepoTest, SyncForEventPrependingEarlierDayDoesNotThrow) {
+    // Regression test: sync_for_event renumbers existing days in date order via
+    // per-day UPDATE+INSERT OR IGNORE. Prepending an earlier start date shifts
+    // every existing day's day_number up by one - naively doing that in date
+    // order transiently collides with the UNIQUE(event_id, day_number)
+    // constraint (the later day hasn't been renumbered yet when the earlier
+    // day claims its target number).
+    auto ev = repo->create(make_event());
+    LugEvent two_day = ev;
+    two_day.start_time = "2026-01-31T09:00:00";
+    two_day.end_time   = "2026-02-01T15:00:00";
+    repo->update(two_day);
+
+    EventDayRepository day_repo(*db);
+    day_repo.sync_for_event(ev.id, two_day.start_time, two_day.end_time);
+
+    auto days_before = day_repo.find_by_event(ev.id);
+    ASSERT_EQ(days_before.size(), 2u);
+    int64_t day1_id = days_before[0].id; // 2026-01-31, day_number 1
+    int64_t day2_id = days_before[1].id; // 2026-02-01, day_number 2
+
+    // Attend day 1 so we can confirm attendance survives the renumber.
+    MemberRepository members(*db);
+    Member m;
+    m.discord_user_id = "ev-prepend1";
+    m.discord_username = "evprepend";
+    m.display_name = "Prepend Attendee";
+    m.role = "member";
+    auto member = members.create(m);
+    EventDayAttendanceRepository att_repo(*db);
+    att_repo.check_in(day1_id, member.id);
+
+    // Now prepend an earlier setup day - this is the exact operation that used
+    // to throw a UNIQUE constraint violation.
+    EXPECT_NO_THROW(day_repo.sync_for_event(ev.id, "2026-01-30T09:00:00", two_day.end_time));
+
+    auto days_after = day_repo.find_by_event(ev.id);
+    ASSERT_EQ(days_after.size(), 3u);
+    EXPECT_EQ(days_after[0].day_date, "2026-01-30");
+    EXPECT_EQ(days_after[0].day_number, 1);
+    EXPECT_EQ(days_after[1].day_date, "2026-01-31");
+    EXPECT_EQ(days_after[1].day_number, 2);
+    EXPECT_EQ(days_after[1].id, day1_id); // same row, renumbered - not recreated
+    EXPECT_EQ(days_after[2].day_date, "2026-02-01");
+    EXPECT_EQ(days_after[2].day_number, 3);
+    EXPECT_EQ(days_after[2].id, day2_id); // same row, renumbered - not recreated
+
+    // Attendance tied to day1_id must have survived the renumber.
+    EXPECT_EQ(count("event_day_attendance"), 1);
+}
+
 TEST_F(EventRepoTest, GoogleCalendarEventId) {
     auto created = repo->create(make_event());
     repo->update_google_calendar_event_id(created.id, "gcal-ev-1");

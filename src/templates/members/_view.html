@@ -36,12 +36,12 @@
 
     <!-- Per-field PII visibility -->
     {{#show_discord}}
-    {{#discord_username}}
+    {{#has_discord_username}}
     <div class="grid grid-cols-3 gap-1">
       <dt class="text-gray-500 font-medium">Discord</dt>
       <dd class="col-span-2 text-gray-800">@{{discord_username}}</dd>
     </div>
-    {{/discord_username}}
+    {{/has_discord_username}}
     {{/show_discord}}
 
     {{#show_email}}

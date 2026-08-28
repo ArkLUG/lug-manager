@@ -85,7 +85,7 @@
           <tr class="hover:bg-gray-50 transition-colors {{^has_attendance}}opacity-40{{/has_attendance}}">
             <td class="px-3 py-1.5">
               <span class="font-medium text-gray-800 text-sm">{{full_name}}</span>
-              <span class="text-xs text-gray-400 ml-1 hidden sm:inline">({{display_name}}){{#discord_username}} @{{discord_username}}{{/discord_username}}</span>
+              <span class="text-xs text-gray-400 ml-1 hidden sm:inline">({{display_name}}){{#has_discord_username}} @{{discord_username}}{{/has_discord_username}}</span>
             </td>
             <td class="px-3 py-1.5 text-center text-xs">
               {{#meeting_count}}

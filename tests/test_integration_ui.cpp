@@ -227,6 +227,38 @@ TEST_F(IntegrationTest, AttendanceCountEndpointForEvent) {
     expect_contains(lr, "Regular U.");
 }
 
+// Regression test: Crow's mustache treats an empty *string* value as truthy
+// for {{#section}} guards (only List/False/Null/missing are falsy), so
+// {{#member_discord_username}} used to render a bare "@" for members with no
+// Discord account. Fixed by guarding on a separate has_discord_username bool.
+TEST_F(IntegrationTest, AttendanceListNoStrayAtSignForMemberWithoutDiscord) {
+    Member m;
+    m.first_name = "NoDiscord";
+    m.last_name = "Kid";
+    m.display_name = "NoDiscord K.";
+    m.fol_status = "kfol";
+    // No discord_user_id / discord_username.
+    auto member = member_repo->create(m);
+
+    LugEvent e;
+    e.title = "No Discord Attendee Event";
+    e.start_time = "2026-06-03T00:00:00";
+    e.end_time = "2026-06-04T00:00:00";
+    e.status = "confirmed";
+    e.scope = "lug_wide";
+    auto ev = event_svc->create(e);
+
+    auto days = event_day_repo->find_by_event(ev.id);
+    ASSERT_FALSE(days.empty());
+    attendance_svc->check_in_to_day(member.id, days.front().id);
+
+    auto lr = GET("/attendance/list/event/" + std::to_string(ev.id), admin_token);
+    EXPECT_EQ(lr.code, 200);
+    expect_contains(lr, "NoDiscord K.");
+    expect_not_contains(lr, "K. @");   // no stray "@" right after the name
+    expect_not_contains(lr, ">@<");    // no bare "@" inside its own span
+}
+
 TEST_F(IntegrationTest, MeetingPaginationPageOne) {
     // Page 1 with no explicit param should still work
     auto r = GET("/meetings?page=1", admin_token);

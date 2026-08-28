@@ -71,6 +71,7 @@ static std::string render_attendance_list(AttendanceService& attendance,
                 att_arr[j]["member_id"]              = r.member_id;
                 att_arr[j]["member_display_name"]    = r.member_display_name;
                 att_arr[j]["member_discord_username"]= r.member_discord_username;
+                att_arr[j]["has_discord_username"]   = !r.member_discord_username.empty();
                 att_arr[j]["checked_in_at"]          = r.checked_in_at;
                 att_arr[j]["is_admin"]               = can_manage;
                 att_arr[j]["entity_id"]              = static_cast<int>(entity_id);
@@ -97,6 +98,7 @@ static std::string render_attendance_list(AttendanceService& attendance,
         arr[i]["member_id"]              = attendees[i].member_id;
         arr[i]["member_display_name"]    = attendees[i].member_display_name;
         arr[i]["member_discord_username"]= attendees[i].member_discord_username;
+        arr[i]["has_discord_username"]   = !attendees[i].member_discord_username.empty();
         arr[i]["checked_in_at"]          = attendees[i].checked_in_at;
         arr[i]["notes"]                  = attendees[i].notes;
         arr[i]["is_virtual"]             = attendees[i].is_virtual;
@@ -244,6 +246,7 @@ void register_attendance_routes(LugApp& app, AttendanceService& attendance,
             arr[i]["last_name"]             = s.last_name;
             arr[i]["full_name"]             = s.first_name + " " + s.last_name;
             arr[i]["discord_username"]      = s.discord_username;
+            arr[i]["has_discord_username"]  = !s.discord_username.empty();
             arr[i]["meeting_count"]         = s.meeting_count;
             arr[i]["meeting_virtual_count"] = s.meeting_virtual_count;
             arr[i]["meeting_in_person"]     = s.meeting_count - s.meeting_virtual_count;
