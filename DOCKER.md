@@ -45,7 +45,7 @@ Available tags:
    docker compose up -d
    ```
 
-3. **Access**: Open `http://localhost:8080` and log in with Discord.
+3. **Access**: Open `http://localhost:8080` and log in with Discord. The JSON API is reachable at `/api/v1/*` (see the [README](README.md#json-api)) once you've issued an API key from Settings > API Keys — interactive docs are at `/static/api-docs.html`.
 
 4. **View logs**:
    ```bash

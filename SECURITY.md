@@ -21,14 +21,15 @@ This project implements the following security practices:
 - **Secret scanning** — TruffleHog checks for committed secrets and credentials
 - **Dockerfile linting** — Hadolint validates Dockerfile best practices
 - **Static analysis** — cppcheck for C++ code quality and portability issues
-- **Test coverage** — lcov + Codecov tracks code coverage across 17 test suites
+- **Test coverage** — lcov + Codecov tracks code coverage across 25 test suites
 
 ### Application Security
-- **Authentication**: Discord OAuth2 only (no passwords stored)
+- **Authentication**: Discord OAuth2 for the web UI (no passwords stored); admin-issued API keys for the JSON API, scoped and hashed at rest — the two are fully independent, neither grants the other's access
 - **Session management**: HttpOnly cookies with 24-hour expiry
+- **API keys**: SHA-256 hashed at rest (raw key shown once at creation, never stored or logged), soft-revocable, scoped to `read`/`write`/`admin` with destructive and privilege-affecting operations requiring `admin`
 - **PII protection**: Per-field privacy controls with verified member gating
-- **Audit logging**: All actions tracked with actor, entity, diff, timestamp, and IP
-- **Input validation**: Server-side validation on all form inputs
+- **Audit logging**: All actions tracked with actor, entity, diff, timestamp, and IP — including mutations made via the API, attributed to the key's label
+- **Input validation**: Server-side validation on all form and API inputs
 - **SQL injection prevention**: Parameterized queries throughout (no string concatenation in SQL)
 - **XSS prevention**: Mustache templates auto-escape output by default
 

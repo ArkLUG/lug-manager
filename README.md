@@ -23,11 +23,12 @@ A modern web application for managing LEGO User Groups (LUGs). Built with **C++ 
 - **iCal Feed**: RFC 5545 calendar subscription for personal calendar apps (collapsible on dashboard)
 - **Help & Onboarding**: Role-aware help page with getting-started guides for each role (Member, Event Manager, Chapter Lead, Admin). Interactive multi-page tour powered by driver.js auto-navigates through the app, highlighting features the user actually has access to. Permissions quick-reference table.
 - **Responsive UI**: Mobile-friendly tables that progressively hide columns on smaller screens. HTMX + Tailwind CSS interface with proper browser back/forward support. Detail modals for viewing full meeting/event info including attendance panel.
+- **JSON API**: Full CRUD REST API (`/api/v1/*`) covering members, events, meetings, chapters, chapter roles, attendance, perk levels, role mappings, audit log, and settings. Authenticated by admin-issued API keys with `read`/`write`/`admin` scopes, fully independent of session login. Self-service key management at Settings > API Keys, interactive docs at `/static/api-docs.html`.
 
 ## Technology Stack
 
 - **Backend**: C++20 with CrowCPP v1.2.0 (header-only HTTP server)
-- **Database**: SQLite with WAL mode and automatic migrations (36 migrations)
+- **Database**: SQLite with WAL mode and automatic migrations (39 migrations)
 - **Frontend**: HTMX + Tailwind CSS + TomSelect + EasyMDE + QRCode.js + DataTables + Driver.js (CDN, no build step)
 - **External APIs**: Discord OAuth2 + REST, Google Calendar API v3
 - **Dependencies**: asio, nlohmann/json, md4c, libcurl, OpenSSL, Google Test
@@ -253,9 +254,56 @@ All runtime configuration is managed from the Settings page (`/settings`):
 | Perk Levels | Attendance tiers with Discord role rewards (per year) |
 | Audit Log | Searchable history of all actions taken by all users |
 
+## JSON API
+
+LUG Manager exposes a full CRUD JSON API under `/api/v1/*` for programmatic access — separate from the browser session used by the web UI.
+
+### Authentication
+
+API requests are authenticated with an **API key**, sent as either:
+```
+X-API-Key: <key>
+```
+or
+```
+Authorization: Bearer <key>
+```
+
+Keys are issued by admins from **Settings > API Keys**. The plaintext key is shown once at creation time and is never stored or displayed again — only its SHA-256 hash is kept. Revoking a key takes effect immediately.
+
+### Scopes
+
+Each key has one of three scopes, checked per-request:
+
+| Scope | Grants |
+|-------|--------|
+| `read` | All `GET` endpoints |
+| `write` | `read`, plus create/update/delete for routine content (events, meetings, members, attendance, chapters, perk levels) |
+| `admin` | `write`, plus role/settings changes and destructive operations — required for member role changes, role mappings (all verbs, including reads, since they control privilege), settings (all verbs), and deletes of members/chapters/events/meetings/perk levels |
+
+A key's scope is independent of the issuing admin's own session — API keys never inherit or check the web session at all, and a session cookie alone does not grant API access.
+
+### Coverage
+
+Members, events (+ per-day schedule), meetings, chapters, chapter member roles, attendance (+ per-day event attendance), perk levels, role mappings, audit log, and settings all have endpoints. Audit log is read-only; event days are read-only (derived from the event's date range); everything else supports the full verb set its scope allows.
+
+### Docs
+
+Interactive OpenAPI/Swagger documentation is served at `/static/api-docs.html` (self-hosted, no external CDN calls) — the raw spec is at `/static/openapi.yaml`.
+
+### Example
+
+```bash
+curl -H "X-API-Key: $LUG_API_KEY" https://your-lug.example.com/api/v1/events
+
+curl -X POST -H "X-API-Key: $LUG_API_KEY" -H "Content-Type: application/json" \
+  -d '{"title":"Build Night","start_time":"2026-09-01T18:00:00","end_time":"2026-09-01T20:00:00"}' \
+  https://your-lug.example.com/api/v1/events
+```
+
 ## Testing
 
-The project includes comprehensive tests across 18 test suites (8 unit + 10 integration):
+The project includes comprehensive tests across 25 test suites (7 unit + 18 integration):
 
 ```bash
 # Build with tests
@@ -276,16 +324,23 @@ ctest --test-dir build --output-on-failure -j$(nproc)
 | test_suppression | Suppress flags, notes persistence, attendance summaries |
 | test_markdown | Markdown-to-HTML rendering (md4c) |
 | test_integration_auth | Login, logout, session, dashboard, calendar |
+| test_integration_auth2 | Login page states, OAuth callback errors, denied/failed login flows |
 | test_integration_members | Member CRUD, PII visibility |
 | test_integration_chapters | Chapter CRUD, leads, members |
+| test_integration_coverage | Chapter detail/edit pages, member role/removal edge cases, permission boundaries |
 | test_integration_meetings | Meeting CRUD, pagination, detail |
 | test_integration_events | Event CRUD, status, detail |
 | test_integration_attendance | Attendance check-in, virtual toggle, overview |
+| test_integration_attendance2 | Attendance overview filtering/sorting/pagination, per-member detail view |
 | test_integration_settings | Settings save, Discord API, sync, nicknames |
+| test_integration_settings2 | Discord/nickname sync admin gating, regenerate-nicknames permissions |
 | test_integration_permissions | Per-field PII sharing, role-based access, chapter permissions, verified member logic |
+| test_integration_perks2 | Perk level CRUD by year, edit form permissions, deletion |
 | test_integration_audit | Audit log entries for all action types, search, filtering, pagination |
 | test_integration_checkin | QR check-in token generation, public page, search, select, manual entry, duplicates |
+| test_integration_help | Role-aware help page rendering for each role, HTMX partial loads |
 | test_integration_ui | Content validation, calendar output, badge rendering |
+| test_integration_api | JSON API CRUD per entity; auth/scope enforcement, key revocation, and cross-auth isolation between sessions and API keys |
 
 CI runs all tests inside the Docker build — failing tests block image creation.
 
@@ -313,14 +368,15 @@ See [DOCKER.md](DOCKER.md) for detailed deployment instructions.
 ├── src/
 │   ├── main.cpp                 # Entry point, server setup
 │   ├── config/                  # Configuration (env vars, .env loading)
-│   ├── middleware/               # Auth middleware (Discord session)
-│   ├── routes/                  # HTTP route handlers (12 route files)
+│   ├── middleware/               # Auth middleware (Discord session, API key)
+│   ├── routes/                  # HTTP route handlers (15 route files)
+│   │   └── api/                 # JSON API route handlers, one per entity (/api/v1/*)
 │   ├── services/                # Business logic
 │   ├── repositories/            # Database access layer
 │   ├── models/                  # Data structs
 │   ├── integrations/            # Discord, Google Calendar, iCal
 │   ├── auth/                    # OAuth2 + session management
-│   ├── utils/                   # Markdown renderer
+│   ├── utils/                   # Markdown renderer, crypto helpers (API key hashing)
 │   ├── async/                   # Thread pool
 │   ├── db/                      # SQLite abstraction + migrations
 │   ├── templates/               # Mustache HTML templates
@@ -330,13 +386,13 @@ See [DOCKER.md](DOCKER.md) for detailed deployment instructions.
 │   │   ├── events/              # Event list, forms, detail
 │   │   ├── chapters/            # Chapter list, detail, members
 │   │   ├── attendance/          # Attendance overview, personal history
-│   │   ├── settings/            # Admin settings, roles, perks
+│   │   ├── settings/            # Admin settings, roles, perks, API keys
 │   │   └── dashboard/           # Dashboard with member info, perk progress
-│   └── static/                  # CSS, JS assets
-├── tests/                       # Google Test suites (8 unit + 9 integration)
+│   └── static/                  # CSS, JS assets, OpenAPI spec + Swagger UI (vendored)
+├── tests/                       # Google Test suites (7 unit + 18 integration)
 │   ├── integration_test_base.hpp # Shared fixture for integration tests
 │   └── test_integration_*.cpp   # Split integration tests by feature
-├── sql/migrations/              # Auto-applied database migrations (36)
+├── sql/migrations/              # Auto-applied database migrations (39)
 ├── .github/workflows/           # CI/CD pipeline (single Docker build job)
 ├── CMakeLists.txt
 ├── Dockerfile
@@ -367,6 +423,12 @@ SQLite WAL mode supports concurrent reads but only one writer.
 
 ### Duplicate controls on browser back/forward
 HTMX history restoration is handled automatically — DataTables and TomSelect instances are cleaned up before page cache. If you see duplicates, hard-refresh the page.
+
+### API returns 401 with a valid-looking key
+Confirm the key hasn't been revoked (Settings > API Keys shows Active/Revoked status) and that it's sent as `X-API-Key` or `Authorization: Bearer <key>` — session cookies alone do not authenticate `/api/v1/*`.
+
+### API returns 403 on an endpoint that should work
+Check the key's scope against the endpoint's requirement (see [JSON API](#json-api) above) — `role-mappings` and `settings` require `admin` scope even for `GET`.
 
 ## License
 
