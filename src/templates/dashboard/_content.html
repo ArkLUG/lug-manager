@@ -25,7 +25,8 @@
           <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium
             {{#member_role_admin}}bg-yellow-400 text-gray-900{{/member_role_admin}}
             {{#member_role_chapter_lead}}bg-blue-400 text-white{{/member_role_chapter_lead}}
-            {{^member_role_admin}}{{^member_role_chapter_lead}}bg-gray-600 text-gray-200{{/member_role_chapter_lead}}{{/member_role_admin}}">
+            {{#member_role_moderator}}bg-purple-400 text-white{{/member_role_moderator}}
+            {{^member_role_admin}}{{^member_role_chapter_lead}}{{^member_role_moderator}}bg-gray-600 text-gray-200{{/member_role_moderator}}{{/member_role_chapter_lead}}{{/member_role_admin}}">
             {{member_role_label}}
           </span>
         </div>

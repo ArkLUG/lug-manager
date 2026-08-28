@@ -51,7 +51,7 @@ components:
         email: { type: string }
         is_paid: { type: boolean }
         paid_until: { type: string }
-        role: { type: string, enum: [admin, chapter_lead, member] }
+        role: { type: string, enum: [admin, chapter_lead, moderator, member] }
         phone: { type: string }
         address_line1: { type: string }
         address_line2: { type: string }

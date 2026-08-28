@@ -12,7 +12,10 @@ struct AuthContext {
     std::string display_name;
 
     bool is_admin()        const { return role == "admin"; }
-    bool is_chapter_lead() const { return role == "admin" || role == "chapter_lead"; }
+    bool is_moderator()    const { return role == "moderator"; }
+    // Same privilege tier as chapter_lead - moderator is granted manually
+    // (like chapter_lead), not via Discord role-mapping sync.
+    bool is_chapter_lead() const { return role == "admin" || role == "chapter_lead" || role == "moderator"; }
 };
 
 // Crow middleware that reads session cookie and populates AuthContext.

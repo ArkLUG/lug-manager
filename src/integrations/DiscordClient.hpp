@@ -106,6 +106,12 @@ public:
     // Post a plain message to a channel
     void post_message(const std::string& channel_id, const std::string& content);
 
+    // Posts a message with a single "Resolve" button to a channel (fire-and-forget).
+    // custom_id must encode enough state for the interaction handler to act on the
+    // click (e.g. "discord_match_resolve:" + pending_discord_matches row id).
+    void post_button_message(const std::string& channel_id, const std::string& content,
+                              const std::string& button_label, const std::string& custom_id);
+
     // Assign or remove a Discord role from a guild member (synchronous)
     void add_member_role(const std::string& discord_user_id, const std::string& role_id);
     void remove_member_role(const std::string& discord_user_id, const std::string& role_id);

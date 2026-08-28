@@ -24,6 +24,7 @@ static crow::mustache::context member_to_ctx(const Member& m) {
     ctx["role"]             = m.role;
     ctx["role_admin"]        = m.role == "admin";
     ctx["role_chapter_lead"] = m.role == "chapter_lead";
+    ctx["role_moderator"]    = m.role == "moderator";
     ctx["role_member"]       = m.role == "member" || m.role.empty();
     ctx["birthday"]          = m.birthday;
     ctx["fol_status"]        = m.fol_status;

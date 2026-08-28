@@ -12,7 +12,7 @@ struct Member {
     std::string email;
     bool        is_paid          = false;
     std::string paid_until;       // ISO 8601 date "2026-12-31", may be empty
-    std::string role              = "member"; // "admin"|"chapter_lead"|"member"
+    std::string role              = "member"; // "admin"|"chapter_lead"|"moderator"|"member"
     std::string phone;
     std::string address_line1;
     std::string address_line2;

@@ -51,9 +51,11 @@ void register_calendar_routes(LugApp& app, CalendarGenerator& cal,
             ctx["member_fol_label"]     = member_info->fol_status == "kfol" ? "KFOL"
                                         : member_info->fol_status == "tfol" ? "TFOL" : "AFOL";
             ctx["member_role_label"]    = auth_ctx.auth.role == "admin" ? "Admin"
-                                        : auth_ctx.auth.role == "chapter_lead" ? "Chapter Lead" : "Member";
+                                        : auth_ctx.auth.role == "chapter_lead" ? "Chapter Lead"
+                                        : auth_ctx.auth.role == "moderator" ? "Moderator" : "Member";
             ctx["member_role_admin"]    = auth_ctx.auth.role == "admin";
             ctx["member_role_chapter_lead"] = auth_ctx.auth.role == "chapter_lead";
+            ctx["member_role_moderator"]    = auth_ctx.auth.role == "moderator";
         }
 
         // Perk progress for current user

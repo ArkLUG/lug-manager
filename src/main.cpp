@@ -142,7 +142,7 @@ int main() {
         MemberService     member_service(member_repo, &discord_client);
         MemberSyncService member_sync_service(discord_client, member_repo, role_mapping_repo,
                                               chapter_repo, chapter_member_repo,
-                                              pending_discord_match_repo);
+                                              pending_discord_match_repo, &settings_repo);
         MeetingService    meeting_service(meeting_repo, discord_client, calendar, &chapter_repo, &gcal_client);
         EventService      event_service(event_repo, discord_client, calendar, &chapter_repo, &gcal_client, &event_day_repo);
         AttendanceService attendance_service(attendance_repo, member_repo, event_repo, event_day_repo, event_day_attendance_repo);
@@ -178,7 +178,8 @@ int main() {
             event_day_attendance_repo,
             audit_service,
             api_key_repo,
-            pending_discord_match_repo
+            pending_discord_match_repo,
+            config.discord_public_key
         };
         register_all_routes(app, svc);
 

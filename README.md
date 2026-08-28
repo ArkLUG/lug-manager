@@ -96,6 +96,12 @@ brew install cmake curl sqlite openssl pkg-config
    | `ICAL_CALENDAR_NAME` | Calendar display name | `LUG Events` |
    | `DISCORD_GUILD_ID` | Discord server ID | *(set in Settings)* |
 
+   Optional, only needed for [in-Discord match resolution](#discord-member-match-review) (no Settings-page equivalent — startup secrets, not runtime config):
+   | Variable | Description |
+   |----------|-------------|
+   | `DISCORD_PUBLIC_KEY` | Application's Ed25519 public key (Developer Portal > General Information) |
+   | `DISCORD_APPLICATION_ID` | Application ID (Developer Portal > General Information) |
+
 4. **Run**:
    ```bash
    ./build/lug_manager
@@ -104,13 +110,16 @@ brew install cmake curl sqlite openssl pkg-config
 
 ## Roles & Permissions
 
-### Global Roles (mapped via Discord roles in Settings > Role Mappings)
+### Global Roles
 
 | Role | Access |
 |------|--------|
 | **admin** | Full access to everything |
 | **chapter_lead** | Can see all PII, manage members (add/edit/dues), manage chapter members, assign event managers. Cannot delete members, change roles, or edit system settings. |
+| **moderator** | Same privilege tier as chapter_lead — can see all PII, manage members, manage chapter members, and review Discord member matches. Cannot delete members, change roles, or edit system settings. |
 | **member** | View events, meetings, chapters, own attendance. PII visibility depends on each member's per-field privacy settings. |
+
+`admin` and `member` are assignable via Discord role mapping (Settings > Role Mappings) as well as manually. `chapter_lead` and `moderator` are granted manually only, from a member's edit form — there's no Discord-role-mapping path for either.
 
 ### Chapter Roles (assigned per-chapter by admins/leads)
 
@@ -170,6 +179,20 @@ Meetings can be marked as "Virtual" in the create/edit form. Virtual meetings:
 5. **Important**: In your Discord server's role settings, drag the bot's role **above** any roles it needs to manage. Discord requires the bot role to be higher in the hierarchy.
 
 6. After first login, go to **Settings** in the web UI to configure guild ID, channels, roles, and timezone.
+
+## Discord Member Match Review
+
+Every 6 hours (and on manual "Sync Now"), LUG Manager pulls the Discord guild's member list and reconciles it against the roster. An exact `discord_user_id` match updates the existing member; no match at all creates a new one. When a guild member's name is a *plausible but not certain* match for an existing Discord-less member (e.g. a KFOL added by a parent before the kid joined Discord), the match is held in a review queue instead of silently creating a duplicate.
+
+Admins, moderators, and chapter leads can resolve these from **Settings > Member Import > pending Discord match(es)**, or from `/settings/discord-matches` directly — link the Discord identity to the suggested (or any other) existing member, or create a new member from it.
+
+### Resolving matches from Discord
+
+Matches can also be resolved without leaving Discord. If a notification channel is configured (**Settings > Match Notification Channel**), each new pending match posts a message with a **Resolve Match** button to that channel. Clicking it opens a Discord modal with a single field — a member ID to link to, or blank to create a new member — right where the click happened.
+
+Access is restricted to an explicit, admin-configured Discord role allowlist (**Settings > Authorized Roles**) — never a role-name match, since guild roles can be renamed or recreated by anyone with the right Discord permissions. Leave the notification channel unset to disable this entirely; the browser-based review queue always still works regardless.
+
+This requires the app's own Discord Application **Public Key** and **Application ID** (Developer Portal > General Information — distinct from the bot token and OAuth2 client secret) set as `DISCORD_PUBLIC_KEY` / `DISCORD_APPLICATION_ID` in `.env`. Every request to `/discord/interactions` is verified against the Public Key with Ed25519 before anything else happens — requests that don't verify get a bare `401` with no further processing. After deploying with these set, register `https://your-domain/discord/interactions` as the **Interactions Endpoint URL** in the Developer Portal; Discord sends a signed PING and requires a valid response before the field will save, so this step must happen after the app is live, not before.
 
 ## Google Calendar Integration
 
@@ -251,6 +274,8 @@ All runtime configuration is managed from the Settings page (`/settings`):
 | Suppress Pings/Updates | Disable @mentions or update notifications |
 | Google Calendar | Service account JSON path and Calendar ID |
 | Role Mappings | Map Discord roles to admin/member |
+| Match Notification Channel | Discord channel for Resolve Match buttons (Discord member match review); unset disables |
+| Authorized Roles | Discord role-ID allowlist permitted to resolve matches via the Discord button/modal |
 | Perk Levels | Attendance tiers with Discord role rewards (per year) |
 | Audit Log | Searchable history of all actions taken by all users |
 
@@ -303,7 +328,7 @@ curl -X POST -H "X-API-Key: $LUG_API_KEY" -H "Content-Type: application/json" \
 
 ## Testing
 
-The project includes comprehensive tests across 25 test suites (7 unit + 18 integration):
+The project includes comprehensive tests across 28 test suites (8 unit + 20 integration):
 
 ```bash
 # Build with tests
@@ -320,9 +345,10 @@ ctest --test-dir build --output-on-failure -j$(nproc)
 | test_discord_content | Announcement content generation, ping suppression |
 | test_repositories | CRUD for all repositories, pagination, search |
 | test_services | Service layer logic, calendar generation |
-| test_role_system | Role mappings, age range ranks, perk levels, member fields, per-field PII sharing |
+| test_role_system | Role mappings, age range ranks, perk levels, member fields, per-field PII sharing, moderator role privilege tier |
 | test_suppression | Suppress flags, notes persistence, attendance summaries |
 | test_markdown | Markdown-to-HTML rendering (md4c) |
+| test_discord_signature | Ed25519 signature verification for the Discord Interactions endpoint — valid/tampered/wrong-key/malformed-hex cases |
 | test_integration_auth | Login, logout, session, dashboard, calendar |
 | test_integration_auth2 | Login page states, OAuth callback errors, denied/failed login flows |
 | test_integration_members | Member CRUD, PII visibility |
@@ -341,6 +367,8 @@ ctest --test-dir build --output-on-failure -j$(nproc)
 | test_integration_help | Role-aware help page rendering for each role, HTMX partial loads |
 | test_integration_ui | Content validation, calendar output, badge rendering |
 | test_integration_api | JSON API CRUD per entity; auth/scope enforcement, key revocation, and cross-auth isolation between sessions and API keys |
+| test_integration_discord_matches | Discord member match review queue — admin/chapter-lead access, link/create-new resolution |
+| test_integration_discord_interactions | Discord Interactions webhook — PING, signature rejection, role-gated button click, modal submit (link/create-new), idempotency on already-resolved matches |
 
 CI runs all tests inside the Docker build — failing tests block image creation.
 

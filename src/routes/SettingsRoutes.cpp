@@ -1,6 +1,7 @@
 #include "routes/SettingsRoutes.hpp"
 #include <crow/mustache.h>
 #include <sstream>
+#include <unordered_set>
 
 void register_settings_routes(LugApp& app, SettingsRepository& settings,
                                DiscordClient& discord, MemberSyncService& member_sync,
@@ -441,6 +442,34 @@ void register_settings_routes(LugApp& app, SettingsRepository& settings,
         mctx["pending_match_count"] = pending_match_count;
         mctx["has_pending_matches"] = pending_match_count > 0;
 
+        // Discord match notification channel — same fetch_text_channels() result already
+        // used above for lug_channel, no extra Discord API call.
+        std::string matches_channel = settings.get("discord_matches_notification_channel_id", "");
+        std::string matches_channel_options = guild_id.empty()
+            ? "<option value=\"\">" + no_guild + "</option>"
+            : build_options(discord.fetch_text_channels(), matches_channel,
+                            "-- Select a channel --",
+                            "No text channels found (check guild ID &amp; bot permissions)");
+        mctx["matches_channel_id"]      = matches_channel;
+        mctx["matches_channel_options"] = matches_channel_options;
+
+        // Discord match authorized roles — comma-separated role IDs allowed to
+        // resolve matches via the Discord button/modal. Never a role-name match;
+        // always this explicit, admin-chosen ID list (see DiscordInteractionsRoutes.cpp).
+        std::string authorized_role_ids_csv = settings.get("discord_matches_authorized_role_ids", "");
+        std::unordered_set<std::string> authorized_role_ids;
+        {
+            std::istringstream ss(authorized_role_ids_csv);
+            std::string rid;
+            while (std::getline(ss, rid, ',')) if (!rid.empty()) authorized_role_ids.insert(rid);
+        }
+        std::ostringstream authorized_role_options;
+        for (auto& r : all_roles) {
+            authorized_role_options << "<option value=\"" << r.id << "\""
+                << (authorized_role_ids.count(r.id) ? " selected" : "") << ">@" << r.name << "</option>\n";
+        }
+        mctx["authorized_role_options"] = authorized_role_options.str();
+
         bool is_htmx = req.get_header_value("HX-Request") == "true";
         if (is_htmx) {
             auto tmpl = crow::mustache::load("settings/_content.html");
@@ -520,6 +549,20 @@ void register_settings_routes(LugApp& app, SettingsRepository& settings,
         }
         if (!gcal_sa_path.empty() && !gcal_cal_id.empty())
             gcal.reconfigure(gcal_sa_path, gcal_cal_id, timezone);
+
+        {
+            // Discord match notification channel — allow clearing (empty = disabled).
+            std::string matches_channel = get_param("discord_matches_notification_channel_id");
+            settings.set("discord_matches_notification_channel_id", matches_channel);
+
+            // Discord match authorized roles — explicit admin-chosen role-ID allowlist,
+            // never a role-name match. Empty = nobody authorized (default-closed).
+            auto role_vals = params.get_list("discord_matches_authorized_role_ids", false);
+            std::string csv;
+            for (auto* r : role_vals)
+                if (r && r[0]) { if (!csv.empty()) csv += ","; csv += r; }
+            settings.set("discord_matches_authorized_role_ids", csv);
+        }
 
         audit.log(req, app, "settings.update", "settings", 0, "", "Updated settings");
 

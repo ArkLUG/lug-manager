@@ -12,10 +12,11 @@ MemberSyncService::MemberSyncService(DiscordClient& discord,
                                      RoleMappingRepository& role_mappings,
                                      ChapterRepository& chapter_repo,
                                      ChapterMemberRepository& chapter_member_repo,
-                                     PendingDiscordMatchRepository& pending_matches_repo)
+                                     PendingDiscordMatchRepository& pending_matches_repo,
+                                     SettingsRepository* settings)
     : discord_(discord), member_repo_(member_repo), role_mappings_(role_mappings),
       chapter_repo_(chapter_repo), chapter_member_repo_(chapter_member_repo),
-      pending_matches_(pending_matches_repo) {}
+      pending_matches_(pending_matches_repo), settings_(settings) {}
 
 SyncResult MemberSyncService::sync_from_guild() {
     SyncResult result;
@@ -108,8 +109,20 @@ SyncResult MemberSyncService::sync_from_guild() {
                         p.discord_role_ids    = roles_oss.str();
                         p.suggested_member_id = *match_id;
 
-                        pending_matches_.create(p);
+                        auto created_row = pending_matches_.create(p);
                         ++result.held_for_review;
+
+                        if (settings_) {
+                            std::string channel_id = settings_->get("discord_matches_notification_channel_id", "");
+                            if (!channel_id.empty()) {
+                                std::string content =
+                                    "**New Discord member match needs review**\n"
+                                    "Discord user: **" + p.discord_display_name + "** (`" + p.discord_username + "`)\n"
+                                    "Click below to link to an existing member or create a new one.";
+                                discord_.post_button_message(channel_id, content, "Resolve Match",
+                                    "discord_match_resolve:" + std::to_string(created_row.id));
+                            }
+                        }
                     }
                     continue;
                 }

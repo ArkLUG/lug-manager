@@ -61,6 +61,7 @@
                 {{^is_admin}}{{#is_edit}}disabled{{/is_edit}}{{/is_admin}}>
           <option value="member" {{#role_member}}selected{{/role_member}}>Member</option>
           <option value="chapter_lead" {{#role_chapter_lead}}selected{{/role_chapter_lead}}>Chapter Lead</option>
+          <option value="moderator" {{#role_moderator}}selected{{/role_moderator}}>Moderator</option>
           {{#is_admin}}<option value="admin" {{#role_admin}}selected{{/role_admin}}>Admin</option>{{/is_admin}}
         </select>
         {{^is_admin}}{{#is_edit}}

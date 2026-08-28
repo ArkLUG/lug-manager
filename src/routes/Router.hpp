@@ -1,4 +1,5 @@
 #pragma once
+#include <string>
 #include "routes/AuthRoutes.hpp"
 #include "routes/ChapterRoutes.hpp"
 #include "routes/MemberRoutes.hpp"
@@ -14,6 +15,7 @@
 #include "routes/HelpRoutes.hpp"
 #include "routes/ApiKeyRoutes.hpp"
 #include "routes/DiscordMatchRoutes.hpp"
+#include "routes/DiscordInteractionsRoutes.hpp"
 #include "routes/api/MembersApiRoutes.hpp"
 #include "routes/api/EventsApiRoutes.hpp"
 #include "routes/api/MeetingsApiRoutes.hpp"
@@ -73,6 +75,7 @@ struct Services {
     AuditService&           audit;
     ApiKeyRepository&       api_keys;
     PendingDiscordMatchRepository& pending_discord_matches;
+    const std::string&      discord_public_key;
 };
 
 void register_all_routes(LugApp& app, Services& svc);

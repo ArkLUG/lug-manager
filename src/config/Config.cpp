@@ -41,6 +41,9 @@ Config load_config() {
     cfg.discord_client_secret            = getenv_or("DISCORD_CLIENT_SECRET", "");
     cfg.discord_redirect_uri             = getenv_or("DISCORD_REDIRECT_URI", "http://localhost:8080/auth/callback");
 
+    cfg.discord_public_key               = getenv_or("DISCORD_PUBLIC_KEY", "");
+    cfg.discord_application_id           = getenv_or("DISCORD_APPLICATION_ID", "");
+
     cfg.ical_timezone                    = getenv_or("ICAL_TIMEZONE", "America/New_York");
     cfg.ical_calendar_name               = getenv_or("ICAL_CALENDAR_NAME", "LUG Events");
 

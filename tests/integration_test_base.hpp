@@ -6,6 +6,7 @@
 #include <chrono>
 #include <algorithm>
 #include <atomic>
+#include <vector>
 #include <unistd.h>
 
 #include "db/SqliteDatabase.hpp"
@@ -153,7 +154,7 @@ protected:
         attendance_svc = std::make_unique<AttendanceService>(*attendance_repo, *member_repo, *event_repo, *event_day_repo, *event_day_attendance_repo);
         member_sync_svc = std::make_unique<MemberSyncService>(*discord_client, *member_repo, *role_mapping_repo,
                                                                 *chapter_repo, *chapter_member_repo,
-                                                                *pending_discord_match_repo);
+                                                                *pending_discord_match_repo, settings_repo.get());
         audit_svc = std::make_unique<AuditService>(*audit_log_repo);
 
         // Create test members and sessions
@@ -227,7 +228,8 @@ protected:
             *perk_level_repo, *attendance_repo, *member_repo,
             *meeting_repo, *event_repo,
             *event_day_repo, *event_day_attendance_repo,
-            *audit_svc, *api_key_repo, *pending_discord_match_repo
+            *audit_svc, *api_key_repo, *pending_discord_match_repo,
+            config.discord_public_key
         };
         register_all_routes(*app, svc);
 
@@ -279,7 +281,8 @@ protected:
                   const std::string& session_token = "",
                   bool htmx = false,
                   const std::string& api_key = "",
-                  bool json_body = false) {
+                  bool json_body = false,
+                  const std::vector<std::string>& extra_headers = {}) {
         CURL* curl = curl_easy_init();
         Response resp;
         std::string url = "http://127.0.0.1:" + std::to_string(port) + path;
@@ -305,6 +308,8 @@ protected:
             headers = curl_slist_append(headers, "Content-Type: application/json");
         else if (method == "POST" || method == "PUT" || method == "PATCH")
             headers = curl_slist_append(headers, "Content-Type: application/x-www-form-urlencoded");
+        for (const auto& h : extra_headers)
+            headers = curl_slist_append(headers, h.c_str());
         if (headers)
             curl_easy_setopt(curl, CURLOPT_HTTPHEADER, headers);
 

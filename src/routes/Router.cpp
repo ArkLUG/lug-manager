@@ -19,6 +19,8 @@ void register_all_routes(LugApp& app, Services& svc) {
 
     register_api_key_routes(app, svc.api_keys, svc.audit);
     register_discord_match_routes(app, svc.pending_discord_matches, svc.member_repo, svc.audit);
+    register_discord_interactions_routes(app, svc.discord_public_key, svc.pending_discord_matches,
+                                          svc.member_repo, svc.settings, svc.audit);
     register_members_api_routes(app, svc.members, svc.member_repo, svc.audit);
     register_events_api_routes(app, svc.events, svc.event_day_repo, svc.audit);
     register_meetings_api_routes(app, svc.meetings, svc.audit);

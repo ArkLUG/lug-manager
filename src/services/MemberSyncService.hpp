@@ -5,6 +5,7 @@
 #include "repositories/ChapterRepository.hpp"
 #include "repositories/ChapterMemberRepository.hpp"
 #include "repositories/PendingDiscordMatchRepository.hpp"
+#include "repositories/SettingsRepository.hpp"
 #include <string>
 #include <vector>
 
@@ -35,7 +36,8 @@ public:
                       RoleMappingRepository& role_mappings,
                       ChapterRepository& chapter_repo,
                       ChapterMemberRepository& chapter_member_repo,
-                      PendingDiscordMatchRepository& pending_matches_repo);
+                      PendingDiscordMatchRepository& pending_matches_repo,
+                      SettingsRepository* settings = nullptr);
 
     // Import/update all guild members and sync chapter lead roles.
     // Creates new members, updates display names and LUG roles, promotes/demotes chapter leads.
@@ -51,4 +53,5 @@ private:
     ChapterRepository&             chapter_repo_;
     ChapterMemberRepository&       chapter_member_repo_;
     PendingDiscordMatchRepository& pending_matches_;
+    SettingsRepository*            settings_; // nullable — notification is skipped if null/unset
 };

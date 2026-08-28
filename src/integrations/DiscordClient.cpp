@@ -1094,6 +1094,30 @@ void DiscordClient::post_message(const std::string& channel_id, const std::strin
     });
 }
 
+void DiscordClient::post_button_message(const std::string& channel_id, const std::string& content,
+                                         const std::string& button_label, const std::string& custom_id) {
+    pool_.enqueue([this, channel_id, content, button_label, custom_id]() {
+        try {
+            json button;
+            button["type"]      = 2; // Button
+            button["style"]     = 1; // Primary (blurple)
+            button["label"]     = button_label;
+            button["custom_id"] = custom_id;
+
+            json row;
+            row["type"]       = 1; // Action Row (container)
+            row["components"] = json::array({button});
+
+            json body;
+            body["content"]    = content;
+            body["components"] = json::array({row});
+            discord_api_request("POST", "/channels/" + channel_id + "/messages", body.dump());
+        } catch (const std::exception& e) {
+            std::cerr << "[DiscordClient] post_button_message failed: " << e.what() << "\n";
+        }
+    });
+}
+
 std::string DiscordClient::publish_report_to_forum(const std::string& forum_channel_id,
                                                      const std::string& existing_thread_id,
                                                      const std::string& title,

@@ -162,6 +162,58 @@ TEST_F(MemberModelTest, ChapterLeadRoleAccepted) {
     EXPECT_EQ(created.role, "chapter_lead");
 }
 
+TEST_F(MemberModelTest, ModeratorRoleAccepted) {
+    Member m;
+    m.discord_user_id = "test008";
+    m.discord_username = "testuser8";
+    m.display_name = "Test8 U.";
+    m.role = "moderator";
+    auto created = members->create(m);
+    EXPECT_EQ(created.role, "moderator");
+
+    auto found = members->find_by_id(created.id);
+    ASSERT_TRUE(found.has_value());
+    EXPECT_EQ(found->role, "moderator");
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// Moderator role — same privilege tier as chapter_lead (AuthContext helpers)
+// ═══════════════════════════════════════════════════════════════════════════
+
+TEST(ModeratorPrivilege, IsChapterLeadAdmitsModerator) {
+    AuthContext ctx;
+    ctx.authenticated = true;
+    ctx.role = "moderator";
+    EXPECT_TRUE(ctx.is_moderator());
+    EXPECT_TRUE(ctx.is_chapter_lead());
+    EXPECT_FALSE(ctx.is_admin());
+}
+
+TEST(ModeratorPrivilege, PlainMemberIsNotModeratorOrChapterLead) {
+    AuthContext ctx;
+    ctx.authenticated = true;
+    ctx.role = "member";
+    EXPECT_FALSE(ctx.is_moderator());
+    EXPECT_FALSE(ctx.is_chapter_lead());
+}
+
+TEST(ModeratorPrivilege, AdminIsNotModeratorButIsChapterLead) {
+    AuthContext ctx;
+    ctx.authenticated = true;
+    ctx.role = "admin";
+    EXPECT_FALSE(ctx.is_moderator());
+    EXPECT_TRUE(ctx.is_chapter_lead());
+    EXPECT_TRUE(ctx.is_admin());
+}
+
+TEST(ModeratorPrivilege, ChapterLeadRoleStillWorksAlongsideModerator) {
+    AuthContext ctx;
+    ctx.authenticated = true;
+    ctx.role = "chapter_lead";
+    EXPECT_FALSE(ctx.is_moderator());
+    EXPECT_TRUE(ctx.is_chapter_lead());
+}
+
 // ═══════════════════════════════════════════════════════════════════════════
 // Perk Level Tests
 // ═══════════════════════════════════════════════════════════════════════════

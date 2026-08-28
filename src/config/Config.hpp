@@ -17,6 +17,10 @@ struct Config {
     std::string discord_client_secret;
     std::string discord_redirect_uri;
 
+    // Discord Interactions (Ed25519 signature verification for /discord/interactions)
+    std::string discord_public_key;
+    std::string discord_application_id;
+
     // iCal feed (defaults, overridden by settings page)
     std::string ical_timezone                    = "America/New_York";
     std::string ical_calendar_name               = "LUG Events";

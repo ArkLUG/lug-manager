@@ -34,3 +34,27 @@ std::string sha256_hex(const std::string& input) {
     }
     return oss.str();
 }
+
+static int hex_digit_value(char c) {
+    if (c >= '0' && c <= '9') return c - '0';
+    if (c >= 'a' && c <= 'f') return c - 'a' + 10;
+    if (c >= 'A' && c <= 'F') return c - 'A' + 10;
+    return -1;
+}
+
+std::vector<unsigned char> hex_decode(const std::string& hex) {
+    if (hex.size() % 2 != 0) {
+        throw std::runtime_error("hex_decode: odd-length hex string");
+    }
+    std::vector<unsigned char> out;
+    out.reserve(hex.size() / 2);
+    for (size_t i = 0; i < hex.size(); i += 2) {
+        int hi = hex_digit_value(hex[i]);
+        int lo = hex_digit_value(hex[i + 1]);
+        if (hi < 0 || lo < 0) {
+            throw std::runtime_error("hex_decode: non-hex character");
+        }
+        out.push_back(static_cast<unsigned char>((hi << 4) | lo));
+    }
+    return out;
+}
