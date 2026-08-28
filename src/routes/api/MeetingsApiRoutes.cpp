@@ -93,6 +93,7 @@ void register_meetings_api_routes(LugApp& app, MeetingService& meetings, AuditSe
         if (body.has("start_time"))  updates.start_time  = api_mt_normalize_datetime(body["start_time"].s());
         if (body.has("end_time"))    updates.end_time    = api_mt_normalize_datetime(body["end_time"].s());
         if (body.has("scope"))       updates.scope       = body["scope"].s();
+        if (body.has("chapter_id"))  updates.chapter_id  = body["chapter_id"].i();
         if (body.has("is_virtual"))  updates.is_virtual  = body["is_virtual"].b();
         if (body.has("discord_voice_channel_id")) updates.discord_voice_channel_id = body["discord_voice_channel_id"].s();
         if (body.has("notes"))  updates.notes  = body["notes"].s();

@@ -234,6 +234,28 @@ TEST_F(IntegrationTest, ApiEventsCreateGetUpdateDelete) {
     EXPECT_EQ(deleted.code, 200);
 }
 
+// Regression: PUT /api/v1/events silently dropped chapter_id (only POST read
+// it), so re-scoping an event from non_lug/lug_wide to a specific chapter via
+// the API had no effect.
+TEST_F(IntegrationTest, ApiEventsUpdateChapterId) {
+    std::string write_key = make_api_key("write");
+
+    auto created = API_POST("/api/v1/events",
+        R"({"title":"Rescope Event","start_time":"2030-05-01T10:00:00","end_time":"2030-05-01T10:00:00","scope":"non_lug"})",
+        write_key);
+    EXPECT_EQ(created.code, 201);
+    auto body = json::parse(created.body);
+    int64_t id = body["data"]["id"].get<int64_t>();
+
+    auto updated = API_PUT("/api/v1/events/" + std::to_string(id),
+        R"({"scope":"chapter","chapter_id":)" + std::to_string(test_chapter_id) + "}",
+        write_key);
+    EXPECT_EQ(updated.code, 200);
+    auto updated_body = json::parse(updated.body);
+    EXPECT_EQ(updated_body["data"]["chapter_id"].get<int64_t>(), test_chapter_id);
+    EXPECT_EQ(updated_body["data"]["scope"].get<std::string>(), "chapter");
+}
+
 TEST_F(IntegrationTest, ApiEventsListPagination) {
     std::string key = make_api_key("write");
     for (int i = 0; i < 3; ++i) {
@@ -274,6 +296,27 @@ TEST_F(IntegrationTest, ApiMeetingsCreateGetUpdateDelete) {
 
     EXPECT_EQ(API_DELETE("/api/v1/meetings/" + std::to_string(id), write_key).code, 403);
     EXPECT_EQ(API_DELETE("/api/v1/meetings/" + std::to_string(id), admin_key).code, 200);
+}
+
+// Regression: PUT /api/v1/meetings silently dropped chapter_id, same bug as
+// the events endpoint above.
+TEST_F(IntegrationTest, ApiMeetingsUpdateChapterId) {
+    std::string write_key = make_api_key("write");
+
+    auto created = API_POST("/api/v1/meetings",
+        R"({"title":"Rescope Meeting","start_time":"2030-05-01T19:00:00","end_time":"2030-05-01T21:00:00","scope":"lug_wide"})",
+        write_key);
+    EXPECT_EQ(created.code, 201);
+    auto body = json::parse(created.body);
+    int64_t id = body["data"]["id"].get<int64_t>();
+
+    auto updated = API_PUT("/api/v1/meetings/" + std::to_string(id),
+        R"({"scope":"chapter","chapter_id":)" + std::to_string(test_chapter_id) + "}",
+        write_key);
+    EXPECT_EQ(updated.code, 200);
+    auto updated_body = json::parse(updated.body);
+    EXPECT_EQ(updated_body["data"]["chapter_id"].get<int64_t>(), test_chapter_id);
+    EXPECT_EQ(updated_body["data"]["scope"].get<std::string>(), "chapter");
 }
 
 // ─────────────────────────────────────────────────────────────────────────

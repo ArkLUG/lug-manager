@@ -120,6 +120,7 @@ void register_events_api_routes(LugApp& app, EventService& events,
         if (body.has("signup_deadline"))  updates.signup_deadline  = api_ev_normalize_datetime(body["signup_deadline"].s());
         if (body.has("max_attendees"))    updates.max_attendees    = static_cast<int>(body["max_attendees"].i());
         if (body.has("scope"))            updates.scope            = body["scope"].s();
+        if (body.has("chapter_id"))       updates.chapter_id       = body["chapter_id"].i();
         if (body.has("event_lead_id"))    updates.event_lead_id    = body["event_lead_id"].i();
         if (body.has("entrance_fee"))     updates.entrance_fee     = body["entrance_fee"].s();
         if (body.has("notes"))            updates.notes            = body["notes"].s();
