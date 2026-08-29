@@ -545,8 +545,11 @@ paths:
         "200": { description: OK }
     post:
       tags: [attendance]
-      summary: Check a member in
-      description: "Requires `write` scope."
+      summary: Check a member in to a meeting
+      description: >
+        Requires `write` scope. Meetings only — events are tracked exclusively via
+        POST /event-day-attendance (one row per day attended); entity_type="event"
+        here is rejected with 400.
       x-required-scope: write
       requestBody:
         content:
@@ -555,12 +558,13 @@ paths:
               type: object
               properties:
                 member_id: { type: integer }
-                entity_type: { type: string, enum: [meeting, event] }
+                entity_type: { type: string, enum: [meeting] }
                 entity_id: { type: integer }
                 notes: { type: string }
                 is_virtual: { type: boolean }
       responses:
         "201": { description: Created }
+        "400": { description: entity_type is "event" (use /event-day-attendance instead), or not "meeting" }
   /attendance/member/{member_id}:
     get:
       tags: [attendance]

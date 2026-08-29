@@ -595,6 +595,40 @@ TEST_F(IntegrationTest, ApiChapterMembersLeadPromoteDemoteSyncsWithoutError) {
 // Attendance + event-day-attendance
 // ─────────────────────────────────────────────────────────────────────────
 
+// Regression: POST /api/v1/attendance called AttendanceRepository::check_in
+// directly, bypassing AttendanceService's entity_type=="event" branch (which
+// correctly redirects event check-ins to event_day_attendance everywhere else
+// in the app). That let this one endpoint write a stray, un-day-scoped flat
+// attendance row for an event, which then showed up as a second, duplicate
+// card on the member's "My Attendance" page alongside the correct per-day
+// entry - found from a live duplicate after an early backfill batch used this
+// endpoint for an event before event-day-attendance was in use. Now rejected
+// outright; events are event-day-attendance's job exclusively.
+TEST_F(IntegrationTest, ApiAttendanceRejectsEntityTypeEvent) {
+    std::string write_key = make_api_key("write");
+    auto created = API_POST("/api/v1/events",
+        R"({"title":"No Flat Checkin Event","start_time":"2030-05-01T10:00:00","end_time":"2030-05-01T12:00:00"})",
+        write_key);
+    int64_t event_id = json::parse(created.body)["data"]["id"].get<int64_t>();
+
+    auto res = API_POST("/api/v1/attendance",
+        R"({"member_id":)" + std::to_string(regular_member_id) +
+        R"(,"entity_type":"event","entity_id":)" + std::to_string(event_id) + "}", write_key);
+    EXPECT_EQ(res.code, 400);
+
+    // No flat row was created for this event.
+    auto list = API_GET("/api/v1/attendance?entity_type=event&entity_id=" + std::to_string(event_id), write_key);
+    EXPECT_EQ(json::parse(list.body)["data"].size(), 0u);
+}
+
+TEST_F(IntegrationTest, ApiAttendanceRejectsUnknownEntityType) {
+    std::string write_key = make_api_key("write");
+    auto res = API_POST("/api/v1/attendance",
+        R"({"member_id":)" + std::to_string(regular_member_id) +
+        R"(,"entity_type":"chapter","entity_id":1})", write_key);
+    EXPECT_EQ(res.code, 400);
+}
+
 TEST_F(IntegrationTest, ApiAttendanceCheckInAndList) {
     std::string write_key = make_api_key("write");
 

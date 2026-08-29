@@ -59,6 +59,24 @@ void register_attendance_api_routes(LugApp& app, AttendanceRepository& attendanc
         std::string notes       = body.has("notes") ? std::string(body["notes"].s()) : "";
         bool is_virtual         = body.has("is_virtual") && body["is_virtual"].b();
 
+        // Events are tracked exclusively via event_day_attendance (one row per
+        // day attended) - this flat table is meetings-only. Rejecting
+        // entity_type="event" here closes off the only remaining path that
+        // could write a stray, un-day-scoped attendance row for an event
+        // (AttendanceService::check_in already branches correctly for events
+        // when called from elsewhere in the app; this route talks to the raw
+        // repository directly, bypassing that branch entirely).
+        if (entity_type == "event") {
+            envelope_error(res, 400,
+                "events are tracked per-day - use POST /api/v1/event-day-attendance instead",
+                "invalid_request");
+            return res;
+        }
+        if (entity_type != "meeting") {
+            envelope_error(res, 400, "entity_type must be \"meeting\"", "invalid_request");
+            return res;
+        }
+
         try {
             attendance.check_in(member_id, entity_type, entity_id, notes, is_virtual);
             auto& ctx = app.template get_context<ApiKeyMiddleware>(req);
