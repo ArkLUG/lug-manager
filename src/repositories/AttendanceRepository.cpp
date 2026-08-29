@@ -117,7 +117,13 @@ bool AttendanceRepository::set_virtual(int64_t attendance_id, bool is_virtual) {
     stmt.bind(1, static_cast<int64_t>(is_virtual ? 1 : 0));
     stmt.bind(2, attendance_id);
     stmt.step();
-    return true;
+    // UPDATE ... WHERE id=<nonexistent> silently matches zero rows in SQLite
+    // (no error) - previously this unconditionally returned true regardless,
+    // so callers had no way to detect a bad id. changes() reflects the row
+    // count of the immediately preceding statement on this connection.
+    auto changes = db_.prepare("SELECT changes()");
+    changes.step();
+    return changes.col_int(0) > 0;
 }
 
 bool AttendanceRepository::remove_by_id(int64_t attendance_id) {

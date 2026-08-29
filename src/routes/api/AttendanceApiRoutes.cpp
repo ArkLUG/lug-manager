@@ -77,6 +77,36 @@ void register_attendance_api_routes(LugApp& app, AttendanceRepository& attendanc
         return res;
     });
 
+    // PUT /api/v1/attendance/<id> - update is_virtual on an existing record.
+    // Mirrors the browser's /attendance/admin/<id>/toggle-virtual action, but
+    // takes the target state directly instead of toggling from a client-sent
+    // "current" value.
+    CROW_ROUTE(app, "/api/v1/attendance/<int>").methods("PUT"_method)(
+        [&](const crow::request& req, int id) {
+        crow::response res;
+        if (!require_api_scope(req, res, app, "write")) return res;
+
+        auto body = crow::json::load(req.body);
+        if (!body || !body.has("is_virtual")) {
+            envelope_error(res, 400, "is_virtual is required", "invalid_request");
+            return res;
+        }
+
+        bool is_virtual = body["is_virtual"].b();
+        bool ok = attendance.set_virtual(static_cast<int64_t>(id), is_virtual);
+        if (!ok) { envelope_error(res, 404, "attendance record not found", "not_found"); return res; }
+
+        auto& ctx = app.template get_context<ApiKeyMiddleware>(req);
+        audit.log_system("attendance.set_virtual", "attendance", id, "",
+                          "Set is_virtual=" + std::string(is_virtual ? "true" : "false") +
+                          " via " + actor_label(ctx.api_key));
+        crow::json::wvalue body_out;
+        body_out["id"]         = id;
+        body_out["is_virtual"] = is_virtual;
+        write_json(res, 200, envelope_ok(std::move(body_out)));
+        return res;
+    });
+
     // DELETE /api/v1/attendance/<id> - write scope (routine check-out correction)
     CROW_ROUTE(app, "/api/v1/attendance/<int>").methods("DELETE"_method)(
         [&](const crow::request& req, int id) {

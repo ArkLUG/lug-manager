@@ -542,6 +542,21 @@ TEST_F(AttendanceRepoTest, VirtualAttendance) {
     EXPECT_FALSE(updated[0].is_virtual);
 }
 
+// Regression: set_virtual used to unconditionally return true even when the
+// UPDATE matched zero rows (SQLite doesn't error on that), so callers had no
+// way to detect a bad id. Now uses changes() to report whether a row was
+// actually touched.
+TEST_F(AttendanceRepoTest, SetVirtualReturnsFalseForNonexistentId) {
+    EXPECT_FALSE(att->set_virtual(999999, true));
+}
+
+TEST_F(AttendanceRepoTest, SetVirtualReturnsTrueForExistingId) {
+    att->check_in(member_id, "meeting", meeting_id);
+    auto attendees = att->find_by_entity("meeting", meeting_id);
+    ASSERT_EQ(attendees.size(), 1);
+    EXPECT_TRUE(att->set_virtual(attendees[0].id, true));
+}
+
 TEST_F(AttendanceRepoTest, RemoveById) {
     att->check_in(member_id, "meeting", meeting_id);
     auto attendees = att->find_by_entity("meeting", meeting_id);

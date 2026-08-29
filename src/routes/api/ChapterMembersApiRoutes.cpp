@@ -5,7 +5,8 @@
 #include <iostream>
 
 void register_chapter_members_api_routes(LugApp& app, ChapterMemberRepository& chapter_members,
-                                          AuditService& audit) {
+                                          ChapterService& chapters, MemberRepository& member_repo,
+                                          DiscordClient& discord, AuditService& audit) {
 
     // GET /api/v1/chapter-members?chapter_id=&member_id= - at least one filter required
     CROW_ROUTE(app, "/api/v1/chapter-members").methods("GET"_method)(
@@ -58,10 +59,31 @@ void register_chapter_members_api_routes(LugApp& app, ChapterMemberRepository& c
         auto& ctx = app.template get_context<ApiKeyMiddleware>(req);
 
         try {
+            // Read the prior role before upserting so a lead <-> non-lead
+            // transition can be detected and mirrored to Discord, same as
+            // the browser's /chapters/<id>/lead and .../demote routes.
+            auto prior_role = chapter_members.get_chapter_role(member_id, chapter_id);
+            bool was_lead = prior_role && *prior_role == "lead";
+            bool now_lead = chapter_role == "lead";
+
             chapter_members.upsert(member_id, chapter_id, chapter_role, /*granted_by=*/0);
             audit.log_system("chapter_member.upsert", "chapter_member", member_id,
                               "member " + std::to_string(member_id) + " in chapter " + std::to_string(chapter_id),
                               "Set role=" + chapter_role + " via " + actor_label(ctx.api_key));
+
+            if (was_lead != now_lead) {
+                auto ch = chapters.get(chapter_id);
+                auto mbr = member_repo.find_by_id(member_id);
+                if (ch && mbr && !ch->discord_lead_role_id.empty() && !mbr->discord_user_id.empty()) {
+                    try {
+                        if (now_lead) discord.add_member_role(mbr->discord_user_id, ch->discord_lead_role_id);
+                        else          discord.remove_member_role(mbr->discord_user_id, ch->discord_lead_role_id);
+                    } catch (const std::exception& e) {
+                        std::cerr << "[ChapterMembersApiRoutes] Failed to sync lead Discord role: " << e.what() << "\n";
+                    }
+                }
+            }
+
             crow::json::wvalue body_out;
             body_out["member_id"]    = member_id;
             body_out["chapter_id"]   = chapter_id;

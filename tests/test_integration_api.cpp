@@ -11,6 +11,7 @@
 // accept.
 #include "integration_test_base.hpp"
 #include <nlohmann/json.hpp>
+#include <ctime>
 
 using json = nlohmann::json;
 
@@ -317,6 +318,83 @@ TEST_F(IntegrationTest, ApiEventsUpdateChapterId) {
     EXPECT_EQ(updated_body["data"]["scope"].get<std::string>(), "chapter");
 }
 
+// New endpoint: POST /api/v1/events/<id>/checkin-token - generates (or returns
+// the existing) QR check-in token, same as the browser's /events/<id>/generate-checkin.
+TEST_F(IntegrationTest, ApiEventsCheckinTokenGenerateAndReuse) {
+    std::string write_key = make_api_key("write");
+    auto created = API_POST("/api/v1/events",
+        R"({"title":"Checkin Token Event","start_time":"2030-05-01T10:00:00","end_time":"2030-05-01T12:00:00"})",
+        write_key);
+    int64_t id = json::parse(created.body)["data"]["id"].get<int64_t>();
+
+    auto first = API_POST("/api/v1/events/" + std::to_string(id) + "/checkin-token", "", write_key);
+    EXPECT_EQ(first.code, 200);
+    auto first_body = json::parse(first.body);
+    std::string token = first_body["data"]["checkin_token"].get<std::string>();
+    EXPECT_FALSE(token.empty());
+
+    // Calling again returns the SAME token, not a freshly generated one.
+    auto second = API_POST("/api/v1/events/" + std::to_string(id) + "/checkin-token", "", write_key);
+    EXPECT_EQ(second.code, 200);
+    EXPECT_EQ(json::parse(second.body)["data"]["checkin_token"].get<std::string>(), token);
+}
+
+// New endpoint: POST /api/v1/events/<id>/publish-report - builds and posts a
+// report to the configured Discord forum. No forum is configured in this test
+// fixture, so publish_report_to_forum() no-ops (returns ""), but the endpoint
+// itself must still succeed and not error just because Discord isn't wired up.
+TEST_F(IntegrationTest, ApiEventsPublishReportSucceedsEvenWithoutDiscordConfigured) {
+    std::string write_key = make_api_key("write");
+    auto created = API_POST("/api/v1/events",
+        R"({"title":"Report Event","start_time":"2030-05-01T10:00:00","end_time":"2030-05-01T12:00:00"})",
+        write_key);
+    int64_t id = json::parse(created.body)["data"]["id"].get<int64_t>();
+
+    auto res = API_POST("/api/v1/events/" + std::to_string(id) + "/publish-report", "", write_key);
+    EXPECT_EQ(res.code, 200);
+}
+
+// New endpoint: POST /api/v1/events/<id>/convert-to-meeting - creates a meeting
+// from the event, copies attendance, deletes the event. Admin-only (destructive).
+TEST_F(IntegrationTest, ApiEventsConvertToMeeting) {
+    std::string write_key = make_api_key("write");
+    std::string admin_key = make_api_key("admin");
+
+    auto created = API_POST("/api/v1/events",
+        R"({"title":"Convert Me","description":"desc","location":"HQ",)"
+        R"("start_time":"2030-05-01T10:00:00","end_time":"2030-05-02T12:00:00","scope":"lug_wide"})",
+        write_key);
+    int64_t event_id = json::parse(created.body)["data"]["id"].get<int64_t>();
+
+    auto days = json::parse(API_GET("/api/v1/events/" + std::to_string(event_id) + "/days", write_key).body);
+    int64_t day_id = days["data"][0]["id"].get<int64_t>();
+    API_POST("/api/v1/event-day-attendance",
+        R"({"event_day_id":)" + std::to_string(day_id) +
+        R"(,"member_id":)" + std::to_string(regular_member_id) + "}", write_key);
+
+    // write scope cannot convert (destructive/admin-only)
+    auto forbidden = API_POST("/api/v1/events/" + std::to_string(event_id) + "/convert-to-meeting", "", write_key);
+    EXPECT_EQ(forbidden.code, 403);
+
+    auto converted = API_POST("/api/v1/events/" + std::to_string(event_id) + "/convert-to-meeting", "", admin_key);
+    EXPECT_EQ(converted.code, 200);
+    int64_t meeting_id = json::parse(converted.body)["data"]["meeting_id"].get<int64_t>();
+    EXPECT_GT(meeting_id, 0);
+
+    // Original event is gone.
+    auto gone = API_GET("/api/v1/events/" + std::to_string(event_id), write_key);
+    EXPECT_EQ(gone.code, 404);
+
+    // New meeting exists with the copied title, and attendance carried over.
+    auto meeting = json::parse(API_GET("/api/v1/meetings/" + std::to_string(meeting_id), write_key).body);
+    EXPECT_EQ(meeting["data"]["title"].get<std::string>(), "Convert Me");
+
+    auto meeting_attendance = json::parse(
+        API_GET("/api/v1/attendance?entity_type=meeting&entity_id=" + std::to_string(meeting_id), write_key).body);
+    ASSERT_EQ(meeting_attendance["data"].size(), 1u);
+    EXPECT_EQ(meeting_attendance["data"][0]["member_id"].get<int64_t>(), regular_member_id);
+}
+
 TEST_F(IntegrationTest, ApiEventsListPagination) {
     std::string key = make_api_key("write");
     for (int i = 0; i < 3; ++i) {
@@ -378,6 +456,46 @@ TEST_F(IntegrationTest, ApiMeetingsUpdateChapterId) {
     auto updated_body = json::parse(updated.body);
     EXPECT_EQ(updated_body["data"]["chapter_id"].get<int64_t>(), test_chapter_id);
     EXPECT_EQ(updated_body["data"]["scope"].get<std::string>(), "chapter");
+}
+
+// New endpoint: POST /api/v1/meetings/<id>/checkin-token - same generate-or-reuse
+// semantics as the events version, plus the virtual-meeting rejection.
+TEST_F(IntegrationTest, ApiMeetingsCheckinTokenGenerateReuseAndVirtualRejected) {
+    std::string write_key = make_api_key("write");
+
+    auto created = API_POST("/api/v1/meetings",
+        R"({"title":"Checkin Token Meeting","start_time":"2030-05-01T19:00:00","end_time":"2030-05-01T21:00:00"})",
+        write_key);
+    int64_t id = json::parse(created.body)["data"]["id"].get<int64_t>();
+
+    auto first = API_POST("/api/v1/meetings/" + std::to_string(id) + "/checkin-token", "", write_key);
+    EXPECT_EQ(first.code, 200);
+    std::string token = json::parse(first.body)["data"]["checkin_token"].get<std::string>();
+    EXPECT_FALSE(token.empty());
+
+    auto second = API_POST("/api/v1/meetings/" + std::to_string(id) + "/checkin-token", "", write_key);
+    EXPECT_EQ(json::parse(second.body)["data"]["checkin_token"].get<std::string>(), token);
+
+    auto virtual_created = API_POST("/api/v1/meetings",
+        R"({"title":"Virtual Meeting","start_time":"2030-05-01T19:00:00","end_time":"2030-05-01T21:00:00","is_virtual":true})",
+        write_key);
+    int64_t virtual_id = json::parse(virtual_created.body)["data"]["id"].get<int64_t>();
+    auto virtual_res = API_POST("/api/v1/meetings/" + std::to_string(virtual_id) + "/checkin-token", "", write_key);
+    EXPECT_EQ(virtual_res.code, 400);
+}
+
+// New endpoint: POST /api/v1/meetings/<id>/publish-report - mirrors the events
+// version; no forum configured in this fixture, so it should still succeed
+// (Discord publish is a no-op) rather than error.
+TEST_F(IntegrationTest, ApiMeetingsPublishReportSucceedsEvenWithoutDiscordConfigured) {
+    std::string write_key = make_api_key("write");
+    auto created = API_POST("/api/v1/meetings",
+        R"({"title":"Report Meeting","start_time":"2030-05-01T19:00:00","end_time":"2030-05-01T21:00:00"})",
+        write_key);
+    int64_t id = json::parse(created.body)["data"]["id"].get<int64_t>();
+
+    auto res = API_POST("/api/v1/meetings/" + std::to_string(id) + "/publish-report", "", write_key);
+    EXPECT_EQ(res.code, 200);
 }
 
 // ─────────────────────────────────────────────────────────────────────────
@@ -444,6 +562,35 @@ TEST_F(IntegrationTest, ApiChapterMembersUpsertAndRemove) {
     EXPECT_EQ(removed.code, 200);
 }
 
+// Regression: POST /api/v1/chapter-members previously had no DiscordClient
+// dependency at all, so a lead promotion/demotion never synced the chapter's
+// Discord lead role the way the browser's /chapters/<id>/lead route does.
+// This test's fixture chapter has no discord_lead_role_id configured, so the
+// sync path is a deliberate no-op here - it exercises that the lead <-> non-lead
+// transition detection doesn't throw or misbehave when there's nothing to sync,
+// and that the role change itself still persists correctly either way.
+TEST_F(IntegrationTest, ApiChapterMembersLeadPromoteDemoteSyncsWithoutError) {
+    std::string admin_key = make_api_key("admin");
+
+    auto promote = API_POST("/api/v1/chapter-members",
+        R"({"member_id":)" + std::to_string(regular_member_id) +
+        R"(,"chapter_id":)" + std::to_string(test_chapter_id) +
+        R"(,"chapter_role":"lead"})", admin_key);
+    EXPECT_EQ(promote.code, 201);
+    auto role_after_promote = chapter_member_repo->get_chapter_role(regular_member_id, test_chapter_id);
+    ASSERT_TRUE(role_after_promote.has_value());
+    EXPECT_EQ(*role_after_promote, "lead");
+
+    auto demote = API_POST("/api/v1/chapter-members",
+        R"({"member_id":)" + std::to_string(regular_member_id) +
+        R"(,"chapter_id":)" + std::to_string(test_chapter_id) +
+        R"(,"chapter_role":"member"})", admin_key);
+    EXPECT_EQ(demote.code, 201);
+    auto role_after_demote = chapter_member_repo->get_chapter_role(regular_member_id, test_chapter_id);
+    ASSERT_TRUE(role_after_demote.has_value());
+    EXPECT_EQ(*role_after_demote, "member");
+}
+
 // ─────────────────────────────────────────────────────────────────────────
 // Attendance + event-day-attendance
 // ─────────────────────────────────────────────────────────────────────────
@@ -498,6 +645,44 @@ TEST_F(IntegrationTest, ApiEventDayAttendanceCheckIn) {
     expect_contains(by_event, "Regular U.");
 }
 
+// New endpoint: PUT /api/v1/attendance/<id> - update is_virtual on an existing flat
+// attendance record. Previously there was no way to toggle this via the API at all
+// (the browser has /attendance/admin/<id>/toggle-virtual with no equivalent).
+TEST_F(IntegrationTest, ApiAttendanceUpdateIsVirtual) {
+    std::string write_key = make_api_key("write");
+
+    auto created = API_POST("/api/v1/meetings",
+        R"({"title":"Virtual Toggle Meeting","start_time":"2030-05-01T19:00:00","end_time":"2030-05-01T21:00:00"})",
+        write_key);
+    int64_t meeting_id = json::parse(created.body)["data"]["id"].get<int64_t>();
+
+    API_POST("/api/v1/attendance",
+        R"({"member_id":)" + std::to_string(regular_member_id) +
+        R"(,"entity_type":"meeting","entity_id":)" + std::to_string(meeting_id) + "}", write_key);
+
+    auto list = API_GET("/api/v1/attendance?entity_type=meeting&entity_id=" + std::to_string(meeting_id), write_key);
+    auto list_body = json::parse(list.body);
+    ASSERT_EQ(list_body["data"].size(), 1u);
+    int64_t attendance_id = list_body["data"][0]["id"].get<int64_t>();
+    EXPECT_EQ(list_body["data"][0]["is_virtual"].get<bool>(), false);
+
+    auto updated = API_PUT("/api/v1/attendance/" + std::to_string(attendance_id),
+        R"({"is_virtual":true})", write_key);
+    EXPECT_EQ(updated.code, 200);
+    auto updated_body = json::parse(updated.body);
+    EXPECT_EQ(updated_body["data"]["is_virtual"].get<bool>(), true);
+
+    auto relist = API_GET("/api/v1/attendance?entity_type=meeting&entity_id=" + std::to_string(meeting_id), write_key);
+    auto relist_body = json::parse(relist.body);
+    EXPECT_EQ(relist_body["data"][0]["is_virtual"].get<bool>(), true);
+}
+
+TEST_F(IntegrationTest, ApiAttendanceUpdateIsVirtualMissingRecordReturns404) {
+    std::string write_key = make_api_key("write");
+    auto res = API_PUT("/api/v1/attendance/999999", R"({"is_virtual":true})", write_key);
+    EXPECT_EQ(res.code, 404);
+}
+
 // ─────────────────────────────────────────────────────────────────────────
 // Perk levels
 // ─────────────────────────────────────────────────────────────────────────
@@ -522,6 +707,64 @@ TEST_F(IntegrationTest, ApiPerkLevelsCreateGetUpdateDelete) {
 
     EXPECT_EQ(API_DELETE("/api/v1/perk-levels/" + std::to_string(id), write_key).code, 403);
     EXPECT_EQ(API_DELETE("/api/v1/perk-levels/" + std::to_string(id), admin_key).code, 200);
+}
+
+// New endpoint: POST /api/v1/perk-levels/clone - copies every tier from one
+// year to another, refusing if the target year already has tiers.
+TEST_F(IntegrationTest, ApiPerkLevelsClone) {
+    std::string admin_key = make_api_key("admin");
+
+    API_POST("/api/v1/perk-levels",
+        R"({"name":"Bronze","year":2031,"meeting_attendance_required":1,"sort_order":1})", admin_key);
+    API_POST("/api/v1/perk-levels",
+        R"({"name":"Silver","year":2031,"meeting_attendance_required":3,"sort_order":2})", admin_key);
+
+    auto cloned = API_POST("/api/v1/perk-levels/clone",
+        R"({"source_year":2031,"target_year":2032})", admin_key);
+    EXPECT_EQ(cloned.code, 200);
+    EXPECT_EQ(json::parse(cloned.body)["data"]["cloned"].get<int>(), 2);
+
+    auto target = API_GET("/api/v1/perk-levels?year=2032", admin_key);
+    expect_contains(target, "Bronze");
+    expect_contains(target, "Silver");
+
+    // Cloning again into the same (now non-empty) target year is refused.
+    auto conflict = API_POST("/api/v1/perk-levels/clone",
+        R"({"source_year":2031,"target_year":2032})", admin_key);
+    EXPECT_EQ(conflict.code, 400);
+}
+
+TEST_F(IntegrationTest, ApiPerkLevelsCloneRequiresAdmin) {
+    std::string write_key = make_api_key("write");
+    auto res = API_POST("/api/v1/perk-levels/clone",
+        R"({"source_year":2031,"target_year":2032})", write_key);
+    EXPECT_EQ(res.code, 403);
+}
+
+// New endpoint: POST /api/v1/perk-levels/sync-roles - bulk-syncs every
+// member's Discord perk roles against the current year's tiers. No bot
+// configured in this fixture, so add/remove_member_role calls throw and are
+// caught (see the route's catch(...) around each call) - this test verifies
+// the endpoint completes and reports a member count regardless.
+TEST_F(IntegrationTest, ApiPerkLevelsSyncRoles) {
+    std::string admin_key = make_api_key("admin");
+    std::time_t now = std::time(nullptr);
+    int current_year = std::localtime(&now)->tm_year + 1900;
+    API_POST("/api/v1/perk-levels",
+        R"({"name":"Current Year Tier","year":)" + std::to_string(current_year) +
+        R"(,"meeting_attendance_required":0,"event_attendance_required":0,"discord_role_id":"999"})", admin_key);
+
+    auto res = API_POST("/api/v1/perk-levels/sync-roles", "", admin_key);
+    EXPECT_EQ(res.code, 200);
+    auto body = json::parse(res.body);
+    EXPECT_EQ(body["data"]["year"].get<int>(), current_year);
+    EXPECT_GE(body["data"]["synced"].get<int>(), 1);
+}
+
+TEST_F(IntegrationTest, ApiPerkLevelsSyncRolesRequiresAdmin) {
+    std::string write_key = make_api_key("write");
+    auto res = API_POST("/api/v1/perk-levels/sync-roles", "", write_key);
+    EXPECT_EQ(res.code, 403);
 }
 
 // ─────────────────────────────────────────────────────────────────────────

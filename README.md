@@ -312,6 +312,8 @@ A key's scope is independent of the issuing admin's own session — API keys nev
 
 Members, events (+ per-day schedule), meetings, chapters, chapter member roles, attendance (+ per-day event attendance), perk levels, role mappings, audit log, and settings all have endpoints. Audit log is read-only; event days are read-only (derived from the event's date range); everything else supports the full verb set its scope allows.
 
+Beyond plain CRUD, most of the browser UI's admin actions have an API equivalent too: generating a QR check-in token, publishing an event/meeting report to its Discord forum, converting an event to a meeting, toggling an attendance record's virtual flag, cloning perk tiers between years, and bulk-syncing perk Discord roles. A chapter-member role change into or out of `lead` also syncs the chapter's Discord lead role, same as the browser. The handful of things that stay browser/session-only are inherently tied to a specific user's session or an in-person scan (self check-in/out, the public QR check-in flow, and viewing your own profile) — an admin API key can already achieve the same end state directly (e.g. checking any member into any event/meeting).
+
 ### Docs
 
 Interactive OpenAPI/Swagger documentation is served at `/static/api-docs.html` (self-hosted, no external CDN calls) — the raw spec is at `/static/openapi.yaml`.

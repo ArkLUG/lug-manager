@@ -3,8 +3,11 @@
 #include "routes/api/Serialize.hpp"
 #include <crow.h>
 #include <iostream>
+#include <ctime>
 
-void register_perk_levels_api_routes(LugApp& app, PerkLevelRepository& perks, AuditService& audit) {
+void register_perk_levels_api_routes(LugApp& app, PerkLevelRepository& perks,
+                                      MemberRepository& members, AttendanceRepository& attendance,
+                                      DiscordClient& discord, AuditService& audit) {
 
     // GET /api/v1/perk-levels?year=
     CROW_ROUTE(app, "/api/v1/perk-levels").methods("GET"_method)(
@@ -124,6 +127,99 @@ void register_perk_levels_api_routes(LugApp& app, PerkLevelRepository& perks, Au
         res.code = 200;
         res.add_header("Content-Type", "application/json");
         res.write(R"({"data":{"success":true}})");
+        return res;
+    });
+
+    // POST /api/v1/perk-levels/clone - copy every tier from source_year to target_year.
+    // Mirrors the browser's /perks/clone route. Fails if target_year already has tiers
+    // (same guard as the browser route, so this never silently duplicates a year's setup).
+    CROW_ROUTE(app, "/api/v1/perk-levels/clone").methods("POST"_method)(
+        [&](const crow::request& req) {
+        crow::response res;
+        if (!require_api_scope(req, res, app, "admin")) return res;
+
+        auto body = crow::json::load(req.body);
+        if (!body || !body.has("source_year") || !body.has("target_year")) {
+            envelope_error(res, 400, "source_year and target_year are required", "invalid_request");
+            return res;
+        }
+        int source_year = static_cast<int>(body["source_year"].i());
+        int target_year = static_cast<int>(body["target_year"].i());
+        if (source_year == 0 || target_year == 0 || source_year == target_year) {
+            envelope_error(res, 400, "source_year and target_year must be non-zero and different", "invalid_request");
+            return res;
+        }
+
+        auto existing = perks.find_by_year(target_year);
+        if (!existing.empty()) {
+            envelope_error(res, 400, std::to_string(target_year) + " already has " +
+                            std::to_string(existing.size()) + " tiers - delete them first", "conflict");
+            return res;
+        }
+
+        int cloned = perks.clone_year(source_year, target_year);
+        auto& ctx = app.template get_context<ApiKeyMiddleware>(req);
+        audit.log_system("perk.clone", "perk", 0, "",
+                          "Cloned " + std::to_string(cloned) + " tiers from " + std::to_string(source_year) +
+                          " to " + std::to_string(target_year) + " via " + actor_label(ctx.api_key));
+        crow::json::wvalue body_out;
+        body_out["cloned"] = cloned;
+        write_json(res, 200, envelope_ok(std::move(body_out)));
+        return res;
+    });
+
+    // POST /api/v1/perk-levels/sync-roles - bulk sync every member's Discord perk roles
+    // against the current calendar year's tiers. Mirrors the browser's
+    // /api/perks/sync-roles route exactly (per-tier add/remove, not a single "best tier").
+    CROW_ROUTE(app, "/api/v1/perk-levels/sync-roles").methods("POST"_method)(
+        [&](const crow::request& req) {
+        crow::response res;
+        if (!require_api_scope(req, res, app, "admin")) return res;
+
+        std::time_t now = std::time(nullptr);
+        int year = std::localtime(&now)->tm_year + 1900;
+        auto levels = perks.find_by_year(year);
+        if (levels.empty()) {
+            crow::json::wvalue body_out;
+            body_out["synced"] = 0;
+            body_out["year"]   = year;
+            body_out["note"]   = "No perk levels defined for " + std::to_string(year);
+            write_json(res, 200, envelope_ok(std::move(body_out)));
+            return res;
+        }
+
+        auto all_members = members.find_all();
+        int synced = 0;
+        for (const auto& m : all_members) {
+            int meeting_count = attendance.count_member_by_year(m.id, year, "meeting");
+            int event_count   = attendance.count_member_by_year(m.id, year, "event");
+
+            for (const auto& lvl : levels) {
+                if (lvl.discord_role_id.empty() || m.discord_user_id.empty()) continue;
+
+                bool meets_tier = meeting_count >= lvl.meeting_attendance_required &&
+                                  event_count >= lvl.event_attendance_required &&
+                                  (!lvl.requires_paid_dues || m.is_paid) &&
+                                  fol_rank(m.fol_status) >= fol_rank(lvl.min_fol_status);
+
+                if (meets_tier) {
+                    try { discord.add_member_role(m.discord_user_id, lvl.discord_role_id); }
+                    catch (...) {}
+                } else {
+                    try { discord.remove_member_role(m.discord_user_id, lvl.discord_role_id); }
+                    catch (...) {}
+                }
+            }
+            ++synced;
+        }
+
+        auto& ctx = app.template get_context<ApiKeyMiddleware>(req);
+        audit.log_system("perk.sync_roles", "perk", 0, "",
+                          "Synced " + std::to_string(synced) + " members via " + actor_label(ctx.api_key));
+        crow::json::wvalue body_out;
+        body_out["synced"] = synced;
+        body_out["year"]   = year;
+        write_json(res, 200, envelope_ok(std::move(body_out)));
         return res;
     });
 }

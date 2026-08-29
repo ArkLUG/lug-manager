@@ -342,6 +342,33 @@ paths:
       parameters: [{ name: id, in: path, required: true, schema: { type: integer } }]
       responses:
         "200": { description: OK }
+  /events/{id}/checkin-token:
+    post:
+      tags: [events]
+      summary: Generate (or return the existing) QR check-in token
+      description: "Requires `write` scope."
+      x-required-scope: write
+      parameters: [{ name: id, in: path, required: true, schema: { type: integer } }]
+      responses:
+        "200": { description: OK }
+  /events/{id}/publish-report:
+    post:
+      tags: [events]
+      summary: Build and publish/update the event report in the Discord event-reports forum
+      description: "Requires `write` scope. No-ops (returns an empty discord_thread_id) if no forum channel is configured."
+      x-required-scope: write
+      parameters: [{ name: id, in: path, required: true, schema: { type: integer } }]
+      responses:
+        "200": { description: OK }
+  /events/{id}/convert-to-meeting:
+    post:
+      tags: [events]
+      summary: Create a meeting from this event, copy its attendance, then delete the event
+      description: "Requires `admin` scope (destructive - deletes the event)."
+      x-required-scope: admin
+      parameters: [{ name: id, in: path, required: true, schema: { type: integer } }]
+      responses:
+        "200": { description: OK }
 
   /meetings:
     get:
@@ -388,6 +415,25 @@ paths:
       summary: Cancel a meeting
       description: "Requires `admin` scope."
       x-required-scope: admin
+      parameters: [{ name: id, in: path, required: true, schema: { type: integer } }]
+      responses:
+        "200": { description: OK }
+  /meetings/{id}/checkin-token:
+    post:
+      tags: [meetings]
+      summary: Generate (or return the existing) QR check-in token
+      description: "Requires `write` scope. Rejected for virtual meetings (no in-person QR flow)."
+      x-required-scope: write
+      parameters: [{ name: id, in: path, required: true, schema: { type: integer } }]
+      responses:
+        "200": { description: OK }
+        "400": { description: Meeting is virtual }
+  /meetings/{id}/publish-report:
+    post:
+      tags: [meetings]
+      summary: Build and publish/update the meeting report in the Discord meeting-reports forum
+      description: "Requires `write` scope. No-ops (returns an empty discord_thread_id) if no forum channel is configured."
+      x-required-scope: write
       parameters: [{ name: id, in: path, required: true, schema: { type: integer } }]
       responses:
         "200": { description: OK }
@@ -451,7 +497,7 @@ paths:
     post:
       tags: [chapter-members]
       summary: Upsert a member's chapter role
-      description: "Requires `write` scope; `admin` scope required if chapter_role is `lead`."
+      description: "Requires `write` scope; `admin` scope required if chapter_role is `lead`. A transition into or out of `lead` also syncs the chapter's configured Discord lead role for that member, if both are set up."
       x-required-scope: write
       requestBody:
         content:
@@ -525,6 +571,23 @@ paths:
       responses:
         "200": { description: OK }
   /attendance/{id}:
+    put:
+      tags: [attendance]
+      summary: Update is_virtual on an existing attendance record
+      description: "Requires `write` scope."
+      x-required-scope: write
+      parameters: [{ name: id, in: path, required: true, schema: { type: integer } }]
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [is_virtual]
+              properties:
+                is_virtual: { type: boolean }
+      responses:
+        "200": { description: OK }
+        "404": { description: Attendance record not found }
     delete:
       tags: [attendance]
       summary: Remove an attendance record (routine check-out correction)
@@ -622,6 +685,32 @@ paths:
       description: "Requires `admin` scope (Discord-role-linked)."
       x-required-scope: admin
       parameters: [{ name: id, in: path, required: true, schema: { type: integer } }]
+      responses:
+        "200": { description: OK }
+  /perk-levels/clone:
+    post:
+      tags: [perk-levels]
+      summary: Copy every tier from one year to another
+      description: "Requires `admin` scope. Refuses if target_year already has any tiers."
+      x-required-scope: admin
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [source_year, target_year]
+              properties:
+                source_year: { type: integer }
+                target_year: { type: integer }
+      responses:
+        "200": { description: OK }
+        "400": { description: Invalid years, or target_year already has tiers }
+  /perk-levels/sync-roles:
+    post:
+      tags: [perk-levels]
+      summary: Bulk-sync every member's Discord perk roles against the current year's tiers
+      description: "Requires `admin` scope. Adds/removes each tier's Discord role per member based on their current-year meeting/event attendance, paid-dues status, and age range - same logic as the browser's admin perk sync button."
+      x-required-scope: admin
       responses:
         "200": { description: OK }
 

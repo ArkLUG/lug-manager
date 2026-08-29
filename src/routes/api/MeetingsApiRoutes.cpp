@@ -3,13 +3,17 @@
 #include "routes/api/Serialize.hpp"
 #include <crow.h>
 #include <iostream>
+#include <sstream>
 
 static std::string api_mt_normalize_datetime(const std::string& dt) {
     if (dt.size() == 16) return dt + ":00";
     return dt;
 }
 
-void register_meetings_api_routes(LugApp& app, MeetingService& meetings, AuditService& audit) {
+void register_meetings_api_routes(LugApp& app, MeetingService& meetings,
+                                   AttendanceRepository& attendance,
+                                   ChapterService& chapters, DiscordClient& discord,
+                                   AuditService& audit) {
 
     // GET /api/v1/meetings - paginated list
     CROW_ROUTE(app, "/api/v1/meetings").methods("GET"_method)(
@@ -108,6 +112,103 @@ void register_meetings_api_routes(LugApp& app, MeetingService& meetings, AuditSe
             std::cerr << "[MeetingsApiRoutes] PUT /api/v1/meetings/" << id << " error: " << ex.what() << "\n";
             envelope_error(res, 400, "could not update meeting", "validation_error");
         }
+        return res;
+    });
+
+    // POST /api/v1/meetings/<id>/checkin-token - generate (or return existing) QR check-in
+    // token. Mirrors the browser's /meetings/<id>/generate-checkin action; virtual meetings
+    // have no in-person QR flow, same restriction as the browser route.
+    CROW_ROUTE(app, "/api/v1/meetings/<int>/checkin-token").methods("POST"_method)(
+        [&](const crow::request& req, int id) {
+        crow::response res;
+        if (!require_api_scope(req, res, app, "write")) return res;
+
+        auto m = meetings.get(static_cast<int64_t>(id));
+        if (!m) { envelope_error(res, 404, "meeting not found", "not_found"); return res; }
+        if (m->is_virtual) {
+            envelope_error(res, 400, "QR check-in is not available for virtual meetings", "invalid_request");
+            return res;
+        }
+
+        std::string token = m->checkin_token;
+        if (token.empty()) {
+            token = MeetingService::generate_uuid();
+            meetings.repo().update_checkin_token(m->id, token);
+        }
+
+        audit.log_system("meeting.generate_checkin_token", "meeting", m->id, m->title,
+                          "Generated via " + actor_label(app.template get_context<ApiKeyMiddleware>(req).api_key));
+        crow::json::wvalue body_out;
+        body_out["id"]            = m->id;
+        body_out["checkin_token"] = token;
+        write_json(res, 200, envelope_ok(std::move(body_out)));
+        return res;
+    });
+
+    // POST /api/v1/meetings/<id>/publish-report - build the same markdown report the
+    // browser's /meetings/<id>/publish-report route builds, and post/update it in the
+    // meeting-reports Discord forum. Mirrors that route's logic exactly (MeetingRoutes.cpp).
+    CROW_ROUTE(app, "/api/v1/meetings/<int>/publish-report").methods("POST"_method)(
+        [&](const crow::request& req, int id) {
+        crow::response res;
+        if (!require_api_scope(req, res, app, "write")) return res;
+
+        auto mtg = meetings.get(static_cast<int64_t>(id));
+        if (!mtg) { envelope_error(res, 404, "meeting not found", "not_found"); return res; }
+
+        auto attendees = attendance.find_by_entity("meeting", mtg->id);
+
+        std::string chapter_name;
+        if (mtg->chapter_id > 0) {
+            auto ch = chapters.get(mtg->chapter_id);
+            if (ch) chapter_name = ch->name;
+        }
+
+        std::ostringstream report;
+        report << "**Meeting:** " << mtg->title << "\n";
+        report << "**Chapter:** " << (chapter_name.empty() ? "LUG Wide" : chapter_name) << "\n";
+        report << "**Meeting date:** " << mtg->start_time.substr(0, 10) << "\n";
+        if (mtg->is_virtual)
+            report << "**Format:** Virtual\n";
+        else if (!mtg->location.empty())
+            report << "**Location:** " << mtg->location << "\n";
+
+        std::vector<std::string> in_person, virtual_list;
+        for (const auto& a : attendees) {
+            if (a.is_virtual) virtual_list.push_back(a.member_display_name);
+            else              in_person.push_back(a.member_display_name);
+        }
+        report << "**Members by name:**\n";
+        if (in_person.empty() && virtual_list.empty()) {
+            report << "- (none)\n";
+        } else {
+            for (const auto& name : in_person)
+                report << "- " << name << "\n";
+            for (const auto& name : virtual_list)
+                report << "- " << name << " (virtual)\n";
+        }
+
+        if (!mtg->description.empty())
+            report << "\n## Description\n" << mtg->description << "\n";
+        if (!mtg->notes.empty())
+            report << "\n## Notes\n" << mtg->notes << "\n";
+
+        std::string forum_id = discord.get_meeting_reports_forum_id();
+        if (forum_id.empty()) forum_id = discord.get_events_forum_channel_id();
+
+        std::string thread_id = discord.publish_report_to_forum(
+            forum_id, mtg->notes_discord_post_id, "Report: " + mtg->title, report.str());
+
+        if (!thread_id.empty() && thread_id != mtg->notes_discord_post_id) {
+            meetings.repo().update_notes_discord_post_id(mtg->id, thread_id);
+        }
+
+        audit.log_system("meeting.publish_report", "meeting", mtg->id, mtg->title,
+                          "Published via " + actor_label(app.template get_context<ApiKeyMiddleware>(req).api_key));
+        crow::json::wvalue body_out;
+        body_out["id"]               = mtg->id;
+        body_out["discord_thread_id"] = thread_id;
+        write_json(res, 200, envelope_ok(std::move(body_out)));
         return res;
     });
 
