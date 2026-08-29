@@ -149,6 +149,34 @@ TEST_F(IntegrationTest, SettingsSaveReportForumChannels) {
     EXPECT_EQ(settings_repo->get("discord_meeting_reports_forum_channel_id"), "mtg-forum-456");
 }
 
+// Regression: discord_events_forum_channel_id (and the two role-id settings)
+// used to be written unconditionally from the POST body ("allow clearing").
+// The <select> for these fields is populated by a live Discord API fetch on
+// every GET /settings - if that fetch ever comes back empty (rate limit,
+// transient error, or simply no test/mock Discord backing, as here), the
+// dropdown had no selected option and any unrelated save (e.g. just the
+// timezone) would submit it blank and silently wipe a previously-configured
+// value. Saving directly via settings_repo (simulating a real prior save
+// while a guild was live) and then POSTing /settings again with the field
+// omitted must NOT clear it.
+TEST_F(IntegrationTest, SettingsSaveDoesNotClearForumChannelWhenFieldOmitted) {
+    settings_repo->set("discord_events_forum_channel_id", "forum-already-set-123");
+    settings_repo->set("discord_announcement_role_id", "role-already-set-456");
+    settings_repo->set("discord_non_lug_event_role_id", "role-already-set-789");
+
+    auto r = POST_HTMX("/settings",
+        "discord_guild_id=persist-guild"
+        "&discord_announcements_channel_id=persist-ch"
+        "&lug_timezone=UTC"
+        "&ical_calendar_name=Persist+Test",
+        admin_token);
+    EXPECT_EQ(r.code, 200);
+
+    EXPECT_EQ(settings_repo->get("discord_events_forum_channel_id"), "forum-already-set-123");
+    EXPECT_EQ(settings_repo->get("discord_announcement_role_id"), "role-already-set-456");
+    EXPECT_EQ(settings_repo->get("discord_non_lug_event_role_id"), "role-already-set-789");
+}
+
 TEST_F(IntegrationTest, SettingsNonAdminForbiddenPost) {
     auto r = POST("/settings", "discord_guild_id=hacked", member_token);
     EXPECT_EQ(r.code, 403);

@@ -377,18 +377,37 @@ void register_settings_routes(LugApp& app, SettingsRepository& settings,
         std::string event_reports_forum = settings.get("discord_event_reports_forum_channel_id");
         std::string meeting_reports_forum = settings.get("discord_meeting_reports_forum_channel_id");
 
+        // NOTE: a previously-saved `selected` id is always kept as a real, selected
+        // <option> even when the live Discord fetch comes back empty (rate limit,
+        // transient API error, or a JSON parse failure all look identical to "no
+        // channels/roles" from here - DiscordClient has no way to signal the
+        // difference). Without this, an empty fetch would render only the blank
+        // placeholder unselected, and simply saving the form for something unrelated
+        // (e.g. timezone) would silently wipe the setting on the next POST - this
+        // exact bug caused discord_events_forum_channel_id to get cleared in
+        // production. Only an explicit pick of the blank option truly clears it now.
         auto build_options = [](const std::vector<DiscordChannel>& channels,
                                 const std::string& selected,
                                 const std::string& empty_label,
                                 const std::string& none_msg) -> std::string {
             std::ostringstream oss;
             oss << "<option value=\"\">" << empty_label << "</option>\n";
+            bool saw_selected = selected.empty();
             for (auto& ch : channels) {
                 oss << "<option value=\"" << ch.id << "\"";
-                if (ch.id == selected) oss << " selected";
+                if (ch.id == selected) { oss << " selected"; saw_selected = true; }
                 oss << ">#" << ch.name << "</option>\n";
             }
-            if (channels.empty()) { oss.str(""); oss << "<option value=\"\">" << none_msg << "</option>"; }
+            if (channels.empty()) {
+                oss.str("");
+                oss << "<option value=\"\">" << none_msg << "</option>\n";
+            }
+            if (!saw_selected) {
+                // Fetch didn't include the saved id (empty result or it's no longer
+                // in the list) - preserve it as a selected option instead of losing it.
+                oss << "<option value=\"" << selected << "\" selected>"
+                    << "(saved: " << selected << ")</option>\n";
+            }
             return oss.str();
         };
 
@@ -396,11 +415,18 @@ void register_settings_routes(LugApp& app, SettingsRepository& settings,
                                      const std::string& selected) -> std::string {
             std::ostringstream oss;
             oss << "<option value=\"\">-- No role --</option>\n";
-            for (auto& r : roles)
+            bool saw_selected = selected.empty();
+            for (auto& r : roles) {
                 oss << "<option value=\"" << r.id << "\""
                     << (r.id == selected ? " selected" : "") << ">@" << r.name << "</option>\n";
+                if (r.id == selected) saw_selected = true;
+            }
             if (roles.empty())
-                return "<option value=\"\">No roles found (check guild ID &amp; bot permissions)</option>";
+                oss.str(""), oss << "<option value=\"\">No roles found (check guild ID &amp; bot permissions)</option>\n";
+            if (!saw_selected) {
+                oss << "<option value=\"" << selected << "\" selected>"
+                    << "(saved: " << selected << ")</option>\n";
+            }
             return oss.str();
         };
 
@@ -411,6 +437,14 @@ void register_settings_routes(LugApp& app, SettingsRepository& settings,
                             "No text channels found (check guild ID &amp; bot permissions)");
         std::string forum_options = guild_id.empty() ? "<option value=\"\">" + no_guild + "</option>"
             : build_options(discord.fetch_forum_channels(), forum_channel,
+                            "-- Select a forum channel --",
+                            "No forum channels found (check guild ID &amp; bot permissions)");
+        std::string event_reports_forum_options = guild_id.empty() ? "<option value=\"\">" + no_guild + "</option>"
+            : build_options(discord.fetch_forum_channels(), event_reports_forum,
+                            "-- Select a forum channel --",
+                            "No forum channels found (check guild ID &amp; bot permissions)");
+        std::string meeting_reports_forum_options = guild_id.empty() ? "<option value=\"\">" + no_guild + "</option>"
+            : build_options(discord.fetch_forum_channels(), meeting_reports_forum,
                             "-- Select a forum channel --",
                             "No forum channels found (check guild ID &amp; bot permissions)");
         auto all_roles = guild_id.empty() ? std::vector<DiscordRole>{} : discord.fetch_guild_roles();
@@ -438,6 +472,8 @@ void register_settings_routes(LugApp& app, SettingsRepository& settings,
         mctx["gcal_configured"]      = gcal.is_configured();
         mctx["event_reports_forum_id"]   = event_reports_forum;
         mctx["meeting_reports_forum_id"] = meeting_reports_forum;
+        mctx["event_reports_forum_options"]   = event_reports_forum_options;
+        mctx["meeting_reports_forum_options"] = meeting_reports_forum_options;
         int pending_match_count = static_cast<int>(pending_discord_matches.find_all_unresolved().size());
         mctx["pending_match_count"] = pending_match_count;
         mctx["has_pending_matches"] = pending_match_count > 0;
@@ -507,6 +543,9 @@ void register_settings_routes(LugApp& app, SettingsRepository& settings,
             const char* v = params.get(k);
             return v ? std::string(v) : "";
         };
+        auto has_param = [&](const char* k) -> bool {
+            return params.get(k) != nullptr;
+        };
 
         std::string guild_id       = get_param("discord_guild_id");
         std::string lug_channel    = get_param("discord_announcements_channel_id");
@@ -522,9 +561,20 @@ void register_settings_routes(LugApp& app, SettingsRepository& settings,
 
         if (!guild_id.empty())    settings.set("discord_guild_id",    guild_id);
         if (!lug_channel.empty()) settings.set("discord_announcements_channel_id", lug_channel);
-        settings.set("discord_events_forum_channel_id", forum_channel); // allow clearing
-        settings.set("discord_announcement_role_id",    announce_role); // allow clearing
-        settings.set("discord_non_lug_event_role_id",   non_lug_role);  // allow clearing
+        // These three are real <select> elements, always present (with some value,
+        // even "") in a genuine browser form submit - so an explicit blank means the
+        // admin picked the placeholder option and really does want to clear it. But
+        // the field can be missing entirely from a non-browser POST (API client,
+        // tests, or a request built by hand) - in that case, leave the stored value
+        // untouched rather than treating "absent" the same as "explicitly blanked".
+        // See the GET /settings option-builder comment for how a live-fetch failure
+        // is kept from ever producing an unselected/blank dropdown in the first place.
+        if (has_param("discord_events_forum_channel_id"))
+            settings.set("discord_events_forum_channel_id", forum_channel);
+        if (has_param("discord_announcement_role_id"))
+            settings.set("discord_announcement_role_id", announce_role);
+        if (has_param("discord_non_lug_event_role_id"))
+            settings.set("discord_non_lug_event_role_id", non_lug_role);
         if (!timezone.empty())    settings.set("lug_timezone",         timezone);
         if (!cal_name.empty())    settings.set("ical_calendar_name",   cal_name);
 
@@ -540,12 +590,18 @@ void register_settings_routes(LugApp& app, SettingsRepository& settings,
         settings.set("google_service_account_json_path", gcal_sa_path);
         settings.set("google_calendar_id",               gcal_cal_id);
         {
+            // Now real <select> elements (same live-fetch fragility as the three
+            // above) - same "absent means untouched" rule applies.
             std::string ev_reports = get_param("discord_event_reports_forum_channel_id");
             std::string mtg_reports = get_param("discord_meeting_reports_forum_channel_id");
-            settings.set("discord_event_reports_forum_channel_id", ev_reports);
-            settings.set("discord_meeting_reports_forum_channel_id", mtg_reports);
-            discord.set_event_reports_forum_id(ev_reports);
-            discord.set_meeting_reports_forum_id(mtg_reports);
+            if (has_param("discord_event_reports_forum_channel_id")) {
+                settings.set("discord_event_reports_forum_channel_id", ev_reports);
+                discord.set_event_reports_forum_id(ev_reports);
+            }
+            if (has_param("discord_meeting_reports_forum_channel_id")) {
+                settings.set("discord_meeting_reports_forum_channel_id", mtg_reports);
+                discord.set_meeting_reports_forum_id(mtg_reports);
+            }
         }
         if (!gcal_sa_path.empty() && !gcal_cal_id.empty())
             gcal.reconfigure(gcal_sa_path, gcal_cal_id, timezone);
