@@ -177,6 +177,52 @@ TEST_F(IntegrationTest, SettingsSaveDoesNotClearForumChannelWhenFieldOmitted) {
     EXPECT_EQ(settings_repo->get("discord_non_lug_event_role_id"), "role-already-set-789");
 }
 
+// Regression: /settings renders TWO separate <form> elements that both POST
+// to the same handler - the main settings form, and a small standalone
+// "Discord Matches notification channel/roles" form further down the page.
+// Submitting the small form only sends its own two fields; every other
+// setting (forum channel, role pings, Google Calendar config) is completely
+// absent from that request body. Before this fix, several fields were still
+// written unconditionally regardless, and discord.reconfigure() was called
+// with the raw (empty) submitted values for role pings every time - so
+// saving the small form would silently wipe both the persisted settings row
+// AND the live in-memory DiscordClient config, even though the two role
+// fields were never touched by the admin at all.
+TEST_F(IntegrationTest, SettingsSaveOfMatchesFormAloneDoesNotClearOtherSettings) {
+    settings_repo->set("discord_events_forum_channel_id", "forum-keep-me");
+    settings_repo->set("discord_announcement_role_id", "role-keep-me");
+    settings_repo->set("discord_non_lug_event_role_id", "nonlug-role-keep-me");
+    settings_repo->set("discord_event_reports_forum_channel_id", "evt-reports-keep-me");
+    settings_repo->set("discord_meeting_reports_forum_channel_id", "mtg-reports-keep-me");
+    settings_repo->set("google_service_account_json_path", "/keep/me.json");
+    settings_repo->set("google_calendar_id", "keep-me@group.calendar.google.com");
+    discord_client->reconfigure("guild-x", "chan-x", "forum-keep-me",
+                                 "role-keep-me", "nonlug-role-keep-me", "UTC");
+
+    // Exactly the fields the "Discord Matches" form submits - nothing else.
+    auto r = POST_HTMX("/settings",
+        "discord_matches_notification_channel_id=notify-chan-123",
+        admin_token);
+    EXPECT_EQ(r.code, 200);
+
+    EXPECT_EQ(settings_repo->get("discord_matches_notification_channel_id"), "notify-chan-123");
+
+    // Nothing else should have moved.
+    EXPECT_EQ(settings_repo->get("discord_events_forum_channel_id"), "forum-keep-me");
+    EXPECT_EQ(settings_repo->get("discord_announcement_role_id"), "role-keep-me");
+    EXPECT_EQ(settings_repo->get("discord_non_lug_event_role_id"), "nonlug-role-keep-me");
+    EXPECT_EQ(settings_repo->get("discord_event_reports_forum_channel_id"), "evt-reports-keep-me");
+    EXPECT_EQ(settings_repo->get("discord_meeting_reports_forum_channel_id"), "mtg-reports-keep-me");
+    EXPECT_EQ(settings_repo->get("google_service_account_json_path"), "/keep/me.json");
+    EXPECT_EQ(settings_repo->get("google_calendar_id"), "keep-me@group.calendar.google.com");
+
+    // The live in-memory DiscordClient must also still reflect the prior values -
+    // this is the part a settings_repo-only assertion would miss.
+    EXPECT_EQ(discord_client->get_announcement_role_id(), "role-keep-me");
+    EXPECT_EQ(discord_client->get_non_lug_event_role_id(), "nonlug-role-keep-me");
+    EXPECT_EQ(discord_client->get_events_forum_channel_id(), "forum-keep-me");
+}
+
 TEST_F(IntegrationTest, SettingsNonAdminForbiddenPost) {
     auto r = POST("/settings", "discord_guild_id=hacked", member_token);
     EXPECT_EQ(r.code, 403);

@@ -571,10 +571,16 @@ void register_settings_routes(LugApp& app, SettingsRepository& settings,
         // is kept from ever producing an unselected/blank dropdown in the first place.
         if (has_param("discord_events_forum_channel_id"))
             settings.set("discord_events_forum_channel_id", forum_channel);
+        else
+            forum_channel = settings.get("discord_events_forum_channel_id");
         if (has_param("discord_announcement_role_id"))
             settings.set("discord_announcement_role_id", announce_role);
+        else
+            announce_role = settings.get("discord_announcement_role_id");
         if (has_param("discord_non_lug_event_role_id"))
             settings.set("discord_non_lug_event_role_id", non_lug_role);
+        else
+            non_lug_role = settings.get("discord_non_lug_event_role_id");
         if (!timezone.empty())    settings.set("lug_timezone",         timezone);
         if (!cal_name.empty())    settings.set("ical_calendar_name",   cal_name);
 
@@ -582,13 +588,25 @@ void register_settings_routes(LugApp& app, SettingsRepository& settings,
         settings.set("discord_suppress_pings", suppress_pings == "1" ? "1" : "0");
         settings.set("discord_suppress_updates", suppress_updates == "1" ? "1" : "0");
 
-        // Apply immediately so Discord calls use the new values
+        // Apply immediately so Discord calls use the new values. forum_channel/
+        // announce_role/non_lug_role were backfilled from the persisted setting
+        // just above when absent from this particular POST (e.g. the separate
+        // Discord Matches form on this same page), so a partial-form save can
+        // never blank the live in-memory config even transiently - reconfigure()
+        // always receives the true current value for every field, not just what
+        // this one request happened to submit.
         discord.reconfigure(guild_id, lug_channel, forum_channel, announce_role, non_lug_role, timezone);
         discord.set_suppress_pings(suppress_pings == "1");
         discord.set_suppress_updates(suppress_updates == "1");
         if (!timezone.empty()) calendar.set_timezone(timezone);
-        settings.set("google_service_account_json_path", gcal_sa_path);
-        settings.set("google_calendar_id",               gcal_cal_id);
+        // Same "absent means untouched" rule: /settings has a second, separate
+        // <form> (Discord Matches notification channel/roles) that also posts here
+        // and does NOT include these two fields at all - without this guard, saving
+        // that small form would silently wipe the Google Calendar config every time.
+        if (has_param("google_service_account_json_path"))
+            settings.set("google_service_account_json_path", gcal_sa_path);
+        if (has_param("google_calendar_id"))
+            settings.set("google_calendar_id", gcal_cal_id);
         {
             // Now real <select> elements (same live-fetch fragility as the three
             // above) - same "absent means untouched" rule applies.
