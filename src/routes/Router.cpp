@@ -32,5 +32,6 @@ void register_all_routes(LugApp& app, Services& svc) {
     register_perk_levels_api_routes(app, svc.perks, svc.member_repo, svc.attendance_repo, svc.discord, svc.audit);
     register_role_mappings_api_routes(app, svc.role_mappings, svc.audit);
     register_audit_log_api_routes(app, svc.audit);
-    register_settings_api_routes(app, svc.settings, svc.audit);
+    register_settings_api_routes(app, svc.settings, svc.events, svc.meetings, svc.gcal, svc.audit);
+    register_pending_discord_matches_api_routes(app, svc.pending_discord_matches, svc.member_repo, svc.audit);
 }

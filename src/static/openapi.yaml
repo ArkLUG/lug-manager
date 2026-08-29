@@ -231,6 +231,20 @@ components:
         ip_address: { type: string }
         created_at: { type: string }
 
+    PendingDiscordMatch:
+      type: object
+      properties:
+        id: { type: integer }
+        discord_user_id: { type: string }
+        discord_username: { type: string }
+        discord_display_name: { type: string }
+        discord_role_ids: { type: string, description: "Comma-separated Discord role IDs" }
+        suggested_member_id: { type: integer, description: "0 if no suggestion" }
+        created_at: { type: string }
+        resolved_at: { type: string, description: "Empty if unresolved" }
+        resolved_action: { type: string, enum: ["", linked, created_new] }
+        resolved_member_id: { type: integer, description: "0 if unresolved" }
+
 paths:
   /members:
     get:
@@ -283,6 +297,29 @@ paths:
       parameters: [{ name: id, in: path, required: true, schema: { type: integer } }]
       responses:
         "200": { description: OK }
+  /members/{id}/link-discord:
+    post:
+      tags: [members]
+      summary: Attach a Discord identity to an existing member
+      description: >
+        Requires `write` scope. Deliberately narrow - does not go through the general
+        update, so it can't overwrite unrelated fields. Use this to merge a Discord-only
+        member-sync duplicate (see /discord-matches) onto the existing member record it
+        should have matched to: link here, then DELETE the duplicate.
+      x-required-scope: write
+      parameters: [{ name: id, in: path, required: true, schema: { type: integer } }]
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [discord_user_id]
+              properties:
+                discord_user_id: { type: string }
+                discord_username: { type: string }
+      responses:
+        "200": { description: OK }
+        "404": { description: Member not found }
 
   /events:
     get:
@@ -807,3 +844,71 @@ paths:
                 value: { type: string }
       responses:
         "200": { description: OK }
+  /settings/gcal-import:
+    post:
+      tags: [settings]
+      summary: Import upcoming events from the configured Google Calendar
+      description: >
+        Requires `admin` scope. Mirrors the browser's "Import from Google Calendar"
+        button exactly: fetches upcoming events, skips any already linked by
+        google_calendar_event_id, creates all-day entries as events and timed entries
+        as meetings. No Discord/calendar side effects on import (the event already
+        exists on the calendar being imported from).
+      x-required-scope: admin
+      responses:
+        "200": { description: OK }
+        "400": { description: Google Calendar is not configured }
+        "502": { description: Google Calendar fetch failed }
+
+  /discord-matches:
+    get:
+      tags: [discord-matches]
+      summary: List unresolved Discord member match review items
+      description: >
+        Requires `read` scope. Mirrors the browser's Discord Matches review queue
+        (Settings > Member Import) - a Discord guild member sync couldn't confidently
+        match to an existing member by name, so it's held here rather than creating a
+        possible duplicate.
+      x-required-scope: read
+      responses:
+        "200": { description: OK }
+  /discord-matches/{id}:
+    get:
+      tags: [discord-matches]
+      summary: Get a pending Discord match
+      description: "Requires `read` scope."
+      x-required-scope: read
+      parameters: [{ name: id, in: path, required: true, schema: { type: integer } }]
+      responses:
+        "200": { description: OK }
+        "404": { description: Not found }
+  /discord-matches/{id}/link:
+    post:
+      tags: [discord-matches]
+      summary: Link the Discord identity to an existing member
+      description: "Requires `write` scope."
+      x-required-scope: write
+      parameters: [{ name: id, in: path, required: true, schema: { type: integer } }]
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [member_id]
+              properties:
+                member_id: { type: integer }
+      responses:
+        "200": { description: OK }
+        "400": { description: Already resolved }
+        "404": { description: Match or member not found }
+  /discord-matches/{id}/create-new:
+    post:
+      tags: [discord-matches]
+      summary: Create a new member from the Discord identity
+      description: "Requires `write` scope."
+      x-required-scope: write
+      parameters: [{ name: id, in: path, required: true, schema: { type: integer } }]
+      responses:
+        "201": { description: Created }
+        "400": { description: Already resolved }
+        "404": { description: Not found }

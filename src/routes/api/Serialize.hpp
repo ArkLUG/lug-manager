@@ -10,6 +10,7 @@
 #include "models/AuditLog.hpp"
 #include "models/EventDay.hpp"
 #include "models/ApiKey.hpp"
+#include "models/PendingDiscordMatch.hpp"
 #include <crow.h>
 #include <vector>
 
@@ -234,6 +235,21 @@ inline crow::json::wvalue to_json(const ApiKey& k) {
     j["created_at"]        = k.created_at;
     j["last_used_at"]      = k.last_used_at;
     j["revoked_at"]        = k.revoked_at;
+    return j;
+}
+
+inline crow::json::wvalue to_json(const PendingDiscordMatch& p) {
+    crow::json::wvalue j;
+    j["id"]                    = p.id;
+    j["discord_user_id"]       = p.discord_user_id;
+    j["discord_username"]      = p.discord_username;
+    j["discord_display_name"]  = p.discord_display_name;
+    j["discord_role_ids"]      = p.discord_role_ids;
+    j["suggested_member_id"]   = p.suggested_member_id;
+    j["created_at"]            = p.created_at;
+    j["resolved_at"]           = p.resolved_at;
+    j["resolved_action"]       = p.resolved_action;
+    j["resolved_member_id"]    = p.resolved_member_id;
     return j;
 }
 

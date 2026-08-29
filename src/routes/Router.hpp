@@ -26,6 +26,7 @@
 #include "routes/api/RoleMappingsApiRoutes.hpp"
 #include "routes/api/AuditLogApiRoutes.hpp"
 #include "routes/api/SettingsApiRoutes.hpp"
+#include "routes/api/PendingDiscordMatchesApiRoutes.hpp"
 #include "repositories/ApiKeyRepository.hpp"
 #include "repositories/PendingDiscordMatchRepository.hpp"
 #include "repositories/PerkLevelRepository.hpp"

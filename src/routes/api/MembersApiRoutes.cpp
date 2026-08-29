@@ -147,6 +147,40 @@ void register_members_api_routes(LugApp& app, MemberService& members,
         return res;
     });
 
+    // POST /api/v1/members/<id>/link-discord - attach a Discord identity to an
+    // existing member. Deliberately narrow (mirrors the browser's Discord
+    // Matches review action and MemberRepository::link_discord_id's own
+    // comment) - does NOT go through update(), so it can't accidentally
+    // overwrite unrelated fields. This is the correct way to merge a
+    // Discord-only member-sync duplicate onto an existing hand-entered
+    // member record: link here, then DELETE the duplicate.
+    CROW_ROUTE(app, "/api/v1/members/<int>/link-discord").methods("POST"_method)(
+        [&](const crow::request& req, int id) {
+        crow::response res;
+        if (!require_api_scope(req, res, app, "write")) return res;
+
+        auto existing = members.get(static_cast<int64_t>(id));
+        if (!existing) { envelope_error(res, 404, "member not found", "not_found"); return res; }
+
+        auto body = crow::json::load(req.body);
+        if (!body || !body.has("discord_user_id")) {
+            envelope_error(res, 400, "discord_user_id is required", "invalid_request");
+            return res;
+        }
+        std::string discord_user_id = body["discord_user_id"].s();
+        std::string discord_username = body.has("discord_username") ? std::string(body["discord_username"].s()) : "";
+
+        bool ok = member_repo.link_discord_id(static_cast<int64_t>(id), discord_user_id, discord_username);
+        if (!ok) { envelope_error(res, 400, "could not link Discord identity", "validation_error"); return res; }
+
+        auto updated = members.get(static_cast<int64_t>(id));
+        audit.log_system("member.link_discord", "member", id, updated ? updated->display_name : "",
+                          "Linked Discord " + discord_user_id + " via " +
+                          actor_label(app.template get_context<ApiKeyMiddleware>(req).api_key));
+        write_json(res, 200, envelope_ok(updated ? to_json(*updated) : crow::json::wvalue{}));
+        return res;
+    });
+
     // DELETE /api/v1/members/<id> - admin scope
     CROW_ROUTE(app, "/api/v1/members/<int>").methods("DELETE"_method)(
         [&](const crow::request& req, int id) {

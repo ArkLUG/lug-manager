@@ -261,6 +261,41 @@ TEST_F(IntegrationTest, ApiMembersSetChapterOnCreateAndUpdate) {
     EXPECT_FALSE(chapter_member_repo->get_chapter_role(id, test_chapter_id).has_value());
 }
 
+// New endpoint: POST /api/v1/members/<id>/link-discord - attaches a Discord
+// identity to an existing member without going through the general update
+// path, so it can't clobber other fields. Exists to merge a Discord-only
+// member-sync duplicate onto the existing hand-entered record it should have
+// matched to (found from a real duplicate: a guild member whose Discord
+// username didn't match anyone by name, so sync created a second bare record
+// alongside the correct, already-populated one).
+TEST_F(IntegrationTest, ApiMembersLinkDiscord) {
+    std::string write_key = make_api_key("write");
+
+    auto created = API_POST("/api/v1/members",
+        R"({"first_name":"NoDiscord","last_name":"Yet"})", write_key);
+    int64_t id = json::parse(created.body)["data"]["id"].get<int64_t>();
+
+    auto linked = API_POST("/api/v1/members/" + std::to_string(id) + "/link-discord",
+        R"({"discord_user_id":"999888777","discord_username":"newlylinked"})", write_key);
+    EXPECT_EQ(linked.code, 200);
+    auto linked_body = json::parse(linked.body);
+    EXPECT_EQ(linked_body["data"]["discord_user_id"].get<std::string>(), "999888777");
+    EXPECT_EQ(linked_body["data"]["discord_username"].get<std::string>(), "newlylinked");
+    // Unrelated field untouched.
+    EXPECT_EQ(linked_body["data"]["first_name"].get<std::string>(), "NoDiscord");
+
+    auto m = member_repo->find_by_id(id);
+    ASSERT_TRUE(m.has_value());
+    EXPECT_EQ(m->discord_user_id, "999888777");
+}
+
+TEST_F(IntegrationTest, ApiMembersLinkDiscordMissingMemberReturns404) {
+    std::string write_key = make_api_key("write");
+    auto res = API_POST("/api/v1/members/999999/link-discord",
+        R"({"discord_user_id":"1"})", write_key);
+    EXPECT_EQ(res.code, 404);
+}
+
 // ─────────────────────────────────────────────────────────────────────────
 // Events CRUD (+ event days)
 // ─────────────────────────────────────────────────────────────────────────
@@ -868,4 +903,97 @@ TEST_F(IntegrationTest, ApiSettingsAdminOnlyGetSet) {
     auto get = API_GET("/api/v1/settings/discord_guild_id", admin_key);
     EXPECT_EQ(get.code, 200);
     expect_contains(get, "999888777");
+}
+
+// New endpoint: POST /api/v1/settings/gcal-import - mirrors the browser's
+// "Import from Google Calendar" button. No Google Calendar is configured in
+// this test fixture, so this only exercises the not-configured rejection -
+// the import loop itself is identical to the already-tested browser route.
+TEST_F(IntegrationTest, ApiSettingsGcalImportRequiresConfiguredCalendar) {
+    std::string admin_key = make_api_key("admin");
+    auto res = API_POST("/api/v1/settings/gcal-import", "", admin_key);
+    EXPECT_EQ(res.code, 400);
+}
+
+TEST_F(IntegrationTest, ApiSettingsGcalImportRequiresAdmin) {
+    std::string write_key = make_api_key("write");
+    auto res = API_POST("/api/v1/settings/gcal-import", "", write_key);
+    EXPECT_EQ(res.code, 403);
+}
+
+// ─────────────────────────────────────────────────────────────────────────
+// Discord member match review (mirrors DiscordMatchRoutes.cpp)
+// ─────────────────────────────────────────────────────────────────────────
+
+TEST_F(IntegrationTest, ApiDiscordMatchesListAndLink) {
+    std::string write_key = make_api_key("write");
+
+    Member target;
+    target.first_name = "Match";
+    target.last_name = "Target";
+    target.display_name = "Match Target";
+    target.role = "member";
+    auto existing = member_repo->create(target);
+
+    PendingDiscordMatch p;
+    p.discord_user_id = "discord-api-1";
+    p.discord_username = "apimatch";
+    p.discord_display_name = "Match Target";
+    p.suggested_member_id = existing.id;
+    auto pending = pending_discord_match_repo->create(p);
+
+    auto list = API_GET("/api/v1/discord-matches", write_key);
+    EXPECT_EQ(list.code, 200);
+    expect_contains(list, "apimatch");
+
+    auto got = API_GET("/api/v1/discord-matches/" + std::to_string(pending.id), write_key);
+    EXPECT_EQ(got.code, 200);
+    expect_contains(got, "Match Target");
+
+    auto linked = API_POST("/api/v1/discord-matches/" + std::to_string(pending.id) + "/link",
+        R"({"member_id":)" + std::to_string(existing.id) + "}", write_key);
+    EXPECT_EQ(linked.code, 200);
+    auto linked_body = json::parse(linked.body);
+    EXPECT_EQ(linked_body["data"]["action"].get<std::string>(), "linked");
+
+    auto m = member_repo->find_by_id(existing.id);
+    ASSERT_TRUE(m.has_value());
+    EXPECT_EQ(m->discord_user_id, "discord-api-1");
+
+    // No longer in the unresolved list.
+    auto relist = API_GET("/api/v1/discord-matches", write_key);
+    expect_not_contains(relist, "apimatch");
+
+    // Re-linking an already-resolved match is refused.
+    auto relink = API_POST("/api/v1/discord-matches/" + std::to_string(pending.id) + "/link",
+        R"({"member_id":)" + std::to_string(existing.id) + "}", write_key);
+    EXPECT_EQ(relink.code, 400);
+}
+
+TEST_F(IntegrationTest, ApiDiscordMatchesCreateNew) {
+    std::string write_key = make_api_key("write");
+
+    PendingDiscordMatch p;
+    p.discord_user_id = "discord-api-2";
+    p.discord_username = "apinew";
+    p.discord_display_name = "Brand New Person";
+    auto pending = pending_discord_match_repo->create(p);
+
+    auto created = API_POST("/api/v1/discord-matches/" + std::to_string(pending.id) + "/create-new",
+        "", write_key);
+    EXPECT_EQ(created.code, 201);
+    auto created_body = json::parse(created.body);
+    EXPECT_EQ(created_body["data"]["action"].get<std::string>(), "created_new");
+    int64_t new_member_id = created_body["data"]["member_id"].get<int64_t>();
+
+    auto m = member_repo->find_by_id(new_member_id);
+    ASSERT_TRUE(m.has_value());
+    EXPECT_EQ(m->discord_user_id, "discord-api-2");
+    EXPECT_EQ(m->display_name, "Brand New Person");
+}
+
+TEST_F(IntegrationTest, ApiDiscordMatchesLinkMissingMatchReturns404) {
+    std::string write_key = make_api_key("write");
+    auto res = API_POST("/api/v1/discord-matches/999999/link", R"({"member_id":1})", write_key);
+    EXPECT_EQ(res.code, 404);
 }
