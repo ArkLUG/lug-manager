@@ -305,9 +305,12 @@ void register_attendance_routes(LugApp& app, AttendanceService& attendance,
             arr[i]["entity_id"]    = history[i].entity_id;
             arr[i]["checked_in_at"]= history[i].checked_in_at;
             arr[i]["notes"]        = history[i].notes;
+            arr[i]["has_notes"]    = !history[i].notes.empty();
             arr[i]["is_virtual"]   = history[i].is_virtual;
             arr[i]["type_meeting"] = (history[i].entity_type == "meeting");
             arr[i]["type_event"]   = (history[i].entity_type == "event");
+            arr[i]["days_attended"]     = history[i].days_attended;
+            arr[i]["multi_day"]         = history[i].days_attended > 1;
             arr[i]["entity_url"]   = "/" + history[i].entity_type + "s/" +
                                      std::to_string(history[i].entity_id);
 

@@ -97,6 +97,38 @@ TEST_F(IntegrationTest, AttendancePersonalPageWithHistory) {
     expect_contains(r, "History Mtg");
 }
 
+// Regression: a multi-day event attended on every day used to produce one
+// "My Attendance" history row per day (get_member_history projected each
+// event_day_attendance row individually). Now collapsed to a single row per
+// event, with a "N days" badge when N > 1.
+TEST_F(IntegrationTest, AttendancePersonalPageCollapsesMultiDayEventToOneRow) {
+    LugEvent e;
+    e.title = "Three Day Show";
+    e.start_time = "2026-06-01T09:00:00";
+    e.end_time   = "2026-06-03T17:00:00";
+    e.scope = "lug_wide";
+    auto ev = event_svc->create(e);
+
+    auto days = event_day_repo->find_by_event(ev.id);
+    ASSERT_EQ(days.size(), 3u);
+    for (const auto& d : days) {
+        attendance_svc->check_in_to_day(regular_member_id, d.id);
+    }
+
+    auto r = GET("/attendance", member_token);
+    EXPECT_EQ(r.code, 200);
+    expect_contains(r, "Three Day Show");
+    expect_contains(r, "3 days");
+
+    // Exactly one card for this event, not three - count occurrences of the title.
+    size_t count = 0, pos = 0;
+    while ((pos = r.body.find("Three Day Show", pos)) != std::string::npos) {
+        ++count;
+        pos += 1;
+    }
+    EXPECT_EQ(count, 1u);
+}
+
 TEST_F(IntegrationTest, AttendanceToggleVirtualAdmin) {
     Meeting m;
     m.title = "Toggle Virt Mtg";

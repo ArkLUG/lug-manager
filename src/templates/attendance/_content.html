@@ -33,8 +33,9 @@
             <span class="capitalize">{{entity_label}}</span>
             · {{checked_in_at}}
             {{#is_virtual}} · <span class="text-indigo-600">Virtual</span>{{/is_virtual}}
+            {{#multi_day}} · <span class="text-purple-600">{{days_attended}} days</span>{{/multi_day}}
           </div>
-          {{#notes}}<div class="text-xs text-gray-500 italic mt-0.5">{{notes}}</div>{{/notes}}
+          {{#has_notes}}<div class="text-xs text-gray-500 italic mt-0.5">{{notes}}</div>{{/has_notes}}
         </div>
         <svg class="w-4 h-4 text-green-500 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
           <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"/>

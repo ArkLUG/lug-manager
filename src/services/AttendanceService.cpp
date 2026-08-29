@@ -106,22 +106,21 @@ bool AttendanceService::remove_by_id(int64_t attendance_id) {
 
 std::vector<Attendance> AttendanceService::get_member_history(int64_t member_id) {
     // Combine meeting history from the attendance table with event-day
-    // attendance. Each event day becomes its own row in the history.
+    // attendance. A multi-day event collapses to a single history row
+    // (grouped by event_id) rather than one row per day attended - the
+    // member either attended the event or didn't, from this page's
+    // perspective; per-day detail lives on the event page itself.
     auto meetings = repo_.find_by_member(member_id);
-    // Fetch event day rows for this member.
-    // We do a separate query via the repo to keep this focused.
     std::vector<Attendance> combined = meetings;
-    // Pull all event day rows by scanning event_day_attendance joined with event_days.
-    // Reuse member_attendance_detail is heavier; instead, query directly.
-    // Simpler: leverage find_by_event across events the member touched — but that
-    // requires listing events. For history display, a small ad-hoc query is fine.
     auto& db = repo_.db();
     auto stmt = db.prepare(
-        "SELECT eda.id, eda.member_id, ed.event_id, eda.checked_in_at, eda.notes "
+        "SELECT MIN(eda.id), eda.member_id, ed.event_id, MIN(eda.checked_in_at), "
+        "COALESCE(GROUP_CONCAT(NULLIF(eda.notes, ''), ' | '), ''), COUNT(*) "
         "FROM event_day_attendance eda "
         "JOIN event_days ed ON ed.id = eda.event_day_id "
         "WHERE eda.member_id=? "
-        "ORDER BY eda.checked_in_at DESC");
+        "GROUP BY ed.event_id "
+        "ORDER BY MIN(eda.checked_in_at) DESC");
     stmt.bind(1, member_id);
     while (stmt.step()) {
         Attendance a;
@@ -132,6 +131,7 @@ std::vector<Attendance> AttendanceService::get_member_history(int64_t member_id)
         a.checked_in_at = stmt.col_text(3);
         a.notes         = stmt.col_text(4);
         a.is_virtual    = false;
+        a.days_attended = static_cast<int>(stmt.col_int(5));
         combined.push_back(a);
     }
     return combined;
