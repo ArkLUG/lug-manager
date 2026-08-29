@@ -207,6 +207,8 @@ LUG Manager can push meetings and events directly to a shared Google Calendar.
 
 See the Settings page for detailed instructions. Import existing events with the "Import from Google Calendar" button.
 
+**Private events/meetings**: the create/edit form has a "Private" checkbox alongside "Suppress calendar updates." Unlike suppression (which skips the calendar entirely), a private event or meeting still publishes — to both Google Calendar and the public iCal feed (`calendar.ics`) — but as a generic "Private LUG Event"/"Private LUG Meeting" placeholder with no title, location, or description, so a shared/public calendar shows the LUG is busy without exposing details.
+
 ## Chapters
 
 Chapters allow you to organize your LUG into sub-groups. Each chapter can have:

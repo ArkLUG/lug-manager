@@ -207,10 +207,19 @@ std::string CalendarGenerator::generate_ics() const {
         std::string uid = m.ical_uid.empty()
             ? ("meeting-" + std::to_string(m.id) + "@lug-manager")
             : m.ical_uid;
-        oss << make_vevent(uid, cal_title(m.title, m.scope, m.chapter_id),
-                           m.description, m.location,
-                           m.start_time, m.end_time, m.status, m.updated_at,
-                           timezone_);
+        // This feed is served with no auth at all (see calendar.ics) - private
+        // meetings get the same generic placeholder treatment as the Google
+        // Calendar sync, so it shows the LUG is busy without exposing details.
+        if (m.is_private) {
+            oss << make_vevent(uid, "Private LUG Meeting", "", "",
+                               m.start_time, m.end_time, m.status, m.updated_at,
+                               timezone_);
+        } else {
+            oss << make_vevent(uid, cal_title(m.title, m.scope, m.chapter_id),
+                               m.description, m.location,
+                               m.start_time, m.end_time, m.status, m.updated_at,
+                               timezone_);
+        }
     }
 
     // Add LUG events
@@ -219,10 +228,16 @@ std::string CalendarGenerator::generate_ics() const {
         std::string uid = e.ical_uid.empty()
             ? ("event-" + std::to_string(e.id) + "@lug-manager")
             : e.ical_uid;
-        oss << make_vevent(uid, cal_title(e.title, e.scope, e.chapter_id, e.status),
-                           e.description, e.location,
-                           e.start_time, e.end_time, e.status, e.updated_at,
-                           timezone_, true);
+        if (e.is_private) {
+            oss << make_vevent(uid, "Private LUG Event", "", "",
+                               e.start_time, e.end_time, e.status, e.updated_at,
+                               timezone_, true);
+        } else {
+            oss << make_vevent(uid, cal_title(e.title, e.scope, e.chapter_id, e.status),
+                               e.description, e.location,
+                               e.start_time, e.end_time, e.status, e.updated_at,
+                               timezone_, true);
+        }
     }
 
     oss << "END:VCALENDAR\r\n";

@@ -320,6 +320,7 @@ void register_meeting_routes(LugApp& app, MeetingService& meetings, AttendanceSe
         }
         mctx["suppress_discord"]  = m->suppress_discord;
         mctx["suppress_calendar"] = m->suppress_calendar;
+        mctx["is_private"]        = m->is_private;
         mctx["notes"]             = m->notes;
         res.write(tmpl.render(mctx).dump());
         return res;
@@ -459,6 +460,7 @@ void register_meeting_routes(LugApp& app, MeetingService& meetings, AttendanceSe
         m.discord_voice_channel_id = get_param("discord_voice_channel_id");
         m.suppress_discord  = (get_param("suppress_discord") == "on" || get_param("suppress_discord") == "1");
         m.suppress_calendar = (get_param("suppress_calendar") == "on" || get_param("suppress_calendar") == "1");
+        m.is_private        = (get_param("is_private") == "on" || get_param("is_private") == "1");
         m.notes             = get_param("notes");
         if (m.is_virtual) m.location = "Virtual (Discord)";
 
@@ -528,6 +530,7 @@ void register_meeting_routes(LugApp& app, MeetingService& meetings, AttendanceSe
             updates.discord_voice_channel_id = gp("discord_voice_channel_id");
             updates.suppress_discord  = (gp("suppress_discord") == "on" || gp("suppress_discord") == "1");
             updates.suppress_calendar = (gp("suppress_calendar") == "on" || gp("suppress_calendar") == "1");
+            updates.is_private        = (gp("is_private") == "on" || gp("is_private") == "1");
             updates.notes             = gp("notes");
             if (updates.is_virtual) updates.location = "Virtual (Discord)";
 
@@ -559,6 +562,7 @@ void register_meeting_routes(LugApp& app, MeetingService& meetings, AttendanceSe
                     diff.field("discord_voice_channel_id", mtg_before->discord_voice_channel_id, mtg_after.discord_voice_channel_id);
                     diff.field("suppress_discord", mtg_before->suppress_discord, mtg_after.suppress_discord);
                     diff.field("suppress_calendar", mtg_before->suppress_calendar, mtg_after.suppress_calendar);
+                    diff.field("is_private", mtg_before->is_private, mtg_after.is_private);
                     diff.field("notes", mtg_before->notes, mtg_after.notes);
                     audit.log(req, app, "meeting.update", "meeting", static_cast<int64_t>(id), mtg_after.title,
                               diff.has_changes() ? diff.str() : "No field changes");

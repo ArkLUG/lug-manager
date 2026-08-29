@@ -51,6 +51,16 @@ bool MeetingService::exists_by_google_calendar_id(const std::string& gcal_event_
 // Build a calendar-friendly title: [NWA] [Non-LUG] Title
 Meeting MeetingService::with_calendar_title(const Meeting& m) const {
     Meeting copy = m;
+    // Private meetings still publish to Google Calendar (so the shared calendar
+    // shows the LUG is busy) but with every detail redacted to a generic
+    // placeholder - this is the single choke point every gcal_->create_event/
+    // update_event call goes through, so redacting here covers all of them.
+    if (m.is_private) {
+        copy.title       = "Private LUG Meeting";
+        copy.description = "";
+        copy.location     = "";
+        return copy;
+    }
     std::string prefix;
     if (m.scope == "non_lug")        prefix += "[Non-LUG] ";
     else if (m.scope == "lug_wide")  prefix += "[LUG Wide] ";
@@ -185,6 +195,7 @@ Meeting MeetingService::update(int64_t id, const Meeting& updates) {
     updated.discord_voice_channel_id  = updates.discord_voice_channel_id;
     updated.suppress_discord  = updates.suppress_discord;
     updated.suppress_calendar = updates.suppress_calendar;
+    updated.is_private        = updates.is_private;
     updated.notes             = updates.notes;
 
     repo_.update(updated);

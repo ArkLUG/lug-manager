@@ -55,6 +55,16 @@ std::optional<LugEvent> EventService::get(int64_t id) {
 // Build a calendar-friendly title: [Tentative] [NWA] [Non-LUG] Title
 LugEvent EventService::with_calendar_title(const LugEvent& e) const {
     LugEvent copy = e;
+    // Private events still publish to Google Calendar (so the shared calendar
+    // shows the LUG is busy) but with every detail redacted to a generic
+    // placeholder - this is the single choke point every gcal_->create_event/
+    // update_event call goes through, so redacting here covers all of them.
+    if (e.is_private) {
+        copy.title       = "Private LUG Event";
+        copy.description = "";
+        copy.location     = "";
+        return copy;
+    }
     std::string prefix;
     // Status
     if (e.status == "tentative") prefix += "[Tentative] ";
@@ -306,6 +316,7 @@ LugEvent EventService::update(int64_t id, const LugEvent& updates) {
     // Suppress flags: always take from updates (route sets explicitly)
     updated.suppress_discord  = updates.suppress_discord;
     updated.suppress_calendar = updates.suppress_calendar;
+    updated.is_private        = updates.is_private;
     updated.notes             = updates.notes;
     updated.entrance_fee      = updates.entrance_fee;
     updated.public_kids       = updates.public_kids;

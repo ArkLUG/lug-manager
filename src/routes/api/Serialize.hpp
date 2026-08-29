@@ -77,6 +77,7 @@ inline crow::json::wvalue to_json(const LugEvent& e) {
     j["event_lead_discord_id"]      = e.event_lead_discord_id;
     j["suppress_discord"]           = e.suppress_discord;
     j["suppress_calendar"]          = e.suppress_calendar;
+    j["is_private"]                 = e.is_private;
     j["notes"]                      = e.notes;
     j["notes_discord_post_id"]      = e.notes_discord_post_id;
     j["checkin_token"]              = e.checkin_token;
@@ -111,6 +112,7 @@ inline crow::json::wvalue to_json(const Meeting& m) {
     j["discord_voice_channel_id"]   = m.discord_voice_channel_id;
     j["suppress_discord"]           = m.suppress_discord;
     j["suppress_calendar"]          = m.suppress_calendar;
+    j["is_private"]                 = m.is_private;
     j["notes"]                      = m.notes;
     j["notes_discord_post_id"]      = m.notes_discord_post_id;
     j["checkin_token"]              = m.checkin_token;

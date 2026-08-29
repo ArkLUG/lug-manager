@@ -26,6 +26,9 @@ struct LugEvent {
     std::string event_lead_discord_id;      // discord_user_id of the lead (denormalized for reads)
     bool        suppress_discord  = false; // skip all Discord operations
     bool        suppress_calendar = false; // skip Google Calendar operations
+    bool        is_private        = false; // still publishes to Google Calendar (unlike
+                                            // suppress_calendar), but with title/description/
+                                            // location redacted to a generic placeholder
     std::string notes;                     // markdown notes/report
     std::string notes_discord_post_id;     // Discord forum thread ID for published report
     std::string checkin_token;             // UUID for public QR check-in page

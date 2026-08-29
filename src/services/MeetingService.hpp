@@ -40,11 +40,15 @@ public:
 
     static std::string generate_uuid();
 
+    // Public to match EventService::with_calendar_title (also public) - both
+    // are pure title/description/location formatting with no side effects,
+    // and both are unit-tested directly against their redaction behavior.
+    Meeting with_calendar_title(const Meeting& m) const;
+
 private:
     MeetingRepository&      repo_;
     DiscordClient&          discord_;
     CalendarGenerator&      cal_;
     ChapterRepository*      chapter_repo_;
     GoogleCalendarClient*   gcal_;
-    Meeting with_calendar_title(const Meeting& m) const;
 };

@@ -9,7 +9,7 @@ static const char* kSelectAllCols =
     "suppress_discord, suppress_calendar, "
     "COALESCE(notes,''), COALESCE(notes_discord_post_id,''), "
     "is_virtual, COALESCE(discord_voice_channel_id,''), "
-    "COALESCE(checkin_token,'') "
+    "COALESCE(checkin_token,''), is_private "
     "FROM meetings";
 
 MeetingRepository::MeetingRepository(SqliteDatabase& db) : db_(db) {}
@@ -39,6 +39,7 @@ Meeting MeetingRepository::row_to_meeting(Statement& stmt) {
     m.is_virtual                  = stmt.col_bool(20);
     m.discord_voice_channel_id    = stmt.col_text(21);
     m.checkin_token               = stmt.col_text(22);
+    m.is_private                  = stmt.col_bool(23);
     return m;
 }
 
@@ -162,8 +163,8 @@ Meeting MeetingRepository::create(const Meeting& m) {
     auto stmt = db_.prepare(
         "INSERT INTO meetings (title, description, location, start_time, end_time, "
         "status, discord_event_id, ical_uid, scope, chapter_id, "
-        "suppress_discord, suppress_calendar, notes, is_virtual, discord_voice_channel_id) "
-        "VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)");
+        "suppress_discord, suppress_calendar, notes, is_virtual, discord_voice_channel_id, is_private) "
+        "VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)");
     stmt.bind(1, m.title);
     stmt.bind(2, m.description);
     stmt.bind(3, m.location);
@@ -184,6 +185,7 @@ Meeting MeetingRepository::create(const Meeting& m) {
     stmt.bind(13, m.notes);
     stmt.bind(14, m.is_virtual);
     stmt.bind(15, m.discord_voice_channel_id);
+    stmt.bind(16, m.is_private);
     stmt.step();
 
     int64_t new_id = db_.last_insert_rowid();
@@ -199,7 +201,7 @@ bool MeetingRepository::update(const Meeting& m) {
         "UPDATE meetings SET title=?, description=?, location=?, start_time=?, end_time=?, "
         "status=?, discord_event_id=?, scope=?, chapter_id=?, "
         "suppress_discord=?, suppress_calendar=?, notes=?, "
-        "is_virtual=?, discord_voice_channel_id=?, "
+        "is_virtual=?, discord_voice_channel_id=?, is_private=?, "
         "updated_at=datetime('now') WHERE id=?");
     stmt.bind(1, m.title);
     stmt.bind(2, m.description);
@@ -220,7 +222,8 @@ bool MeetingRepository::update(const Meeting& m) {
     stmt.bind(12, m.notes);
     stmt.bind(13, m.is_virtual);
     stmt.bind(14, m.discord_voice_channel_id);
-    stmt.bind(15, m.id);
+    stmt.bind(15, m.is_private);
+    stmt.bind(16, m.id);
     stmt.step();
 
     auto existing = find_by_id(m.id);

@@ -96,6 +96,7 @@ components:
         event_lead_discord_id: { type: string }
         suppress_discord: { type: boolean }
         suppress_calendar: { type: boolean }
+        is_private: { type: boolean, description: "Still publishes to Google Calendar/iCal, but title/description/location are redacted to a generic \"Private LUG Event\" placeholder." }
         notes: { type: string }
         notes_discord_post_id: { type: string }
         checkin_token: { type: string }
@@ -129,6 +130,7 @@ components:
         discord_voice_channel_id: { type: string }
         suppress_discord: { type: boolean }
         suppress_calendar: { type: boolean }
+        is_private: { type: boolean, description: "Still publishes to Google Calendar/iCal, but title/description/location are redacted to a generic \"Private LUG Meeting\" placeholder." }
         notes: { type: string }
         notes_discord_post_id: { type: string }
         checkin_token: { type: string }

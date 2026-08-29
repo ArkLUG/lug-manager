@@ -148,7 +148,15 @@
                class="rounded border-gray-300">
         Suppress calendar updates
       </label>
+      <label class="flex items-center gap-2 text-sm text-gray-700 cursor-pointer">
+        <input type="checkbox" name="is_private" {{#is_private}}checked{{/is_private}}
+               class="rounded border-gray-300">
+        Private (hide details on calendar)
+      </label>
     </div>
+    <p class="text-xs text-gray-400 -mt-4">
+      Private meetings still appear on the shared calendar as "Private LUG Meeting" so people can see the LUG is busy, but the title, location, and description are not published.
+    </p>
 
     <div class="flex gap-3 pt-2">
       <button type="submit"

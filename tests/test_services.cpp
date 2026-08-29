@@ -279,6 +279,95 @@ TEST_F(ServiceFixture, EventCalendarTitleLugWide) {
     EXPECT_NE(cal.title.find("[LUG Wide]"), std::string::npos);
 }
 
+// Regression coverage for the new is_private redaction: with_calendar_title()
+// is the single choke point every Google Calendar (and iCal) push goes
+// through, so redacting there is what makes "private" actually private
+// everywhere at once - this locks in that every detail is stripped and
+// nothing (chapter shorthand, scope prefix, tentative marker) leaks through.
+TEST_F(ServiceFixture, EventCalendarTitlePrivateRedactsEverything) {
+    Chapter ch;
+    ch.name = "NWA Chapter";
+    ch.shorthand = "NWA";
+    ch.discord_announcement_channel_id = "test-ch-id-private";
+    auto chapter = chapter_svc->create(ch);
+
+    LugEvent e;
+    e.title       = "Surprise Party Planning";
+    e.description = "Shh, don't tell anyone";
+    e.location    = "123 Secret St";
+    e.start_time  = "2026-06-01T00:00:00";
+    e.end_time    = "2026-06-02T00:00:00";
+    e.status      = "tentative";
+    e.scope       = "chapter";
+    e.chapter_id  = chapter.id;
+    e.is_private  = true;
+    auto created = event_svc->create(e);
+    EXPECT_TRUE(created.is_private); // persisted correctly
+
+    auto cal = event_svc->with_calendar_title(created);
+    EXPECT_EQ(cal.title, "Private LUG Event");
+    EXPECT_EQ(cal.description, "");
+    EXPECT_EQ(cal.location, "");
+    // None of the real details leaked through in any form.
+    EXPECT_EQ(cal.title.find("Surprise"), std::string::npos);
+    EXPECT_EQ(cal.title.find("NWA"), std::string::npos);
+    EXPECT_EQ(cal.title.find("Tentative"), std::string::npos);
+}
+
+TEST_F(ServiceFixture, MeetingCalendarTitlePrivateRedactsEverything) {
+    Meeting m;
+    m.title       = "Budget Discussion";
+    m.description = "Confidential financials";
+    m.location    = "456 Hidden Ave";
+    m.start_time  = "2026-06-01T19:00:00";
+    m.end_time    = "2026-06-01T21:00:00";
+    m.scope       = "lug_wide";
+    m.is_private  = true;
+    auto created = meeting_svc->create(m);
+    EXPECT_TRUE(created.is_private);
+
+    auto cal = meeting_svc->with_calendar_title(created);
+    EXPECT_EQ(cal.title, "Private LUG Meeting");
+    EXPECT_EQ(cal.description, "");
+    EXPECT_EQ(cal.location, "");
+    EXPECT_EQ(cal.title.find("Budget"), std::string::npos);
+    EXPECT_EQ(cal.title.find("LUG Wide"), std::string::npos);
+}
+
+// The iCal feed (calendar.ics) has no auth at all, so it needs the same
+// redaction independently of the Google Calendar push - CalendarGenerator
+// builds VEVENTs directly from repository rows, not through
+// EventService/MeetingService::with_calendar_title().
+TEST_F(ServiceFixture, IcalFeedRedactsPrivateEventsAndMeetings) {
+    LugEvent e;
+    e.title       = "Confidential Layout Reveal";
+    e.description = "Top secret build";
+    e.location    = "Undisclosed warehouse";
+    e.start_time  = "2026-06-01T00:00:00";
+    e.end_time    = "2026-06-02T00:00:00";
+    e.is_private  = true;
+    event_svc->create(e);
+
+    Meeting m;
+    m.title       = "Leadership Sync";
+    m.description = "Sensitive personnel matters";
+    m.location    = "Back office";
+    m.start_time  = "2026-06-01T19:00:00";
+    m.end_time    = "2026-06-01T21:00:00";
+    m.is_private  = true;
+    meeting_svc->create(m);
+
+    std::string ics = calendar->get_ics();
+    EXPECT_NE(ics.find("Private LUG Event"), std::string::npos);
+    EXPECT_NE(ics.find("Private LUG Meeting"), std::string::npos);
+    EXPECT_EQ(ics.find("Confidential Layout Reveal"), std::string::npos);
+    EXPECT_EQ(ics.find("Top secret build"), std::string::npos);
+    EXPECT_EQ(ics.find("Undisclosed warehouse"), std::string::npos);
+    EXPECT_EQ(ics.find("Leadership Sync"), std::string::npos);
+    EXPECT_EQ(ics.find("Sensitive personnel"), std::string::npos);
+    EXPECT_EQ(ics.find("Back office"), std::string::npos);
+}
+
 // ═══════════════════════════════════════════════════════════════════════════
 // Attendance Service
 // ═══════════════════════════════════════════════════════════════════════════
