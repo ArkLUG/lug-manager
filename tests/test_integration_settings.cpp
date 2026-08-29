@@ -1,19 +1,71 @@
 #include "integration_test_base.hpp"
 
+// Settings is split into separate pages (Discord / Calendar / Google Calendar /
+// Discord Matches), each its own route + template + save endpoint, so a save
+// on one page can never touch another page's settings - see SettingsRoutes.cpp
+// and DiscordMatchRoutes.cpp for the full rationale.
 TEST_F(IntegrationTest, SettingsPageLoads) {
     auto r = GET("/settings", admin_token);
     EXPECT_EQ(r.code, 200);
     expect_contains(r, "Discord Settings");
-    expect_contains(r, "Google Calendar");
     expect_contains(r, "Bulk Sync");
     expect_contains(r, "Suppress");
 }
 
-TEST_F(IntegrationTest, SettingsSaveAndApply) {
-    auto r = POST_HTMX("/settings",
-        "discord_guild_id=test-guild&discord_announcements_channel_id=test-ch&lug_timezone=America/Chicago&ical_calendar_name=Test+Cal",
+TEST_F(IntegrationTest, SettingsCalendarPageLoads) {
+    auto r = GET("/settings/calendar", admin_token);
+    EXPECT_EQ(r.code, 200);
+    expect_contains(r, "Calendar Name");
+    expect_contains(r, "Timezone");
+}
+
+TEST_F(IntegrationTest, SettingsCalendarPageNonAdminForbidden) {
+    auto r = GET("/settings/calendar", member_token);
+    EXPECT_TRUE(r.code == 302 || r.code == 307); // non-admin gets redirected to dashboard
+}
+
+TEST_F(IntegrationTest, SettingsGoogleCalendarPageLoads) {
+    auto r = GET("/settings/google-calendar", admin_token);
+    EXPECT_EQ(r.code, 200);
+    expect_contains(r, "Service Account JSON Path");
+    expect_contains(r, "Google Calendar ID");
+}
+
+TEST_F(IntegrationTest, SettingsGoogleCalendarPageNonAdminForbidden) {
+    auto r = GET("/settings/google-calendar", member_token);
+    EXPECT_TRUE(r.code == 302 || r.code == 307); // non-admin gets redirected to dashboard
+}
+
+TEST_F(IntegrationTest, SettingsCalendarSaveOnly) {
+    auto r = POST_HTMX("/settings/calendar",
+        "lug_timezone=Asia/Tokyo&ical_calendar_name=Tokyo+Cal",
         admin_token);
     EXPECT_EQ(r.code, 200);
+    EXPECT_EQ(settings_repo->get("lug_timezone"), "Asia/Tokyo");
+    EXPECT_EQ(settings_repo->get("ical_calendar_name"), "Tokyo Cal");
+}
+
+TEST_F(IntegrationTest, SettingsGoogleCalendarSaveOnly) {
+    auto r = POST_HTMX("/settings/google-calendar",
+        "google_service_account_json_path=/etc/sa.json"
+        "&google_calendar_id=cal-id@group.calendar.google.com",
+        admin_token);
+    EXPECT_EQ(r.code, 200);
+    EXPECT_EQ(settings_repo->get("google_service_account_json_path"), "/etc/sa.json");
+    EXPECT_EQ(settings_repo->get("google_calendar_id"), "cal-id@group.calendar.google.com");
+}
+
+TEST_F(IntegrationTest, SettingsSaveAndApply) {
+    // Settings is split into per-section forms/endpoints (see SettingsRoutes.cpp) -
+    // Discord-server fields and calendar fields belong to different sections now.
+    auto r1 = POST_HTMX("/settings/discord",
+        "discord_guild_id=test-guild&discord_announcements_channel_id=test-ch",
+        admin_token);
+    EXPECT_EQ(r1.code, 200);
+    auto r2 = POST_HTMX("/settings/calendar",
+        "lug_timezone=America/Chicago&ical_calendar_name=Test+Cal",
+        admin_token);
+    EXPECT_EQ(r2.code, 200);
 
     EXPECT_EQ(settings_repo->get("discord_guild_id"), "test-guild");
     EXPECT_EQ(settings_repo->get("lug_timezone"), "America/Chicago");
@@ -145,18 +197,21 @@ TEST_F(IntegrationTest, RegenerateNicknamesNonAdmin) {
 }
 
 TEST_F(IntegrationTest, SettingsSaveAllFields) {
-    auto r = POST_HTMX("/settings",
+    auto r1 = POST_HTMX("/settings/discord",
         "discord_guild_id=guild-123"
         "&discord_announcements_channel_id=ch-123"
         "&discord_events_forum_channel_id=forum-123"
         "&discord_announcement_role_id=role-123"
         "&discord_non_lug_event_role_id=role-456"
-        "&lug_timezone=America/New_York"
-        "&ical_calendar_name=Full+Test+Cal"
         "&discord_suppress_pings=1"
         "&discord_suppress_updates=1",
         admin_token);
-    EXPECT_EQ(r.code, 200);
+    EXPECT_EQ(r1.code, 200);
+    auto r2 = POST_HTMX("/settings/calendar",
+        "lug_timezone=America/New_York"
+        "&ical_calendar_name=Full+Test+Cal",
+        admin_token);
+    EXPECT_EQ(r2.code, 200);
 
     EXPECT_EQ(settings_repo->get("discord_guild_id"), "guild-123");
     EXPECT_EQ(settings_repo->get("discord_events_forum_channel_id"), "forum-123");
@@ -167,7 +222,7 @@ TEST_F(IntegrationTest, SettingsSaveAllFields) {
 }
 
 TEST_F(IntegrationTest, SettingsNonAdminForbidden) {
-    auto r = POST("/settings",
+    auto r = POST("/settings/discord",
         "discord_guild_id=hacked",
         member_token);
     EXPECT_EQ(r.code, 403); // non-admin gets forbidden

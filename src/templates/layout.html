@@ -316,7 +316,27 @@
              class="block px-3 py-2 rounded-lg text-sm cursor-pointer transition-colors
                     {{#active_settings}}nav-active{{/active_settings}}
                     {{^active_settings}}nav-inactive{{/active_settings}}">
-            General
+            Discord
+          </a>
+          <a hx-get="/settings/calendar"
+             hx-target="#main-content"
+             hx-push-url="true"
+             hx-swap="innerHTML"
+             hx-indicator="#nav-spinner"
+             class="block px-3 py-2 rounded-lg text-sm cursor-pointer transition-colors
+                    {{#active_calendar}}nav-active{{/active_calendar}}
+                    {{^active_calendar}}nav-inactive{{/active_calendar}}">
+            Calendar
+          </a>
+          <a hx-get="/settings/google-calendar"
+             hx-target="#main-content"
+             hx-push-url="true"
+             hx-swap="innerHTML"
+             hx-indicator="#nav-spinner"
+             class="block px-3 py-2 rounded-lg text-sm cursor-pointer transition-colors
+                    {{#active_google_calendar}}nav-active{{/active_google_calendar}}
+                    {{^active_google_calendar}}nav-inactive{{/active_google_calendar}}">
+            Google Calendar
           </a>
           <a hx-get="/settings/api-keys"
              hx-target="#main-content"

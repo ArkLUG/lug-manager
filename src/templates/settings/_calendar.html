@@ -1,0 +1,62 @@
+<div class="max-w-2xl space-y-6" data-page-title="Calendar Settings">
+
+  <div class="flex items-center gap-3">
+    <a hx-get="/settings" hx-target="#main-content" hx-push-url="true" hx-swap="innerHTML"
+       class="text-sm text-gray-500 hover:text-gray-700 transition-colors cursor-pointer">← Settings</a>
+    <span class="text-gray-300">/</span>
+    <span class="text-sm font-medium text-gray-700">Calendar</span>
+  </div>
+
+  <div class="bg-white rounded-xl border border-gray-200 p-6">
+    <h2 class="text-xl font-bold text-gray-900 mb-1">Calendar</h2>
+    <p class="text-sm text-gray-500 mb-6">Timezone and display name used for the iCal feed and Discord scheduled events.</p>
+    <form hx-post="/settings/calendar" hx-target="#calendar-feedback" hx-swap="innerHTML" class="space-y-5">
+
+      <!-- Calendar Name -->
+      <div>
+        <label class="block text-sm font-medium text-gray-700 mb-1">Calendar Name</label>
+        <input type="text" name="ical_calendar_name" value="{{calendar_name}}"
+               placeholder="LUG Events"
+               class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-yellow-400 focus:border-transparent">
+        <p class="text-xs text-gray-400 mt-1">Display name shown in calendar apps when subscribing to the iCal feed.</p>
+      </div>
+
+      <!-- Timezone -->
+      <div>
+        <label class="block text-sm font-medium text-gray-700 mb-1">Timezone</label>
+        <input type="text" name="lug_timezone" value="{{timezone}}"
+               list="tz-suggestions"
+               placeholder="America/Chicago"
+               class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-yellow-400 focus:border-transparent font-mono">
+        <datalist id="tz-suggestions">
+          <option value="America/New_York">
+          <option value="America/Chicago">
+          <option value="America/Denver">
+          <option value="America/Los_Angeles">
+          <option value="America/Phoenix">
+          <option value="America/Anchorage">
+          <option value="Pacific/Honolulu">
+          <option value="Europe/London">
+          <option value="Europe/Paris">
+          <option value="Europe/Berlin">
+          <option value="Europe/Moscow">
+          <option value="Asia/Tokyo">
+          <option value="Asia/Shanghai">
+          <option value="Asia/Kolkata">
+          <option value="Australia/Sydney">
+          <option value="UTC">
+        </datalist>
+        <p class="text-xs text-gray-400 mt-1">IANA timezone name used for Discord scheduled events and meeting announcements. DST is applied automatically.</p>
+      </div>
+
+      <div class="flex items-center gap-3 pt-2">
+        <button type="submit"
+                class="px-5 py-2 bg-yellow-400 text-gray-900 rounded-lg text-sm font-semibold hover:bg-yellow-300 transition-colors">
+          Save Calendar Settings
+        </button>
+        <div id="calendar-feedback" class="text-sm text-gray-600"></div>
+      </div>
+    </form>
+  </div>
+
+</div>

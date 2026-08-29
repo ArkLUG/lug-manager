@@ -1,13 +1,12 @@
-<div class="max-w-2xl space-y-6" data-page-title="Settings">
+<div class="max-w-2xl space-y-6" data-page-title="Discord Settings">
 
   <div class="bg-white rounded-xl border border-gray-200 p-6">
     <div class="flex items-center justify-between mb-1">
       <h2 class="text-xl font-bold text-gray-900">Discord Settings</h2>
       <button onclick="pageTour([
-        {element:'[data-page-title]', popover:{title:'Settings', description:'Admin-only configuration for Discord integration and system-wide settings.'}},
+        {element:'[data-page-title]', popover:{title:'Discord Settings', description:'Server, channels, and roles the LUG Manager bot uses. Calendar, Google Calendar, and Discord Matches now have their own pages under Settings in the sidebar.'}},
         {popover:{title:'Discord Server', description:'Set your Guild ID so the bot knows which Discord server to interact with. The bot must be invited with proper permissions first.'}},
-        {popover:{title:'Channels', description:'Configure announcement channels (where meeting/event notifications post), forum channels (where attendance reports go), and timezone for date formatting.'}},
-        {popover:{title:'Role Mappings', description:'Map Discord server roles to LUG roles (admin or member). When members log in, their Discord roles determine their LUG permissions. Highest-privilege match wins.'}},
+        {popover:{title:'Channels', description:'Configure announcement channels (where meeting/event notifications post) and forum channels (where attendance reports go).'}},
         {popover:{title:'Sync', description:'Use Sync Now to pull all Discord guild members. Sync All to Discord pushes meetings/events. Sync Nicknames updates Discord display names. Auto-sync runs every 6 hours.'}},
       ])" class="inline-flex items-center gap-1 px-2 py-1 text-xs text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors" title="Page tour">
         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
@@ -15,7 +14,7 @@
     </div>
     <p class="text-sm text-gray-500 mb-6">Configure which Discord server and channels the LUG Manager posts to. Changes take effect immediately.</p>
 
-    <form hx-post="/settings" hx-target="#settings-feedback" hx-swap="innerHTML" class="space-y-5">
+    <form hx-post="/settings/discord" hx-target="#settings-feedback" hx-swap="innerHTML" class="space-y-5">
 
       <!-- Guild ID -->
       <div>
@@ -129,43 +128,6 @@
         </label>
       </div>
 
-      <!-- Calendar Name -->
-      <div>
-        <label class="block text-sm font-medium text-gray-700 mb-1">Calendar Name</label>
-        <input type="text" name="ical_calendar_name" value="{{calendar_name}}"
-               placeholder="LUG Events"
-               class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-yellow-400 focus:border-transparent">
-        <p class="text-xs text-gray-400 mt-1">Display name shown in calendar apps when subscribing to the iCal feed.</p>
-      </div>
-
-      <!-- Timezone -->
-      <div>
-        <label class="block text-sm font-medium text-gray-700 mb-1">Timezone</label>
-        <input type="text" name="lug_timezone" value="{{timezone}}"
-               list="tz-suggestions"
-               placeholder="America/Chicago"
-               class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-yellow-400 focus:border-transparent font-mono">
-        <datalist id="tz-suggestions">
-          <option value="America/New_York">
-          <option value="America/Chicago">
-          <option value="America/Denver">
-          <option value="America/Los_Angeles">
-          <option value="America/Phoenix">
-          <option value="America/Anchorage">
-          <option value="Pacific/Honolulu">
-          <option value="Europe/London">
-          <option value="Europe/Paris">
-          <option value="Europe/Berlin">
-          <option value="Europe/Moscow">
-          <option value="Asia/Tokyo">
-          <option value="Asia/Shanghai">
-          <option value="Asia/Kolkata">
-          <option value="Australia/Sydney">
-          <option value="UTC">
-        </datalist>
-        <p class="text-xs text-gray-400 mt-1">IANA timezone name used for Discord scheduled events and meeting announcements. DST is applied automatically.</p>
-      </div>
-
       <!-- Event Thread Forum Channel -->
       <div>
         <label class="block text-sm font-medium text-gray-700 mb-1">Event Thread Forum Channel</label>
@@ -194,49 +156,10 @@
         <p class="text-xs text-gray-400 mt-1">Forum channel where meeting reports are published.</p>
       </div>
 
-      <!-- Google Calendar Integration -->
-      <div class="border-t border-gray-200 pt-5 mt-5">
-        <h3 class="text-lg font-bold text-gray-900 mb-1">Google Calendar</h3>
-        <p class="text-sm text-gray-500 mb-4">Sync meetings and events to a Google Calendar using a service account. Leave blank to disable.</p>
-
-        <div class="space-y-4">
-          <div>
-            <label class="block text-sm font-medium text-gray-700 mb-1">Service Account JSON Path</label>
-            <input type="text" name="google_service_account_json_path" value="{{google_sa_path}}"
-                   placeholder="/etc/lug-manager/service-account.json"
-                   class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-yellow-400 focus:border-transparent font-mono">
-            <p class="text-xs text-gray-400 mt-1">Absolute path to the Google Cloud service account key file (.json) on the server.</p>
-          </div>
-          <div>
-            <label class="block text-sm font-medium text-gray-700 mb-1">Google Calendar ID</label>
-            <input type="text" name="google_calendar_id" value="{{google_calendar_id}}"
-                   placeholder="abc123@group.calendar.google.com"
-                   class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-yellow-400 focus:border-transparent font-mono">
-            <p class="text-xs text-gray-400 mt-1">Found in Google Calendar → Settings → Calendar ID. Share the calendar with the service account email as an editor.</p>
-          </div>
-          {{#gcal_configured}}
-          <div class="flex items-center gap-3">
-            <div class="flex items-center gap-2 text-sm text-green-600">
-              <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"/></svg>
-              Connected
-            </div>
-            <button type="button"
-                    hx-post="/api/google-calendar/import"
-                    hx-target="#gcal-import-result"
-                    hx-swap="innerHTML"
-                    class="px-3 py-1.5 text-sm font-medium text-indigo-700 bg-indigo-50 border border-indigo-200 rounded-lg hover:bg-indigo-100 transition-colors">
-              Import from Google Calendar
-            </button>
-            <span id="gcal-import-result" class="text-sm"></span>
-          </div>
-          {{/gcal_configured}}
-        </div>
-      </div>
-
       <div class="flex items-center gap-3 pt-2">
         <button type="submit"
                 class="px-5 py-2 bg-yellow-400 text-gray-900 rounded-lg text-sm font-semibold hover:bg-yellow-300 transition-colors">
-          Save Settings
+          Save Discord Settings
         </button>
         <button type="button"
                 hx-post="/api/discord/test-announcement"
@@ -291,7 +214,6 @@
         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/></svg>
         Sync Nicknames
       </button>
-      {{#gcal_configured}}
       <button hx-post="/api/google-calendar/sync-all"
               hx-target="#bulk-sync-result"
               hx-swap="innerHTML"
@@ -299,7 +221,6 @@
         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
         Sync All to Google Calendar
       </button>
-      {{/gcal_configured}}
       <div id="bulk-sync-result" class="text-sm"></div>
     </div>
   </div>
@@ -318,7 +239,9 @@
       Pull all members from the Discord server and automatically create accounts for anyone
       whose Discord roles map to a LUG role. Existing members get their display name and role
       updated. Dues and paid status are never overwritten. The sync also runs automatically
-      every 6 hours in the background.
+      every 6 hours in the background. Ambiguous matches are queued for review on the
+      <a hx-get="/settings/discord-matches" hx-target="#main-content" hx-push-url="true" hx-swap="innerHTML"
+         class="text-indigo-600 hover:text-indigo-800 cursor-pointer">Discord Matches</a> page.
     </p>
     <div class="flex items-center gap-3">
       <button hx-post="/api/discord/sync-members"
@@ -339,37 +262,6 @@
       </div>
       <div id="sync-result" class="text-sm"></div>
     </div>
-
-    <!-- Posts to the same /settings handler as the main form above; on success it sends
-         HX-Redirect: /settings, which htmx follows as a full page refresh regardless of
-         hx-target/hx-swap, so none are needed here. -->
-    <form hx-post="/settings" class="mt-4 pt-4 border-t border-gray-100 space-y-4">
-      <div>
-        <label class="block text-sm font-medium text-gray-700 mb-1">Match Notification Channel</label>
-        <select class="ts-channel w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-yellow-400 focus:border-transparent"
-                name="discord_matches_notification_channel_id">
-          {{{matches_channel_options}}}
-        </select>
-        <p class="text-xs text-gray-400 mt-1">
-          When a Discord member sync can't confidently match a guild member, a message with a
-          Resolve button posts here for review. Leave unset to disable.
-        </p>
-      </div>
-      <div>
-        <label class="block text-sm font-medium text-gray-700 mb-1">Authorized Roles</label>
-        <select multiple class="ts-multi w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-yellow-400"
-                name="discord_matches_authorized_role_ids">
-          {{{authorized_role_options}}}
-        </select>
-        <p class="text-xs text-gray-400 mt-1">
-          Only Discord members with one of these roles can act on the match-review button/form in Discord.
-        </p>
-      </div>
-      <button type="submit"
-              class="px-4 py-2 bg-indigo-600 text-white rounded-lg text-sm font-medium hover:bg-indigo-500 transition-colors">
-        Save
-      </button>
-    </form>
   </div>
 
   <div class="bg-blue-50 border border-blue-200 rounded-xl p-4 text-sm text-blue-800">

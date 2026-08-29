@@ -1,6 +1,7 @@
 #include "routes/DiscordMatchRoutes.hpp"
 #include <crow/mustache.h>
 #include <sstream>
+#include <unordered_set>
 
 // Builds the <option> list for the member picker used on the review page,
 // with the given member id pre-selected (mirrors EventRoutes.cpp's
@@ -21,12 +22,44 @@ static std::string build_member_options(const std::vector<Member>& all, int64_t 
     return oss.str();
 }
 
+// Same "keep a previously-saved id visible as a selected option even if the
+// live Discord fetch comes back empty" logic as SettingsRoutes.cpp's
+// build_options - duplicated here (rather than shared) because these are two
+// separate small route files and the helper is a few lines; see that file's
+// longer comment for the full rationale (production once silently wiped a
+// setting when a live-fetch dropdown rendered with nothing selected).
+static std::string build_channel_options(const std::vector<DiscordChannel>& channels,
+                                          const std::string& selected,
+                                          const std::string& empty_label,
+                                          const std::string& none_msg) {
+    std::ostringstream oss;
+    oss << "<option value=\"\">" << empty_label << "</option>\n";
+    bool saw_selected = selected.empty();
+    for (auto& ch : channels) {
+        oss << "<option value=\"" << ch.id << "\"";
+        if (ch.id == selected) { oss << " selected"; saw_selected = true; }
+        oss << ">#" << ch.name << "</option>\n";
+    }
+    if (channels.empty()) {
+        oss.str("");
+        oss << "<option value=\"\">" << none_msg << "</option>\n";
+    }
+    if (!saw_selected)
+        oss << "<option value=\"" << selected << "\" selected>(saved: " << selected << ")</option>\n";
+    return oss.str();
+}
+
 void register_discord_match_routes(LugApp& app,
                                     PendingDiscordMatchRepository& pending_matches,
                                     MemberRepository& member_repo,
-                                    AuditService& audit) {
+                                    AuditService& audit,
+                                    SettingsRepository& settings,
+                                    DiscordClient& discord) {
 
-    // GET /settings/discord-matches - review queue page
+    // GET /settings/discord-matches - review queue page. Admins additionally
+    // see the notification-channel/authorized-roles config form at the top;
+    // chapter leads/moderators (who can also reach this page) only see the
+    // review queue itself - that config is Discord-wide, admin-only.
     CROW_ROUTE(app, "/settings/discord-matches")([&](const crow::request& req) {
         crow::response res;
         auto& ctx = app.get_context<AuthMiddleware>(req);
@@ -49,6 +82,38 @@ void register_discord_match_routes(LugApp& app,
         }
         mctx["pending"]     = std::move(arr);
         mctx["has_pending"] = !pending.empty();
+
+        bool is_admin = ctx.auth.role == "admin";
+        mctx["is_admin"] = is_admin;
+        if (is_admin) {
+            std::string guild_id = settings.get("discord_guild_id", discord.get_guild_id());
+            std::string no_guild = "Enter a Guild ID first on the Discord settings page";
+
+            std::string matches_channel = settings.get("discord_matches_notification_channel_id", "");
+            std::string matches_channel_options = guild_id.empty()
+                ? "<option value=\"\">" + no_guild + "</option>"
+                : build_channel_options(discord.fetch_text_channels(), matches_channel,
+                                        "-- Select a channel --",
+                                        "No text channels found (check guild ID &amp; bot permissions)");
+            mctx["matches_channel_id"]      = matches_channel;
+            mctx["matches_channel_options"] = matches_channel_options;
+
+            // Explicit admin-chosen role-ID allowlist, never a role-name match.
+            std::string authorized_role_ids_csv = settings.get("discord_matches_authorized_role_ids", "");
+            std::unordered_set<std::string> authorized_role_ids;
+            {
+                std::istringstream ss(authorized_role_ids_csv);
+                std::string rid;
+                while (std::getline(ss, rid, ',')) if (!rid.empty()) authorized_role_ids.insert(rid);
+            }
+            auto all_roles = guild_id.empty() ? std::vector<DiscordRole>{} : discord.fetch_guild_roles();
+            std::ostringstream authorized_role_options;
+            for (auto& r : all_roles) {
+                authorized_role_options << "<option value=\"" << r.id << "\""
+                    << (authorized_role_ids.count(r.id) ? " selected" : "") << ">@" << r.name << "</option>\n";
+            }
+            mctx["authorized_role_options"] = authorized_role_options.str();
+        }
 
         bool is_htmx = req.get_header_value("HX-Request") == "true";
         if (is_htmx) {
@@ -151,6 +216,51 @@ void register_discord_match_routes(LugApp& app,
         res.write("<tr class=\"bg-green-50\"><td colspan=\"4\" class=\"px-3 py-2 text-green-700 text-center\">"
                    "Created new member " + created.display_name + "</td></tr>");
         res.add_header("Content-Type", "text/html; charset=utf-8");
+        return res;
+    });
+
+    // POST /settings/discord-matches - save notification channel + authorized
+    // role allowlist. Its own dedicated form/endpoint (admin-only, unlike the
+    // rest of this page): only ever touches these two settings, so saving it
+    // can never affect any other settings section elsewhere in the app.
+    CROW_ROUTE(app, "/settings/discord-matches").methods("POST"_method)(
+        [&](const crow::request& req) {
+        crow::response res;
+        auto& ctx = app.get_context<AuthMiddleware>(req);
+        if (ctx.auth.role != "admin") {
+            res.code = 403;
+            res.write("Forbidden");
+            return res;
+        }
+
+        auto params = crow::query_string("?" + req.body);
+        auto get_param = [&](const char* k) -> std::string {
+            const char* v = params.get(k);
+            return v ? std::string(v) : "";
+        };
+
+        // Allow clearing (empty = disabled) - this form's own field, no
+        // cross-section ambiguity.
+        std::string matches_channel = get_param("discord_matches_notification_channel_id");
+        settings.set("discord_matches_notification_channel_id", matches_channel);
+
+        // Explicit admin-chosen role-ID allowlist, never a role-name match.
+        // Empty = nobody authorized (default-closed).
+        auto role_vals = params.get_list("discord_matches_authorized_role_ids", false);
+        std::string csv;
+        for (auto* r : role_vals)
+            if (r && r[0]) { if (!csv.empty()) csv += ","; csv += r; }
+        settings.set("discord_matches_authorized_role_ids", csv);
+
+        audit.log(req, app, "settings.update", "settings", 0, "", "Updated Discord match settings");
+
+        bool is_htmx = req.get_header_value("HX-Request") == "true";
+        if (is_htmx) {
+            res.add_header("HX-Redirect", "/settings/discord-matches");
+            res.code = 200;
+        } else {
+            res.redirect("/settings/discord-matches");
+        }
         return res;
     });
 }

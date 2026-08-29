@@ -263,24 +263,27 @@ What you liked best: [feedback]
 
 ## Settings (Admin)
 
-All runtime configuration is managed from the Settings page (`/settings`):
+Runtime configuration is split into separate pages under **Settings** in the sidebar, each with
+its own save button — saving one page never touches another page's settings:
 
-| Setting | Description |
-|---------|-------------|
-| Discord Guild ID | Your Discord server ID |
-| Announcements Channel | Channel for LUG-wide announcements |
-| Event Forum Channel | Forum channel for event discussion threads |
-| Event/Meeting Reports Forum | Forum channels for published reports |
-| Announcement/Non-LUG Roles | Roles @mentioned in announcements |
-| Timezone | IANA timezone for Discord/Calendar |
-| Calendar Name | Display name in calendar apps |
-| Suppress Pings/Updates | Disable @mentions or update notifications |
-| Google Calendar | Service account JSON path and Calendar ID |
-| Role Mappings | Map Discord roles to admin/member |
-| Match Notification Channel | Discord channel for Resolve Match buttons (Discord member match review); unset disables |
-| Authorized Roles | Discord role-ID allowlist permitted to resolve matches via the Discord button/modal |
-| Perk Levels | Attendance tiers with Discord role rewards (per year) |
-| Audit Log | Searchable history of all actions taken by all users |
+| Page | Route | Setting | Description |
+|------|-------|---------|-------------|
+| Discord | `/settings` | Discord Guild ID | Your Discord server ID |
+| | | Announcements Channel | Channel for LUG-wide announcements |
+| | | Event Forum Channel | Forum channel for event discussion threads |
+| | | Event/Meeting Reports Forum | Forum channels for published reports |
+| | | Announcement/Non-LUG Roles | Roles @mentioned in announcements |
+| | | Suppress Pings/Updates | Disable @mentions or update notifications |
+| Calendar | `/settings/calendar` | Timezone | IANA timezone for Discord/Calendar |
+| | | Calendar Name | Display name in calendar apps |
+| Google Calendar | `/settings/google-calendar` | Service Account JSON Path / Calendar ID | Google Calendar sync configuration |
+| Discord Matches | `/settings/discord-matches` | Match Notification Channel | Discord channel for Resolve Match buttons (Discord member match review); unset disables |
+| | | Authorized Roles | Discord role-ID allowlist permitted to resolve matches via the Discord button/modal |
+
+Also reachable from the Settings accordion in the sidebar: **Roles** (`/settings/roles`, map
+Discord roles to admin/member) and **API Keys** (`/settings/api-keys`). **Perk Levels** (`/perks`)
+and **Audit Log** (`/audit`, searchable history of all actions taken by all users) are their own
+top-level sidebar items.
 
 ## JSON API
 

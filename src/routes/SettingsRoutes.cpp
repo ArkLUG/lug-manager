@@ -368,12 +368,8 @@ void register_settings_routes(LugApp& app, SettingsRepository& settings,
                                                        discord.get_announcement_role_id());
         std::string non_lug_role_id    = settings.get("discord_non_lug_event_role_id",
                                                        discord.get_non_lug_event_role_id());
-        std::string timezone           = settings.get("lug_timezone", discord.get_timezone());
-        std::string calendar_name     = settings.get("ical_calendar_name", "LUG Events");
         std::string suppress_pings    = settings.get("discord_suppress_pings");
         std::string suppress_updates  = settings.get("discord_suppress_updates");
-        std::string gcal_sa_path      = settings.get("google_service_account_json_path");
-        std::string gcal_cal_id       = settings.get("google_calendar_id");
         std::string event_reports_forum = settings.get("discord_event_reports_forum_channel_id");
         std::string meeting_reports_forum = settings.get("discord_meeting_reports_forum_channel_id");
 
@@ -463,13 +459,8 @@ void register_settings_routes(LugApp& app, SettingsRepository& settings,
         mctx["forum_options"]         = forum_options;
         mctx["role_options"]          = role_options;
         mctx["non_lug_role_options"]  = non_lug_role_options;
-        mctx["timezone"]              = timezone;
-        mctx["calendar_name"]        = calendar_name;
-        mctx["google_sa_path"]       = gcal_sa_path;
-        mctx["google_calendar_id"]   = gcal_cal_id;
         mctx["suppress_pings"]       = (suppress_pings == "1");
         mctx["suppress_updates"]     = (suppress_updates == "1");
-        mctx["gcal_configured"]      = gcal.is_configured();
         mctx["event_reports_forum_id"]   = event_reports_forum;
         mctx["meeting_reports_forum_id"] = meeting_reports_forum;
         mctx["event_reports_forum_options"]   = event_reports_forum_options;
@@ -477,34 +468,6 @@ void register_settings_routes(LugApp& app, SettingsRepository& settings,
         int pending_match_count = static_cast<int>(pending_discord_matches.find_all_unresolved().size());
         mctx["pending_match_count"] = pending_match_count;
         mctx["has_pending_matches"] = pending_match_count > 0;
-
-        // Discord match notification channel — same fetch_text_channels() result already
-        // used above for lug_channel, no extra Discord API call.
-        std::string matches_channel = settings.get("discord_matches_notification_channel_id", "");
-        std::string matches_channel_options = guild_id.empty()
-            ? "<option value=\"\">" + no_guild + "</option>"
-            : build_options(discord.fetch_text_channels(), matches_channel,
-                            "-- Select a channel --",
-                            "No text channels found (check guild ID &amp; bot permissions)");
-        mctx["matches_channel_id"]      = matches_channel;
-        mctx["matches_channel_options"] = matches_channel_options;
-
-        // Discord match authorized roles — comma-separated role IDs allowed to
-        // resolve matches via the Discord button/modal. Never a role-name match;
-        // always this explicit, admin-chosen ID list (see DiscordInteractionsRoutes.cpp).
-        std::string authorized_role_ids_csv = settings.get("discord_matches_authorized_role_ids", "");
-        std::unordered_set<std::string> authorized_role_ids;
-        {
-            std::istringstream ss(authorized_role_ids_csv);
-            std::string rid;
-            while (std::getline(ss, rid, ',')) if (!rid.empty()) authorized_role_ids.insert(rid);
-        }
-        std::ostringstream authorized_role_options;
-        for (auto& r : all_roles) {
-            authorized_role_options << "<option value=\"" << r.id << "\""
-                << (authorized_role_ids.count(r.id) ? " selected" : "") << ">@" << r.name << "</option>\n";
-        }
-        mctx["authorized_role_options"] = authorized_role_options.str();
 
         bool is_htmx = req.get_header_value("HX-Request") == "true";
         if (is_htmx) {
@@ -516,7 +479,7 @@ void register_settings_routes(LugApp& app, SettingsRepository& settings,
             std::string content = content_tmpl.render(mctx).dump();
             crow::mustache::context layout_ctx;
             layout_ctx["content"]         = content;
-            layout_ctx["page_title"]      = "Settings";
+            layout_ctx["page_title"]      = "Discord Settings";
             layout_ctx["active_settings"] = true;
             layout_ctx["is_admin"]        = true;
         set_layout_auth(req, app, layout_ctx);
@@ -527,119 +490,100 @@ void register_settings_routes(LugApp& app, SettingsRepository& settings,
         return res;
     });
 
-    // POST /settings - save guild and LUG-wide channel
-    CROW_ROUTE(app, "/settings").methods("POST"_method)(
-        [&](const crow::request& req) {
+    // GET /settings/calendar - timezone and iCal display name.
+    CROW_ROUTE(app, "/settings/calendar")([&](const crow::request& req) {
         crow::response res;
         auto& ctx = app.get_context<AuthMiddleware>(req);
         if (ctx.auth.role != "admin") {
-            res.code = 403;
-            res.write("Forbidden");
+            res.redirect("/dashboard");
             return res;
         }
 
-        auto params = crow::query_string("?" + req.body);
-        auto get_param = [&](const char* k) -> std::string {
-            const char* v = params.get(k);
-            return v ? std::string(v) : "";
-        };
-        auto has_param = [&](const char* k) -> bool {
-            return params.get(k) != nullptr;
-        };
+        crow::mustache::context mctx;
+        mctx["timezone"]      = settings.get("lug_timezone", discord.get_timezone());
+        mctx["calendar_name"] = settings.get("ical_calendar_name", "LUG Events");
 
-        std::string guild_id       = get_param("discord_guild_id");
-        std::string lug_channel    = get_param("discord_announcements_channel_id");
-        std::string forum_channel  = get_param("discord_events_forum_channel_id");
-        std::string announce_role  = get_param("discord_announcement_role_id");
-        std::string non_lug_role   = get_param("discord_non_lug_event_role_id");
-        std::string timezone       = get_param("lug_timezone");
-        std::string cal_name       = get_param("ical_calendar_name");
-        std::string suppress_pings   = get_param("discord_suppress_pings");
-        std::string suppress_updates = get_param("discord_suppress_updates");
-        std::string gcal_sa_path   = get_param("google_service_account_json_path");
-        std::string gcal_cal_id    = get_param("google_calendar_id");
-
-        if (!guild_id.empty())    settings.set("discord_guild_id",    guild_id);
-        if (!lug_channel.empty()) settings.set("discord_announcements_channel_id", lug_channel);
-        // These three are real <select> elements, always present (with some value,
-        // even "") in a genuine browser form submit - so an explicit blank means the
-        // admin picked the placeholder option and really does want to clear it. But
-        // the field can be missing entirely from a non-browser POST (API client,
-        // tests, or a request built by hand) - in that case, leave the stored value
-        // untouched rather than treating "absent" the same as "explicitly blanked".
-        // See the GET /settings option-builder comment for how a live-fetch failure
-        // is kept from ever producing an unselected/blank dropdown in the first place.
-        if (has_param("discord_events_forum_channel_id"))
-            settings.set("discord_events_forum_channel_id", forum_channel);
-        else
-            forum_channel = settings.get("discord_events_forum_channel_id");
-        if (has_param("discord_announcement_role_id"))
-            settings.set("discord_announcement_role_id", announce_role);
-        else
-            announce_role = settings.get("discord_announcement_role_id");
-        if (has_param("discord_non_lug_event_role_id"))
-            settings.set("discord_non_lug_event_role_id", non_lug_role);
-        else
-            non_lug_role = settings.get("discord_non_lug_event_role_id");
-        if (!timezone.empty())    settings.set("lug_timezone",         timezone);
-        if (!cal_name.empty())    settings.set("ical_calendar_name",   cal_name);
-
-        // Checkboxes: absent from form = unchecked = "0"
-        settings.set("discord_suppress_pings", suppress_pings == "1" ? "1" : "0");
-        settings.set("discord_suppress_updates", suppress_updates == "1" ? "1" : "0");
-
-        // Apply immediately so Discord calls use the new values. forum_channel/
-        // announce_role/non_lug_role were backfilled from the persisted setting
-        // just above when absent from this particular POST (e.g. the separate
-        // Discord Matches form on this same page), so a partial-form save can
-        // never blank the live in-memory config even transiently - reconfigure()
-        // always receives the true current value for every field, not just what
-        // this one request happened to submit.
-        discord.reconfigure(guild_id, lug_channel, forum_channel, announce_role, non_lug_role, timezone);
-        discord.set_suppress_pings(suppress_pings == "1");
-        discord.set_suppress_updates(suppress_updates == "1");
-        if (!timezone.empty()) calendar.set_timezone(timezone);
-        // Same "absent means untouched" rule: /settings has a second, separate
-        // <form> (Discord Matches notification channel/roles) that also posts here
-        // and does NOT include these two fields at all - without this guard, saving
-        // that small form would silently wipe the Google Calendar config every time.
-        if (has_param("google_service_account_json_path"))
-            settings.set("google_service_account_json_path", gcal_sa_path);
-        if (has_param("google_calendar_id"))
-            settings.set("google_calendar_id", gcal_cal_id);
-        {
-            // Now real <select> elements (same live-fetch fragility as the three
-            // above) - same "absent means untouched" rule applies.
-            std::string ev_reports = get_param("discord_event_reports_forum_channel_id");
-            std::string mtg_reports = get_param("discord_meeting_reports_forum_channel_id");
-            if (has_param("discord_event_reports_forum_channel_id")) {
-                settings.set("discord_event_reports_forum_channel_id", ev_reports);
-                discord.set_event_reports_forum_id(ev_reports);
-            }
-            if (has_param("discord_meeting_reports_forum_channel_id")) {
-                settings.set("discord_meeting_reports_forum_channel_id", mtg_reports);
-                discord.set_meeting_reports_forum_id(mtg_reports);
-            }
+        bool is_htmx = req.get_header_value("HX-Request") == "true";
+        if (is_htmx) {
+            auto tmpl = crow::mustache::load("settings/_calendar.html");
+            res.add_header("Content-Type", "text/html; charset=utf-8");
+            res.write(tmpl.render(mctx).dump());
+        } else {
+            auto content_tmpl = crow::mustache::load("settings/_calendar.html");
+            std::string content = content_tmpl.render(mctx).dump();
+            crow::mustache::context layout_ctx;
+            layout_ctx["content"]         = content;
+            layout_ctx["page_title"]      = "Calendar Settings";
+            layout_ctx["active_calendar"] = true;
+            layout_ctx["is_admin"]        = true;
+            set_layout_auth(req, app, layout_ctx);
+            auto layout = crow::mustache::load("layout.html");
+            res.add_header("Content-Type", "text/html; charset=utf-8");
+            res.write(layout.render(layout_ctx).dump());
         }
-        if (!gcal_sa_path.empty() && !gcal_cal_id.empty())
-            gcal.reconfigure(gcal_sa_path, gcal_cal_id, timezone);
+        return res;
+    });
 
-        {
-            // Discord match notification channel — allow clearing (empty = disabled).
-            std::string matches_channel = get_param("discord_matches_notification_channel_id");
-            settings.set("discord_matches_notification_channel_id", matches_channel);
-
-            // Discord match authorized roles — explicit admin-chosen role-ID allowlist,
-            // never a role-name match. Empty = nobody authorized (default-closed).
-            auto role_vals = params.get_list("discord_matches_authorized_role_ids", false);
-            std::string csv;
-            for (auto* r : role_vals)
-                if (r && r[0]) { if (!csv.empty()) csv += ","; csv += r; }
-            settings.set("discord_matches_authorized_role_ids", csv);
+    // GET /settings/google-calendar - service account path + calendar ID.
+    CROW_ROUTE(app, "/settings/google-calendar")([&](const crow::request& req) {
+        crow::response res;
+        auto& ctx = app.get_context<AuthMiddleware>(req);
+        if (ctx.auth.role != "admin") {
+            res.redirect("/dashboard");
+            return res;
         }
 
-        audit.log(req, app, "settings.update", "settings", 0, "", "Updated settings");
+        crow::mustache::context mctx;
+        mctx["google_sa_path"]     = settings.get("google_service_account_json_path");
+        mctx["google_calendar_id"] = settings.get("google_calendar_id");
+        mctx["gcal_configured"]    = gcal.is_configured();
 
+        bool is_htmx = req.get_header_value("HX-Request") == "true";
+        if (is_htmx) {
+            auto tmpl = crow::mustache::load("settings/_google_calendar.html");
+            res.add_header("Content-Type", "text/html; charset=utf-8");
+            res.write(tmpl.render(mctx).dump());
+        } else {
+            auto content_tmpl = crow::mustache::load("settings/_google_calendar.html");
+            std::string content = content_tmpl.render(mctx).dump();
+            crow::mustache::context layout_ctx;
+            layout_ctx["content"]                = content;
+            layout_ctx["page_title"]              = "Google Calendar Settings";
+            layout_ctx["active_google_calendar"]  = true;
+            layout_ctx["is_admin"]                = true;
+            set_layout_auth(req, app, layout_ctx);
+            auto layout = crow::mustache::load("layout.html");
+            res.add_header("Content-Type", "text/html; charset=utf-8");
+            res.write(layout.render(layout_ctx).dump());
+        }
+        return res;
+    });
+
+    // The settings page is split into independent sections, each its own <form>
+    // posting to its own endpoint below. This is deliberate: /settings used to be
+    // ONE handler for the whole page, and the page itself rendered two separate
+    // <form> elements that both posted there - saving either form ran the exact
+    // same handler, which read every field from the request body regardless of
+    // which form actually submitted it. A field genuinely absent from one form's
+    // body (because it belongs to the other form) still had to be carefully
+    // guarded field-by-field to avoid being silently written as blank - and one
+    // of those guards was missed in production, wiping the Google Calendar
+    // service-account path/calendar ID. Splitting into real per-section endpoints
+    // removes the whole bug class structurally: each handler only ever knows
+    // about its own section's fields, so there is no "other form's fields are
+    // absent" case left to guard against, and no risk of a future new field
+    // needing the same guard and it being missed again.
+    auto is_admin_or_403 = [](const crow::request& req, LugApp& app, crow::response& res) -> bool {
+        auto& ctx = app.template get_context<AuthMiddleware>(req);
+        if (ctx.auth.role != "admin") {
+            res.code = 403;
+            res.write("Forbidden");
+            return false;
+        }
+        return true;
+    };
+
+    auto redirect_to_settings = [](const crow::request& req, crow::response& res) {
         bool is_htmx = req.get_header_value("HX-Request") == "true";
         if (is_htmx) {
             res.add_header("HX-Redirect", "/settings");
@@ -647,6 +591,107 @@ void register_settings_routes(LugApp& app, SettingsRepository& settings,
         } else {
             res.redirect("/settings");
         }
+    };
+
+    // POST /settings/discord - Discord server, channels, roles, forum channels,
+    // and the two announcement-suppression checkboxes. Every field here is a
+    // real, always-submitted form control on the same <form> - no "was this
+    // field really touched" ambiguity, so every field is written unconditionally
+    // (checkboxes: absent = unchecked = "0", by design, same as before).
+    CROW_ROUTE(app, "/settings/discord").methods("POST"_method)(
+        [&](const crow::request& req) {
+        crow::response res;
+        if (!is_admin_or_403(req, app, res)) return res;
+
+        auto params = crow::query_string("?" + req.body);
+        auto get_param = [&](const char* k) -> std::string {
+            const char* v = params.get(k);
+            return v ? std::string(v) : "";
+        };
+
+        std::string guild_id       = get_param("discord_guild_id");
+        std::string lug_channel    = get_param("discord_announcements_channel_id");
+        std::string forum_channel  = get_param("discord_events_forum_channel_id");
+        std::string announce_role  = get_param("discord_announcement_role_id");
+        std::string non_lug_role   = get_param("discord_non_lug_event_role_id");
+        std::string suppress_pings   = get_param("discord_suppress_pings");
+        std::string suppress_updates = get_param("discord_suppress_updates");
+        std::string ev_reports  = get_param("discord_event_reports_forum_channel_id");
+        std::string mtg_reports = get_param("discord_meeting_reports_forum_channel_id");
+
+        if (!guild_id.empty())    settings.set("discord_guild_id", guild_id);
+        if (!lug_channel.empty()) settings.set("discord_announcements_channel_id", lug_channel);
+        settings.set("discord_events_forum_channel_id", forum_channel);
+        settings.set("discord_announcement_role_id",    announce_role);
+        settings.set("discord_non_lug_event_role_id",   non_lug_role);
+        settings.set("discord_suppress_pings",   suppress_pings   == "1" ? "1" : "0");
+        settings.set("discord_suppress_updates", suppress_updates == "1" ? "1" : "0");
+        settings.set("discord_event_reports_forum_channel_id",   ev_reports);
+        settings.set("discord_meeting_reports_forum_channel_id", mtg_reports);
+
+        // Apply immediately so Discord calls use the new values.
+        discord.reconfigure(guild_id, lug_channel, forum_channel, announce_role,
+                             non_lug_role, discord.get_timezone());
+        discord.set_suppress_pings(suppress_pings == "1");
+        discord.set_suppress_updates(suppress_updates == "1");
+        discord.set_event_reports_forum_id(ev_reports);
+        discord.set_meeting_reports_forum_id(mtg_reports);
+
+        audit.log(req, app, "settings.update", "settings", 0, "", "Updated Discord settings");
+        redirect_to_settings(req, res);
+        return res;
+    });
+
+    // POST /settings/calendar - timezone and iCal display name.
+    CROW_ROUTE(app, "/settings/calendar").methods("POST"_method)(
+        [&](const crow::request& req) {
+        crow::response res;
+        if (!is_admin_or_403(req, app, res)) return res;
+
+        auto params = crow::query_string("?" + req.body);
+        auto get_param = [&](const char* k) -> std::string {
+            const char* v = params.get(k);
+            return v ? std::string(v) : "";
+        };
+
+        std::string timezone = get_param("lug_timezone");
+        std::string cal_name = get_param("ical_calendar_name");
+
+        if (!timezone.empty()) {
+            settings.set("lug_timezone", timezone);
+            discord.set_timezone(timezone);
+            calendar.set_timezone(timezone);
+        }
+        if (!cal_name.empty()) settings.set("ical_calendar_name", cal_name);
+
+        audit.log(req, app, "settings.update", "settings", 0, "", "Updated calendar settings");
+        redirect_to_settings(req, res);
+        return res;
+    });
+
+    // POST /settings/google-calendar - service account path + calendar ID. Its
+    // own form/endpoint specifically because this is the pair that got silently
+    // wiped in production by an unrelated section's save before this split.
+    CROW_ROUTE(app, "/settings/google-calendar").methods("POST"_method)(
+        [&](const crow::request& req) {
+        crow::response res;
+        if (!is_admin_or_403(req, app, res)) return res;
+
+        auto params = crow::query_string("?" + req.body);
+        auto get_param = [&](const char* k) -> std::string {
+            const char* v = params.get(k);
+            return v ? std::string(v) : "";
+        };
+
+        std::string gcal_sa_path = get_param("google_service_account_json_path");
+        std::string gcal_cal_id  = get_param("google_calendar_id");
+
+        settings.set("google_service_account_json_path", gcal_sa_path);
+        settings.set("google_calendar_id", gcal_cal_id);
+        gcal.reconfigure(gcal_sa_path, gcal_cal_id, settings.get("lug_timezone", "UTC"));
+
+        audit.log(req, app, "settings.update", "settings", 0, "", "Updated Google Calendar settings");
+        redirect_to_settings(req, res);
         return res;
     });
 

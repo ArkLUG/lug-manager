@@ -124,23 +124,22 @@ TEST_F(IntegrationTest, RevertSyncChangeInvalidMemberId) {
 }
 
 TEST_F(IntegrationTest, SettingsSaveWithTimezone) {
-    auto r = POST_HTMX("/settings",
-        "discord_guild_id=tz-guild"
-        "&discord_announcements_channel_id=tz-ch"
-        "&lug_timezone=America/Denver"
-        "&ical_calendar_name=TZ+Test",
+    auto r1 = POST_HTMX("/settings/discord",
+        "discord_guild_id=tz-guild&discord_announcements_channel_id=tz-ch",
         admin_token);
-    EXPECT_EQ(r.code, 200);
+    EXPECT_EQ(r1.code, 200);
+    auto r2 = POST_HTMX("/settings/calendar",
+        "lug_timezone=America/Denver&ical_calendar_name=TZ+Test",
+        admin_token);
+    EXPECT_EQ(r2.code, 200);
     EXPECT_EQ(settings_repo->get("lug_timezone"), "America/Denver");
     EXPECT_EQ(settings_repo->get("discord_guild_id"), "tz-guild");
 }
 
 TEST_F(IntegrationTest, SettingsSaveReportForumChannels) {
-    auto r = POST_HTMX("/settings",
+    auto r = POST_HTMX("/settings/discord",
         "discord_guild_id=rf-guild"
         "&discord_announcements_channel_id=rf-ch"
-        "&lug_timezone=UTC"
-        "&ical_calendar_name=RF+Test"
         "&discord_event_reports_forum_channel_id=evt-forum-123"
         "&discord_meeting_reports_forum_channel_id=mtg-forum-456",
         admin_token);
@@ -149,46 +148,21 @@ TEST_F(IntegrationTest, SettingsSaveReportForumChannels) {
     EXPECT_EQ(settings_repo->get("discord_meeting_reports_forum_channel_id"), "mtg-forum-456");
 }
 
-// Regression: discord_events_forum_channel_id (and the two role-id settings)
-// used to be written unconditionally from the POST body ("allow clearing").
-// The <select> for these fields is populated by a live Discord API fetch on
-// every GET /settings - if that fetch ever comes back empty (rate limit,
-// transient error, or simply no test/mock Discord backing, as here), the
-// dropdown had no selected option and any unrelated save (e.g. just the
-// timezone) would submit it blank and silently wipe a previously-configured
-// value. Saving directly via settings_repo (simulating a real prior save
-// while a guild was live) and then POSTing /settings again with the field
-// omitted must NOT clear it.
-TEST_F(IntegrationTest, SettingsSaveDoesNotClearForumChannelWhenFieldOmitted) {
-    settings_repo->set("discord_events_forum_channel_id", "forum-already-set-123");
-    settings_repo->set("discord_announcement_role_id", "role-already-set-456");
-    settings_repo->set("discord_non_lug_event_role_id", "role-already-set-789");
-
-    auto r = POST_HTMX("/settings",
-        "discord_guild_id=persist-guild"
-        "&discord_announcements_channel_id=persist-ch"
-        "&lug_timezone=UTC"
-        "&ical_calendar_name=Persist+Test",
-        admin_token);
-    EXPECT_EQ(r.code, 200);
-
-    EXPECT_EQ(settings_repo->get("discord_events_forum_channel_id"), "forum-already-set-123");
-    EXPECT_EQ(settings_repo->get("discord_announcement_role_id"), "role-already-set-456");
-    EXPECT_EQ(settings_repo->get("discord_non_lug_event_role_id"), "role-already-set-789");
-}
-
-// Regression: /settings renders TWO separate <form> elements that both POST
-// to the same handler - the main settings form, and a small standalone
-// "Discord Matches notification channel/roles" form further down the page.
-// Submitting the small form only sends its own two fields; every other
-// setting (forum channel, role pings, Google Calendar config) is completely
-// absent from that request body. Before this fix, several fields were still
-// written unconditionally regardless, and discord.reconfigure() was called
-// with the raw (empty) submitted values for role pings every time - so
-// saving the small form would silently wipe both the persisted settings row
-// AND the live in-memory DiscordClient config, even though the two role
-// fields were never touched by the admin at all.
-TEST_F(IntegrationTest, SettingsSaveOfMatchesFormAloneDoesNotClearOtherSettings) {
+// Regression coverage for the underlying bug class (a save silently clearing a
+// setting it doesn't own) now lives at the architecture level instead of a
+// field-by-field guard: /settings was split into independent per-section
+// forms/endpoints (/settings/discord, /settings/calendar,
+// /settings/google-calendar, /settings/discord-matches), each of which only
+// ever reads and writes its own section's fields. Saving one section's form
+// can no longer even construct a request that omits another section's
+// fields incorrectly, because the two are entirely separate requests to
+// separate handlers - there is no longer a shared body to have fields
+// "absent" from. This test proves that property directly: saving the
+// Discord Matches section (its own small, real form) leaves every other
+// section - including the two fields that were actually wiped in production
+// (google_service_account_json_path / google_calendar_id) and the live
+// in-memory DiscordClient state - completely untouched.
+TEST_F(IntegrationTest, SettingsSaveOfOneSectionDoesNotTouchOtherSections) {
     settings_repo->set("discord_events_forum_channel_id", "forum-keep-me");
     settings_repo->set("discord_announcement_role_id", "role-keep-me");
     settings_repo->set("discord_non_lug_event_role_id", "nonlug-role-keep-me");
@@ -199,8 +173,7 @@ TEST_F(IntegrationTest, SettingsSaveOfMatchesFormAloneDoesNotClearOtherSettings)
     discord_client->reconfigure("guild-x", "chan-x", "forum-keep-me",
                                  "role-keep-me", "nonlug-role-keep-me", "UTC");
 
-    // Exactly the fields the "Discord Matches" form submits - nothing else.
-    auto r = POST_HTMX("/settings",
+    auto r = POST_HTMX("/settings/discord-matches",
         "discord_matches_notification_channel_id=notify-chan-123",
         admin_token);
     EXPECT_EQ(r.code, 200);
@@ -223,8 +196,30 @@ TEST_F(IntegrationTest, SettingsSaveOfMatchesFormAloneDoesNotClearOtherSettings)
     EXPECT_EQ(discord_client->get_events_forum_channel_id(), "forum-keep-me");
 }
 
+// Same property, from the other direction: saving the Google Calendar section
+// alone must not touch Discord section settings either.
+TEST_F(IntegrationTest, SettingsSaveOfGoogleCalendarDoesNotTouchDiscordSettings) {
+    settings_repo->set("discord_events_forum_channel_id", "forum-keep-me-2");
+    settings_repo->set("discord_announcement_role_id", "role-keep-me-2");
+    discord_client->reconfigure("guild-y", "chan-y", "forum-keep-me-2",
+                                 "role-keep-me-2", "", "UTC");
+
+    auto r = POST_HTMX("/settings/google-calendar",
+        "google_service_account_json_path=/new/path.json"
+        "&google_calendar_id=new-cal@group.calendar.google.com",
+        admin_token);
+    EXPECT_EQ(r.code, 200);
+
+    EXPECT_EQ(settings_repo->get("google_service_account_json_path"), "/new/path.json");
+    EXPECT_EQ(settings_repo->get("google_calendar_id"), "new-cal@group.calendar.google.com");
+    EXPECT_EQ(settings_repo->get("discord_events_forum_channel_id"), "forum-keep-me-2");
+    EXPECT_EQ(settings_repo->get("discord_announcement_role_id"), "role-keep-me-2");
+    EXPECT_EQ(discord_client->get_events_forum_channel_id(), "forum-keep-me-2");
+    EXPECT_EQ(discord_client->get_announcement_role_id(), "role-keep-me-2");
+}
+
 TEST_F(IntegrationTest, SettingsNonAdminForbiddenPost) {
-    auto r = POST("/settings", "discord_guild_id=hacked", member_token);
+    auto r = POST("/settings/discord", "discord_guild_id=hacked", member_token);
     EXPECT_EQ(r.code, 403);
 }
 

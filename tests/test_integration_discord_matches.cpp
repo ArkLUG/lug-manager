@@ -22,6 +22,37 @@ TEST_F(IntegrationTest, DiscordMatchesPageAllowsAdmin) {
     expect_contains(r, "Discord Matches");
 }
 
+// The notification-channel/authorized-roles config form (moved here from the
+// old single /settings page) is admin-only - a chapter lead can review and
+// resolve matches but must not see or be able to change Discord-wide config.
+TEST_F(IntegrationTest, DiscordMatchesPageShowsConfigFormForAdminOnly) {
+    auto r_admin = GET_HTMX("/settings/discord-matches", admin_token);
+    EXPECT_EQ(r_admin.code, 200);
+    expect_contains(r_admin, "Notification Settings");
+    expect_contains(r_admin, "Match Notification Channel");
+
+    auto r_lead = GET_HTMX("/settings/discord-matches", chapter_lead_token);
+    EXPECT_EQ(r_lead.code, 200);
+    expect_not_contains(r_lead, "Notification Settings");
+}
+
+// Its own dedicated section endpoint - saving it must not depend on or
+// touch any other settings page (Discord/Calendar/Google Calendar).
+TEST_F(IntegrationTest, DiscordMatchesConfigSavePersists) {
+    auto r = POST_HTMX("/settings/discord-matches",
+        "discord_matches_notification_channel_id=notify-chan-999",
+        admin_token);
+    EXPECT_EQ(r.code, 200);
+    EXPECT_EQ(settings_repo->get("discord_matches_notification_channel_id"), "notify-chan-999");
+}
+
+TEST_F(IntegrationTest, DiscordMatchesConfigSaveNonAdminForbidden) {
+    auto r = POST("/settings/discord-matches",
+        "discord_matches_notification_channel_id=hacked",
+        chapter_lead_token);
+    EXPECT_EQ(r.code, 403);
+}
+
 TEST_F(IntegrationTest, DiscordMatchesPageShowsPendingRow) {
     // Seed a discord-less member and a pending match row directly.
     Member m;
