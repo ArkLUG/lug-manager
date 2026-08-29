@@ -229,10 +229,14 @@ void register_attendance_routes(LugApp& app, AttendanceService& attendance,
         for (size_t i = 0; i < summaries.size(); ++i) {
             auto& s = summaries[i];
             int total = s.meeting_count + s.event_count;
+            // Perk eligibility only counts in-person meeting attendance -
+            // virtual never counts toward a tier, same rule as "verified
+            // member" status.
+            int meeting_count_in_person = s.meeting_count - s.meeting_virtual_count;
 
             std::string tier_name;
             for (const auto& lvl : perk_levels) {
-                if (s.meeting_count >= lvl.meeting_attendance_required &&
+                if (meeting_count_in_person >= lvl.meeting_attendance_required &&
                     s.event_count >= lvl.event_attendance_required &&
                     (!lvl.requires_paid_dues || s.is_paid) &&
                     fol_rank(s.fol_status) >= fol_rank(lvl.min_fol_status)) {

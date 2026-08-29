@@ -224,7 +224,7 @@ Chapter leads can manage members and assign event managers. Only admins can add/
 
 ### Attendance
 - **Manager-controlled**: Only admins, chapter leads, event leads, and event managers can check in members (via attendance panel or QR code)
-- **Virtual support**: Meetings track in-person vs. virtual attendance (virtual does not count toward "verified" member status)
+- **Virtual support**: Meetings track in-person vs. virtual attendance (virtual does not count toward "verified" member status, and never counts toward perk-tier eligibility either — see Perk Levels below)
 - **Overview**: Year-filtered, paginated, searchable, sortable table with last-seen date and perk tier
 - **Per-member detail**: Expandable view of attended events/meetings for the selected year
 - **Hide inactive**: Toggle to hide members with no attendance and no dues
@@ -236,6 +236,7 @@ Chapter leads can manage members and assign event managers. Only admins can add/
 - Discord role auto-assigned when a member qualifies
 - Clone tiers between years for easy setup
 - Dashboard shows progress: meetings attended, events attended, dues status, and remaining requirements for the next tier
+- **Excluding an event/meeting from perk counts**: the create/edit form has a "Doesn't count toward perks" checkbox for get-togethers that shouldn't count toward tier eligibility (e.g. a holiday party or other social that isn't a regular meeting/event). Attendance is still recorded normally — it's just excluded from every perk-eligibility calculation (dashboard progress, Discord role sync, and the Attendance Overview tier column). Independently, virtual meeting attendance is never counted toward perks regardless of this flag, matching the existing "verified member" rule above.
 
 ## Event Reports
 

@@ -66,6 +66,7 @@ void register_meetings_api_routes(LugApp& app, MeetingService& meetings,
         if (body.has("suppress_discord"))   m.suppress_discord   = body["suppress_discord"].b();
         if (body.has("suppress_calendar"))  m.suppress_calendar  = body["suppress_calendar"].b();
         if (body.has("is_private"))         m.is_private         = body["is_private"].b();
+        if (body.has("excludes_perks"))     m.excludes_perks     = body["excludes_perks"].b();
 
         try {
             auto created = meetings.create(m);
@@ -106,6 +107,7 @@ void register_meetings_api_routes(LugApp& app, MeetingService& meetings,
         if (body.has("suppress_discord"))  updates.suppress_discord  = body["suppress_discord"].b();
         if (body.has("suppress_calendar")) updates.suppress_calendar = body["suppress_calendar"].b();
         if (body.has("is_private"))        updates.is_private        = body["is_private"].b();
+        if (body.has("excludes_perks"))    updates.excludes_perks    = body["excludes_perks"].b();
 
         try {
             auto updated = meetings.update(static_cast<int64_t>(id), updates);

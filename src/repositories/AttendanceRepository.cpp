@@ -173,17 +173,24 @@ std::vector<AttendanceRepository::MemberAttendanceSummary>
 AttendanceRepository::get_all_member_summaries_by_year(int year) {
     std::string year_start = std::to_string(year) + "-01-01";
     std::string year_end   = std::to_string(year + 1) + "-01-01";
+    // meeting_count/event_count feed perk-tier comparisons elsewhere (the
+    // Attendance Overview page's per-member tier badge), so they exclude
+    // excludes_perks rows the same way count_member_by_year() does.
+    // meeting_virtual_count is purely a display split (in-person vs virtual),
+    // not a perk-eligibility figure, so it deliberately does NOT exclude them.
     auto stmt = db_.prepare(
         "SELECT m.id, m.display_name, m.discord_username, "
         "  (SELECT COUNT(*) FROM attendance a "
-        "     WHERE a.member_id=m.id AND a.entity_type='meeting' "
+        "     JOIN meetings mt ON mt.id = a.entity_id "
+        "     WHERE a.member_id=m.id AND a.entity_type='meeting' AND mt.excludes_perks=0 "
         "       AND a.checked_in_at >= ? AND a.checked_in_at < ?), "
         "  (SELECT COUNT(*) FROM attendance a "
         "     WHERE a.member_id=m.id AND a.entity_type='meeting' AND a.is_virtual=1 "
         "       AND a.checked_in_at >= ? AND a.checked_in_at < ?), "
         "  (SELECT COUNT(DISTINCT ed.event_id) FROM event_day_attendance eda "
         "     JOIN event_days ed ON ed.id = eda.event_day_id "
-        "     WHERE eda.member_id=m.id "
+        "     JOIN lug_events ev ON ev.id = ed.event_id "
+        "     WHERE eda.member_id=m.id AND ev.excludes_perks=0 "
         "       AND ed.day_date >= ? AND ed.day_date < ?) "
         "FROM members m "
         "ORDER BY m.display_name ASC");
@@ -234,16 +241,28 @@ static std::string build_overview_sql(const AttendanceRepository::OverviewParams
         "         COALESCE(m.first_name,'') AS first_name, COALESCE(m.last_name,'') AS last_name, "
         "         m.discord_username, m.is_paid, "
         "         COALESCE(m.fol_status,'afol') AS fol_status, "
+        // meeting_count here is the TOTAL (virtual + in-person) attended, used
+        // for the "N meetings" display and the in-person breakdown
+        // (meeting_in_person = meeting_count - meeting_virtual_count in
+        // AttendanceRoutes.cpp) - it only excludes excludes_perks rows.
+        // Perk-tier eligibility itself is computed from the in-person-only
+        // figure (meeting_count - meeting_virtual_count), not this column
+        // directly - see the tier loop in AttendanceRoutes.cpp.
         "         (SELECT COUNT(*) FROM attendance a "
         "            JOIN meetings mt ON mt.id = a.entity_id "
-        "            WHERE a.member_id=m.id AND a.entity_type='meeting' "
+        "            WHERE a.member_id=m.id AND a.entity_type='meeting' AND mt.excludes_perks=0 "
         "              AND a.checked_in_at >= '" + year_start + "' AND a.checked_in_at < '" + year_end + "') AS meeting_count, "
+        // Joined against meetings/excludes_perks too, purely so
+        // meeting_count - meeting_virtual_count (the in-person figure used
+        // for perk eligibility) stays consistent and never goes negative.
         "         (SELECT COUNT(*) FROM attendance a "
-        "            WHERE a.member_id=m.id AND a.entity_type='meeting' AND a.is_virtual=1 "
+        "            JOIN meetings mt ON mt.id = a.entity_id "
+        "            WHERE a.member_id=m.id AND a.entity_type='meeting' AND a.is_virtual=1 AND mt.excludes_perks=0 "
         "              AND a.checked_in_at >= '" + year_start + "' AND a.checked_in_at < '" + year_end + "') AS meeting_virtual_count, "
         "         (SELECT COUNT(DISTINCT ed.event_id) FROM event_day_attendance eda "
         "            JOIN event_days ed ON ed.id = eda.event_day_id "
-        "            WHERE eda.member_id=m.id "
+        "            JOIN lug_events ev ON ev.id = ed.event_id "
+        "            WHERE eda.member_id=m.id AND ev.excludes_perks=0 "
         "              AND ed.day_date >= '" + year_start + "' AND ed.day_date < '" + year_end + "') AS event_count, "
         "         (SELECT MAX(d) FROM ( "
         "            SELECT SUBSTR(mt.start_time,1,10) AS d FROM attendance a "
@@ -327,11 +346,15 @@ int AttendanceRepository::count_member_by_year(int64_t member_id, int year,
     std::string year_start = std::to_string(year) + "-01-01";
     std::string year_end   = std::to_string(year + 1) + "-01-01";
     if (entity_type == "event") {
-        // Event credit: 1 per event with any day of attendance.
+        // Event credit: 1 per event with any day of attendance. Events
+        // flagged excludes_perks (e.g. a party/social) never contribute a
+        // credit here, even though the attendance rows themselves still
+        // exist and show up in general attendance history/overview.
         auto stmt = db_.prepare(
             "SELECT COUNT(DISTINCT ed.event_id) FROM event_day_attendance eda "
             "JOIN event_days ed ON ed.id = eda.event_day_id "
-            "WHERE eda.member_id=? "
+            "JOIN lug_events ev ON ev.id = ed.event_id "
+            "WHERE eda.member_id=? AND ev.excludes_perks=0 "
             "  AND ed.day_date >= ? AND ed.day_date < ?");
         stmt.bind(1, member_id);
         stmt.bind(2, year_start);
@@ -339,9 +362,14 @@ int AttendanceRepository::count_member_by_year(int64_t member_id, int year,
         if (stmt.step()) return static_cast<int>(stmt.col_int(0));
         return 0;
     }
+    // Meetings: excludes_perks exclusion, plus virtual attendance never counts
+    // toward perk tiers (only in-person attendance does - same rule as
+    // "verified member" status, just enforced separately here).
     auto stmt = db_.prepare(
-        "SELECT COUNT(*) FROM attendance "
-        "WHERE member_id=? AND entity_type=? AND checked_in_at >= ? AND checked_in_at < ?");
+        "SELECT COUNT(*) FROM attendance a "
+        "JOIN meetings mt ON mt.id = a.entity_id "
+        "WHERE a.member_id=? AND a.entity_type=? AND mt.excludes_perks=0 AND a.is_virtual=0 "
+        "  AND a.checked_in_at >= ? AND a.checked_in_at < ?");
     stmt.bind(1, member_id);
     stmt.bind(2, entity_type);
     stmt.bind(3, year_start);

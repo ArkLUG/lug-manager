@@ -317,6 +317,7 @@ LugEvent EventService::update(int64_t id, const LugEvent& updates) {
     updated.suppress_discord  = updates.suppress_discord;
     updated.suppress_calendar = updates.suppress_calendar;
     updated.is_private        = updates.is_private;
+    updated.excludes_perks    = updates.excludes_perks;
     updated.notes             = updates.notes;
     updated.entrance_fee      = updates.entrance_fee;
     updated.public_kids       = updates.public_kids;

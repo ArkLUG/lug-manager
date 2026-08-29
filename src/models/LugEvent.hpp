@@ -29,6 +29,9 @@ struct LugEvent {
     bool        is_private        = false; // still publishes to Google Calendar (unlike
                                             // suppress_calendar), but with title/description/
                                             // location redacted to a generic placeholder
+    bool        excludes_perks    = false; // attendance here (e.g. a party/social) doesn't
+                                            // count toward perk-tier meeting/event counts,
+                                            // but still shows in general attendance history
     std::string notes;                     // markdown notes/report
     std::string notes_discord_post_id;     // Discord forum thread ID for published report
     std::string checkin_token;             // UUID for public QR check-in page

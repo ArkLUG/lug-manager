@@ -14,7 +14,7 @@ static const char* kSelectAllCols =
     "COALESCE(e.notes,''), COALESCE(e.notes_discord_post_id,''), "
     "COALESCE(e.entrance_fee,''), e.public_kids, e.public_teens, e.public_adults, "
     "COALESCE(e.social_media_links,''), COALESCE(e.event_feedback,''), "
-    "COALESCE(e.checkin_token,''), e.is_private "
+    "COALESCE(e.checkin_token,''), e.is_private, e.excludes_perks "
     "FROM lug_events e LEFT JOIN members m ON m.id = e.event_lead_id";
 
 EventRepository::EventRepository(SqliteDatabase& db) : db_(db) {}
@@ -56,6 +56,7 @@ LugEvent EventRepository::row_to_event(Statement& stmt) {
     e.event_feedback             = stmt.col_text(32);
     e.checkin_token              = stmt.col_text(33);
     e.is_private                 = stmt.col_bool(34);
+    e.excludes_perks             = stmt.col_bool(35);
     return e;
 }
 
@@ -199,8 +200,8 @@ LugEvent EventRepository::create(const LugEvent& e) {
         "ical_uid, signup_deadline, max_attendees, scope, chapter_id, event_lead_id, "
         "discord_ping_role_ids, suppress_discord, suppress_calendar, notes, "
         "entrance_fee, public_kids, public_teens, public_adults, social_media_links, event_feedback, "
-        "is_private) "
-        "VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)");
+        "is_private, excludes_perks) "
+        "VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)");
     stmt.bind(1, e.title);
     stmt.bind(2, e.description);
     stmt.bind(3, e.location);
@@ -250,6 +251,7 @@ LugEvent EventRepository::create(const LugEvent& e) {
     stmt.bind(23, e.social_media_links);
     stmt.bind(24, e.event_feedback);
     stmt.bind(25, e.is_private);
+    stmt.bind(26, e.excludes_perks);
     stmt.step();
 
     int64_t new_id = db_.last_insert_rowid();
@@ -267,7 +269,7 @@ bool EventRepository::update(const LugEvent& e) {
         "signup_deadline=?, max_attendees=?, scope=?, chapter_id=?, event_lead_id=?, "
         "discord_ping_role_ids=?, suppress_discord=?, suppress_calendar=?, notes=?, "
         "entrance_fee=?, public_kids=?, public_teens=?, public_adults=?, "
-        "social_media_links=?, event_feedback=?, is_private=?, "
+        "social_media_links=?, event_feedback=?, is_private=?, excludes_perks=?, "
         "updated_at=datetime('now') WHERE id=?");
     stmt.bind(1, e.title);
     stmt.bind(2, e.description);
@@ -317,7 +319,8 @@ bool EventRepository::update(const LugEvent& e) {
     stmt.bind(22, e.social_media_links);
     stmt.bind(23, e.event_feedback);
     stmt.bind(24, e.is_private);
-    stmt.bind(25, e.id);
+    stmt.bind(25, e.excludes_perks);
+    stmt.bind(26, e.id);
     stmt.step();
 
     auto existing = find_by_id(e.id);

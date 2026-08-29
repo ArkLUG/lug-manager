@@ -97,6 +97,7 @@ components:
         suppress_discord: { type: boolean }
         suppress_calendar: { type: boolean }
         is_private: { type: boolean, description: "Still publishes to Google Calendar/iCal, but title/description/location are redacted to a generic \"Private LUG Event\" placeholder." }
+        excludes_perks: { type: boolean, description: "When true, attendance at this event is not counted toward perk-tier eligibility (e.g. parties/socials that shouldn't count)." }
         notes: { type: string }
         notes_discord_post_id: { type: string }
         checkin_token: { type: string }
@@ -131,6 +132,7 @@ components:
         suppress_discord: { type: boolean }
         suppress_calendar: { type: boolean }
         is_private: { type: boolean, description: "Still publishes to Google Calendar/iCal, but title/description/location are redacted to a generic \"Private LUG Meeting\" placeholder." }
+        excludes_perks: { type: boolean, description: "When true, attendance at this meeting is not counted toward perk-tier eligibility (e.g. parties/socials that shouldn't count). Virtual meeting attendance never counts toward perks regardless of this flag." }
         notes: { type: string }
         notes_discord_post_id: { type: string }
         checkin_token: { type: string }

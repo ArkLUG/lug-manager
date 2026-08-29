@@ -87,6 +87,7 @@ void register_events_api_routes(LugApp& app, EventService& events, MeetingServic
         if (body.has("suppress_discord"))  e.suppress_discord  = body["suppress_discord"].b();
         if (body.has("suppress_calendar")) e.suppress_calendar = body["suppress_calendar"].b();
         if (body.has("is_private"))        e.is_private        = body["is_private"].b();
+        if (body.has("excludes_perks"))    e.excludes_perks    = body["excludes_perks"].b();
         if (body.has("public_kids"))       e.public_kids       = static_cast<int>(body["public_kids"].i());
         if (body.has("public_teens"))      e.public_teens      = static_cast<int>(body["public_teens"].i());
         if (body.has("public_adults"))     e.public_adults     = static_cast<int>(body["public_adults"].i());
@@ -135,6 +136,7 @@ void register_events_api_routes(LugApp& app, EventService& events, MeetingServic
         if (body.has("suppress_discord"))  updates.suppress_discord  = body["suppress_discord"].b();
         if (body.has("suppress_calendar")) updates.suppress_calendar = body["suppress_calendar"].b();
         if (body.has("is_private"))        updates.is_private        = body["is_private"].b();
+        if (body.has("excludes_perks"))    updates.excludes_perks    = body["excludes_perks"].b();
         if (body.has("public_kids"))       updates.public_kids       = static_cast<int>(body["public_kids"].i());
         if (body.has("public_teens"))      updates.public_teens      = static_cast<int>(body["public_teens"].i());
         if (body.has("public_adults"))     updates.public_adults     = static_cast<int>(body["public_adults"].i());

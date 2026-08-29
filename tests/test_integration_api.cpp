@@ -356,6 +356,25 @@ TEST_F(IntegrationTest, ApiEventsIsPrivate) {
     EXPECT_EQ(refetched2["data"]["is_private"].get<bool>(), false);
 }
 
+TEST_F(IntegrationTest, ApiEventsExcludesPerks) {
+    std::string write_key = make_api_key("write");
+
+    auto created = API_POST("/api/v1/events",
+        R"({"title":"Holiday Party","start_time":"2030-05-01T10:00:00","end_time":"2030-05-01T12:00:00","excludes_perks":true})",
+        write_key);
+    EXPECT_EQ(created.code, 201);
+    int64_t id = json::parse(created.body)["data"]["id"].get<int64_t>();
+    EXPECT_EQ(json::parse(created.body)["data"]["excludes_perks"].get<bool>(), true);
+
+    auto refetched = json::parse(API_GET("/api/v1/events/" + std::to_string(id), write_key).body);
+    EXPECT_EQ(refetched["data"]["excludes_perks"].get<bool>(), true);
+
+    auto updated = API_PUT("/api/v1/events/" + std::to_string(id), R"({"excludes_perks":false})", write_key);
+    EXPECT_EQ(json::parse(updated.body)["data"]["excludes_perks"].get<bool>(), false);
+    auto refetched2 = json::parse(API_GET("/api/v1/events/" + std::to_string(id), write_key).body);
+    EXPECT_EQ(refetched2["data"]["excludes_perks"].get<bool>(), false);
+}
+
 // Regression: PUT /api/v1/events silently dropped chapter_id (only POST read
 // it), so re-scoping an event from non_lug/lug_wide to a specific chapter via
 // the API had no effect.
@@ -514,6 +533,25 @@ TEST_F(IntegrationTest, ApiMeetingsIsPrivate) {
     EXPECT_EQ(json::parse(updated.body)["data"]["is_private"].get<bool>(), false);
     auto refetched2 = json::parse(API_GET("/api/v1/meetings/" + std::to_string(id), write_key).body);
     EXPECT_EQ(refetched2["data"]["is_private"].get<bool>(), false);
+}
+
+TEST_F(IntegrationTest, ApiMeetingsExcludesPerks) {
+    std::string write_key = make_api_key("write");
+
+    auto created = API_POST("/api/v1/meetings",
+        R"({"title":"Holiday Party","start_time":"2030-05-01T19:00:00","end_time":"2030-05-01T21:00:00","excludes_perks":true})",
+        write_key);
+    EXPECT_EQ(created.code, 201);
+    int64_t id = json::parse(created.body)["data"]["id"].get<int64_t>();
+    EXPECT_EQ(json::parse(created.body)["data"]["excludes_perks"].get<bool>(), true);
+
+    auto refetched = json::parse(API_GET("/api/v1/meetings/" + std::to_string(id), write_key).body);
+    EXPECT_EQ(refetched["data"]["excludes_perks"].get<bool>(), true);
+
+    auto updated = API_PUT("/api/v1/meetings/" + std::to_string(id), R"({"excludes_perks":false})", write_key);
+    EXPECT_EQ(json::parse(updated.body)["data"]["excludes_perks"].get<bool>(), false);
+    auto refetched2 = json::parse(API_GET("/api/v1/meetings/" + std::to_string(id), write_key).body);
+    EXPECT_EQ(refetched2["data"]["excludes_perks"].get<bool>(), false);
 }
 
 // Regression: PUT /api/v1/meetings silently dropped chapter_id, same bug as

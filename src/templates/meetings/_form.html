@@ -153,9 +153,14 @@
                class="rounded border-gray-300">
         Private (hide details on calendar)
       </label>
+      <label class="flex items-center gap-2 text-sm text-gray-700 cursor-pointer">
+        <input type="checkbox" name="excludes_perks" {{#excludes_perks}}checked{{/excludes_perks}}
+               class="rounded border-gray-300">
+        Doesn't count toward perks
+      </label>
     </div>
     <p class="text-xs text-gray-400 -mt-4">
-      Private meetings still appear on the shared calendar as "Private LUG Meeting" so people can see the LUG is busy, but the title, location, and description are not published.
+      Private meetings still appear on the shared calendar as "Private LUG Meeting" so people can see the LUG is busy, but the title, location, and description are not published. Attendance at meetings that don't count toward perks (e.g. parties/socials) still shows in general attendance history — it just isn't included in perk-tier meeting/event counts.
     </p>
 
     <div class="flex gap-3 pt-2">

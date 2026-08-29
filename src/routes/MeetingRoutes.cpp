@@ -321,6 +321,7 @@ void register_meeting_routes(LugApp& app, MeetingService& meetings, AttendanceSe
         mctx["suppress_discord"]  = m->suppress_discord;
         mctx["suppress_calendar"] = m->suppress_calendar;
         mctx["is_private"]        = m->is_private;
+        mctx["excludes_perks"]    = m->excludes_perks;
         mctx["notes"]             = m->notes;
         res.write(tmpl.render(mctx).dump());
         return res;
@@ -461,6 +462,7 @@ void register_meeting_routes(LugApp& app, MeetingService& meetings, AttendanceSe
         m.suppress_discord  = (get_param("suppress_discord") == "on" || get_param("suppress_discord") == "1");
         m.suppress_calendar = (get_param("suppress_calendar") == "on" || get_param("suppress_calendar") == "1");
         m.is_private        = (get_param("is_private") == "on" || get_param("is_private") == "1");
+        m.excludes_perks    = (get_param("excludes_perks") == "on" || get_param("excludes_perks") == "1");
         m.notes             = get_param("notes");
         if (m.is_virtual) m.location = "Virtual (Discord)";
 
@@ -531,6 +533,7 @@ void register_meeting_routes(LugApp& app, MeetingService& meetings, AttendanceSe
             updates.suppress_discord  = (gp("suppress_discord") == "on" || gp("suppress_discord") == "1");
             updates.suppress_calendar = (gp("suppress_calendar") == "on" || gp("suppress_calendar") == "1");
             updates.is_private        = (gp("is_private") == "on" || gp("is_private") == "1");
+            updates.excludes_perks    = (gp("excludes_perks") == "on" || gp("excludes_perks") == "1");
             updates.notes             = gp("notes");
             if (updates.is_virtual) updates.location = "Virtual (Discord)";
 
@@ -563,6 +566,7 @@ void register_meeting_routes(LugApp& app, MeetingService& meetings, AttendanceSe
                     diff.field("suppress_discord", mtg_before->suppress_discord, mtg_after.suppress_discord);
                     diff.field("suppress_calendar", mtg_before->suppress_calendar, mtg_after.suppress_calendar);
                     diff.field("is_private", mtg_before->is_private, mtg_after.is_private);
+                    diff.field("excludes_perks", mtg_before->excludes_perks, mtg_after.excludes_perks);
                     diff.field("notes", mtg_before->notes, mtg_after.notes);
                     audit.log(req, app, "meeting.update", "meeting", static_cast<int64_t>(id), mtg_after.title,
                               diff.has_changes() ? diff.str() : "No field changes");

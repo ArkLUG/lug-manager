@@ -1,8 +1,57 @@
 #include "integration_test_base.hpp"
+#include <ctime>
 
 // ═══════════════════════════════════════════════════════════════════════════
 // Attendance Routes — additional coverage
 // ═══════════════════════════════════════════════════════════════════════════
+
+// Regression: the Attendance Overview page's per-member perk-tier badge used
+// to compare against s.meeting_count directly, which includes virtual
+// attendance - so a member who only attended virtually could show a tier
+// they hadn't actually earned in person. Now compares against
+// (meeting_count - meeting_virtual_count), the in-person-only figure.
+TEST_F(IntegrationTest, AttendanceOverviewTierExcludesVirtualMeetings) {
+    std::time_t now = std::time(nullptr);
+    int year = std::localtime(&now)->tm_year + 1900;
+    std::string start = std::to_string(year) + "-03-01T19:00:00";
+    std::string end   = std::to_string(year) + "-03-01T21:00:00";
+
+    PerkLevel lvl;
+    lvl.name = "Bronze";
+    lvl.meeting_attendance_required = 1;
+    lvl.event_attendance_required = 0;
+    lvl.year = year;
+    lvl.sort_order = 1;
+    perk_level_repo->create(lvl);
+
+    Meeting m;
+    m.title = "Virtual Only Mtg";
+    m.start_time = start;
+    m.end_time = end;
+    m.scope = "lug_wide";
+    auto mtg = meeting_svc->create(m);
+    attendance_svc->check_in(regular_member_id, "meeting", mtg.id, "", /*is_virtual=*/true);
+
+    // Virtual-only attendance: no tier earned. "Bronze" itself still appears
+    // in the year-filter dropdown regardless, so check the actual tier-badge
+    // markup specifically rather than the bare tier name.
+    auto r1 = GET_HTMX("/attendance/overview?year=" + std::to_string(year), admin_token);
+    EXPECT_EQ(r1.code, 200);
+    expect_not_contains(r1, "bg-yellow-100 text-yellow-800\">Bronze");
+
+    // Now attend a second, in-person meeting: tier earned.
+    Meeting m2;
+    m2.title = "In Person Mtg";
+    m2.start_time = start;
+    m2.end_time = end;
+    m2.scope = "lug_wide";
+    auto mtg2 = meeting_svc->create(m2);
+    attendance_svc->check_in(regular_member_id, "meeting", mtg2.id, "", /*is_virtual=*/false);
+
+    auto r2 = GET_HTMX("/attendance/overview?year=" + std::to_string(year), admin_token);
+    EXPECT_EQ(r2.code, 200);
+    expect_contains(r2, "bg-yellow-100 text-yellow-800\">Bronze");
+}
 
 TEST_F(IntegrationTest, AttendanceOverviewYearFilter) {
     // Create a meeting in 2025 and check in a member

@@ -311,6 +311,59 @@ TEST_F(PerkLevelTest, AttendanceCountByYear) {
     EXPECT_EQ(event_count, 0);
 }
 
+// Regression: perk-tier meeting/event counts must exclude both
+// excludes_perks-flagged entities (e.g. parties/socials) and virtual
+// meeting attendance - neither should contribute to a perk tier, even
+// though both still exist as ordinary attendance records elsewhere.
+TEST_F(PerkLevelTest, AttendanceCountByYearExcludesPerksAndVirtual) {
+    Member m;
+    m.discord_user_id = "perk_exclude_test";
+    m.discord_username = "perk_exclude_user";
+    m.display_name = "Perk Exclude U.";
+    auto member = members->create(m);
+
+    // Regular in-person meeting - counts.
+    db->execute("INSERT INTO meetings (title, start_time, end_time, ical_uid, scope) "
+                "VALUES ('Regular Meeting', '2026-03-15T19:00:00', '2026-03-15T21:00:00', 'uid-r1', 'chapter')");
+    attendance->check_in(member.id, "meeting", 1, "", false);
+
+    // Party meeting (excludes_perks=1) - does not count.
+    db->execute("INSERT INTO meetings (title, start_time, end_time, ical_uid, scope, excludes_perks) "
+                "VALUES ('Holiday Party', '2026-04-15T19:00:00', '2026-04-15T21:00:00', 'uid-r2', 'chapter', 1)");
+    attendance->check_in(member.id, "meeting", 2, "", false);
+
+    // Virtual meeting - does not count toward perks.
+    db->execute("INSERT INTO meetings (title, start_time, end_time, ical_uid, scope) "
+                "VALUES ('Virtual Meeting', '2026-05-15T19:00:00', '2026-05-15T21:00:00', 'uid-r3', 'chapter')");
+    attendance->check_in(member.id, "meeting", 3, "", true);
+
+    int meeting_count = attendance->count_member_by_year(member.id, 2026, "meeting");
+    EXPECT_EQ(meeting_count, 1); // only the regular in-person one
+}
+
+TEST_F(PerkLevelTest, EventCountByYearExcludesPerks) {
+    Member m;
+    m.discord_user_id = "perk_event_exclude_test";
+    m.discord_username = "perk_event_exclude_user";
+    m.display_name = "Perk Event Exclude U.";
+    auto member = members->create(m);
+
+    // Regular event - counts.
+    db->execute("INSERT INTO lug_events (title, start_time, end_time, ical_uid, scope) "
+                "VALUES ('Regular Show', '2026-03-15T00:00:00', '2026-03-15T00:00:00', 'ev-uid-r1', 'chapter')");
+    db->execute("INSERT INTO event_days (event_id, day_date, day_number) VALUES (1, '2026-03-15', 1)");
+    db->execute("INSERT INTO event_day_attendance (event_day_id, member_id) VALUES (1, " + std::to_string(member.id) + ")");
+
+    // Party event (excludes_perks=1) - does not count.
+    db->execute("INSERT INTO lug_events (title, start_time, end_time, ical_uid, scope, excludes_perks) "
+                "VALUES ('Christmas Party', '2026-04-15T00:00:00', '2026-04-15T00:00:00', 'ev-uid-r2', 'chapter', 1)");
+    db->execute("INSERT INTO event_days (event_id, day_date, day_number) VALUES (2, '2026-04-15', 1)");
+    db->execute("INSERT INTO event_day_attendance (event_day_id, member_id) VALUES (2, " + std::to_string(member.id) + ")");
+
+    int event_count = attendance->count_member_by_year(member.id, 2026, "event");
+    EXPECT_EQ(event_count, 1); // only the regular show
+}
+
 // ═══════════════════════════════════════════════════════════════════════════
 // Chapter Role Rank Tests
 // ═══════════════════════════════════════════════════════════════════════════

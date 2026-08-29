@@ -427,6 +427,7 @@ void register_event_routes(LugApp& app, EventService& events, AttendanceService&
         mctx["suppress_discord"]   = ev->suppress_discord;
         mctx["suppress_calendar"]  = ev->suppress_calendar;
         mctx["is_private"]         = ev->is_private;
+        mctx["excludes_perks"]     = ev->excludes_perks;
         mctx["notes"]              = ev->notes;
         mctx["entrance_fee"]       = ev->entrance_fee;
         mctx["public_kids"]        = ev->public_kids;
@@ -612,6 +613,7 @@ void register_event_routes(LugApp& app, EventService& events, AttendanceService&
         e.suppress_discord  = (get_param("suppress_discord") == "on" || get_param("suppress_discord") == "1");
         e.suppress_calendar = (get_param("suppress_calendar") == "on" || get_param("suppress_calendar") == "1");
         e.is_private        = (get_param("is_private") == "on" || get_param("is_private") == "1");
+        e.excludes_perks    = (get_param("excludes_perks") == "on" || get_param("excludes_perks") == "1");
         e.notes             = get_param("notes");
         e.entrance_fee      = get_param("entrance_fee");
         try { e.public_kids   = std::stoi(get_param("public_kids")); } catch (...) {}
@@ -693,6 +695,7 @@ void register_event_routes(LugApp& app, EventService& events, AttendanceService&
             updates.suppress_discord  = (gp("suppress_discord") == "on" || gp("suppress_discord") == "1");
             updates.suppress_calendar = (gp("suppress_calendar") == "on" || gp("suppress_calendar") == "1");
             updates.is_private        = (gp("is_private") == "on" || gp("is_private") == "1");
+            updates.excludes_perks    = (gp("excludes_perks") == "on" || gp("excludes_perks") == "1");
             updates.notes             = gp("notes");
             updates.entrance_fee      = gp("entrance_fee");
             try { updates.public_kids   = std::stoi(gp("public_kids")); } catch (...) {}
@@ -759,6 +762,7 @@ void register_event_routes(LugApp& app, EventService& events, AttendanceService&
                     diff.field("suppress_discord", ev_before->suppress_discord, ev_after.suppress_discord);
                     diff.field("suppress_calendar", ev_before->suppress_calendar, ev_after.suppress_calendar);
                     diff.field("is_private", ev_before->is_private, ev_after.is_private);
+                    diff.field("excludes_perks", ev_before->excludes_perks, ev_after.excludes_perks);
                     diff.field("notes", ev_before->notes, ev_after.notes);
                     diff.field("public_kids", ev_before->public_kids, ev_after.public_kids);
                     diff.field("public_teens", ev_before->public_teens, ev_after.public_teens);

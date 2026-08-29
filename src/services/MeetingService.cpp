@@ -196,6 +196,7 @@ Meeting MeetingService::update(int64_t id, const Meeting& updates) {
     updated.suppress_discord  = updates.suppress_discord;
     updated.suppress_calendar = updates.suppress_calendar;
     updated.is_private        = updates.is_private;
+    updated.excludes_perks    = updates.excludes_perks;
     updated.notes             = updates.notes;
 
     repo_.update(updated);
