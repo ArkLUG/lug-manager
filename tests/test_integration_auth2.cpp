@@ -56,6 +56,48 @@ TEST_F(IntegrationTest, AuthCallbackCheckinStateWithError) {
     EXPECT_NE(r.location.find("error=discord_denied"), std::string::npos);
 }
 
+// Regression: Discord was showing the full consent screen on every single
+// login, even for a user who'd already authorized the app - get_auth_url()
+// now defaults to prompt=none so Discord silently re-approves an existing
+// authorization instead of re-prompting.
+TEST_F(IntegrationTest, AuthLoginUrlSkipsPromptByDefault) {
+    auto r = GET("/auth/login");
+    EXPECT_TRUE(r.code == 302 || r.code == 307);
+    EXPECT_NE(r.location.find("discord.com/oauth2/authorize"), std::string::npos);
+    EXPECT_NE(r.location.find("prompt=none"), std::string::npos);
+}
+
+// interaction_required is what Discord sends back specifically because we
+// asked for prompt=none and couldn't silently approve (first-time user, or
+// one who revoked access) - the callback must retry once with a normal
+// prompt (no prompt=none) rather than showing an error and stranding them.
+TEST_F(IntegrationTest, AuthCallbackInteractionRequiredRetriesWithoutSkipPrompt) {
+    auto r = GET("/auth/callback?error=interaction_required&state=lug-state");
+    EXPECT_TRUE(r.code == 302 || r.code == 307);
+    EXPECT_NE(r.location.find("discord.com/oauth2/authorize"), std::string::npos);
+    EXPECT_EQ(r.location.find("prompt=none"), std::string::npos);
+}
+
+// Same retry behavior must preserve the checkin: state so the user still
+// lands back on the right checkin page after completing consent.
+TEST_F(IntegrationTest, AuthCallbackInteractionRequiredPreservesCheckinState) {
+    auto r = GET("/auth/callback?error=interaction_required&state=checkin:abc123");
+    EXPECT_TRUE(r.code == 302 || r.code == 307);
+    EXPECT_NE(r.location.find("discord.com/oauth2/authorize"), std::string::npos);
+    EXPECT_NE(r.location.find("state=checkin"), std::string::npos);
+    EXPECT_EQ(r.location.find("prompt=none"), std::string::npos);
+}
+
+// A genuine user-denied consent (access_denied) must NOT be treated as
+// interaction_required - it still goes straight to the discord_denied error
+// page, not an infinite-feeling retry loop.
+TEST_F(IntegrationTest, AuthCallbackAccessDeniedDoesNotRetry) {
+    auto r = GET("/auth/callback?error=access_denied&state=lug-state");
+    EXPECT_TRUE(r.code == 302 || r.code == 307);
+    EXPECT_NE(r.location.find("/login"), std::string::npos);
+    EXPECT_NE(r.location.find("error=discord_denied"), std::string::npos);
+}
+
 TEST_F(IntegrationTest, AuthenticatedUserVisitingLoginRedirects) {
     auto r = GET("/login", admin_token);
     EXPECT_TRUE(r.code == 302 || r.code == 307);

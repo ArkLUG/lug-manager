@@ -61,7 +61,19 @@ void register_auth_routes(LugApp& app, AuthService& auth, DiscordOAuth& oauth) {
         bool is_checkin = state.substr(0, 8) == "checkin:";
 
         if (error_raw) {
+            std::string error(error_raw);
             crow::response res;
+            // interaction_required only happens because we asked for prompt=none
+            // (skip the consent screen for an already-authorized user) and Discord
+            // couldn't silently approve — the user has never authorized this app
+            // (or revoked it). Retry once with a normal prompt instead of showing
+            // an error, so first-time/revoked users still get a working login.
+            if (error == "interaction_required") {
+                std::string redirect_uri = build_url(req, "/auth/callback");
+                std::string url = oauth.get_auth_url(state, redirect_uri, /*skip_prompt=*/false);
+                res.redirect(url);
+                return res;
+            }
             if (is_checkin) {
                 res.redirect(build_url(req, "/checkin/" + state.substr(8) + "?error=discord_denied"));
             } else {

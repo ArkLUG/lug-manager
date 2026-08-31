@@ -27,14 +27,20 @@ std::string DiscordOAuth::url_encode(const std::string& str) {
     return oss.str();
 }
 
-std::string DiscordOAuth::get_auth_url(const std::string& state, const std::string& redirect_uri) const {
+std::string DiscordOAuth::get_auth_url(const std::string& state, const std::string& redirect_uri,
+                                       bool skip_prompt) const {
     const std::string& uri = redirect_uri.empty() ? config_.discord_redirect_uri : redirect_uri;
-    return "https://discord.com/oauth2/authorize"
+    std::string url = "https://discord.com/oauth2/authorize"
            "?client_id=" + url_encode(config_.discord_client_id) +
            "&redirect_uri=" + url_encode(uri) +
            "&response_type=code"
            "&scope=identify"
            "&state=" + url_encode(state);
+    // prompt=none: skip the consent screen when the user already authorized
+    // this app+scope. Omitted (not prompt=consent) on retry so Discord falls
+    // back to its normal default behavior for a first-time/revoked user.
+    if (skip_prompt) url += "&prompt=none";
+    return url;
 }
 
 std::string DiscordOAuth::http_post_form(const std::string& url, const std::string& body) {
