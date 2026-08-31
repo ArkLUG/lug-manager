@@ -57,3 +57,21 @@ TEST(MarkdownRenderer, MultipleBlocks) {
     EXPECT_NE(html.find("<p>"), std::string::npos);
     EXPECT_NE(html.find("<li>"), std::string::npos);
 }
+
+// Security regression: notes/description fields (event/meeting reports) are
+// written by chapter leads/event managers, not just admins, and rendered
+// to any viewer of the detail page via {{{notes_html}}} (unescaped, since
+// it's meant to contain real HTML from markdown). Raw HTML embedded in the
+// markdown source must never pass through unescaped - MD_FLAG_NOHTML makes
+// md4c treat it as literal text (escaped like any other text node) instead.
+TEST(MarkdownRenderer, RawHtmlBlockIsEscapedNotPassedThrough) {
+    auto html = render_markdown("<script>alert(1)</script>");
+    EXPECT_EQ(html.find("<script>"), std::string::npos);
+    EXPECT_NE(html.find("&lt;script&gt;"), std::string::npos);
+}
+
+TEST(MarkdownRenderer, RawHtmlInlineSpanIsEscapedNotPassedThrough) {
+    auto html = render_markdown("before <img src=x onerror=alert(1)> after");
+    EXPECT_EQ(html.find("<img"), std::string::npos);
+    EXPECT_NE(html.find("&lt;img"), std::string::npos);
+}

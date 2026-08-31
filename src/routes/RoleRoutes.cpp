@@ -1,4 +1,5 @@
 #include "routes/RoleRoutes.hpp"
+#include "utils/HtmlEscape.hpp"
 #include <crow/mustache.h>
 #include <sstream>
 #include <unordered_map>
@@ -54,7 +55,7 @@ void register_role_routes(LugApp& app,
         for (auto& ch : all) {
             html << "<option value=\"" << ch.id << "\"";
             if (selected == std::to_string(ch.id)) html << " selected";
-            html << ">" << ch.name << "</option>\n";
+            html << ">" << html_escape(ch.name) << "</option>\n";
         }
         if (all.empty()) {
             html.str("");

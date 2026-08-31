@@ -1,6 +1,7 @@
 #include "routes/EventRoutes.hpp"
 #include "utils/MarkdownRenderer.hpp"
 #include "utils/AuditDiff.hpp"
+#include "utils/HtmlEscape.hpp"
 #include <crow.h>
 #include <crow/mustache.h>
 #include <stdexcept>
@@ -230,7 +231,7 @@ void register_event_routes(LugApp& app, EventService& events, AttendanceService&
         std::ostringstream html;
         html << "<option value=\"\">-- Select a thread --</option>\n";
         for (auto& t : threads)
-            html << "<option value=\"" << t.id << "\">#" << t.name << "</option>\n";
+            html << "<option value=\"" << t.id << "\">#" << html_escape(t.name) << "</option>\n";
         if (threads.empty())
             html.str("<option value=\"\">No active threads found in forum channel</option>");
 
@@ -256,11 +257,15 @@ void register_event_routes(LugApp& app, EventService& events, AttendanceService&
 
         auto all = members.list_all();
         std::ostringstream html;
-        html << "<option value=\"\">" << placeholder << "</option>\n";
+        // placeholder is caller-supplied via query string (reflected) and
+        // display_name traces back to a member's Discord display name
+        // (stored, attacker-reachable per AuthService's auto-provisioning) -
+        // both must be escaped before landing in this raw HTML fragment.
+        html << "<option value=\"\">" << html_escape(placeholder) << "</option>\n";
         for (auto& m : all) {
             html << "<option value=\"" << m.id << "\"";
             if (selected == std::to_string(m.id)) html << " selected";
-            html << ">" << m.display_name << "</option>\n";
+            html << ">" << html_escape(m.display_name) << "</option>\n";
         }
         if (all.empty())
             html.str("<option value=\"\">No members found</option>");
@@ -316,14 +321,14 @@ void register_event_routes(LugApp& app, EventService& events, AttendanceService&
             std::ostringstream opts;
             opts << "<option value=\"\">-- Select event lead --</option>\n";
             for (auto& m : member_list)
-                opts << "<option value=\"" << m.id << "\">" << m.display_name << "</option>\n";
+                opts << "<option value=\"" << m.id << "\">" << html_escape(m.display_name) << "</option>\n";
             mctx["member_options"] = opts.str();
         }
         {
             auto roles = discord.fetch_guild_roles();
             std::ostringstream opts;
             for (auto& r : roles)
-                opts << "<option value=\"" << r.id << "\">@" << r.name << "</option>\n";
+                opts << "<option value=\"" << r.id << "\">@" << html_escape(r.name) << "</option>\n";
             mctx["role_ping_options"] = opts.str();
         }
         {
@@ -331,7 +336,7 @@ void register_event_routes(LugApp& app, EventService& events, AttendanceService&
             std::ostringstream opts;
             opts << "<option value=\"\">-- Select chapter --</option>\n";
             for (auto& ch : ch_list)
-                opts << "<option value=\"" << ch.id << "\">" << ch.name << "</option>\n";
+                opts << "<option value=\"" << ch.id << "\">" << html_escape(ch.name) << "</option>\n";
             mctx["chapter_options"] = opts.str();
         }
         mctx["action"]            = "/events";
@@ -369,7 +374,7 @@ void register_event_routes(LugApp& app, EventService& events, AttendanceService&
             for (auto& m : member_list) {
                 opts << "<option value=\"" << m.id << "\"";
                 if (m.id == ev->event_lead_id) opts << " selected";
-                opts << ">" << m.display_name << "</option>\n";
+                opts << ">" << html_escape(m.display_name) << "</option>\n";
             }
             mctx["member_options"] = opts.str();
         }
@@ -388,7 +393,7 @@ void register_event_routes(LugApp& app, EventService& events, AttendanceService&
             for (auto& r : roles) {
                 opts << "<option value=\"" << r.id << "\"";
                 if (selected_ids.count(r.id)) opts << " selected";
-                opts << ">@" << r.name << "</option>\n";
+                opts << ">@" << html_escape(r.name) << "</option>\n";
             }
             mctx["role_ping_options"] = opts.str();
         }
@@ -415,7 +420,7 @@ void register_event_routes(LugApp& app, EventService& events, AttendanceService&
             for (auto& ch : ch_list)
                 opts << "<option value=\"" << ch.id << "\""
                      << (ch.id == ev->chapter_id ? " selected" : "")
-                     << ">" << ch.name << "</option>\n";
+                     << ">" << html_escape(ch.name) << "</option>\n";
             mctx["chapter_options"] = opts.str();
         }
         mctx["scope_chapter"]      = (ev->scope == "chapter" || ev->scope.empty());

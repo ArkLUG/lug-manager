@@ -1,5 +1,6 @@
 #include "routes/PerkRoutes.hpp"
 #include "utils/AuditDiff.hpp"
+#include "utils/HtmlEscape.hpp"
 #include <crow.h>
 #include <crow/mustache.h>
 #include <sstream>
@@ -171,11 +172,11 @@ void register_perk_routes(LugApp& app, PerkLevelRepository& perks,
           << "<form hx-put=\"/perks/" << id << "\" hx-swap=\"none\" class=\"space-y-4\">"
           << "<div class=\"grid grid-cols-2 gap-4\">"
           << "<div><label class=\"block text-sm font-medium text-gray-700\">Name</label>"
-          << "<input type=\"text\" name=\"name\" value=\"" << p->name << "\" required class=\"" << cls_input << "\"></div>"
+          << "<input type=\"text\" name=\"name\" value=\"" << html_escape(p->name) << "\" required class=\"" << cls_input << "\"></div>"
           << "<div><label class=\"block text-sm font-medium text-gray-700\">Sort Order</label>"
           << "<input type=\"number\" name=\"sort_order\" value=\"" << p->sort_order << "\" class=\"" << cls_input << "\"></div></div>"
           << "<div><label class=\"block text-sm font-medium text-gray-700\">Description</label>"
-          << "<textarea name=\"description\" rows=\"2\" class=\"" << cls_input << "\" placeholder=\"What members get at this tier\">" << p->description << "</textarea></div>"
+          << "<textarea name=\"description\" rows=\"2\" class=\"" << cls_input << "\" placeholder=\"What members get at this tier\">" << html_escape(p->description) << "</textarea></div>"
           << "<div class=\"grid grid-cols-2 gap-4\">"
           << "<div><label class=\"block text-sm font-medium text-gray-700\">Meetings Required</label>"
           << "<input type=\"number\" name=\"meeting_attendance_required\" value=\"" << p->meeting_attendance_required << "\" min=\"0\" class=\"" << cls_input << "\"></div>"

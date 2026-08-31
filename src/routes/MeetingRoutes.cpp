@@ -1,6 +1,7 @@
 #include "routes/MeetingRoutes.hpp"
 #include "utils/MarkdownRenderer.hpp"
 #include "utils/AuditDiff.hpp"
+#include "utils/HtmlEscape.hpp"
 #include <crow.h>
 #include <crow/mustache.h>
 #include <map>
@@ -243,7 +244,7 @@ void register_meeting_routes(LugApp& app, MeetingService& meetings, AttendanceSe
             std::ostringstream opts;
             opts << "<option value=\"\">-- Select chapter --</option>\n";
             for (auto& ch : ch_list)
-                opts << "<option value=\"" << ch.id << "\">" << ch.name << "</option>\n";
+                opts << "<option value=\"" << ch.id << "\">" << html_escape(ch.name) << "</option>\n";
             mctx["chapter_options"] = opts.str();
         }
         {
@@ -251,7 +252,7 @@ void register_meeting_routes(LugApp& app, MeetingService& meetings, AttendanceSe
             std::ostringstream vopts;
             vopts << "<option value=\"\">-- No voice channel --</option>\n";
             for (auto& ch : voice_chs)
-                vopts << "<option value=\"" << ch.id << "\">" << ch.name << "</option>\n";
+                vopts << "<option value=\"" << ch.id << "\">" << html_escape(ch.name) << "</option>\n";
             mctx["voice_channel_options"] = vopts.str();
         }
         mctx["action"]        = "/meetings";
@@ -300,7 +301,7 @@ void register_meeting_routes(LugApp& app, MeetingService& meetings, AttendanceSe
             for (auto& ch : ch_list)
                 opts << "<option value=\"" << ch.id << "\""
                      << (ch.id == m->chapter_id ? " selected" : "")
-                     << ">" << ch.name << "</option>\n";
+                     << ">" << html_escape(ch.name) << "</option>\n";
             mctx["chapter_options"] = opts.str();
         }
         mctx["scope_chapter"]     = (m->scope == "chapter" || m->scope.empty());
@@ -315,7 +316,7 @@ void register_meeting_routes(LugApp& app, MeetingService& meetings, AttendanceSe
             for (auto& ch : voice_chs)
                 vopts << "<option value=\"" << ch.id << "\""
                       << (ch.id == m->discord_voice_channel_id ? " selected" : "")
-                      << ">" << ch.name << "</option>\n";
+                      << ">" << html_escape(ch.name) << "</option>\n";
             mctx["voice_channel_options"] = vopts.str();
         }
         mctx["suppress_discord"]  = m->suppress_discord;

@@ -1,5 +1,6 @@
 #include "routes/ChapterRoutes.hpp"
 #include "utils/AuditDiff.hpp"
+#include "utils/HtmlEscape.hpp"
 #include <crow/mustache.h>
 #include <sstream>
 #include <unordered_set>
@@ -12,7 +13,7 @@ static std::string build_role_options(DiscordClient& discord, const std::string&
     for (auto& r : roles) {
         oss << "<option value=\"" << r.id << "\"";
         if (r.id == selected) oss << " selected";
-        oss << ">@" << r.name << "</option>\n";
+        oss << ">@" << html_escape(r.name) << "</option>\n";
     }
     if (roles.empty()) {
         oss.str("");
@@ -29,7 +30,7 @@ static std::string build_channel_options(DiscordClient& discord, const std::stri
     for (auto& ch : channels) {
         oss << "<option value=\"" << ch.id << "\"";
         if (ch.id == selected) oss << " selected";
-        oss << ">#" << ch.name << "</option>\n";
+        oss << ">#" << html_escape(ch.name) << "</option>\n";
     }
     if (channels.empty()) {
         oss.str("");
@@ -197,9 +198,9 @@ void register_chapter_routes(LugApp& app, ChapterService& chapters,
                 ++lead_count;
             } else {
                 add_lead_opts << "<option value=\"" << cm.member_id << "\">"
-                              << cm.display_name;
+                              << html_escape(cm.display_name);
                 if (!cm.discord_username.empty())
-                    add_lead_opts << " (@" << cm.discord_username << ")";
+                    add_lead_opts << " (@" << html_escape(cm.discord_username) << ")";
                 add_lead_opts << "</option>\n";
                 has_non_leads = true;
             }
@@ -483,9 +484,9 @@ void register_chapter_routes(LugApp& app, ChapterService& chapters,
         for (auto& m : all_members) {
             if (in_chapter.count(m.id)) continue;
             member_opts << "<option value=\"" << m.id << "\">"
-                        << m.display_name;
+                        << html_escape(m.display_name);
             if (!m.discord_username.empty())
-                member_opts << " (@" << m.discord_username << ")";
+                member_opts << " (@" << html_escape(m.discord_username) << ")";
             member_opts << "</option>\n";
         }
         mctx["member_options"] = member_opts.str();

@@ -1,4 +1,5 @@
 #include "routes/CheckinRoutes.hpp"
+#include "utils/HtmlEscape.hpp"
 #include <crow.h>
 #include <crow/mustache.h>
 #include <sstream>
@@ -254,7 +255,7 @@ void register_checkin_routes(LugApp& app,
         // Check for duplicate
         if (attendance.is_checked_in(member_id, entity_type, entity_id)) {
             res.write(R"(<div class="bg-yellow-50 border border-yellow-200 text-yellow-700 px-4 py-3 rounded text-sm">)"
-                      + member->display_name + " is already checked in!</div>");
+                      + html_escape(member->display_name) + " is already checked in!</div>");
             return res;
         }
 
@@ -264,7 +265,7 @@ void register_checkin_routes(LugApp& app,
         audit.log_system("checkin.select", entity_type, entity_id, entity_title, "Select check-in: " + member->display_name);
 
         res.write("<div class=\"bg-green-50 border border-green-200 text-green-700 px-4 py-3 rounded text-sm\">"
-                  + member->display_name + " checked in successfully!</div>");
+                  + html_escape(member->display_name) + " checked in successfully!</div>");
         return res;
     });
 
@@ -310,7 +311,7 @@ void register_checkin_routes(LugApp& app,
                 // Found a match — check if already checked in
                 if (attendance.is_checked_in(m.id, entity_type, entity_id)) {
                     res.write("<div class=\"bg-yellow-50 border border-yellow-200 text-yellow-700 px-4 py-3 rounded text-sm\">"
-                              + m.display_name + " is already checked in!</div>");
+                              + html_escape(m.display_name) + " is already checked in!</div>");
                     return res;
                 }
                 // Check them in
@@ -319,7 +320,7 @@ void register_checkin_routes(LugApp& app,
                 attendance.check_in(m.id, entity_type, entity_id, "", is_virtual);
                 audit.log_system("checkin.manual", entity_type, entity_id, entity_title, "Manual check-in (existing): " + m.display_name);
                 res.write("<div class=\"bg-green-50 border border-green-200 text-green-700 px-4 py-3 rounded text-sm\">"
-                          "Welcome back, " + m.display_name + "! Checked in successfully.</div>");
+                          "Welcome back, " + html_escape(m.display_name) + "! Checked in successfully.</div>");
                 return res;
             }
         }
@@ -337,7 +338,7 @@ void register_checkin_routes(LugApp& app,
         audit.log_system("checkin.manual", entity_type, entity_id, entity_title, "Manual check-in (new member): " + created.display_name);
 
         res.write("<div class=\"bg-green-50 border border-green-200 text-green-700 px-4 py-3 rounded text-sm\">"
-                  "Welcome, " + created.display_name + "! You've been checked in.</div>");
+                  "Welcome, " + html_escape(created.display_name) + "! You've been checked in.</div>");
         return res;
     });
 
@@ -361,9 +362,9 @@ void register_checkin_routes(LugApp& app,
         html << "<option value=\"\">-- Select your name --</option>\n";
         for (const auto& m : results) {
             html << "<option value=\"" << m.id << "\">"
-                 << m.display_name;
+                 << html_escape(m.display_name);
             if (!m.first_name.empty())
-                html << " (" << m.first_name << " " << m.last_name << ")";
+                html << " (" << html_escape(m.first_name) << " " << html_escape(m.last_name) << ")";
             html << "</option>\n";
         }
         if (results.empty()) {

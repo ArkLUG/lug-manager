@@ -1,4 +1,5 @@
 #include "routes/AttendanceRoutes.hpp"
+#include "utils/HtmlEscape.hpp"
 #include <crow.h>
 #include <crow/mustache.h>
 #include <ctime>
@@ -558,8 +559,8 @@ void register_attendance_routes(LugApp& app, AttendanceService& attendance,
                 : "<span class=\"px-1.5 py-0.5 rounded bg-purple-100 text-purple-700 font-medium\">Evt</span>";
             html << "<div class=\"flex items-center gap-2\">"
                  << type_badge
-                 << "<span class=\"text-gray-700\">" << d.title << "</span>"
-                 << "<span class=\"text-gray-400\">" << d.date << "</span>";
+                 << "<span class=\"text-gray-700\">" << html_escape(d.title) << "</span>"
+                 << "<span class=\"text-gray-400\">" << html_escape(d.date) << "</span>";
             if (d.is_virtual) html << "<span class=\"px-1 py-0.5 rounded bg-indigo-100 text-indigo-600\">Virtual</span>";
             html << "</div>";
         }

@@ -1,4 +1,5 @@
 #include "routes/DiscordMatchRoutes.hpp"
+#include "utils/HtmlEscape.hpp"
 #include <crow/mustache.h>
 #include <sstream>
 #include <unordered_set>
@@ -13,7 +14,7 @@ static std::string build_member_options(const std::vector<Member>& all, int64_t 
     for (const auto& m : all) {
         oss << "<option value=\"" << m.id << "\"";
         if (m.id == selected) oss << " selected";
-        oss << ">" << m.display_name << "</option>\n";
+        oss << ">" << html_escape(m.display_name) << "</option>\n";
     }
     if (all.empty()) {
         oss.str("");
@@ -38,14 +39,14 @@ static std::string build_channel_options(const std::vector<DiscordChannel>& chan
     for (auto& ch : channels) {
         oss << "<option value=\"" << ch.id << "\"";
         if (ch.id == selected) { oss << " selected"; saw_selected = true; }
-        oss << ">#" << ch.name << "</option>\n";
+        oss << ">#" << html_escape(ch.name) << "</option>\n";
     }
     if (channels.empty()) {
         oss.str("");
         oss << "<option value=\"\">" << none_msg << "</option>\n";
     }
     if (!saw_selected)
-        oss << "<option value=\"" << selected << "\" selected>(saved: " << selected << ")</option>\n";
+        oss << "<option value=\"" << html_escape(selected) << "\" selected>(saved: " << html_escape(selected) << ")</option>\n";
     return oss.str();
 }
 
@@ -110,7 +111,7 @@ void register_discord_match_routes(LugApp& app,
             std::ostringstream authorized_role_options;
             for (auto& r : all_roles) {
                 authorized_role_options << "<option value=\"" << r.id << "\""
-                    << (authorized_role_ids.count(r.id) ? " selected" : "") << ">@" << r.name << "</option>\n";
+                    << (authorized_role_ids.count(r.id) ? " selected" : "") << ">@" << html_escape(r.name) << "</option>\n";
             }
             mctx["authorized_role_options"] = authorized_role_options.str();
         }
@@ -178,7 +179,7 @@ void register_discord_match_routes(LugApp& app,
                   "Linked Discord user " + pending->discord_display_name + " to existing member");
 
         res.write("<tr class=\"bg-green-50\"><td colspan=\"4\" class=\"px-3 py-2 text-green-700 text-center\">"
-                   "Linked to " + member->display_name + "</td></tr>");
+                   "Linked to " + html_escape(member->display_name) + "</td></tr>");
         res.add_header("Content-Type", "text/html; charset=utf-8");
         return res;
     });
@@ -214,7 +215,7 @@ void register_discord_match_routes(LugApp& app,
                   "Created new member from Discord: " + pending->discord_display_name);
 
         res.write("<tr class=\"bg-green-50\"><td colspan=\"4\" class=\"px-3 py-2 text-green-700 text-center\">"
-                   "Created new member " + created.display_name + "</td></tr>");
+                   "Created new member " + html_escape(created.display_name) + "</td></tr>");
         res.add_header("Content-Type", "text/html; charset=utf-8");
         return res;
     });

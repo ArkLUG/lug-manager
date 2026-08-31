@@ -90,6 +90,37 @@ TEST_F(IntegrationTest, MemberOptionsApi) {
     expect_contains(r, "Regular U.");
 }
 
+// Security regression: /api/member-options builds a raw <option> HTML
+// fragment from struct fields via std::ostringstream, not a mustache
+// {{tag}} - two distinct injection points were unescaped: the caller-
+// supplied `placeholder` query param (reflected XSS - no stored data
+// needed at all, just a crafted link to this endpoint) and each member's
+// display_name (stored XSS - display_name is set directly from Discord's
+// user-controlled global_name field on login/auto-provisioning with no
+// sanitization, so any authenticated member - including one who was only
+// ever auto-provisioned, never manually approved - can plant this).
+TEST_F(IntegrationTest, MemberOptionsApiEscapesReflectedPlaceholder) {
+    auto r = GET("/api/member-options?placeholder=" +
+                 std::string("%3Cscript%3Ealert(1)%3C%2Fscript%3E"), admin_token);
+    EXPECT_EQ(r.code, 200);
+    EXPECT_EQ(r.body.find("<script>"), std::string::npos);
+    expect_contains(r, "&lt;script&gt;");
+}
+
+TEST_F(IntegrationTest, MemberOptionsApiEscapesStoredDisplayName) {
+    Member m;
+    m.discord_user_id = "xss-test-001";
+    m.discord_username = "xsstest";
+    m.display_name = "<script>alert(1)</script>";
+    m.role = "member";
+    member_repo->create(m);
+
+    auto r = GET("/api/member-options", admin_token);
+    EXPECT_EQ(r.code, 200);
+    EXPECT_EQ(r.body.find("<script>alert(1)</script>"), std::string::npos);
+    expect_contains(r, "&lt;script&gt;alert(1)&lt;/script&gt;");
+}
+
 TEST_F(IntegrationTest, RolesPageLoads) {
     auto r = GET("/settings/roles", admin_token);
     EXPECT_EQ(r.code, 200);

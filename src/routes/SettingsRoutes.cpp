@@ -1,4 +1,6 @@
 #include "routes/SettingsRoutes.hpp"
+#include "utils/HtmlEscape.hpp"
+#include "utils/JsonEscape.hpp"
 #include <crow/mustache.h>
 #include <sstream>
 #include <unordered_set>
@@ -51,7 +53,7 @@ void register_settings_routes(LugApp& app, SettingsRepository& settings,
         for (auto& ch : channels) {
             html << "<option value=\"" << ch.id << "\"";
             if (ch.id == selected) html << " selected";
-            html << ">#" << ch.name << "</option>\n";
+            html << ">#" << html_escape(ch.name) << "</option>\n";
         }
 
         if (channels.empty()) {
@@ -85,7 +87,7 @@ void register_settings_routes(LugApp& app, SettingsRepository& settings,
         for (auto& ch : channels) {
             html << "<option value=\"" << ch.id << "\"";
             if (ch.id == selected) html << " selected";
-            html << ">#" << ch.name << "</option>\n";
+            html << ">#" << html_escape(ch.name) << "</option>\n";
         }
         if (channels.empty()) {
             html.str("");
@@ -119,7 +121,7 @@ void register_settings_routes(LugApp& app, SettingsRepository& settings,
         for (auto& ch : channels) {
             html << "<option value=\"" << ch.id << "\"";
             if (ch.id == selected) html << " selected";
-            html << ">" << ch.name << "</option>\n";
+            html << ">" << html_escape(ch.name) << "</option>\n";
         }
         if (channels.empty()) {
             html.str("");
@@ -176,7 +178,7 @@ void register_settings_routes(LugApp& app, SettingsRepository& settings,
         html << "<option value=\"\">-- No role --</option>\n";
         for (auto& r : roles)
             html << "<option value=\"" << r.id << "\""
-                 << (r.id == selected ? " selected" : "") << ">@" << r.name << "</option>\n";
+                 << (r.id == selected ? " selected" : "") << ">@" << html_escape(r.name) << "</option>\n";
         if (roles.empty())
             html.str("<option value=\"\">No roles found (check guild ID &amp; bot permissions)</option>");
 
@@ -204,7 +206,7 @@ void register_settings_routes(LugApp& app, SettingsRepository& settings,
         std::ostringstream html;
         if (!r.error_message.empty()) {
             html << "<span class=\"text-red-600 font-medium\">Error: "
-                 << r.error_message << "</span>";
+                 << html_escape(r.error_message) << "</span>";
         } else {
             html << "<div>"
                  << "<span class=\"text-green-700 font-medium\">"
@@ -237,8 +239,20 @@ void register_settings_routes(LugApp& app, SettingsRepository& settings,
                      << "<th class=\"px-3 py-2\"></th></tr></thead><tbody>";
 
                 for (const auto& c : r.changes) {
+                    // c.member_name/old_value/new_value trace back to Discord-
+                    // synced member data (display names etc.) - real user input.
+                    // c.field/change_type are fixed, code-controlled column
+                    // names, safe as-is. Values land in two different sink
+                    // contexts here: plain HTML text (needs html_escape) and
+                    // inside hx-vals='{"...":"..."}' - a JSON literal nested in
+                    // a single-quoted HTML attribute, which needs BOTH
+                    // json_escape (for JSON-string correctness) AND
+                    // html_escape (so an embedded "'" can't close the
+                    // attribute early) applied together, in that order.
+                    auto attr_json = [](const std::string& s) { return html_escape(json_escape(s)); };
+
                     html << "<tr class=\"border-t border-gray-100\" id=\"sync-change-" << c.member_id << "-" << c.field << "\">";
-                    html << "<td class=\"px-3 py-2 text-gray-900\">" << c.member_name << "</td>";
+                    html << "<td class=\"px-3 py-2 text-gray-900\">" << html_escape(c.member_name) << "</td>";
 
                     if (c.change_type == "created") {
                         html << "<td class=\"px-3 py-2\"><span class=\"inline-flex items-center px-1.5 py-0.5 rounded bg-green-100 text-green-700\">new member</span></td>"
@@ -257,17 +271,17 @@ void register_settings_routes(LugApp& app, SettingsRepository& settings,
                         else if (c.field == "chapter_role") label = "chapter role";
 
                         html << "<td class=\"px-3 py-2\"><span class=\"inline-flex items-center px-1.5 py-0.5 rounded bg-blue-100 text-blue-700\">" << label << "</span></td>"
-                             << "<td class=\"px-3 py-2 text-gray-500 font-mono\">" << c.old_value << "</td>"
-                             << "<td class=\"px-3 py-2 text-gray-900 font-mono\">" << c.new_value << "</td>"
+                             << "<td class=\"px-3 py-2 text-gray-500 font-mono\">" << html_escape(c.old_value) << "</td>"
+                             << "<td class=\"px-3 py-2 text-gray-900 font-mono\">" << html_escape(c.new_value) << "</td>"
                              << "<td class=\"px-3 py-2 text-right\">"
                              << "<button hx-post=\"/api/discord/revert-sync-change\" "
                              << "hx-vals='{\"member_id\": " << c.member_id
                              << ", \"change_type\": \"" << c.change_type
                              << "\", \"field\": \"" << c.field
-                             << "\", \"old_value\": \"" << c.old_value << "\"}' "
+                             << "\", \"old_value\": \"" << attr_json(c.old_value) << "\"}' "
                              << "hx-target=\"#sync-change-" << c.member_id << "-" << c.field << "\" "
                              << "hx-swap=\"outerHTML\" "
-                             << "hx-confirm=\"Revert " << label << " for " << c.member_name << "?\" "
+                             << "hx-confirm=\"Revert " << label << " for " << html_escape(c.member_name) << "?\" "
                              << "class=\"text-amber-600 hover:text-amber-800 font-medium\">Revert</button></td>";
                     }
                     html << "</tr>";
@@ -392,7 +406,7 @@ void register_settings_routes(LugApp& app, SettingsRepository& settings,
             for (auto& ch : channels) {
                 oss << "<option value=\"" << ch.id << "\"";
                 if (ch.id == selected) { oss << " selected"; saw_selected = true; }
-                oss << ">#" << ch.name << "</option>\n";
+                oss << ">#" << html_escape(ch.name) << "</option>\n";
             }
             if (channels.empty()) {
                 oss.str("");
@@ -401,8 +415,8 @@ void register_settings_routes(LugApp& app, SettingsRepository& settings,
             if (!saw_selected) {
                 // Fetch didn't include the saved id (empty result or it's no longer
                 // in the list) - preserve it as a selected option instead of losing it.
-                oss << "<option value=\"" << selected << "\" selected>"
-                    << "(saved: " << selected << ")</option>\n";
+                oss << "<option value=\"" << html_escape(selected) << "\" selected>"
+                    << "(saved: " << html_escape(selected) << ")</option>\n";
             }
             return oss.str();
         };
@@ -414,14 +428,14 @@ void register_settings_routes(LugApp& app, SettingsRepository& settings,
             bool saw_selected = selected.empty();
             for (auto& r : roles) {
                 oss << "<option value=\"" << r.id << "\""
-                    << (r.id == selected ? " selected" : "") << ">@" << r.name << "</option>\n";
+                    << (r.id == selected ? " selected" : "") << ">@" << html_escape(r.name) << "</option>\n";
                 if (r.id == selected) saw_selected = true;
             }
             if (roles.empty())
                 oss.str(""), oss << "<option value=\"\">No roles found (check guild ID &amp; bot permissions)</option>\n";
             if (!saw_selected) {
-                oss << "<option value=\"" << selected << "\" selected>"
-                    << "(saved: " << selected << ")</option>\n";
+                oss << "<option value=\"" << html_escape(selected) << "\" selected>"
+                    << "(saved: " << html_escape(selected) << ")</option>\n";
             }
             return oss.str();
         };
@@ -873,17 +887,21 @@ void register_settings_routes(LugApp& app, SettingsRepository& settings,
                  << "<th class=\"px-3 py-2\"></th></tr></thead><tbody>";
 
             for (const auto& c : result.changes) {
+                // Same double-escaping requirement as the sync-changes table
+                // above: HTML text context vs. JSON-inside-single-quoted-
+                // attribute context need different treatment.
+                std::string old_name_attr = html_escape(json_escape(c.old_name));
                 html << "<tr class=\"border-t border-gray-100\" id=\"nick-change-" << c.member_id << "\">"
-                     << "<td class=\"px-3 py-2 text-gray-500 font-mono\">" << c.old_name << "</td>"
-                     << "<td class=\"px-3 py-2 text-gray-900 font-mono\">" << c.new_name << "</td>"
+                     << "<td class=\"px-3 py-2 text-gray-500 font-mono\">" << html_escape(c.old_name) << "</td>"
+                     << "<td class=\"px-3 py-2 text-gray-900 font-mono\">" << html_escape(c.new_name) << "</td>"
                      << "<td class=\"px-3 py-2 text-right\">"
                      << "<button hx-post=\"/api/discord/revert-sync-change\" "
                      << "hx-vals='{\"member_id\": " << c.member_id
                      << ", \"change_type\": \"updated\", \"field\": \"display_name\""
-                     << ", \"old_value\": \"" << c.old_name << "\"}' "
+                     << ", \"old_value\": \"" << old_name_attr << "\"}' "
                      << "hx-target=\"#nick-change-" << c.member_id << "\" "
                      << "hx-swap=\"outerHTML\" "
-                     << "hx-confirm=\"Revert nickname for " << c.new_name << "?\" "
+                     << "hx-confirm=\"Revert nickname for " << html_escape(c.new_name) << "?\" "
                      << "class=\"text-amber-600 hover:text-amber-800 font-medium\">Revert</button></td>"
                      << "</tr>";
             }
