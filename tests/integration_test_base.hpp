@@ -8,6 +8,7 @@
 #include <atomic>
 #include <vector>
 #include <unistd.h>
+#include <filesystem>
 
 #include "db/SqliteDatabase.hpp"
 #include "db/Migrations.hpp"
@@ -92,6 +93,12 @@ protected:
     std::thread server_thread;
     int port = 0;
 
+    // Scratch directory for BrandingRoutes' uploaded-logo storage (mirrors
+    // the real app's data_dir, which is normally the SQLite DB's parent
+    // directory - see main.cpp). Created in SetUp(), removed in TearDown()
+    // so tests never leave files behind or collide with each other.
+    std::string data_dir;
+
     // Test session tokens
     std::string admin_token;
     std::string member_token;
@@ -115,6 +122,11 @@ protected:
     }
 
     void SetUp() override {
+        data_dir = (std::filesystem::temp_directory_path() /
+                    ("lug-test-" + std::to_string(getpid()) + "-" +
+                     std::to_string(reinterpret_cast<uintptr_t>(this)))).string();
+        std::filesystem::create_directories(data_dir);
+
         db = std::make_unique<SqliteDatabase>(":memory:");
         Migrations mig(*db);
         mig.run("sql/migrations");
@@ -216,6 +228,7 @@ protected:
         // Boot Crow app
         app = std::make_unique<LugApp>();
         app->get_middleware<AuthMiddleware>().auth_service = auth_service.get();
+        app->get_middleware<AuthMiddleware>().settings     = settings_repo.get();
         app->get_middleware<ApiKeyMiddleware>().api_keys = api_key_repo.get();
 
         crow::mustache::set_global_base("src/templates");
@@ -229,7 +242,8 @@ protected:
             *meeting_repo, *event_repo,
             *event_day_repo, *event_day_attendance_repo,
             *audit_svc, *api_key_repo, *pending_discord_match_repo,
-            config.discord_public_key
+            config.discord_public_key,
+            data_dir
         };
         register_all_routes(*app, svc);
 
@@ -257,6 +271,8 @@ protected:
     void TearDown() override {
         app->stop();
         if (server_thread.joinable()) server_thread.join();
+        std::error_code ec;
+        std::filesystem::remove_all(data_dir, ec); // best-effort
     }
 
     // HTTP helpers using curl
@@ -358,6 +374,67 @@ protected:
     }
     Response DEL(const std::string& path, const std::string& body = "", const std::string& token = "") {
         return http("DELETE", path, body, token);
+    }
+
+    // Multipart file-upload POST (for BrandingRoutes' logo upload). field_name
+    // is the form field name (e.g. "logo"), filename is a fake client-side
+    // filename (doesn't need to exist on disk - the bytes come from `data`),
+    // content is the raw file bytes to upload.
+    Response POST_FILE(const std::string& path, const std::string& field_name,
+                       const std::string& filename, const std::string& content,
+                       const std::string& token = "") {
+        CURL* curl = curl_easy_init();
+        Response resp;
+        std::string url = "http://127.0.0.1:" + std::to_string(port) + path;
+        std::string resp_body, resp_headers;
+
+        curl_easy_setopt(curl, CURLOPT_URL, url.c_str());
+        curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, write_cb);
+        curl_easy_setopt(curl, CURLOPT_WRITEDATA, &resp_body);
+        curl_easy_setopt(curl, CURLOPT_HEADERFUNCTION, header_cb);
+        curl_easy_setopt(curl, CURLOPT_HEADERDATA, &resp_headers);
+        curl_easy_setopt(curl, CURLOPT_FOLLOWLOCATION, 0L);
+        curl_easy_setopt(curl, CURLOPT_CONNECTTIMEOUT, 5L);
+        curl_easy_setopt(curl, CURLOPT_TIMEOUT, 30L);
+
+        struct curl_slist* headers = nullptr;
+        if (!token.empty())
+            headers = curl_slist_append(headers, ("Cookie: session=" + token).c_str());
+        headers = curl_slist_append(headers, "HX-Request: true");
+        if (headers) curl_easy_setopt(curl, CURLOPT_HTTPHEADER, headers);
+
+        curl_mime* mime = curl_mime_init(curl);
+        curl_mimepart* part = curl_mime_addpart(mime);
+        curl_mime_name(part, field_name.c_str());
+        curl_mime_filename(part, filename.c_str());
+        curl_mime_data(part, content.data(), content.size());
+        curl_easy_setopt(curl, CURLOPT_MIMEPOST, mime);
+
+        curl_easy_perform(curl);
+        curl_easy_getinfo(curl, CURLINFO_RESPONSE_CODE, &resp.code);
+
+        size_t loc_pos = resp_headers.find("Location: ");
+        if (loc_pos == std::string::npos) loc_pos = resp_headers.find("location: ");
+        if (loc_pos != std::string::npos) {
+            size_t start = loc_pos + 10;
+            size_t end = resp_headers.find("\r\n", start);
+            resp.location = resp_headers.substr(start, end - start);
+        }
+        // HX-Redirect (used instead of a real 3xx for htmx form posts)
+        size_t hx_pos = resp_headers.find("HX-Redirect: ");
+        if (hx_pos == std::string::npos) hx_pos = resp_headers.find("hx-redirect: ");
+        if (hx_pos != std::string::npos) {
+            size_t start = hx_pos + 13;
+            size_t end = resp_headers.find("\r\n", start);
+            resp.location = resp_headers.substr(start, end - start);
+        }
+
+        curl_mime_free(mime);
+        if (headers) curl_slist_free_all(headers);
+        curl_easy_cleanup(curl);
+
+        resp.body = resp_body;
+        return resp;
     }
 
     // API-key-authenticated JSON helpers for /api/v1/* routes. api_key is sent via

@@ -4,6 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>{{page_title}} — LUG Manager</title>
+  {{#has_logo}}<link rel="icon" href="{{logo_url}}">{{/has_logo}}
   <link rel="stylesheet" href="/static/tailwind.min.css" id="tw-local">
   <script>
     // Fall back to play CDN in local dev when CSS hasn't been generated yet
@@ -118,8 +119,15 @@
 
     <!-- Brand / Logo -->
     <div class="flex items-center gap-3 px-5 py-4 bg-gray-800 border-b border-gray-700 stud-pattern">
+      {{#has_logo}}
+      <div class="w-10 h-10 rounded-lg flex items-center justify-center overflow-hidden flex-shrink-0 bg-white">
+        <img src="{{logo_url}}" alt="Logo" class="w-full h-full object-contain">
+      </div>
+      {{/has_logo}}
+      {{^has_logo}}
       <div class="w-10 h-10 bg-yellow-400 rounded-lg flex items-center justify-center
                   font-black text-gray-900 text-lg shadow-inner flex-shrink-0">L</div>
+      {{/has_logo}}
       <div class="min-w-0">
         <div class="font-bold text-white text-sm leading-tight">LUG Manager</div>
         <div class="text-yellow-400 text-xs font-medium truncate">LEGO User Group</div>
@@ -326,7 +334,7 @@
              class="block px-3 py-2 rounded-lg text-sm cursor-pointer transition-colors
                     {{#active_calendar}}nav-active{{/active_calendar}}
                     {{^active_calendar}}nav-inactive{{/active_calendar}}">
-            Calendar
+            iCal Calendar
           </a>
           <a hx-get="/settings/google-calendar"
              hx-target="#main-content"
@@ -337,6 +345,16 @@
                     {{#active_google_calendar}}nav-active{{/active_google_calendar}}
                     {{^active_google_calendar}}nav-inactive{{/active_google_calendar}}">
             Google Calendar
+          </a>
+          <a hx-get="/settings/branding"
+             hx-target="#main-content"
+             hx-push-url="true"
+             hx-swap="innerHTML"
+             hx-indicator="#nav-spinner"
+             class="block px-3 py-2 rounded-lg text-sm cursor-pointer transition-colors
+                    {{#active_branding}}nav-active{{/active_branding}}
+                    {{^active_branding}}nav-inactive{{/active_branding}}">
+            Branding
           </a>
           <a hx-get="/settings/api-keys"
              hx-target="#main-content"

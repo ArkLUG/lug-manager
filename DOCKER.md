@@ -87,7 +87,7 @@ Only secrets need to be in `.env` — everything else is configured from the Set
 
 ## Data Persistence
 
-The container uses `/app/data` as its data directory (SQLite database). This is declared as a Docker `VOLUME`.
+The container uses `/app/data` as its data directory (SQLite database, plus an admin-uploaded logo file if one is set via Settings > Branding). This is declared as a Docker `VOLUME`.
 
 - **docker compose**: uses a named volume `lug-data`
 - **docker run**: mount a volume or bind mount to `/app/data`

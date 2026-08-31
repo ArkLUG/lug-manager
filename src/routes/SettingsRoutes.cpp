@@ -513,7 +513,7 @@ void register_settings_routes(LugApp& app, SettingsRepository& settings,
             std::string content = content_tmpl.render(mctx).dump();
             crow::mustache::context layout_ctx;
             layout_ctx["content"]         = content;
-            layout_ctx["page_title"]      = "Calendar Settings";
+            layout_ctx["page_title"]      = "iCal Calendar Settings";
             layout_ctx["active_calendar"] = true;
             layout_ctx["is_admin"]        = true;
             set_layout_auth(req, app, layout_ctx);

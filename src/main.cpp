@@ -51,6 +51,14 @@ int main() {
         crow::mustache::set_base(templates_abs);
         std::cout << "[lug-manager] Templates (abs): " << templates_abs << "\n";
 
+        // Directory for admin-uploaded files (logo, etc.) - same durable
+        // volume the SQLite DB lives in, so it survives redeploys unlike
+        // src/static/ (baked into the image, read-only at runtime). Falls
+        // back to "." if db_path has no directory component (e.g. a bare
+        // "lug.db" in local dev).
+        std::string data_dir = std::filesystem::absolute(config.db_path).parent_path().string();
+        if (data_dir.empty()) data_dir = ".";
+
         // Open SQLite database
         SqliteDatabase db(config.db_path);
 
@@ -151,6 +159,7 @@ int main() {
         // Build the Crow app with AuthMiddleware + ApiKeyMiddleware
         LugApp app;
         app.get_middleware<AuthMiddleware>().auth_service = &auth_service;
+        app.get_middleware<AuthMiddleware>().settings     = &settings_repo;
         app.get_middleware<ApiKeyMiddleware>().api_keys = &api_key_repo;
 
         // Wire up all route handlers
@@ -179,7 +188,8 @@ int main() {
             audit_service,
             api_key_repo,
             pending_discord_match_repo,
-            config.discord_public_key
+            config.discord_public_key,
+            data_dir
         };
         register_all_routes(app, svc);
 

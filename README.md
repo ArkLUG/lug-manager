@@ -274,11 +274,12 @@ its own save button — saving one page never touches another page's settings:
 | | | Event/Meeting Reports Forum | Forum channels for published reports |
 | | | Announcement/Non-LUG Roles | Roles @mentioned in announcements |
 | | | Suppress Pings/Updates | Disable @mentions or update notifications |
-| Calendar | `/settings/calendar` | Timezone | IANA timezone for Discord/Calendar |
+| iCal Calendar | `/settings/calendar` | Timezone | IANA timezone for Discord/Calendar |
 | | | Calendar Name | Display name in calendar apps |
 | Google Calendar | `/settings/google-calendar` | Service Account JSON Path / Calendar ID | Google Calendar sync configuration |
 | Discord Matches | `/settings/discord-matches` | Match Notification Channel | Discord channel for Resolve Match buttons (Discord member match review); unset disables |
 | | | Authorized Roles | Discord role-ID allowlist permitted to resolve matches via the Discord button/modal |
+| Branding | `/settings/branding` | Logo | Replaces the default sidebar mark and browser tab favicon with an uploaded image (PNG/JPEG/GIF/WebP/SVG, up to 5 MB) |
 
 Also reachable from the Settings accordion in the sidebar: **Roles** (`/settings/roles`, map
 Discord roles to admin/member) and **API Keys** (`/settings/api-keys`). **Perk Levels** (`/perks`)

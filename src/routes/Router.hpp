@@ -16,6 +16,7 @@
 #include "routes/ApiKeyRoutes.hpp"
 #include "routes/DiscordMatchRoutes.hpp"
 #include "routes/DiscordInteractionsRoutes.hpp"
+#include "routes/BrandingRoutes.hpp"
 #include "routes/api/MembersApiRoutes.hpp"
 #include "routes/api/EventsApiRoutes.hpp"
 #include "routes/api/MeetingsApiRoutes.hpp"
@@ -77,6 +78,8 @@ struct Services {
     ApiKeyRepository&       api_keys;
     PendingDiscordMatchRepository& pending_discord_matches;
     const std::string&      discord_public_key;
+    const std::string&      data_dir; // directory for admin-uploaded files (logo, etc.) - same
+                                       // durable volume the SQLite DB lives in, see main.cpp
 };
 
 void register_all_routes(LugApp& app, Services& svc);

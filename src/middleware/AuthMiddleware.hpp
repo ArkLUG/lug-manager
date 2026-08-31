@@ -1,6 +1,7 @@
 #pragma once
 #include "auth/AuthService.hpp"
 #include "repositories/ChapterMemberRepository.hpp"
+#include "repositories/SettingsRepository.hpp"
 #include <crow.h>
 #include <string>
 
@@ -21,7 +22,13 @@ struct AuthContext {
 // Crow middleware that reads session cookie and populates AuthContext.
 // Does NOT block unauthenticated requests - routes decide what to do.
 struct AuthMiddleware {
-    AuthService* auth_service = nullptr; // Set before server starts
+    AuthService*        auth_service = nullptr; // Set before server starts
+    // Read by set_layout_auth() below to show the admin-uploaded logo (if any)
+    // in the sidebar/favicon on every page, without threading a
+    // SettingsRepository& through the ~20 call sites that build a layout
+    // context - same "nullable pointer set once at startup" pattern as
+    // auth_service above and ApiKeyMiddleware::api_keys.
+    SettingsRepository* settings     = nullptr; // Set before server starts
 
     struct context {
         AuthContext auth;
@@ -69,6 +76,19 @@ inline void set_layout_auth(const crow::request& req, App& app,
     layout_ctx["role"]         = ctx.auth.role;
     if (!ctx.auth.display_name.empty())
         layout_ctx["display_name_initial"] = std::string(1, ctx.auth.display_name[0]);
+
+    // Custom logo (sidebar mark + favicon) - see BrandingRoutes.cpp. Reads
+    // through the middleware's own pointer (see the struct above) rather
+    // than a function parameter, so every page picks this up automatically.
+    auto& mw = app.template get_middleware<AuthMiddleware>();
+    if (mw.settings) {
+        std::string ext = mw.settings->get("branding_logo_extension", "");
+        if (!ext.empty()) {
+            layout_ctx["has_logo"] = true;
+            layout_ctx["logo_url"] = "/branding/logo?v=" +
+                mw.settings->get("branding_logo_updated_at", "0");
+        }
+    }
 }
 
 // Helper: check auth in route handlers.
