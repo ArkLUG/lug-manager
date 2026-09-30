@@ -51,16 +51,16 @@ PendingDiscordMatch PendingDiscordMatchRepository::create(const PendingDiscordMa
     auto stmt = db_.prepare(
         "INSERT INTO pending_discord_matches "
         "(discord_user_id, discord_username, discord_display_name, discord_role_ids, suggested_member_id) "
-        "VALUES (?,?,?,?,?)");
+        "VALUES (?,?,?,?,?) RETURNING id");
     stmt.bind(1, p.discord_user_id);
     stmt.bind(2, p.discord_username);
     stmt.bind(3, p.discord_display_name);
     stmt.bind(4, p.discord_role_ids);
     if (p.suggested_member_id == 0) stmt.bind_null(5);
     else                            stmt.bind(5, p.suggested_member_id);
-    stmt.step();
+    if (!stmt.step()) throw DbError("INSERT ... RETURNING id produced no row");
 
-    int64_t id = db_.last_insert_rowid();
+    int64_t id = stmt.col_int(0);
     auto created = find_by_id(id);
     return created ? *created : PendingDiscordMatch{};
 }

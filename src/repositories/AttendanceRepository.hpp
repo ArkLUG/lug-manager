@@ -16,6 +16,7 @@ public:
     bool check_out(int64_t member_id, const std::string& entity_type, int64_t entity_id);
 
     // Returns attendance records with member display_name joined
+    std::optional<Attendance> find_by_id(int64_t attendance_id);
     std::vector<Attendance> find_by_entity(const std::string& entity_type, int64_t entity_id);
     std::vector<Attendance> find_by_member(int64_t member_id);
 

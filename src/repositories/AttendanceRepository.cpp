@@ -5,23 +5,19 @@ AttendanceRepository::AttendanceRepository(SqliteDatabase& db) : db_(db) {}
 bool AttendanceRepository::check_in(int64_t member_id, const std::string& entity_type,
                                      int64_t entity_id, const std::string& notes,
                                      bool is_virtual) {
-    // Use INSERT OR IGNORE to silently skip duplicate check-ins
+    // INSERT OR IGNORE skips duplicate check-ins; RETURNING only yields a row
+    // when one was actually inserted, so step() reports "new" per-statement
+    // (last_insert_rowid() is connection-wide, racy across request threads,
+    // and is NOT reset to 0 when a row is ignored).
     auto stmt = db_.prepare(
         "INSERT OR IGNORE INTO attendance (member_id, entity_type, entity_id, notes, is_virtual) "
-        "VALUES (?,?,?,?,?)");
+        "VALUES (?,?,?,?,?) RETURNING id");
     stmt.bind(1, member_id);
     stmt.bind(2, entity_type);
     stmt.bind(3, entity_id);
     stmt.bind(4, notes);
     stmt.bind(5, static_cast<int64_t>(is_virtual ? 1 : 0));
-    stmt.step();
-
-    // If a new row was inserted, last_insert_rowid() will be non-zero and
-    // the count query will find the record. We detect success by checking
-    // whether a row now exists (was just inserted vs already existed).
-    // A simpler approach: check rowid change — if rowid > 0 after insert, row was new.
-    // Since INSERT OR IGNORE sets rowid=0 on conflict, we check last_insert_rowid().
-    return db_.last_insert_rowid() != 0;
+    return stmt.step();
 }
 
 bool AttendanceRepository::check_out(int64_t member_id, const std::string& entity_type,
@@ -35,6 +31,23 @@ bool AttendanceRepository::check_out(int64_t member_id, const std::string& entit
 
     // Return true if the row no longer exists (successfully deleted)
     return !is_checked_in(member_id, entity_type, entity_id);
+}
+
+std::optional<Attendance> AttendanceRepository::find_by_id(int64_t attendance_id) {
+    auto stmt = db_.prepare(
+        "SELECT id, member_id, entity_type, entity_id, checked_in_at, notes, is_virtual "
+        "FROM attendance WHERE id=?");
+    stmt.bind(1, attendance_id);
+    if (!stmt.step()) return std::nullopt;
+    Attendance a;
+    a.id            = stmt.col_int(0);
+    a.member_id     = stmt.col_int(1);
+    a.entity_type   = stmt.col_text(2);
+    a.entity_id     = stmt.col_int(3);
+    a.checked_in_at = stmt.col_text(4);
+    a.notes         = stmt.col_text(5);
+    a.is_virtual    = stmt.col_int(6) != 0;
+    return a;
 }
 
 std::vector<Attendance> AttendanceRepository::find_by_entity(const std::string& entity_type,
@@ -113,17 +126,13 @@ bool AttendanceRepository::is_verified_member(int64_t member_id) {
 }
 
 bool AttendanceRepository::set_virtual(int64_t attendance_id, bool is_virtual) {
-    auto stmt = db_.prepare("UPDATE attendance SET is_virtual=? WHERE id=?");
+    // RETURNING yields a row only if the id matched, so a bad id is reported
+    // per-statement (a follow-up "SELECT changes()" is connection-wide and
+    // could see another request thread's statement).
+    auto stmt = db_.prepare("UPDATE attendance SET is_virtual=? WHERE id=? RETURNING id");
     stmt.bind(1, static_cast<int64_t>(is_virtual ? 1 : 0));
     stmt.bind(2, attendance_id);
-    stmt.step();
-    // UPDATE ... WHERE id=<nonexistent> silently matches zero rows in SQLite
-    // (no error) - previously this unconditionally returned true regardless,
-    // so callers had no way to detect a bad id. changes() reflects the row
-    // count of the immediately preceding statement on this connection.
-    auto changes = db_.prepare("SELECT changes()");
-    changes.step();
-    return changes.col_int(0) > 0;
+    return stmt.step();
 }
 
 bool AttendanceRepository::remove_by_id(int64_t attendance_id) {
@@ -288,8 +297,9 @@ static std::string build_overview_sql(const AttendanceRepository::OverviewParams
 
     // Search filter
     if (!p.search.empty()) {
-        sql += " AND (display_name LIKE '%" + p.search + "%' OR discord_username LIKE '%" + p.search + "%'"
-               " OR first_name LIKE '%" + p.search + "%' OR last_name LIKE '%" + p.search + "%')";
+        // Bound by the callers below - never splice user input into SQL.
+        sql += " AND (display_name LIKE ?1 OR discord_username LIKE ?1"
+               " OR first_name LIKE ?1 OR last_name LIKE ?1)";
     }
 
     // Hide inactive: no attendance AND not paid
@@ -316,6 +326,7 @@ static std::string build_overview_sql(const AttendanceRepository::OverviewParams
 std::vector<AttendanceRepository::MemberAttendanceSummary>
 AttendanceRepository::get_overview_paginated(const OverviewParams& p) {
     auto stmt = db_.prepare(build_overview_sql(p, false));
+    if (!p.search.empty()) stmt.bind(1, "%" + p.search + "%");
     std::vector<MemberAttendanceSummary> result;
     while (stmt.step()) {
         MemberAttendanceSummary s;
@@ -337,6 +348,7 @@ AttendanceRepository::get_overview_paginated(const OverviewParams& p) {
 
 int AttendanceRepository::count_overview(const OverviewParams& p) {
     auto stmt = db_.prepare(build_overview_sql(p, true));
+    if (!p.search.empty()) stmt.bind(1, "%" + p.search + "%");
     if (stmt.step()) return static_cast<int>(stmt.col_int(0));
     return 0;
 }

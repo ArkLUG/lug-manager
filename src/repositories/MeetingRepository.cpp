@@ -165,7 +165,7 @@ Meeting MeetingRepository::create(const Meeting& m) {
         "INSERT INTO meetings (title, description, location, start_time, end_time, "
         "status, discord_event_id, ical_uid, scope, chapter_id, "
         "suppress_discord, suppress_calendar, notes, is_virtual, discord_voice_channel_id, is_private, excludes_perks) "
-        "VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)");
+        "VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?) RETURNING id");
     stmt.bind(1, m.title);
     stmt.bind(2, m.description);
     stmt.bind(3, m.location);
@@ -188,9 +188,9 @@ Meeting MeetingRepository::create(const Meeting& m) {
     stmt.bind(15, m.discord_voice_channel_id);
     stmt.bind(16, m.is_private);
     stmt.bind(17, m.excludes_perks);
-    stmt.step();
+    if (!stmt.step()) throw DbError("INSERT ... RETURNING id produced no row");
 
-    int64_t new_id = db_.last_insert_rowid();
+    int64_t new_id = stmt.col_int(0);
     auto result = find_by_id(new_id);
     if (!result) {
         throw DbError("Failed to retrieve inserted meeting with id=" + std::to_string(new_id));

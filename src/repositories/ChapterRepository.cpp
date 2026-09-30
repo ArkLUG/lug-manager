@@ -47,7 +47,7 @@ Chapter ChapterRepository::create(const Chapter& ch) {
     auto stmt = db_.prepare(
         "INSERT INTO chapters (name, shorthand, description, discord_announcement_channel_id, "
         "                      discord_lead_role_id, discord_member_role_id, created_by) "
-        "VALUES (?,?,?,?,?,?,?)");
+        "VALUES (?,?,?,?,?,?,?) RETURNING id");
     stmt.bind(1, ch.name);
     stmt.bind(2, ch.shorthand);
     if (ch.description.empty()) {
@@ -71,9 +71,9 @@ Chapter ChapterRepository::create(const Chapter& ch) {
     } else {
         stmt.bind(7, ch.created_by);
     }
-    stmt.step();
+    if (!stmt.step()) throw DbError("INSERT ... RETURNING id produced no row");
 
-    int64_t new_id = db_.last_insert_rowid();
+    int64_t new_id = stmt.col_int(0);
     auto result = find_by_id(new_id);
     if (!result) {
         throw DbError("Failed to retrieve inserted chapter with id=" + std::to_string(new_id));

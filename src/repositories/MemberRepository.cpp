@@ -135,7 +135,7 @@ Member MemberRepository::create(const Member& m) {
         "email, is_paid, paid_until, role, birthday, fol_status, "
         "phone, address_line1, address_line2, city, state, zip, "
         "sharing_email, sharing_phone, sharing_address, sharing_birthday, sharing_discord) "
-        "VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)");
+        "VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?) RETURNING id");
     if (m.discord_user_id.empty()) stmt.bind_null(1);
     else                          stmt.bind(1, m.discord_user_id);
     stmt.bind(2, m.discord_username);
@@ -168,9 +168,9 @@ Member MemberRepository::create(const Member& m) {
     stmt.bind(20, sv(m.sharing_address));
     stmt.bind(21, sv(m.sharing_birthday));
     stmt.bind(22, sv(m.sharing_discord));
-    stmt.step();
+    if (!stmt.step()) throw DbError("INSERT ... RETURNING id produced no row");
 
-    int64_t new_id = db_.last_insert_rowid();
+    int64_t new_id = stmt.col_int(0);
     auto result = find_by_id(new_id);
     if (!result) {
         throw DbError("Failed to retrieve inserted member with id=" + std::to_string(new_id));

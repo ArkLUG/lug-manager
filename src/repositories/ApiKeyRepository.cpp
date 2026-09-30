@@ -55,14 +55,14 @@ std::optional<ApiKey> ApiKeyRepository::find_by_hash(const std::string& key_hash
 ApiKey ApiKeyRepository::create(const std::string& key_hash, const std::string& label,
                                  const std::string& scope, int64_t created_by) {
     auto stmt = db_.prepare(
-        "INSERT INTO api_keys(key_hash, label, scope, created_by) VALUES(?,?,?,?)");
+        "INSERT INTO api_keys(key_hash, label, scope, created_by) VALUES(?,?,?,?) RETURNING id");
     stmt.bind(1, key_hash);
     stmt.bind(2, label);
     stmt.bind(3, scope);
     stmt.bind(4, created_by);
-    stmt.step();
+    if (!stmt.step()) throw DbError("INSERT ... RETURNING id produced no row");
 
-    int64_t id = db_.last_insert_rowid();
+    int64_t id = stmt.col_int(0);
     auto created = find_by_id(id);
     return created ? *created : ApiKey{};
 }

@@ -6,12 +6,11 @@ bool EventDayAttendanceRepository::check_in(int64_t event_day_id, int64_t member
                                               const std::string& notes) {
     auto stmt = db_.prepare(
         "INSERT OR IGNORE INTO event_day_attendance (event_day_id, member_id, notes) "
-        "VALUES (?,?,?)");
+        "VALUES (?,?,?) RETURNING id"); // row only if actually inserted
     stmt.bind(1, event_day_id);
     stmt.bind(2, member_id);
     stmt.bind(3, notes);
-    stmt.step();
-    return db_.last_insert_rowid() != 0;
+    return stmt.step();
 }
 
 bool EventDayAttendanceRepository::is_checked_in(int64_t event_day_id, int64_t member_id) {

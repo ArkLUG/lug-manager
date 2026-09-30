@@ -72,7 +72,7 @@ PerkLevel PerkLevelRepository::create(const PerkLevel& p) {
     auto stmt = db_.prepare(
         "INSERT INTO perk_levels (name, description, discord_role_id, meeting_attendance_required, "
         "event_attendance_required, requires_paid_dues, min_fol_status, sort_order, year) "
-        "VALUES (?,?,?,?,?,?,?,?,?)");
+        "VALUES (?,?,?,?,?,?,?,?,?) RETURNING id");
     stmt.bind(1, p.name);
     stmt.bind(2, p.description);
     stmt.bind(3, p.discord_role_id);
@@ -82,9 +82,9 @@ PerkLevel PerkLevelRepository::create(const PerkLevel& p) {
     stmt.bind(7, p.min_fol_status.empty() ? std::string("afol") : p.min_fol_status);
     stmt.bind(8, static_cast<int64_t>(p.sort_order));
     stmt.bind(9, static_cast<int64_t>(p.year));
-    stmt.step();
+    if (!stmt.step()) throw DbError("INSERT ... RETURNING id produced no row");
 
-    int64_t new_id = db_.last_insert_rowid();
+    int64_t new_id = stmt.col_int(0);
     auto result = find_by_id(new_id);
     if (!result) {
         throw DbError("Failed to retrieve inserted perk_level with id=" + std::to_string(new_id));

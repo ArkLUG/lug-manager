@@ -201,7 +201,7 @@ LugEvent EventRepository::create(const LugEvent& e) {
         "discord_ping_role_ids, suppress_discord, suppress_calendar, notes, "
         "entrance_fee, public_kids, public_teens, public_adults, social_media_links, event_feedback, "
         "is_private, excludes_perks) "
-        "VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)");
+        "VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?) RETURNING id");
     stmt.bind(1, e.title);
     stmt.bind(2, e.description);
     stmt.bind(3, e.location);
@@ -252,9 +252,9 @@ LugEvent EventRepository::create(const LugEvent& e) {
     stmt.bind(24, e.event_feedback);
     stmt.bind(25, e.is_private);
     stmt.bind(26, e.excludes_perks);
-    stmt.step();
+    if (!stmt.step()) throw DbError("INSERT ... RETURNING id produced no row");
 
-    int64_t new_id = db_.last_insert_rowid();
+    int64_t new_id = stmt.col_int(0);
     auto result = find_by_id(new_id);
     if (!result) {
         throw DbError("Failed to retrieve inserted lug_event with id=" + std::to_string(new_id));
