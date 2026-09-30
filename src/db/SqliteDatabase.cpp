@@ -3,7 +3,9 @@
 
 // ---------- Statement ----------
 
-Statement::Statement(sqlite3* db, const std::string& sql) {
+Statement::Statement(sqlite3* db, std::recursive_mutex* lock, const std::string& sql)
+    : lock_(lock) {
+    std::lock_guard<std::recursive_mutex> guard(*lock_);
     int rc = sqlite3_prepare_v2(db, sql.c_str(), -1, &stmt_, nullptr);
     if (rc != SQLITE_OK) {
         throw DbError(std::string("Prepare failed: ") + sqlite3_errmsg(db) + " | SQL: " + sql);
@@ -11,10 +13,12 @@ Statement::Statement(sqlite3* db, const std::string& sql) {
 }
 
 Statement::~Statement() {
-    if (stmt_) sqlite3_finalize(stmt_);
+    if (!stmt_) return;
+    std::lock_guard<std::recursive_mutex> guard(*lock_);
+    sqlite3_finalize(stmt_);
 }
 
-Statement::Statement(Statement&& other) noexcept : stmt_(other.stmt_) {
+Statement::Statement(Statement&& other) noexcept : stmt_(other.stmt_), lock_(other.lock_) {
     other.stmt_ = nullptr;
 }
 
@@ -39,6 +43,7 @@ Statement& Statement::bind_null(int idx) {
 }
 
 bool Statement::step() {
+    std::lock_guard<std::recursive_mutex> guard(*lock_);
     int rc = sqlite3_step(stmt_);
     if (rc == SQLITE_ROW) return true;
     if (rc == SQLITE_DONE) return false;
@@ -67,6 +72,7 @@ bool Statement::col_is_null(int idx) const {
 }
 
 void Statement::reset() {
+    std::lock_guard<std::recursive_mutex> guard(*lock_);
     sqlite3_reset(stmt_);
     sqlite3_clear_bindings(stmt_);
 }
@@ -89,10 +95,11 @@ SqliteDatabase::~SqliteDatabase() {
 }
 
 Statement SqliteDatabase::prepare(const std::string& sql) {
-    return Statement(db_, sql);
+    return Statement(db_, &mutex_, sql);
 }
 
 void SqliteDatabase::execute(const std::string& sql) {
+    std::lock_guard<std::recursive_mutex> guard(mutex_);
     char* errmsg = nullptr;
     int rc = sqlite3_exec(db_, sql.c_str(), nullptr, nullptr, &errmsg);
     if (rc != SQLITE_OK) {
@@ -104,4 +111,31 @@ void SqliteDatabase::execute(const std::string& sql) {
 
 int64_t SqliteDatabase::last_insert_rowid() {
     return sqlite3_last_insert_rowid(db_);
+}
+
+// ---------- Transaction ----------
+
+Transaction::Transaction(SqliteDatabase& db) : db_(db), lock_(db.mutex_) {
+    if (db_.tx_depth_ == 0) db_.execute("BEGIN IMMEDIATE");
+    ++db_.tx_depth_;
+}
+
+void Transaction::commit() {
+    if (done_) return;
+    done_ = true;
+    // An inner scope already rolled everything back (its exception was
+    // caught somewhere inside this one) - committing now would be a lie.
+    if (db_.tx_depth_ <= 0) throw DbError("commit after transaction was rolled back");
+    if (--db_.tx_depth_ == 0) db_.execute("COMMIT");
+}
+
+Transaction::~Transaction() {
+    if (done_) return;
+    // Not committed (exception or early return): undo the whole outermost
+    // transaction. For an inner scope, ROLLBACK here ends the outer one too;
+    // the outer destructor/commit then sees depth 0 and does nothing more.
+    if (db_.tx_depth_ > 0) {
+        db_.tx_depth_ = 0;
+        try { db_.execute("ROLLBACK"); } catch (...) {}
+    }
 }

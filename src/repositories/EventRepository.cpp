@@ -328,11 +328,13 @@ bool EventRepository::update(const LugEvent& e) {
 }
 
 bool EventRepository::delete_by_id(int64_t id) {
+    Transaction tx(db_); // attendance + row go together or not at all
     { auto s = db_.prepare("DELETE FROM attendance WHERE entity_type='event' AND entity_id=?");
       s.bind(1, id); s.step(); }
     auto stmt = db_.prepare("DELETE FROM lug_events WHERE id=?");
     stmt.bind(1, id);
     stmt.step();
+    tx.commit();
 
     auto existing = find_by_id(id);
     return !existing.has_value();

@@ -120,6 +120,7 @@ bool PerkLevelRepository::remove(int64_t id) {
 }
 
 int PerkLevelRepository::clone_year(int source_year, int target_year) {
+    Transaction tx(db_); // all tiers cloned, or none
     auto source = find_by_year(source_year);
     int count = 0;
     for (auto& p : source) {
@@ -129,5 +130,6 @@ int PerkLevelRepository::clone_year(int source_year, int target_year) {
         create(clone);
         ++count;
     }
+    tx.commit();
     return count;
 }

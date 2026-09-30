@@ -27,10 +27,8 @@ static bool parse_ymd(const std::string& s, std::tm& out) {
 }
 
 static std::string format_ymd(const std::tm& tm_in) {
-    std::tm t = tm_in;
     char buf[16];
-    std::snprintf(buf, sizeof(buf), "%04d-%02d-%02d",
-                  t.tm_year + 1900, t.tm_mon + 1, t.tm_mday);
+    std::strftime(buf, sizeof(buf), "%Y-%m-%d", &tm_in);
     return buf;
 }
 
@@ -114,6 +112,10 @@ void EventDayRepository::sync_for_event(int64_t event_id,
     auto wanted = expand_date_range(start_ymd, end_ymd);
     if (wanted.empty()) return;
 
+    // Delete + renumber + upsert must land together: a failure midway would
+    // leave days with negative numbers or missing days.
+    Transaction tx(db_);
+
     // Delete days outside the new range (cascades to attendance on dropped days).
     {
         std::ostringstream sql;
@@ -160,4 +162,5 @@ void EventDayRepository::sync_for_event(int64_t event_id,
         ins.bind(3, static_cast<int64_t>(day_num));
         ins.step();
     }
+    tx.commit();
 }

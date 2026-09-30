@@ -169,3 +169,38 @@ TEST_F(IntegrationTest, SecurityHeadersPresent) {
     EXPECT_NE(r.headers.find("X-Content-Type-Options: nosniff"), std::string::npos);
     EXPECT_NE(r.headers.find("frame-ancestors 'none'"), std::string::npos);
 }
+
+// Saving a member's profile calls set_chapter(); it used to delete and
+// re-insert the chapter row as plain 'member', demoting chapter leads.
+TEST_F(IntegrationTest, SetChapterKeepsExistingChapterRole) {
+    member_repo->set_chapter(chapter_lead_member_id, test_chapter_id);
+    auto role = chapter_member_repo->get_chapter_role(chapter_lead_member_id, test_chapter_id);
+    ASSERT_TRUE(role);
+    EXPECT_EQ(*role, "lead");
+}
+
+TEST_F(IntegrationTest, TransactionRollsBackUnlessCommitted) {
+    db->execute("CREATE TABLE tx_probe (v INTEGER)");
+    try {
+        Transaction tx(*db);
+        db->execute("INSERT INTO tx_probe VALUES (1)");
+        {
+            Transaction inner(*db); // nested scope joins the outer transaction
+            db->execute("INSERT INTO tx_probe VALUES (2)");
+            inner.commit();
+        }
+        throw std::runtime_error("boom");
+    } catch (const std::runtime_error&) {}
+    auto count = db->prepare("SELECT COUNT(*) FROM tx_probe");
+    ASSERT_TRUE(count.step());
+    EXPECT_EQ(count.col_int(0), 0);
+
+    {
+        Transaction tx(*db);
+        db->execute("INSERT INTO tx_probe VALUES (3)");
+        tx.commit();
+    }
+    auto after = db->prepare("SELECT COUNT(*) FROM tx_probe");
+    ASSERT_TRUE(after.step());
+    EXPECT_EQ(after.col_int(0), 1);
+}

@@ -348,10 +348,14 @@ std::vector<Member> MemberRepository::find_paginated(const std::string& q,
 }
 
 bool MemberRepository::set_chapter(int64_t id, int64_t chapter_id) {
-    // Remove from all chapters first
+    Transaction tx(db_);
+    // Remove from every OTHER chapter. The row for the target chapter is kept
+    // as-is: deleting it too (as this used to) meant merely re-saving a chapter
+    // lead's profile re-inserted them as a plain 'member', silently demoting them.
     {
-        auto stmt = db_.prepare("DELETE FROM chapter_members WHERE member_id=?");
+        auto stmt = db_.prepare("DELETE FROM chapter_members WHERE member_id=? AND chapter_id<>?");
         stmt.bind(1, id);
+        stmt.bind(2, chapter_id);
         stmt.step();
     }
     // Add to new chapter with default "member" role if specified
@@ -363,6 +367,7 @@ bool MemberRepository::set_chapter(int64_t id, int64_t chapter_id) {
         stmt.bind(2, chapter_id);
         stmt.step();
     }
+    tx.commit();
     return find_by_id(id).has_value();
 }
 

@@ -2,6 +2,7 @@
 #include <sqlite3.h>
 #include <string>
 #include <functional>
+#include <mutex>
 #include <stdexcept>
 
 class DbError : public std::runtime_error {
@@ -12,7 +13,9 @@ public:
 // RAII wrapper around a prepared statement
 class Statement {
 public:
-    Statement(sqlite3* db, const std::string& sql);
+    // `lock` is the owning SqliteDatabase's mutex, taken around prepare and
+    // each step() - see SqliteDatabase::mutex_.
+    Statement(sqlite3* db, std::recursive_mutex* lock, const std::string& sql);
     ~Statement();
 
     // Non-copyable, movable
@@ -38,7 +41,8 @@ public:
     void reset();
 
 private:
-    sqlite3_stmt* stmt_ = nullptr;
+    sqlite3_stmt*         stmt_ = nullptr;
+    std::recursive_mutex* lock_ = nullptr;
 };
 
 class SqliteDatabase {
@@ -55,5 +59,34 @@ public:
     sqlite3*  raw() { return db_; }
 
 private:
+    friend class Transaction;
+    friend class Statement;
     sqlite3* db_ = nullptr;
+    // One connection is shared by every request thread and the background
+    // workers. Each prepare/step/execute holds this mutex, and a Transaction
+    // holds it for its whole lifetime, so other threads' statements can't
+    // interleave into (or read uncommitted state from) an open transaction.
+    // Recursive so code inside a Transaction can keep using the same db.
+    std::recursive_mutex mutex_;
+    int tx_depth_ = 0; // nesting depth; only the outermost Transaction BEGINs/COMMITs
+};
+
+// RAII transaction: BEGIN IMMEDIATE on construction, ROLLBACK on destruction
+// unless commit() was called. Nests: inner Transactions join the outer one
+// (an exception escaping the inner scope still rolls back the outer).
+// Keep external I/O (Discord, Google Calendar) out of the scope - it holds
+// the database mutex, blocking every other request until it ends.
+class Transaction {
+public:
+    explicit Transaction(SqliteDatabase& db);
+    ~Transaction();
+    Transaction(const Transaction&) = delete;
+    Transaction& operator=(const Transaction&) = delete;
+
+    void commit();
+
+private:
+    SqliteDatabase&                        db_;
+    std::unique_lock<std::recursive_mutex> lock_;
+    bool                                   done_ = false;
 };
