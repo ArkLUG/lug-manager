@@ -551,9 +551,22 @@ void register_chapter_routes(LugApp& app, ChapterService& chapters,
         }
 
         // Check previous role so we know whether to add/remove the Discord lead role
+        if (chapter_role != "lead" && chapter_role != "event_manager" && chapter_role != "member") {
+            res.code = 400;
+            res.write(R"(<div class="text-red-500 text-sm p-2">Invalid chapter role.</div>)");
+            return res;
+        }
+
         auto prev_role = chapter_members.get_chapter_role(member_id, chapter_id);
         bool was_lead  = prev_role && *prev_role == "lead";
         bool will_lead = chapter_role == "lead";
+
+        // Leads are appointed by admins only, so only admins may demote them too.
+        if (was_lead && !will_lead && !is_admin) {
+            res.code = 403;
+            res.write(R"(<div class="text-red-500 text-sm p-2">Only admins can change a chapter lead's role.</div>)");
+            return res;
+        }
 
         chapter_members.upsert(member_id, chapter_id, chapter_role, ctx.auth.member_id);
 
@@ -601,6 +614,11 @@ void register_chapter_routes(LugApp& app, ChapterService& chapters,
 
         // Remove Discord lead role if they had it
         auto prev_role = chapter_members.get_chapter_role(static_cast<int64_t>(member_id), chapter_id);
+        // Leads are appointed by admins only, so only admins may remove them too.
+        if (prev_role && *prev_role == "lead" && !is_admin) {
+            res.code = 403;
+            return res;
+        }
         if (prev_role && *prev_role == "lead") {
             auto ch = chapters.get(chapter_id);
             if (ch && !ch->discord_lead_role_id.empty()) {

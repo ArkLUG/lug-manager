@@ -36,6 +36,10 @@ static bool can_manage_attendance(const crow::request& req, LugApp& app,
     return false;
 }
 
+static bool is_entity_type(const std::string& t) {
+    return t == "event" || t == "meeting";
+}
+
 // Build the attendance list context and render the template fragment.
 // Events use a per-day grouped template; meetings use the flat list.
 static std::string render_attendance_list(AttendanceService& attendance,
@@ -148,7 +152,8 @@ void register_attendance_routes(LugApp& app, AttendanceService& attendance,
 
         // Parse query params
         std::time_t now = std::time(nullptr);
-        std::tm* tm_now = std::localtime(&now);
+        std::tm tm_now_buf{};
+        std::tm* tm_now = localtime_r(&now, &tm_now_buf);
         int current_year = tm_now->tm_year + 1900;
 
         auto qs = crow::query_string(req.url_params);
@@ -360,6 +365,8 @@ void register_attendance_routes(LugApp& app, AttendanceService& attendance,
         [&](const crow::request& req, std::string entity_type, int entity_id) {
         crow::response res;
         if (!require_auth(req, res, app)) return res;
+        // entity_type is echoed into HTML below - only ever accept the two known values.
+        if (!is_entity_type(entity_type)) { res.code = 404; return res; }
 
         int count = attendance.get_count(entity_type, static_cast<int64_t>(entity_id));
         std::string eid = std::to_string(entity_id);
@@ -380,6 +387,7 @@ void register_attendance_routes(LugApp& app, AttendanceService& attendance,
         [&](const crow::request& req, std::string entity_type, int entity_id) {
         crow::response res;
         if (!require_auth(req, res, app)) return res;
+        if (!is_entity_type(entity_type)) { res.code = 404; return res; }
 
         bool can_manage = can_manage_attendance(req, app, events, meetings, chapter_members,
                                                 entity_type, static_cast<int64_t>(entity_id));
@@ -407,14 +415,15 @@ void register_attendance_routes(LugApp& app, AttendanceService& attendance,
         // Support multiple member_id values (multi-select)
         auto member_ids = params.get_list("member_id", false);
 
-        if (entity_type.empty() || entity_id_s.empty() || member_ids.empty()) {
+        int64_t entity_id = 0;
+        try { entity_id = std::stoll(entity_id_s); } catch (...) {}
+        if (!is_entity_type(entity_type) || entity_id <= 0 || member_ids.empty()) {
             res.code = 400;
             res.write(R"(<span class="text-red-500 text-xs">Select at least one member</span>)");
             res.add_header("Content-Type", "text/html");
             return res;
         }
 
-        int64_t entity_id = std::stoll(entity_id_s);
         if (!can_manage_attendance(req, app, events, meetings, chapter_members, entity_type, entity_id)) {
             res.code = 403;
             res.write(R"(<span class="text-red-500 text-xs">Forbidden</span>)");
@@ -511,12 +520,22 @@ void register_attendance_routes(LugApp& app, AttendanceService& attendance,
     CROW_ROUTE(app, "/attendance/member/<int>/detail")([&](const crow::request& req, int id) {
         crow::response res;
         if (!require_auth(req, res, app)) return res;
+        // Used by the admin-only overview; members may only see their own history.
+        {
+            auto& a = app.get_context<AuthMiddleware>(req).auth;
+            if (!a.is_admin() && a.member_id != static_cast<int64_t>(id)) {
+                res.code = 403;
+                res.write("Forbidden");
+                return res;
+            }
+        }
 
         auto qs = crow::query_string(req.url_params);
         auto gp = [&](const char* k) -> std::string { const char* v = qs.get(k); return v ? v : ""; };
 
         std::time_t now_t = std::time(nullptr);
-        std::tm* tm_now = std::localtime(&now_t);
+        std::tm tm_now_buf{};
+        std::tm* tm_now = localtime_r(&now_t, &tm_now_buf);
         int year = tm_now->tm_year + 1900;
         { std::string y = gp("year"); if (!y.empty()) try { year = std::stoi(y); } catch (...) {} }
 
