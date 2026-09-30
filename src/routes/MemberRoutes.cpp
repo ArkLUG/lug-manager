@@ -434,10 +434,9 @@ void register_member_routes(LugApp& app, MemberService& members, AttendanceRepos
         updates.last_name        = get_param("last_name");
         updates.discord_username = get_param("discord_username");
         updates.email            = get_param("email");
-        std::string req_role     = get_param("role");
-        // Non-admins cannot assign admin role
-        if (!caller_is_admin && req_role == "admin") req_role = "";
-        updates.role             = req_role;
+        // Only admins may change an existing member's LUG role - otherwise a
+        // chapter lead could demote an admin or promote a peer. Empty = unchanged.
+        updates.role             = caller_is_admin ? get_param("role") : "";
         updates.birthday         = get_param("birthday");
         updates.fol_status       = get_param("fol_status").empty() ? "afol" : get_param("fol_status");
         updates.phone            = get_param("phone");
@@ -514,6 +513,15 @@ void register_member_routes(LugApp& app, MemberService& members, AttendanceRepos
         if (!body) {
             res.code = 400;
             res.write(R"({"error":"Invalid JSON"})");
+            res.add_header("Content-Type", "application/json");
+            return res;
+        }
+
+        // Only admins may change LUG roles (see the form handler above);
+        // without this a chapter lead could PUT {"role":"admin"} on themselves.
+        if (body.has("role") && !app.get_context<AuthMiddleware>(req).auth.is_admin()) {
+            res.code = 403;
+            res.write(R"({"error":"only admins can change roles"})");
             res.add_header("Content-Type", "application/json");
             return res;
         }
