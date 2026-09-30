@@ -1,7 +1,7 @@
 #include "routes/Router.hpp"
 
 void register_all_routes(LugApp& app, Services& svc) {
-    register_auth_routes(app, svc.auth, svc.oauth);
+    register_auth_routes(app, svc.auth, svc.oauth, svc.public_url);
     register_chapter_routes(app, svc.chapters, svc.chapter_members, svc.members, svc.discord, svc.audit);
     register_member_routes(app, svc.members, svc.attendance_repo, svc.audit);
     register_meeting_routes(app, svc.meetings, svc.attendance, svc.chapter_members, svc.chapters, svc.discord, svc.audit);

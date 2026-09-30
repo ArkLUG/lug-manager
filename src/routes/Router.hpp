@@ -80,6 +80,10 @@ struct Services {
     const std::string&      discord_public_key;
     const std::string&      data_dir; // directory for admin-uploaded files (logo, etc.) - same
                                        // durable volume the SQLite DB lives in, see main.cpp
+    // Canonical external base URL (LUG_PUBLIC_URL). When set, OAuth/redirect
+    // URLs are built from it instead of the request's Host/X-Forwarded-*
+    // headers. Assigned after aggregate init (see main.cpp).
+    std::string             public_url = "";
 };
 
 void register_all_routes(LugApp& app, Services& svc);

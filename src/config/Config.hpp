@@ -16,6 +16,7 @@ struct Config {
     std::string discord_client_id;
     std::string discord_client_secret;
     std::string discord_redirect_uri;
+    std::string public_url;          // LUG_PUBLIC_URL, no trailing slash; "" = use request headers
 
     // Discord Interactions (Ed25519 signature verification for /discord/interactions)
     std::string discord_public_key;

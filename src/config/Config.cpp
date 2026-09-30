@@ -40,6 +40,8 @@ Config load_config() {
     cfg.discord_client_id                = getenv_or("DISCORD_CLIENT_ID", "");
     cfg.discord_client_secret            = getenv_or("DISCORD_CLIENT_SECRET", "");
     cfg.discord_redirect_uri             = getenv_or("DISCORD_REDIRECT_URI", "http://localhost:8080/auth/callback");
+    cfg.public_url                       = getenv_or("LUG_PUBLIC_URL", "");
+    while (!cfg.public_url.empty() && cfg.public_url.back() == '/') cfg.public_url.pop_back();
 
     cfg.discord_public_key               = getenv_or("DISCORD_PUBLIC_KEY", "");
     cfg.discord_application_id           = getenv_or("DISCORD_APPLICATION_ID", "");

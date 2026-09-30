@@ -4,8 +4,14 @@
 #include <cctype>
 #include <iostream>
 
-// Build absolute URL respecting X-Forwarded-Proto/Host from reverse proxy
+// Canonical base URL from LUG_PUBLIC_URL; empty = derive from headers.
+static std::string g_public_url;
+
+// Build an absolute URL. Prefers the configured public URL: the Host and
+// X-Forwarded-* headers are client-controllable unless the reverse proxy
+// overwrites them, so they're only a fallback for unconfigured installs.
 static std::string build_url(const crow::request& req, const std::string& path) {
+    if (!g_public_url.empty()) return g_public_url + path;
     std::string proto = req.get_header_value("X-Forwarded-Proto");
     if (proto.empty()) proto = "http";
     std::string host = req.get_header_value("X-Forwarded-Host");
@@ -17,7 +23,9 @@ static std::string build_url(const crow::request& req, const std::string& path) 
 // "; Secure" when the client reached us over HTTPS (directly or via the
 // reverse proxy), so session/state cookies never travel over plain HTTP.
 static std::string secure_attr(const crow::request& req) {
-    return req.get_header_value("X-Forwarded-Proto") == "https" ? "; Secure" : "";
+    bool https = g_public_url.rfind("https://", 0) == 0 ||
+                 req.get_header_value("X-Forwarded-Proto") == "https";
+    return https ? "; Secure" : "";
 }
 
 // OAuth state is "<nonce>" or "<nonce>.checkin:<token>". The nonce is also
@@ -48,7 +56,9 @@ static OAuthState parse_state(const std::string& state) {
     return st;
 }
 
-void register_auth_routes(LugApp& app, AuthService& auth, DiscordOAuth& oauth) {
+void register_auth_routes(LugApp& app, AuthService& auth, DiscordOAuth& oauth,
+                          const std::string& public_url) {
+    g_public_url = public_url;
 
     // GET /login - show login page
     CROW_ROUTE(app, "/login")([&](const crow::request& req) {

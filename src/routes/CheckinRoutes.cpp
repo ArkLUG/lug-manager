@@ -21,8 +21,8 @@ std::string ymd_offset(int days) {
     std::time_t t = std::time(nullptr) + static_cast<std::time_t>(days) * 86400;
     std::tm tm{};
     localtime_r(&t, &tm);
-    char buf[11];
-    std::snprintf(buf, sizeof(buf), "%04d-%02d-%02d", tm.tm_year + 1900, tm.tm_mon + 1, tm.tm_mday);
+    char buf[16];
+    std::strftime(buf, sizeof(buf), "%Y-%m-%d", &tm);
     return buf;
 }
 

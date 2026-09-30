@@ -191,6 +191,7 @@ int main() {
             config.discord_public_key,
             data_dir
         };
+        svc.public_url = config.public_url;
         register_all_routes(app, svc);
 
         // Background thread: purge expired sessions once per hour
