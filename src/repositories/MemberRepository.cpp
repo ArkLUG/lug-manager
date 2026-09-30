@@ -399,3 +399,16 @@ bool MemberRepository::link_discord_id(int64_t member_id, const std::string& dis
     auto existing = find_by_id(member_id);
     return existing.has_value();
 }
+
+std::string MemberRepository::get_role_source(int64_t id) {
+    auto stmt = db_.prepare("SELECT role_source FROM members WHERE id=?");
+    stmt.bind(1, id);
+    return stmt.step() ? stmt.col_text(0) : std::string("discord");
+}
+
+void MemberRepository::set_role_source(int64_t id, const std::string& source) {
+    auto stmt = db_.prepare("UPDATE members SET role_source=? WHERE id=?");
+    stmt.bind(1, source);
+    stmt.bind(2, id);
+    stmt.step();
+}

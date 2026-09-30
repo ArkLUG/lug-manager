@@ -1,4 +1,5 @@
 #include "auth/AuthService.hpp"
+#include "services/RoleSync.hpp"
 #include <stdexcept>
 #include <iostream>
 
@@ -8,20 +9,6 @@ AuthService::AuthService(SessionStore& sessions, MemberRepository& members, Disc
     : sessions_(sessions), members_(members), oauth_(oauth),
       bootstrap_admin_discord_id_(bootstrap_admin_discord_id),
       discord_(discord), role_mappings_(role_mappings) {}
-
-std::string AuthService::resolve_role_from_discord(const std::string& discord_user_id) const {
-    if (!discord_ || !role_mappings_) return "";
-    try {
-        auto role_ids = discord_->fetch_member_role_ids(discord_user_id);
-        if (role_ids.empty()) return "";
-        auto lug_role = role_mappings_->resolve_lug_role(role_ids);
-        return lug_role.value_or("");
-    } catch (const std::exception& e) {
-        std::cerr << "[AuthService] Could not fetch Discord roles for " << discord_user_id
-                  << ": " << e.what() << "\n";
-        return "";
-    }
-}
 
 std::string AuthService::login_with_discord(const std::string& code, const std::string& redirect_uri) {
     // 1. Exchange code for access token
@@ -47,6 +34,7 @@ std::string AuthService::login_with_discord(const std::string& code, const std::
         std::cerr << "[AuthService] Bootstrap: creating admin member for Discord ID "
                   << user_info.id << " (" << bootstrap.discord_username << ")\n";
         member_opt = members_.create(bootstrap);
+        if (member_opt) members_.set_role_source(member_opt->id, "manual");
     }
 
     // 4b. Auto-provision: if still not found, create with mapped role or default "member" -
@@ -99,19 +87,37 @@ std::string AuthService::login_with_discord(const std::string& code, const std::
 
     // 6. Sync LUG role from Discord on every login (if role mappings are configured)
     //    Bootstrap admin always stays admin regardless of Discord roles.
-    if (member.discord_user_id != bootstrap_admin_discord_id_) {
-        std::string synced_role = resolve_role_from_discord(user_info.id);
-        if (!synced_role.empty() && synced_role != member.role) {
-            std::cerr << "[AuthService] Role sync: " << user_info.username
-                      << " " << member.role << " -> " << synced_role << "\n";
-            member.role = synced_role;
-            needs_update = true;
+    //    Same rules as the periodic guild sync (services/RoleSync.hpp): roles
+    //    that came from Discord follow the mapping, including demotion when the
+    //    mapped Discord role is gone; manually granted roles are never lowered.
+    //    Skipped when membership can't be confirmed, so a Discord outage never
+    //    demotes anyone.
+    std::string new_source;
+    if (member.discord_user_id != bootstrap_admin_discord_id_ && discord_ && role_mappings_) {
+        std::optional<std::vector<std::string>> guild_roles;
+        try {
+            guild_roles = discord_->fetch_guild_member_role_ids(user_info.id);
+        } catch (const std::exception& e) {
+            std::cerr << "[AuthService] Could not fetch Discord roles: " << e.what() << "\n";
+        }
+        if (guild_roles) {
+            auto mapped = role_mappings_->resolve_lug_role(*guild_roles);
+            std::string source = members_.get_role_source(member.id);
+            std::string next   = role_sync::next_role(member.role, source, mapped);
+            new_source         = role_sync::next_source(member.role, source, mapped);
+            if (next != member.role) {
+                std::cerr << "[AuthService] Role sync: " << user_info.username
+                          << " " << member.role << " -> " << next << "\n";
+                member.role = next;
+                needs_update = true;
+            }
         }
     }
 
     if (needs_update) {
         members_.update(member);
     }
+    if (!new_source.empty()) members_.set_role_source(member.id, new_source);
 
     // 7. Create and return session token (24 hour lifetime)
     return sessions_.create(member.id, member.role, member.display_name, 24);

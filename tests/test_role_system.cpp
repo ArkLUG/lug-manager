@@ -680,3 +680,25 @@ TEST_F(MemberModelTest, MultipleNullDiscordIdsAllowed) {
     EXPECT_TRUE(c1.discord_user_id.empty());
     EXPECT_TRUE(c2.discord_user_id.empty());
 }
+
+// ── Role source rules (services/RoleSync.hpp) ───────────────────────────────
+#include "services/RoleSync.hpp"
+
+TEST(RoleSync, DiscordSourcedFollowsMappingIncludingDemotion) {
+    EXPECT_EQ(role_sync::next_role("chapter_lead", "discord", std::nullopt), "member");
+    EXPECT_EQ(role_sync::next_role("member", "discord", std::string("admin")), "admin");
+    EXPECT_EQ(role_sync::next_role("admin", "discord", std::string("chapter_lead")), "chapter_lead");
+    EXPECT_EQ(role_sync::next_source("admin", "discord", std::nullopt), "discord");
+}
+
+TEST(RoleSync, ManualRolesAreNeverLowered) {
+    EXPECT_EQ(role_sync::next_role("moderator", "manual", std::nullopt), "moderator");
+    EXPECT_EQ(role_sync::next_role("admin", "manual", std::string("member")), "admin");
+    EXPECT_EQ(role_sync::next_role("chapter_lead", "manual", std::string("chapter_lead")), "chapter_lead");
+    EXPECT_EQ(role_sync::next_source("moderator", "manual", std::string("chapter_lead")), "manual");
+}
+
+TEST(RoleSync, ManualRoleCanBeRaisedAndThenFollowsDiscord) {
+    EXPECT_EQ(role_sync::next_role("member", "manual", std::string("admin")), "admin");
+    EXPECT_EQ(role_sync::next_source("member", "manual", std::string("admin")), "discord");
+}

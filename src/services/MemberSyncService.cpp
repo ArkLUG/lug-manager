@@ -1,4 +1,5 @@
 #include "services/MemberSyncService.hpp"
+#include "services/RoleSync.hpp"
 #include "models/Member.hpp"
 #include "models/PendingDiscordMatch.hpp"
 #include "utils/NameMatch.hpp"
@@ -44,10 +45,12 @@ SyncResult MemberSyncService::sync_from_guild() {
                                 : !gm.global_name.empty() ? gm.global_name
                                 :                           gm.username;
 
-            // Role mappings elevate to admin; everyone else defaults to "member"
-            std::string new_role = lug_role_opt ? *lug_role_opt : "member";
-
             auto existing = member_repo_.find_by_discord_id(gm.discord_user_id);
+            // Discord-sourced roles follow the mapping; manual grants are only
+            // ever raised, never wiped (they used to be reset to "member").
+            std::string source   = existing ? member_repo_.get_role_source(existing->id) : "discord";
+            std::string new_role = existing ? role_sync::next_role(existing->role, source, lug_role_opt)
+                                            : (lug_role_opt ? *lug_role_opt : "member");
             if (existing) {
                 bool changed = (existing->discord_username != gm.username)
                             || (existing->display_name != display)
@@ -72,6 +75,8 @@ SyncResult MemberSyncService::sync_from_guild() {
                     updated.display_name     = display;
                     updated.role             = new_role;
                     member_repo_.update(updated);
+                    member_repo_.set_role_source(existing->id,
+                        role_sync::next_source(existing->role, source, lug_role_opt));
                     ++result.updated;
                 } else {
                     ++result.skipped;

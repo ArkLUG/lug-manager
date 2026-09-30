@@ -26,6 +26,9 @@ public:
 
     Member create(const Member& m);  // Returns member with id and timestamps set
     bool   update(const Member& m);  // Returns false if not found
+    // members.role_source: "manual" | "discord" - see services/RoleSync.hpp
+    std::string get_role_source(int64_t id);
+    void        set_role_source(int64_t id, const std::string& source);
     bool   delete_by_id(int64_t id);
 
     // Convenience: set paid status

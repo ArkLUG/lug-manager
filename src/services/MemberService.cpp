@@ -108,7 +108,12 @@ Member MemberService::create(const Member& m) {
         else
             to_create.display_name = to_create.discord_user_id;
     }
-    return repo_.create(to_create);
+    Member created = repo_.create(to_create);
+    // Created by a person (admin/lead form, API, walk-in check-in): an
+    // explicitly elevated role is a manual grant Discord sync must not undo.
+    if (created.role != "member" && !created.role.empty())
+        repo_.set_role_source(created.id, "manual");
+    return created;
 }
 
 Member MemberService::update(int64_t id, const Member& updates) {
@@ -149,6 +154,9 @@ Member MemberService::update(int64_t id, const Member& updates) {
     }
 
     repo_.update(m);
+    // A role changed through the service is a human decision - see RoleSync.hpp.
+    if (!updates.role.empty() && updates.role != existing->role)
+        repo_.set_role_source(id, "manual");
 
     // Sync nickname to Discord if display name changed
     if (discord_ && !m.discord_user_id.empty() && m.display_name != old_display_name) {

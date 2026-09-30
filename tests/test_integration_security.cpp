@@ -204,3 +204,12 @@ TEST_F(IntegrationTest, TransactionRollsBackUnlessCommitted) {
     ASSERT_TRUE(after.step());
     EXPECT_EQ(after.col_int(0), 1);
 }
+
+// A role an admin sets by hand is recorded as manual so Discord sync can't wipe it.
+TEST_F(IntegrationTest, AdminRoleChangeIsMarkedManual) {
+    EXPECT_EQ(member_repo->get_role_source(regular_member_id), "discord");
+    Member upd;
+    upd.role = "moderator";
+    member_svc->update(regular_member_id, upd);
+    EXPECT_EQ(member_repo->get_role_source(regular_member_id), "manual");
+}

@@ -121,6 +121,8 @@ brew install cmake curl sqlite openssl pkg-config
 
 `admin` and `member` are assignable via Discord role mapping (Settings > Role Mappings) as well as manually. `chapter_lead` and `moderator` are granted manually only, from a member's edit form — there's no Discord-role-mapping path for either.
 
+Each member's role remembers where it came from. A role that came from a Discord role mapping follows Discord: it is re-checked on every login and every 6-hourly sync, and losing the mapped Discord role drops the member back to `member`. A role an admin set by hand is never lowered by sync (a higher mapped Discord role can still raise it). Only members joining the Discord server can create an account by logging in.
+
 ### Chapter Roles (assigned per-chapter by admins/leads)
 
 | Role | Access |

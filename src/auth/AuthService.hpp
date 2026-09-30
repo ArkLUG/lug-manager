@@ -36,6 +36,4 @@ private:
     DiscordClient*         discord_;        // may be nullptr
     RoleMappingRepository* role_mappings_;  // may be nullptr
 
-    // Resolve LUG role from Discord guild roles. Returns "" if no mapping found.
-    std::string resolve_role_from_discord(const std::string& discord_user_id) const;
 };
