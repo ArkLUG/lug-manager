@@ -1,4 +1,5 @@
 #include "routes/PerkRoutes.hpp"
+#include "utils/LocalTime.hpp"
 #include "utils/AuditDiff.hpp"
 #include "utils/HtmlEscape.hpp"
 #include <crow.h>
@@ -39,7 +40,8 @@ void register_perk_routes(LugApp& app, PerkLevelRepository& perks,
 
         // Determine selected year
         std::time_t now_t = std::time(nullptr);
-        std::tm* tm_now = std::localtime(&now_t);
+        std::tm tm_now_buf = local_tm(now_t);
+        std::tm* tm_now = &tm_now_buf;
         int current_year = tm_now->tm_year + 1900;
         int selected_year = current_year;
         {
@@ -138,7 +140,7 @@ void register_perk_routes(LugApp& app, PerkLevelRepository& perks,
         try { p.sort_order = std::stoi(gp("sort_order")); } catch (...) {}
         try { p.year = std::stoi(gp("year")); } catch (...) {
             std::time_t now_t = std::time(nullptr);
-            p.year = std::localtime(&now_t)->tm_year + 1900;
+            p.year = local_tm(now_t).tm_year + 1900;
         }
 
         perks.create(p);
@@ -311,7 +313,7 @@ void register_perk_routes(LugApp& app, PerkLevelRepository& perks,
 
         // Sync uses current year's tiers
         std::time_t now_sync = std::time(nullptr);
-        int sync_year = std::localtime(&now_sync)->tm_year + 1900;
+        int sync_year = local_tm(now_sync).tm_year + 1900;
         auto levels = perks.find_by_year(sync_year);
         if (levels.empty()) {
             res.add_header("Content-Type", "text/html; charset=utf-8");
@@ -322,7 +324,8 @@ void register_perk_routes(LugApp& app, PerkLevelRepository& perks,
 
         // Get current year
         std::time_t now = std::time(nullptr);
-        std::tm* tm = std::localtime(&now);
+        std::tm tm_buf = local_tm(now);
+        std::tm* tm = &tm_buf;
         int year = tm->tm_year + 1900;
 
         auto all_members = members.find_all();

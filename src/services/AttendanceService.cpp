@@ -1,4 +1,5 @@
 #include "services/AttendanceService.hpp"
+#include "utils/LocalTime.hpp"
 #include <ctime>
 #include <cstdio>
 
@@ -11,11 +12,9 @@ AttendanceService::AttendanceService(AttendanceRepository& repo, MemberRepositor
 
 // static
 std::string AttendanceService::today_ymd() {
-    std::time_t now = std::time(nullptr);
-    std::tm* tm_now = std::localtime(&now);
-    char buf[11];
-    std::snprintf(buf, sizeof(buf), "%04d-%02d-%02d",
-                  tm_now->tm_year + 1900, tm_now->tm_mon + 1, tm_now->tm_mday);
+    std::tm tm_now = local_tm(std::time(nullptr));
+    char buf[16];
+    std::strftime(buf, sizeof(buf), "%Y-%m-%d", &tm_now);
     return buf;
 }
 

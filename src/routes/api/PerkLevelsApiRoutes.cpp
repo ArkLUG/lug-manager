@@ -1,4 +1,5 @@
 #include "routes/api/PerkLevelsApiRoutes.hpp"
+#include "utils/LocalTime.hpp"
 #include "routes/api/ApiCommon.hpp"
 #include "routes/api/Serialize.hpp"
 #include <crow.h>
@@ -177,7 +178,7 @@ void register_perk_levels_api_routes(LugApp& app, PerkLevelRepository& perks,
         if (!require_api_scope(req, res, app, "admin")) return res;
 
         std::time_t now = std::time(nullptr);
-        int year = std::localtime(&now)->tm_year + 1900;
+        int year = local_tm(now).tm_year + 1900;
         auto levels = perks.find_by_year(year);
         if (levels.empty()) {
             crow::json::wvalue body_out;

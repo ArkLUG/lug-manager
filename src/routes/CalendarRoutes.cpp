@@ -1,4 +1,5 @@
 #include "routes/CalendarRoutes.hpp"
+#include "utils/LocalTime.hpp"
 #include <crow.h>
 #include <crow/mustache.h>
 #include <ctime>
@@ -61,7 +62,8 @@ void register_calendar_routes(LugApp& app, CalendarGenerator& cal,
         // Perk progress for current user
         {
             std::time_t now = std::time(nullptr);
-            std::tm* tm = std::localtime(&now);
+            std::tm tm_buf = local_tm(now);
+        std::tm* tm = &tm_buf;
             int year = tm->tm_year + 1900;
 
             int meeting_count = attendance_repo.count_member_by_year(auth_ctx.auth.member_id, year, "meeting");
