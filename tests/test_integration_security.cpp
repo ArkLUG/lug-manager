@@ -213,3 +213,25 @@ TEST_F(IntegrationTest, AdminRoleChangeIsMarkedManual) {
     member_svc->update(regular_member_id, upd);
     EXPECT_EQ(member_repo->get_role_source(regular_member_id), "manual");
 }
+
+// Only SHA-256(token) is persisted, so a copied DB can't replay sessions.
+TEST_F(IntegrationTest, SessionTokensAreStoredHashed) {
+    auto raw = db->prepare("SELECT COUNT(*) FROM sessions WHERE token=?");
+    raw.bind(1, admin_token);
+    ASSERT_TRUE(raw.step());
+    EXPECT_EQ(raw.col_int(0), 0);
+    auto hashed = db->prepare("SELECT COUNT(*) FROM sessions WHERE token=? AND token_is_hash=1");
+    hashed.bind(1, sha256_hex(admin_token));
+    ASSERT_TRUE(hashed.step());
+    EXPECT_EQ(hashed.col_int(0), 1);
+}
+
+// Sessions written raw by older versions keep working after upgrade.
+TEST_F(IntegrationTest, LegacyRawSessionTokenIsMigrated) {
+    db->execute("INSERT INTO sessions (token, member_id, role, expires_at) VALUES "
+                "('legacy-raw-token', " + std::to_string(admin_member_id) + ", 'admin', '2099-01-01T00:00:00')");
+    SessionStore fresh(*db); // startup conversion
+    auto s = fresh.find("legacy-raw-token");
+    ASSERT_TRUE(s.has_value());
+    EXPECT_EQ(s->member_id, admin_member_id);
+}

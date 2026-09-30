@@ -1,4 +1,6 @@
 #include "auth/SessionStore.hpp"
+#include "utils/Crypto.hpp"
+#include <vector>
 #include <openssl/rand.h>
 #include <chrono>
 #include <ctime>
@@ -55,16 +57,21 @@ static bool refresh_from_member(SqliteDatabase& db, Session& s) {
 }
 
 SessionStore::SessionStore(SqliteDatabase& db) : db_(db) {
-    // Ensure the sessions table exists
-    db_.execute(R"(
-        CREATE TABLE IF NOT EXISTS sessions (
-            token       TEXT PRIMARY KEY,
-            member_id   INTEGER NOT NULL,
-            role        TEXT    NOT NULL DEFAULT 'member',
-            expires_at  TEXT    NOT NULL,
-            created_at  TEXT    NOT NULL DEFAULT (datetime('now'))
-        )
-    )");
+    // The sessions table comes from the migrations (001, 045). Hash any
+    // tokens stored raw by older versions - see 045_hash_session_tokens.sql.
+    Transaction tx(db_);
+    std::vector<std::string> raw_tokens;
+    {
+        auto stmt = db_.prepare("SELECT token FROM sessions WHERE token_is_hash=0");
+        while (stmt.step()) raw_tokens.push_back(stmt.col_text(0));
+    }
+    for (const auto& t : raw_tokens) {
+        auto upd = db_.prepare("UPDATE sessions SET token=?, token_is_hash=1 WHERE token=?");
+        upd.bind(1, sha256_hex(t));
+        upd.bind(2, t);
+        upd.step();
+    }
+    tx.commit();
 }
 
 std::string SessionStore::generate_token() {
@@ -90,9 +97,9 @@ std::string SessionStore::create(int64_t member_id, const std::string& role,
         std::lock_guard<std::mutex> lock(mutex_);
 
         auto stmt = db_.prepare(
-            "INSERT INTO sessions (token, member_id, role, expires_at, created_at) "
-            "VALUES (?, ?, ?, ?, ?)");
-        stmt.bind(1, token)
+            "INSERT INTO sessions (token, member_id, role, expires_at, created_at, token_is_hash) "
+            "VALUES (?, ?, ?, ?, ?, 1)");
+        stmt.bind(1, sha256_hex(token)) // only the hash is persisted
             .bind(2, member_id)
             .bind(3, role)
             .bind(4, expires_at)
@@ -123,7 +130,7 @@ std::optional<Session> SessionStore::find(const std::string& token) {
             // Expired: remove from cache and DB
             cache_.erase(it);
             auto del = db_.prepare("DELETE FROM sessions WHERE token = ?");
-            del.bind(1, token);
+            del.bind(1, sha256_hex(token));
             del.step();
             return std::nullopt;
         }
@@ -138,12 +145,12 @@ std::optional<Session> SessionStore::find(const std::string& token) {
     auto stmt = db_.prepare(
         "SELECT token, member_id, role, expires_at, created_at "
         "FROM sessions WHERE token = ?");
-    stmt.bind(1, token);
+    stmt.bind(1, sha256_hex(token));
 
     if (!stmt.step()) return std::nullopt;
 
     Session s;
-    s.token      = stmt.col_text(0);
+    s.token      = token; // DB holds only the hash; callers keep the raw token
     s.member_id  = stmt.col_int(1);
     s.role       = stmt.col_text(2);
     s.expires_at = stmt.col_text(3);
@@ -152,7 +159,7 @@ std::optional<Session> SessionStore::find(const std::string& token) {
     if (is_expired(s.expires_at)) {
         // Remove expired session
         auto del = db_.prepare("DELETE FROM sessions WHERE token = ?");
-        del.bind(1, token);
+        del.bind(1, sha256_hex(token));
         del.step();
         return std::nullopt;
     }
@@ -167,7 +174,7 @@ void SessionStore::remove(const std::string& token) {
     std::lock_guard<std::mutex> lock(mutex_);
     cache_.erase(token);
     auto stmt = db_.prepare("DELETE FROM sessions WHERE token = ?");
-    stmt.bind(1, token);
+    stmt.bind(1, sha256_hex(token));
     stmt.step();
 }
 
