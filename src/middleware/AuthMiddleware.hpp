@@ -5,6 +5,26 @@
 #include <crow.h>
 #include <string>
 
+// Returns the value of cookie `name` from the Cookie header, or "" if absent.
+// Matches whole cookie names only (a bare find("session=") also matched e.g.
+// "xsession=").
+inline std::string get_cookie(const crow::request& req, const std::string& name) {
+    const std::string header = req.get_header_value("Cookie");
+    size_t pos = 0;
+    while (pos < header.size()) {
+        size_t end = header.find(';', pos);
+        if (end == std::string::npos) end = header.size();
+        size_t start = header.find_first_not_of(' ', pos);
+        if (start < end) {
+            size_t eq = header.find('=', start);
+            if (eq < end && header.compare(start, eq - start, name) == 0)
+                return header.substr(eq + 1, end - eq - 1);
+        }
+        pos = end + 1;
+    }
+    return "";
+}
+
 struct AuthContext {
     bool        authenticated = false;
     int64_t     member_id     = 0;
@@ -37,15 +57,7 @@ struct AuthMiddleware {
     void before_handle(crow::request& req, crow::response& /*res*/, context& ctx) {
         if (!auth_service) return;
 
-        // Extract session cookie
-        std::string cookie_header = req.get_header_value("Cookie");
-        std::string token;
-        size_t pos = cookie_header.find("session=");
-        if (pos != std::string::npos) {
-            pos += 8; // len("session=")
-            size_t end = cookie_header.find(';', pos);
-            token = cookie_header.substr(pos, end == std::string::npos ? std::string::npos : end - pos);
-        }
+        std::string token = get_cookie(req, "session");
 
         if (token.empty()) return;
 
@@ -58,7 +70,19 @@ struct AuthMiddleware {
         ctx.auth.display_name  = session_opt->display_name;
     }
 
-    void after_handle(crow::request& /*req*/, crow::response& /*res*/, context& /*ctx*/) {}
+    // Baseline security headers on every response (this middleware runs for
+    // all routes). A full script CSP isn't practical yet (inline scripts +
+    // CDN libraries), so framing is locked down via frame-ancestors alone.
+    void after_handle(crow::request& /*req*/, crow::response& res, context& /*ctx*/) {
+        auto set_default = [&](const char* name, const char* value) {
+            if (res.get_header_value(name).empty()) res.set_header(name, value);
+        };
+        set_default("X-Content-Type-Options", "nosniff");
+        set_default("X-Frame-Options", "DENY");
+        set_default("Referrer-Policy", "strict-origin-when-cross-origin");
+        if (res.get_header_value("Content-Security-Policy").empty())
+            res.set_header("Content-Security-Policy", "frame-ancestors 'none'");
+    }
 };
 
 // Helper: populate layout context with user info for sidebar display

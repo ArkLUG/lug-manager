@@ -439,7 +439,8 @@
         </svg>
         Subscribe to Calendar (.ics)
       </a>
-      <a href="/auth/logout"
+      <form method="post" action="/auth/logout">
+      <button type="submit"
          class="w-full flex items-center gap-2 px-3 py-2 text-sm text-gray-400
                 hover:text-white hover:bg-gray-700 rounded-lg transition-colors text-left">
           <svg class="w-4 h-4 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -448,7 +449,8 @@
                      3 0 013-3h4a3 3 0 013 3v1"/>
           </svg>
           Sign Out
-      </a>
+      </button>
+      </form>
     </div>
   </aside>
 

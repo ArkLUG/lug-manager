@@ -23,10 +23,11 @@ public:
     // Remove all expired sessions (call periodically)
     void purge_expired();
 
+    static std::string generate_token(); // 32 random bytes as 64-char hex
+
 private:
     SqliteDatabase&                          db_;
     std::unordered_map<std::string, Session> cache_;
     mutable std::mutex                       mutex_;
 
-    static std::string generate_token(); // 32 random bytes as 64-char hex
 };

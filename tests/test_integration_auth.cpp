@@ -69,7 +69,7 @@ TEST_F(IntegrationTest, LoginPageLoads) {
 }
 
 TEST_F(IntegrationTest, LogoutWorks) {
-    auto r = GET("/auth/logout", admin_token);
+    auto r = POST("/auth/logout", "", admin_token);
     EXPECT_TRUE(r.code == 302 || r.code == 307);
     EXPECT_NE(r.location.find("/login"), std::string::npos);
 }

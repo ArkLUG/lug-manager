@@ -110,7 +110,7 @@ TEST_F(IntegrationTest, LogoutClearsSessionAndRedirects) {
     EXPECT_EQ(before.code, 200);
 
     // Logout
-    auto r = GET("/auth/logout", admin_token);
+    auto r = POST("/auth/logout", "", admin_token);
     EXPECT_TRUE(r.code == 302 || r.code == 307);
     EXPECT_NE(r.location.find("/login"), std::string::npos);
 }

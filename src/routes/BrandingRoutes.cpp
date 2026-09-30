@@ -46,9 +46,9 @@ SniffResult sniff_image(const std::string& bytes) {
     // SVG: no fixed magic bytes (it's XML/text) - look for the root <svg tag
     // within the first slice of the file, after skipping optional XML
     // declaration/whitespace/BOM. Accepted deliberately: LUG logos are
-    // commonly vector art. Never executed/rendered outside an <img>/CSS
-    // background context, so no script-in-SVG XSS surface is introduced by
-    // storing it - see the Content-Type served in register_branding_routes.
+    // commonly vector art. An SVG opened directly (not via <img>) WOULD run
+    // embedded script on this origin, so /branding/logo serves it with a
+    // sandboxing CSP - see register_branding_routes.
     {
         size_t probe_len = std::min<size_t>(bytes.size(), 512);
         std::string head = bytes.substr(0, probe_len);
@@ -209,7 +209,7 @@ void register_branding_routes(LugApp& app, SettingsRepository& settings,
     // - see layout.html's <link rel="icon">). Public, unauthenticated: this
     // is exactly the same trust level as any other static asset the app
     // serves (CSS/JS under /static/*), not member data.
-    CROW_ROUTE(app, "/branding/logo")([&](const crow::request& req) {
+    CROW_ROUTE(app, "/branding/logo")([&](const crow::request& /*req*/) {
         crow::response res;
         std::string ext = settings.get("branding_logo_extension", "");
         if (ext.empty()) {
@@ -228,6 +228,11 @@ void register_branding_routes(LugApp& app, SettingsRepository& settings,
         buf << in.rdbuf();
 
         res.add_header("Content-Type", content_type);
+        // The logo is only ever an image: forbid script/plugins/navigation
+        // even if someone opens the URL directly (matters for uploaded SVG),
+        // and stop browsers sniffing it into something executable.
+        res.add_header("Content-Security-Policy", "default-src 'none'; style-src 'unsafe-inline'; sandbox");
+        res.add_header("X-Content-Type-Options", "nosniff");
         // Long-lived cache is safe: the URL is fixed but the page that
         // references it appends ?v=<upload timestamp> as a cache-buster,
         // so a new upload is always reflected immediately rather than
