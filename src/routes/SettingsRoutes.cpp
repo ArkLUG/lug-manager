@@ -773,7 +773,7 @@ void register_settings_routes(LugApp& app, SettingsRepository& settings,
                  << skipped << " already existed</span>";
             res.write(html.str());
         } catch (const std::exception& ex) {
-            res.write("<span class=\"text-red-600\">Error: " + std::string(ex.what()) + "</span>");
+            res.write("<span class=\"text-red-600\">Error: " + html_escape(ex.what()) + "</span>");
         }
         res.add_header("Content-Type", "text/html; charset=utf-8");
         return res;
@@ -812,7 +812,7 @@ void register_settings_routes(LugApp& app, SettingsRepository& settings,
                       "Events: " + std::to_string(ev_result.created) + " created, " + std::to_string(ev_result.synced) + " updated; Meetings: " + std::to_string(mtg_result.created) + " created, " + std::to_string(mtg_result.synced) + " updated");
             res.write(html.str());
         } catch (const std::exception& ex) {
-            res.write("<span class=\"text-red-600\">Error: " + std::string(ex.what()) + "</span>");
+            res.write("<span class=\"text-red-600\">Error: " + html_escape(ex.what()) + "</span>");
         }
         res.add_header("Content-Type", "text/html; charset=utf-8");
         return res;
@@ -848,7 +848,7 @@ void register_settings_routes(LugApp& app, SettingsRepository& settings,
                       "Events: " + std::to_string(ev_result.synced) + " synced, Meetings: " + std::to_string(mtg_result.synced) + " synced, Nicknames: " + std::to_string(nick_result.synced) + " updated");
             res.write(html.str());
         } catch (const std::exception& ex) {
-            res.write("<span class=\"text-red-600\">Error: " + std::string(ex.what()) + "</span>");
+            res.write("<span class=\"text-red-600\">Error: " + html_escape(ex.what()) + "</span>");
         }
         res.add_header("Content-Type", "text/html; charset=utf-8");
         return res;
@@ -946,7 +946,7 @@ void register_settings_routes(LugApp& app, SettingsRepository& settings,
             html << "</div>";
             res.write(html.str());
         } catch (const std::exception& ex) {
-            res.write("<span class=\"text-red-600\">Error: " + std::string(ex.what()) + "</span>");
+            res.write("<span class=\"text-red-600\">Error: " + html_escape(ex.what()) + "</span>");
         }
         res.add_header("Content-Type", "text/html; charset=utf-8");
         return res;

@@ -637,7 +637,7 @@ void register_meeting_routes(LugApp& app, MeetingService& meetings, AttendanceSe
             res.write(R"(<span class="text-green-600 text-xs">Synced</span>)");
         } catch (const std::exception& ex) {
             res.add_header("Content-Type", "text/html; charset=utf-8");
-            res.write(std::string(R"(<span class="text-red-500 text-xs">Error: )") + ex.what() + "</span>");
+            res.write(std::string(R"(<span class="text-red-500 text-xs">Error: )") + html_escape(ex.what()) + "</span>");
         }
         return res;
     });

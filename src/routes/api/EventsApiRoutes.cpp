@@ -1,4 +1,5 @@
 #include "routes/api/EventsApiRoutes.hpp"
+#include "services/EventConversion.hpp"
 #include "routes/api/ApiCommon.hpp"
 #include "routes/api/Serialize.hpp"
 #include <crow.h>
@@ -269,27 +270,8 @@ void register_events_api_routes(LugApp& app, EventService& events, MeetingServic
         if (!ev) { envelope_error(res, 404, "event not found", "not_found"); return res; }
 
         try {
-            Meeting m;
-            m.title       = ev->title;
-            m.description = ev->description;
-            m.location    = ev->location;
-            m.start_time  = ev->start_time;
-            m.end_time    = ev->end_time;
-            m.status      = "scheduled";
-            m.scope       = ev->scope;
-            m.chapter_id  = ev->chapter_id;
-
-            Meeting created = meetings.create(m);
-
-            // Mirrors EventRoutes.cpp exactly: one flat check-in per event_day_attendance
-            // row (i.e. per day attended), not deduplicated by member - same as the
-            // browser route's existing, shipped behavior.
-            auto attendees = event_day_attendance.find_by_event(id);
-            for (const auto& a : attendees) {
-                attendance_flat.check_in(a.member_id, "meeting", created.id, a.notes, false);
-            }
-
-            events.cancel(static_cast<int64_t>(id));
+            Meeting created = convert_event_to_meeting(*ev, meetings, events,
+                                                       event_day_attendance, attendance_flat);
 
             audit.log_system("event.convert_to_meeting", "event", id, ev->title,
                               "Converted to meeting " + std::to_string(created.id) +

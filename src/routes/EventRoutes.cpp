@@ -1,4 +1,6 @@
 #include "routes/EventRoutes.hpp"
+#include "utils/JsonEscape.hpp"
+#include "services/EventConversion.hpp"
 #include "utils/MarkdownRenderer.hpp"
 #include "utils/AuditDiff.hpp"
 #include "utils/HtmlEscape.hpp"
@@ -647,7 +649,7 @@ void register_event_routes(LugApp& app, EventService& events, AttendanceService&
             res.code = 400;
             res.write(std::string(
                 R"(<div class="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded">Error: )")
-                + ex.what() + "</div>");
+                + html_escape(ex.what()) + "</div>");
         }
         return res;
     });
@@ -787,7 +789,7 @@ void register_event_routes(LugApp& app, EventService& events, AttendanceService&
                 std::cerr << "[EventRoutes] PUT /events/" << id << " error: " << ex.what() << "\n";
                 res.write(std::string(
                     R"(<div class="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded">Error: )")
-                    + ex.what() + "</div>");
+                    + html_escape(ex.what()) + "</div>");
             }
         } else {
             auto body = crow::json::load(req.body);
@@ -818,7 +820,7 @@ void register_event_routes(LugApp& app, EventService& events, AttendanceService&
                 res.add_header("Content-Type", "application/json");
             } catch (const std::exception& ex) {
                 res.code = 400;
-                res.write(std::string(R"({"error":")") + ex.what() + "\"}");
+                res.write(std::string(R"({"error":")") + json_escape(ex.what()) + "\"}");
                 res.add_header("Content-Type", "application/json");
             }
         }
@@ -846,7 +848,7 @@ void register_event_routes(LugApp& app, EventService& events, AttendanceService&
             res.write(R"(<span class="text-green-600 text-xs">Synced</span>)");
         } catch (const std::exception& ex) {
             res.add_header("Content-Type", "text/html; charset=utf-8");
-            res.write(std::string(R"(<span class="text-red-500 text-xs">Error: )") + ex.what() + "</span>");
+            res.write(std::string(R"(<span class="text-red-500 text-xs">Error: )") + html_escape(ex.what()) + "</span>");
         }
         return res;
     });
@@ -871,7 +873,7 @@ void register_event_routes(LugApp& app, EventService& events, AttendanceService&
             res.code = 200;
         } catch (const std::exception& ex) {
             res.code = 400;
-            res.write(std::string(R"({"error":")") + ex.what() + "\"}");
+            res.write(std::string(R"({"error":")") + json_escape(ex.what()) + "\"}");
             res.add_header("Content-Type", "application/json");
         }
         return res;
@@ -914,7 +916,7 @@ void register_event_routes(LugApp& app, EventService& events, AttendanceService&
             res.code = 200;
         } catch (const std::exception& ex) {
             res.code = 400;
-            res.write(std::string(R"({"error":")") + ex.what() + "\"}");
+            res.write(std::string(R"({"error":")") + json_escape(ex.what()) + "\"}");
             res.add_header("Content-Type", "application/json");
         }
         return res;
@@ -978,34 +980,15 @@ void register_event_routes(LugApp& app, EventService& events, AttendanceService&
         }
 
         try {
-            // Create a meeting from the event data
-            Meeting m;
-            m.title       = ev->title;
-            m.description = ev->description;
-            m.location    = ev->location;
-            m.start_time  = ev->start_time;
-            m.end_time    = ev->end_time;
-            m.status      = "scheduled";
-            m.scope       = ev->scope;
-            m.chapter_id  = ev->chapter_id;
-
-            Meeting created = meetings.create(m);
-
-            // Copy attendance records from event to meeting
-            auto attendees = attendance.get_attendees("event", static_cast<int64_t>(id));
-            for (auto& a : attendees) {
-                attendance.check_in(a.member_id, "meeting", created.id, a.notes, a.is_virtual);
-            }
-
-            // Delete the event (cleans up Discord, Google Calendar, attendance)
-            events.cancel(static_cast<int64_t>(id));
+            convert_event_to_meeting(*ev, meetings, events,
+                                     attendance.event_day_attendance_repo(), attendance.repo());
 
             audit.log(req, app, "event.convert_to_meeting", "event", static_cast<int64_t>(id), ev->title, "Converted to meeting");
             res.add_header("HX-Redirect", "/meetings");
             res.code = 200;
         } catch (const std::exception& ex) {
             res.add_header("Content-Type", "text/html; charset=utf-8");
-            res.write(std::string(R"(<span class="text-red-500 text-sm">Error: )") + ex.what() + "</span>");
+            res.write(std::string(R"(<span class="text-red-500 text-sm">Error: )") + html_escape(ex.what()) + "</span>");
         }
         return res;
     });
