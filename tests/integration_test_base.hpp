@@ -280,6 +280,7 @@ protected:
         int code = 0;
         std::string body;
         std::string location; // redirect location
+        std::string headers;  // raw response headers
     };
 
     static size_t write_cb(void* data, size_t size, size_t nmemb, std::string* out) {
@@ -353,6 +354,7 @@ protected:
         curl_easy_cleanup(curl);
 
         resp.body = resp_body;
+        resp.headers = resp_headers;
         return resp;
     }
 

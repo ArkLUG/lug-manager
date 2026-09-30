@@ -103,3 +103,69 @@ TEST_F(IntegrationTest, DuplicateCheckinIsReportedAsNotNew) {
 
     EXPECT_FALSE(attendance_repo->set_virtual(999999, true));
 }
+
+// Login CSRF: a callback carrying a code must be rejected unless its state
+// nonce matches the oauth_state cookie set by /auth/login in this browser.
+TEST_F(IntegrationTest, AuthCallbackWithoutStateCookieIsRejected) {
+    auto r = GET("/auth/callback?code=attacker-code&state=forged");
+    EXPECT_TRUE(r.code == 302 || r.code == 307);
+    EXPECT_NE(r.location.find("/login?error=failed"), std::string::npos);
+}
+
+TEST_F(IntegrationTest, AuthLoginSetsStateCookieMatchingState) {
+    auto r = GET("/auth/login");
+    size_t c = r.headers.find("oauth_state=");
+    ASSERT_NE(c, std::string::npos);
+    std::string nonce = r.headers.substr(c + 12, 64);
+    EXPECT_NE(r.location.find("state=" + nonce), std::string::npos);
+}
+
+TEST_F(IntegrationTest, LogoutRejectsGet) {
+    auto r = GET("/auth/logout", admin_token);
+    EXPECT_NE(r.code, 302);
+    EXPECT_TRUE(session_store->find(admin_token).has_value());
+}
+
+// Role changes must take effect on existing sessions immediately.
+TEST_F(IntegrationTest, DemotedAdminLosesAccessWithoutRelogin) {
+    EXPECT_EQ(GET("/settings", admin_token).code, 200);
+    auto m = member_repo->find_by_id(admin_member_id);
+    ASSERT_TRUE(m);
+    m->role = "member";
+    member_repo->update(*m);
+    EXPECT_NE(GET("/settings", admin_token).code, 200);
+}
+
+TEST_F(IntegrationTest, MemberCannotViewOthersAttendanceDetail) {
+    auto other = GET("/attendance/member/" + std::to_string(admin_member_id) + "/detail", member_token);
+    EXPECT_EQ(other.code, 403);
+    auto own = GET("/attendance/member/" + std::to_string(regular_member_id) + "/detail", member_token);
+    EXPECT_EQ(own.code, 200);
+}
+
+TEST_F(IntegrationTest, AttendanceCountRejectsUnknownEntityType) {
+    auto r = GET("/attendance/count/%22%3E%3Cscript%3E/1", member_token);
+    EXPECT_EQ(r.body.find("<script>"), std::string::npos);
+    EXPECT_NE(r.code, 200);
+}
+
+// Leads are appointed by admins, so a non-admin lead must not demote/remove one.
+TEST_F(IntegrationTest, ChapterLeadCannotDemoteOrRemoveAnotherLead) {
+    chapter_member_repo->upsert(regular_member_id, test_chapter_id, "lead", admin_member_id);
+    std::string base = "/chapters/" + std::to_string(test_chapter_id) + "/members";
+    auto demote = POST(base, "member_id=" + std::to_string(regular_member_id) + "&chapter_role=member",
+                       chapter_lead_token);
+    EXPECT_EQ(demote.code, 403);
+    auto remove = http("DELETE", base + "/" + std::to_string(regular_member_id), "", chapter_lead_token);
+    EXPECT_EQ(remove.code, 403);
+    auto role = chapter_member_repo->get_chapter_role(regular_member_id, test_chapter_id);
+    ASSERT_TRUE(role);
+    EXPECT_EQ(*role, "lead");
+}
+
+TEST_F(IntegrationTest, SecurityHeadersPresent) {
+    auto r = GET("/login");
+    EXPECT_NE(r.headers.find("X-Frame-Options: DENY"), std::string::npos);
+    EXPECT_NE(r.headers.find("X-Content-Type-Options: nosniff"), std::string::npos);
+    EXPECT_NE(r.headers.find("frame-ancestors 'none'"), std::string::npos);
+}
