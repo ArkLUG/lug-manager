@@ -605,6 +605,7 @@ paths:
                 is_virtual: { type: boolean }
       responses:
         "201": { description: Created }
+        "200": { description: 'Already checked in - nothing written (data.created is false)' }
         "400": { description: entity_type is "event" (use /event-day-attendance instead), or not "meeting" }
   /attendance/member/{member_id}:
     get:
@@ -667,6 +668,7 @@ paths:
                 notes: { type: string }
       responses:
         "201": { description: Created }
+        "200": { description: 'Already checked in to that day - nothing written (data.created is false)' }
   /event-day-attendance/event/{event_id}:
     get:
       tags: [attendance]

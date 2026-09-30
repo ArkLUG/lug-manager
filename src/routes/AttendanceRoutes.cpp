@@ -431,19 +431,31 @@ void register_attendance_routes(LugApp& app, AttendanceService& attendance,
             return res;
         }
 
+        int skipped = 0;
         for (auto* mid_str : member_ids) {
             if (!mid_str || !mid_str[0]) continue;
             try {
                 int64_t member_id = std::stoll(mid_str);
-                attendance.check_in(member_id, entity_type, entity_id, "", is_virtual);
+                // false = nothing written: duplicate, or (events) today isn't an event day
+                if (!attendance.check_in(member_id, entity_type, entity_id, "", is_virtual)) {
+                    ++skipped;
+                    continue;
+                }
                 auto checkin_mbr = members.get(member_id);
                 std::string checkin_mbr_name = checkin_mbr ? checkin_mbr->display_name : std::to_string(member_id);
                 audit.log(req, app, "attendance.checkin", entity_type, entity_id,
                           get_entity_title(events, meetings, entity_type, entity_id),
                           "Admin checked in " + checkin_mbr_name);
-            } catch (...) {}
+            } catch (...) { ++skipped; }
         }
 
+        if (skipped > 0) {
+            res.write("<p class=\"text-amber-600 text-xs mb-2\">" + std::to_string(skipped) +
+                      (entity_type == "event"
+                           ? " not added - already checked in, or today isn't one of this event's days"
+                             " (add them to a specific day instead).</p>"
+                           : " not added - already checked in.</p>"));
+        }
         res.write(render_attendance_list(attendance, entity_type, entity_id,
                                          true, entity_type == "meeting"));
         res.add_header("Content-Type", "text/html");
@@ -620,7 +632,8 @@ void register_attendance_routes(LugApp& app, AttendanceService& attendance,
             if (!mid_str || !mid_str[0]) continue;
             try {
                 int64_t member_id = std::stoll(mid_str);
-                attendance.check_in_to_day(member_id, static_cast<int64_t>(day_id));
+                if (!attendance.check_in_to_day(member_id, static_cast<int64_t>(day_id)))
+                    continue; // already on this day - nothing to audit
                 auto mbr = members.get(member_id);
                 std::string mbr_name = mbr ? mbr->display_name : std::to_string(member_id);
                 audit.log(req, app, "attendance.event_day_checkin", "event", event_id,

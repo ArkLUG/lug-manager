@@ -1,6 +1,7 @@
 #include "routes/api/AttendanceApiRoutes.hpp"
 #include "routes/api/ApiCommon.hpp"
 #include "routes/api/Serialize.hpp"
+#include "utils/ParseId.hpp"
 #include <crow.h>
 #include <iostream>
 
@@ -22,7 +23,7 @@ void register_attendance_api_routes(LugApp& app, AttendanceRepository& attendanc
         }
 
         try {
-            auto items = attendance.find_by_entity(type_p, std::stoll(std::string(id_p)));
+            auto items = attendance.find_by_entity(type_p, parse_id(id_p));
             write_json(res, 200, envelope_ok(to_json_list(items)));
         } catch (const std::exception&) {
             envelope_error(res, 400, "entity_id must be numeric", "invalid_request");
@@ -78,16 +79,19 @@ void register_attendance_api_routes(LugApp& app, AttendanceRepository& attendanc
         }
 
         try {
-            attendance.check_in(member_id, entity_type, entity_id, notes, is_virtual);
-            auto& ctx = app.template get_context<ApiKeyMiddleware>(req);
-            audit.log_system("attendance.check_in", entity_type, entity_id,
-                              "member " + std::to_string(member_id),
-                              "Checked in via " + actor_label(ctx.api_key));
+            bool created = attendance.check_in(member_id, entity_type, entity_id, notes, is_virtual);
+            if (created) {
+                auto& ctx = app.template get_context<ApiKeyMiddleware>(req);
+                audit.log_system("attendance.check_in", entity_type, entity_id,
+                                  "member " + std::to_string(member_id),
+                                  "Checked in via " + actor_label(ctx.api_key));
+            }
             crow::json::wvalue body_out;
             body_out["member_id"]   = member_id;
             body_out["entity_type"] = entity_type;
             body_out["entity_id"]   = entity_id;
-            write_json(res, 201, envelope_ok(std::move(body_out)));
+            body_out["created"]     = created; // false = already checked in
+            write_json(res, created ? 201 : 200, envelope_ok(std::move(body_out)));
         } catch (const std::exception& ex) {
             std::cerr << "[AttendanceApiRoutes] POST /api/v1/attendance error: " << ex.what() << "\n";
             envelope_error(res, 400, "could not check in", "validation_error");
@@ -155,7 +159,7 @@ void register_attendance_api_routes(LugApp& app, AttendanceRepository& attendanc
             return res;
         }
         try {
-            auto items = event_day_attendance.find_by_day(std::stoll(std::string(day_p)));
+            auto items = event_day_attendance.find_by_day(parse_id(day_p));
             write_json(res, 200, envelope_ok(to_json_list(items)));
         } catch (const std::exception&) {
             envelope_error(res, 400, "event_day_id must be numeric", "invalid_request");
@@ -191,15 +195,18 @@ void register_attendance_api_routes(LugApp& app, AttendanceRepository& attendanc
         std::string notes    = body.has("notes") ? std::string(body["notes"].s()) : "";
 
         try {
-            event_day_attendance.check_in(event_day_id, member_id, notes);
-            auto& ctx = app.template get_context<ApiKeyMiddleware>(req);
-            audit.log_system("event_day_attendance.check_in", "event_day", event_day_id,
-                              "member " + std::to_string(member_id),
-                              "Checked in via " + actor_label(ctx.api_key));
+            bool created = event_day_attendance.check_in(event_day_id, member_id, notes);
+            if (created) {
+                auto& ctx = app.template get_context<ApiKeyMiddleware>(req);
+                audit.log_system("event_day_attendance.check_in", "event_day", event_day_id,
+                                  "member " + std::to_string(member_id),
+                                  "Checked in via " + actor_label(ctx.api_key));
+            }
             crow::json::wvalue body_out;
             body_out["event_day_id"] = event_day_id;
             body_out["member_id"]    = member_id;
-            write_json(res, 201, envelope_ok(std::move(body_out)));
+            body_out["created"]      = created; // false = already checked in
+            write_json(res, created ? 201 : 200, envelope_ok(std::move(body_out)));
         } catch (const std::exception& ex) {
             std::cerr << "[AttendanceApiRoutes] POST /api/v1/event-day-attendance error: " << ex.what() << "\n";
             envelope_error(res, 400, "could not check in", "validation_error");
