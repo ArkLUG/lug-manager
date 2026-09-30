@@ -1,4 +1,5 @@
 #pragma once
+#include <optional>
 #include "config/Config.hpp"
 #include "async/ThreadPool.hpp"
 #include "models/Meeting.hpp"
@@ -69,6 +70,11 @@ public:
 
     // Fetch the Discord role IDs that a guild member currently has
     std::vector<std::string> fetch_member_role_ids(const std::string& discord_user_id) const;
+
+    // Like fetch_member_role_ids, but distinguishes "confirmed guild member
+    // (possibly with no roles)" from "not a member / couldn't verify": returns
+    // nullopt unless Discord returned a guild member object for this user.
+    std::optional<std::vector<std::string>> fetch_guild_member_role_ids(const std::string& discord_user_id) const;
 
     // Fetch all guild members with pagination (skips bots)
     std::vector<DiscordGuildMember> fetch_guild_members() const;

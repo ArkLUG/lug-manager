@@ -760,21 +760,30 @@ std::vector<DiscordRole> DiscordClient::fetch_guild_roles() const {
 }
 
 std::vector<std::string> DiscordClient::fetch_member_role_ids(const std::string& discord_user_id) const {
-    if (guild_id_.empty() || discord_user_id.empty()) return {};
+    return fetch_guild_member_role_ids(discord_user_id).value_or(std::vector<std::string>{});
+}
+
+std::optional<std::vector<std::string>>
+DiscordClient::fetch_guild_member_role_ids(const std::string& discord_user_id) const {
+    if (guild_id_.empty() || discord_user_id.empty()) return std::nullopt;
     std::string resp = discord_api_request("GET",
         "/guilds/" + guild_id_ + "/members/" + discord_user_id);
-    std::vector<std::string> result;
     try {
         auto j = json::parse(resp);
-        if (!j.contains("roles") || !j["roles"].is_array()) return result;
+        // A guild member object always carries "user"; errors such as
+        // Unknown Member (10007) come back as {"message":..,"code":..}.
+        if (!j.is_object() || !j.contains("user") || !j.contains("roles") || !j["roles"].is_array())
+            return std::nullopt;
+        std::vector<std::string> result;
         for (auto& rid : j["roles"]) {
             result.push_back(rid.get<std::string>());
         }
+        return result;
     } catch (const json::exception& e) {
-        std::cerr << "[DiscordClient] fetch_member_role_ids parse error: " << e.what()
+        std::cerr << "[DiscordClient] fetch_guild_member_role_ids parse error: " << e.what()
                   << " | response: " << resp.substr(0, 200) << "\n";
     }
-    return result;
+    return std::nullopt;
 }
 
 void DiscordClient::add_member_role(const std::string& discord_user_id,

@@ -37,8 +37,6 @@ std::string AuthService::login_with_discord(const std::string& code, const std::
     auto member_opt = members_.find_by_discord_id(user_info.id);
 
     // 4a. Bootstrap: if not found but matches BOOTSTRAP_ADMIN_DISCORD_ID, auto-create as admin
-    std::cerr << "[AuthService] Login attempt: discord_id='" << user_info.id
-              << "' bootstrap_id='" << bootstrap_admin_discord_id_ << "'\n";
     if (!member_opt && !bootstrap_admin_discord_id_.empty() &&
         user_info.id == bootstrap_admin_discord_id_) {
         Member bootstrap;
@@ -51,11 +49,28 @@ std::string AuthService::login_with_discord(const std::string& code, const std::
         member_opt = members_.create(bootstrap);
     }
 
-    // 4b. Auto-provision: if still not found, create with mapped role or default "member"
-    //     Anyone in the Discord guild can log in to view their membership status.
+    // 4b. Auto-provision: if still not found, create with mapped role or default "member" -
+    //     but only for a confirmed member of the configured Discord guild. The OAuth
+    //     "identify" scope proves who the user is, not that they belong to this LUG,
+    //     so without this check any Discord account could self-register.
     if (!member_opt) {
-        std::string lug_role = resolve_role_from_discord(user_info.id);
-        if (lug_role.empty()) lug_role = "member"; // default: any guild member can log in
+        std::optional<std::vector<std::string>> guild_roles;
+        if (discord_) {
+            try {
+                guild_roles = discord_->fetch_guild_member_role_ids(user_info.id);
+            } catch (const std::exception& e) {
+                std::cerr << "[AuthService] Could not verify guild membership: " << e.what() << "\n";
+            }
+        }
+        if (!guild_roles) {
+            std::cerr << "[AuthService] Refusing login for non-guild Discord user "
+                      << user_info.username << "\n";
+            throw std::runtime_error("not_authorized");
+        }
+        std::string lug_role;
+        if (role_mappings_ && !guild_roles->empty())
+            lug_role = role_mappings_->resolve_lug_role(*guild_roles).value_or("");
+        if (lug_role.empty()) lug_role = "member";
         Member provisioned;
         provisioned.discord_user_id  = user_info.id;
         provisioned.discord_username = user_info.username;
