@@ -442,41 +442,36 @@ void register_attendance_routes(LugApp& app, AttendanceService& attendance,
         return res;
     });
 
-    // POST /attendance/admin/<id>/remove - admin/event lead removes an attendance record
+    // POST /attendance/admin/<id>/remove - admin/event lead removes an attendance record.
+    // Permission is checked against the entity the record actually belongs to,
+    // never a caller-supplied entity (which would let a manager of one event
+    // touch records of any other).
     CROW_ROUTE(app, "/attendance/admin/<int>/remove").methods("POST"_method)(
         [&](const crow::request& req, int id) {
         crow::response res;
         if (!require_auth(req, res, app)) return res;
+        res.add_header("Content-Type", "text/html");
 
-        auto params = crow::query_string("?" + req.body);
-        auto gp = [&](const char* k) -> std::string {
-            const char* v = params.get(k); return v ? std::string(v) : "";
-        };
-        std::string entity_type = gp("entity_type");
-        std::string entity_id_s = gp("entity_id");
-
-        if (entity_type.empty() || entity_id_s.empty()) {
-            res.code = 400;
-            res.add_header("Content-Type", "text/html");
-            res.write(R"(<span class="text-red-500 text-xs">Missing parameters</span>)");
+        auto rec = attendance.repo().find_by_id(static_cast<int64_t>(id));
+        if (!rec) {
+            res.code = 404;
+            res.write(R"(<span class="text-red-500 text-xs">Record not found</span>)");
             return res;
         }
-
-        int64_t entity_id = std::stoll(entity_id_s);
+        const std::string& entity_type = rec->entity_type;
+        int64_t entity_id = rec->entity_id;
         if (!can_manage_attendance(req, app, events, meetings, chapter_members, entity_type, entity_id)) {
             res.code = 403;
             res.write(R"(<span class="text-red-500 text-xs">Forbidden</span>)");
-            res.add_header("Content-Type", "text/html");
             return res;
         }
 
-        attendance.remove_by_id(static_cast<int64_t>(id));
+        attendance.remove_by_id(rec->id);
         audit.log(req, app, "attendance.remove", entity_type, entity_id,
                   get_entity_title(events, meetings, entity_type, entity_id),
                   "Admin removed attendance record");
         res.write(render_attendance_list(attendance, entity_type, entity_id,
                                          true, entity_type == "meeting"));
-        res.add_header("Content-Type", "text/html");
         res.add_header("HX-Trigger", "attendanceUpdated");
         return res;
     });
@@ -486,36 +481,28 @@ void register_attendance_routes(LugApp& app, AttendanceService& attendance,
         [&](const crow::request& req, int id) {
         crow::response res;
         if (!require_auth(req, res, app)) return res;
+        res.add_header("Content-Type", "text/html");
 
-        auto params = crow::query_string("?" + req.body);
-        auto gp = [&](const char* k) -> std::string {
-            const char* v = params.get(k); return v ? std::string(v) : "";
-        };
-        std::string entity_type = gp("entity_type");
-        std::string entity_id_s = gp("entity_id");
-        bool current = gp("current") == "1";
-
-        if (entity_type.empty() || entity_id_s.empty()) {
-            res.code = 400;
-            res.add_header("Content-Type", "text/html");
-            res.write(R"(<span class="text-red-500 text-xs">Missing parameters</span>)");
+        auto rec = attendance.repo().find_by_id(static_cast<int64_t>(id));
+        if (!rec) {
+            res.code = 404;
+            res.write(R"(<span class="text-red-500 text-xs">Record not found</span>)");
             return res;
         }
-
-        int64_t entity_id = std::stoll(entity_id_s);
+        const std::string& entity_type = rec->entity_type;
+        int64_t entity_id = rec->entity_id;
         if (!can_manage_attendance(req, app, events, meetings, chapter_members, entity_type, entity_id)) {
             res.code = 403;
             res.write(R"(<span class="text-red-500 text-xs">Forbidden</span>)");
-            res.add_header("Content-Type", "text/html");
             return res;
         }
 
-        attendance.set_virtual(static_cast<int64_t>(id), !current);
+        // Flip the stored value rather than trusting a client-sent "current".
+        attendance.set_virtual(rec->id, !rec->is_virtual);
         audit.log(req, app, "attendance.toggle_virtual", entity_type, entity_id,
                   get_entity_title(events, meetings, entity_type, entity_id), "Toggled virtual");
         res.write(render_attendance_list(attendance, entity_type, entity_id,
                                          true, entity_type == "meeting"));
-        res.add_header("Content-Type", "text/html");
         res.add_header("HX-Trigger", "attendanceUpdated");
         return res;
     });
