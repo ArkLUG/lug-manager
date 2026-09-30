@@ -1,6 +1,8 @@
 #include "routes/ChapterRoutes.hpp"
+#include "utils/ParseId.hpp"
 #include "utils/AuditDiff.hpp"
 #include "utils/HtmlEscape.hpp"
+#include "utils/JsonEscape.hpp"
 #include <crow/mustache.h>
 #include <sstream>
 #include <unordered_set>
@@ -151,7 +153,7 @@ void register_chapter_routes(LugApp& app, ChapterService& chapters,
             res.add_header("Content-Type", "application/json");
         } catch (const std::exception& e) {
             res.code = 400;
-            res.write(std::string("{\"error\":\"") + e.what() + "\"}");
+            res.write(std::string("{\"error\":\"") + json_escape(e.what()) + "\"}");
             res.add_header("Content-Type", "application/json");
         }
         return res;
@@ -255,7 +257,7 @@ void register_chapter_routes(LugApp& app, ChapterService& chapters,
             res.code = 400; res.write("member_id required"); return res;
         }
 
-        int64_t new_lead_id = std::stoll(mid_raw);
+        int64_t new_lead_id = parse_id(mid_raw);
         chapter_members.upsert(new_lead_id, chapter_id, "lead", ctx.auth.member_id);
 
         // Assign the chapter's lead Discord role if configured
@@ -378,7 +380,7 @@ void register_chapter_routes(LugApp& app, ChapterService& chapters,
             res.add_header("Content-Type", "application/json");
         } catch (const std::exception& e) {
             res.code = 400;
-            res.write(std::string("{\"error\":\"") + e.what() + "\"}");
+            res.write(std::string("{\"error\":\"") + json_escape(e.what()) + "\"}");
             res.add_header("Content-Type", "application/json");
         }
         return res;
@@ -405,7 +407,7 @@ void register_chapter_routes(LugApp& app, ChapterService& chapters,
             res.code = 200;
         } catch (const std::exception& e) {
             res.code = 400;
-            res.write(std::string("{\"error\":\"") + e.what() + "\"}");
+            res.write(std::string("{\"error\":\"") + json_escape(e.what()) + "\"}");
             res.add_header("Content-Type", "application/json");
         }
         return res;
@@ -541,7 +543,8 @@ void register_chapter_routes(LugApp& app, ChapterService& chapters,
             return res;
         }
 
-        int64_t member_id = std::stoll(member_id_str);
+        int64_t member_id = parse_id(member_id_str);
+        if (member_id == 0) { res.code = 400; return res; }
 
         // Only admins can assign lead role
         if (chapter_role == "lead" && !is_admin) {

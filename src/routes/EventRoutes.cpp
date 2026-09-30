@@ -2,6 +2,7 @@
 #include "utils/MarkdownRenderer.hpp"
 #include "utils/AuditDiff.hpp"
 #include "utils/HtmlEscape.hpp"
+#include "utils/ParseId.hpp"
 #include <crow.h>
 #include <crow/mustache.h>
 #include <stdexcept>
@@ -576,7 +577,7 @@ void register_event_routes(LugApp& app, EventService& events, AttendanceService&
         auto& auth_ctx = app.get_context<AuthMiddleware>(req);
         if (auth_ctx.auth.role != "admin") {
             std::string ch_str = get_param("chapter_id");
-            int64_t chapter_id = ch_str.empty() ? 0 : std::stoll(ch_str);
+            int64_t chapter_id = parse_id(ch_str);
             if (chapter_id == 0 || !can_manage_chapter_content(req, res, app, chapter_id, chapter_members)) {
                 if (chapter_id == 0) {
                     res.code = 403;

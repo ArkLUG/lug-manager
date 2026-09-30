@@ -1,6 +1,7 @@
 #include "routes/api/ChapterMembersApiRoutes.hpp"
 #include "routes/api/ApiCommon.hpp"
 #include "routes/api/Serialize.hpp"
+#include "utils/ParseId.hpp"
 #include <crow.h>
 #include <iostream>
 
@@ -24,9 +25,9 @@ void register_chapter_members_api_routes(LugApp& app, ChapterMemberRepository& c
         std::vector<ChapterMember> items;
         try {
             if (chapter_p) {
-                items = chapter_members.find_by_chapter(std::stoll(std::string(chapter_p)));
+                items = chapter_members.find_by_chapter(parse_id(chapter_p));
             } else {
-                items = chapter_members.find_by_member(std::stoll(std::string(member_p)));
+                items = chapter_members.find_by_member(parse_id(member_p));
             }
         } catch (const std::exception&) {
             envelope_error(res, 400, "chapter_id/member_id must be numeric", "invalid_request");
@@ -147,8 +148,8 @@ void register_chapter_members_api_routes(LugApp& app, ChapterMemberRepository& c
         }
 
         try {
-            int64_t member_id  = std::stoll(std::string(member_p));
-            int64_t chapter_id = std::stoll(std::string(chapter_p));
+            int64_t member_id  = parse_id(member_p);
+            int64_t chapter_id = parse_id(chapter_p);
             chapter_members.remove(member_id, chapter_id);
             auto& ctx = app.template get_context<ApiKeyMiddleware>(req);
             audit.log_system("chapter_member.remove", "chapter_member", member_id,

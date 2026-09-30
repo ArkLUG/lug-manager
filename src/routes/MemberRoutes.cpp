@@ -1,5 +1,8 @@
 #include "routes/MemberRoutes.hpp"
 #include "utils/AuditDiff.hpp"
+#include "utils/JsonEscape.hpp"
+#include "utils/HtmlEscape.hpp"
+#include "utils/ParseId.hpp"
 #include <crow.h>
 #include <crow/mustache.h>
 #include <sstream>
@@ -279,7 +282,7 @@ void register_member_routes(LugApp& app, MemberService& members, AttendanceRepos
             res.code = 400;
             res.write(std::string(
                 R"(<div class="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded">)"
-                "Error: ") + e.what() + "</div>");
+                "Error: ") + html_escape(e.what()) + "</div>");
         }
         return res;
     });
@@ -410,7 +413,7 @@ void register_member_routes(LugApp& app, MemberService& members, AttendanceRepos
             res.code = 400;
             res.write(std::string(
                 R"(<div class="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded">)"
-                "Error: ") + e.what() + "</div>");
+                "Error: ") + html_escape(e.what()) + "</div>");
         }
         return res;
     });
@@ -456,7 +459,7 @@ void register_member_routes(LugApp& app, MemberService& members, AttendanceRepos
         try {
             members.update(static_cast<int64_t>(id), updates);
             std::string chapter_str = get_param("chapter_id");
-            int64_t new_chapter_id = chapter_str.empty() ? 0 : std::stoll(chapter_str);
+            int64_t new_chapter_id = parse_id(chapter_str);
             members.set_chapter(static_cast<int64_t>(id), new_chapter_id);
             // Re-read after all changes (including chapter) for accurate diff
             auto after = members.get(static_cast<int64_t>(id));
@@ -498,7 +501,7 @@ void register_member_routes(LugApp& app, MemberService& members, AttendanceRepos
             res.code = 400;
             res.write(std::string(
                 R"(<div class="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded">)"
-                "Error: ") + e.what() + "</div>");
+                "Error: ") + html_escape(e.what()) + "</div>");
         }
         return res;
     });
@@ -544,7 +547,7 @@ void register_member_routes(LugApp& app, MemberService& members, AttendanceRepos
             res.add_header("Content-Type", "application/json");
         } catch (const std::exception& e) {
             res.code = 400;
-            res.write(std::string(R"({"error":")") + e.what() + "\"}");
+            res.write(std::string(R"({"error":")") + json_escape(e.what()) + "\"}");
             res.add_header("Content-Type", "application/json");
         }
         return res;
@@ -565,7 +568,7 @@ void register_member_routes(LugApp& app, MemberService& members, AttendanceRepos
             res.code = 200;
         } catch (const std::exception& e) {
             res.code = 400;
-            res.write(std::string(R"({"error":")") + e.what() + "\"}");
+            res.write(std::string(R"({"error":")") + json_escape(e.what()) + "\"}");
             res.add_header("Content-Type", "application/json");
         }
         return res;
@@ -594,7 +597,7 @@ void register_member_routes(LugApp& app, MemberService& members, AttendanceRepos
             res.code = 200;
         } catch (const std::exception& e) {
             res.code = 400;
-            res.write(std::string(R"({"error":")") + e.what() + "\"}");
+            res.write(std::string(R"({"error":")") + json_escape(e.what()) + "\"}");
         }
         res.add_header("Content-Type", "application/json");
         return res;

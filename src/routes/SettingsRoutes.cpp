@@ -1,4 +1,5 @@
 #include "routes/SettingsRoutes.hpp"
+#include "utils/ParseId.hpp"
 #include "utils/HtmlEscape.hpp"
 #include "utils/JsonEscape.hpp"
 #include <crow/mustache.h>
@@ -154,7 +155,7 @@ void register_settings_routes(LugApp& app, SettingsRepository& settings,
             discord.post_message(channel_id, "🧱 **LUG Manager test announcement** — bot is connected and posting correctly!");
             res.write(R"(<span class="text-green-600 font-medium">✓ Test message sent successfully!</span>)");
         } catch (const std::exception& e) {
-            res.write("<span class=\"text-red-600\">Error: " + std::string(e.what()) + "</span>");
+            res.write("<span class=\"text-red-600\">Error: " + html_escape(e.what()) + "</span>");
         }
         res.add_header("Content-Type", "text/html; charset=utf-8");
         return res;
@@ -313,7 +314,7 @@ void register_settings_routes(LugApp& app, SettingsRepository& settings,
         int64_t member_id = 0;
         std::string change_type, field, old_value;
 
-        if (auto v = body.get("member_id"))  member_id = std::stoll(v);
+        if (auto v = body.get("member_id"))  member_id = parse_id(v);
         if (auto v = body.get("change_type")) change_type = v;
         if (auto v = body.get("field"))       field = v;
         if (auto v = body.get("old_value"))   old_value = v;

@@ -2,6 +2,8 @@
 #include "utils/MarkdownRenderer.hpp"
 #include "utils/AuditDiff.hpp"
 #include "utils/HtmlEscape.hpp"
+#include "utils/JsonEscape.hpp"
+#include "utils/ParseId.hpp"
 #include <crow.h>
 #include <crow/mustache.h>
 #include <map>
@@ -437,7 +439,7 @@ void register_meeting_routes(LugApp& app, MeetingService& meetings, AttendanceSe
         auto& auth_ctx = app.get_context<AuthMiddleware>(req);
         if (auth_ctx.auth.role != "admin") {
             std::string ch_str = get_param("chapter_id");
-            int64_t chapter_id = ch_str.empty() ? 0 : std::stoll(ch_str);
+            int64_t chapter_id = parse_id(ch_str);
             if (chapter_id == 0 || !can_manage_chapter_content(req, res, app, chapter_id, chapter_members)) {
                 if (chapter_id == 0) {
                     res.code = 403;
@@ -490,7 +492,7 @@ void register_meeting_routes(LugApp& app, MeetingService& meetings, AttendanceSe
             res.code = 400;
             res.write(std::string(
                 R"(<div class="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded">Error: )")
-                + e.what() + "</div>");
+                + html_escape(e.what()) + "</div>");
         }
         return res;
     });
@@ -580,7 +582,7 @@ void register_meeting_routes(LugApp& app, MeetingService& meetings, AttendanceSe
                 res.code = 400;
                 res.write(std::string(
                     R"(<div class="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded">Error: )")
-                    + e.what() + "</div>");
+                    + html_escape(e.what()) + "</div>");
             }
         } else {
             auto body = crow::json::load(req.body);
@@ -607,7 +609,7 @@ void register_meeting_routes(LugApp& app, MeetingService& meetings, AttendanceSe
                 res.add_header("Content-Type", "application/json");
             } catch (const std::exception& e) {
                 res.code = 400;
-                res.write(std::string(R"({"error":")") + e.what() + "\"}");
+                res.write(std::string(R"({"error":")") + json_escape(e.what()) + "\"}");
                 res.add_header("Content-Type", "application/json");
             }
         }
@@ -660,7 +662,7 @@ void register_meeting_routes(LugApp& app, MeetingService& meetings, AttendanceSe
             res.code = 200;
         } catch (const std::exception& e) {
             res.code = 400;
-            res.write(std::string(R"({"error":")") + e.what() + "\"}");
+            res.write(std::string(R"({"error":")") + json_escape(e.what()) + "\"}");
             res.add_header("Content-Type", "application/json");
         }
         return res;
@@ -687,7 +689,7 @@ void register_meeting_routes(LugApp& app, MeetingService& meetings, AttendanceSe
             res.write(R"({"success":true})");
         } catch (const std::exception& e) {
             res.code = 400;
-            res.write(std::string(R"({"error":")") + e.what() + "\"}");
+            res.write(std::string(R"({"error":")") + json_escape(e.what()) + "\"}");
         }
         res.add_header("Content-Type", "application/json");
         return res;
