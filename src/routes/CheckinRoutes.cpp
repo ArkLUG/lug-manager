@@ -344,9 +344,25 @@ void register_checkin_routes(LugApp& app,
 
     // GET /checkin/<token>/search?q= — search members for the select dropdown
     CROW_ROUTE(app, "/checkin/<str>/search")([&](const crow::request& req, const std::string& token) {
-        (void)token; // required by route pattern but not used
         crow::response res;
         res.add_header("Content-Type", "text/html; charset=utf-8");
+
+        // Only answer for a token that currently resolves to a check-in the
+        // same way GET /checkin/<token> does - this route is unauthenticated,
+        // so without the check it was an open member-directory search.
+        bool token_ok = false;
+        if (auto mtg = meeting_repo.find_by_checkin_token(token)) {
+            token_ok = !mtg->is_virtual;
+        } else if (auto ev = event_repo.find_by_checkin_token(token)) {
+            token_ok = attendance.event_day_repo()
+                           .find_by_event_and_date(ev->id, AttendanceService::today_ymd())
+                           .has_value();
+        }
+        if (!token_ok) {
+            res.code = 404;
+            res.write(R"(<option value="">Invalid check-in link</option>)");
+            return res;
+        }
 
         auto qs = crow::query_string(req.url_params);
         const char* q_raw = qs.get("q");

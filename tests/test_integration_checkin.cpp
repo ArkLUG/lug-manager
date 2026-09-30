@@ -219,10 +219,11 @@ TEST_F(IntegrationTest, CheckinSearchEndpoint) {
     expect_contains(r, "Admin");
 }
 
-TEST_F(IntegrationTest, CheckinSearchTooShort) {
-    auto r = GET("/checkin/sometoken/search?q=A");
-    EXPECT_EQ(r.code, 200);
-    expect_contains(r, "at least 2 characters");
+TEST_F(IntegrationTest, CheckinSearchInvalidTokenRejected) {
+    // Unauthenticated route - a bogus token must not expose the member list.
+    auto r = GET("/checkin/sometoken/search?q=Admin");
+    EXPECT_EQ(r.code, 404);
+    EXPECT_EQ(r.body.find("Admin"), std::string::npos);
 }
 
 TEST_F(IntegrationTest, CheckinMemberNonAdminForbidden) {
