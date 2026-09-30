@@ -3,6 +3,57 @@
 #include <crow.h>
 #include <crow/mustache.h>
 #include <sstream>
+#include <ctime>
+#include <optional>
+
+namespace {
+
+// A check-in token resolved to the entity it currently admits check-ins for.
+struct CheckinTarget {
+    std::string entity_type; // "meeting" | "event"
+    int64_t     entity_id = 0;
+    std::string title, date, location;
+};
+
+// Server-local date offset by `days` as YYYY-MM-DD (same clock as
+// AttendanceService::today_ymd()).
+std::string ymd_offset(int days) {
+    std::time_t t = std::time(nullptr) + static_cast<std::time_t>(days) * 86400;
+    std::tm tm{};
+    localtime_r(&t, &tm);
+    char buf[11];
+    std::snprintf(buf, sizeof(buf), "%04d-%02d-%02d", tm.tm_year + 1900, tm.tm_mon + 1, tm.tm_mday);
+    return buf;
+}
+
+// Single source of truth for "does this token admit check-ins right now?",
+// shared by every public /checkin route. A token is only live:
+//  - meetings: not virtual, not cancelled, and today is the meeting's date
+//    (+/- 1 day, since meeting times are LUG-local and the server clock may
+//    be UTC);
+//  - events:   not cancelled, and today is one of the event's days.
+// Without this a leaked/old QR code worked forever.
+std::optional<CheckinTarget> resolve_checkin(const std::string& token,
+                                             MeetingRepository& meeting_repo,
+                                             EventRepository& event_repo,
+                                             AttendanceService& attendance) {
+    if (auto mtg = meeting_repo.find_by_checkin_token(token)) {
+        if (mtg->is_virtual || mtg->status == "cancelled") return std::nullopt;
+        std::string date = mtg->start_time.substr(0, 10);
+        if (date != ymd_offset(0) && date != ymd_offset(-1) && date != ymd_offset(1))
+            return std::nullopt;
+        return CheckinTarget{"meeting", mtg->id, mtg->title, mtg->start_time, mtg->location};
+    }
+    if (auto ev = event_repo.find_by_checkin_token(token)) {
+        if (ev->status == "cancelled") return std::nullopt;
+        if (!attendance.event_day_repo().find_by_event_and_date(ev->id, AttendanceService::today_ymd()))
+            return std::nullopt;
+        return CheckinTarget{"event", ev->id, ev->title, ev->start_time, ev->location};
+    }
+    return std::nullopt;
+}
+
+} // namespace
 
 void register_checkin_routes(LugApp& app,
                               MeetingRepository& meeting_repo,
@@ -13,7 +64,7 @@ void register_checkin_routes(LugApp& app,
                               MemberService& members,
                               MemberRepository& member_repo,
                               ChapterMemberRepository& chapter_members,
-                              DiscordOAuth& oauth,
+                              DiscordOAuth& /*oauth*/,
                               AuditService& audit) {
 
     // POST /meetings/<id>/generate-checkin — generate or return existing QR check-in token
@@ -109,49 +160,8 @@ void register_checkin_routes(LugApp& app,
         crow::response res;
         res.add_header("Content-Type", "text/html; charset=utf-8");
 
-        // Look up meeting or event by token
-        std::string entity_type, entity_title, entity_date, entity_location;
-        int64_t entity_id = 0;
-        bool is_virtual_meeting = false;
-
-        auto mtg = meeting_repo.find_by_checkin_token(token);
-        if (mtg) {
-            if (mtg->is_virtual) {
-                res.code = 404;
-                auto tmpl = crow::mustache::load("checkin/_page.html");
-                crow::mustache::context ctx;
-                ctx["not_found"] = true;
-                res.write(tmpl.render(ctx).dump());
-                return res;
-            }
-            entity_type = "meeting";
-            entity_id = mtg->id;
-            entity_title = mtg->title;
-            entity_date = mtg->start_time;
-            entity_location = mtg->location;
-        } else {
-            auto ev = event_repo.find_by_checkin_token(token);
-            if (ev) {
-                // For events, require today to be within the event's day range.
-                std::string today = AttendanceService::today_ymd();
-                auto day = attendance.event_day_repo().find_by_event_and_date(ev->id, today);
-                if (!day) {
-                    res.code = 404;
-                    auto tmpl = crow::mustache::load("checkin/_page.html");
-                    crow::mustache::context ctx;
-                    ctx["not_found"] = true;
-                    res.write(tmpl.render(ctx).dump());
-                    return res;
-                }
-                entity_type = "event";
-                entity_id = ev->id;
-                entity_title = ev->title;
-                entity_date = ev->start_time;
-                entity_location = ev->location;
-            }
-        }
-
-        if (entity_id == 0) {
+        auto target = resolve_checkin(token, meeting_repo, event_repo, attendance);
+        if (!target) {
             res.code = 404;
             auto tmpl = crow::mustache::load("checkin/_page.html");
             crow::mustache::context ctx;
@@ -159,6 +169,11 @@ void register_checkin_routes(LugApp& app,
             res.write(tmpl.render(ctx).dump());
             return res;
         }
+        const std::string& entity_type     = target->entity_type;
+        const int64_t      entity_id       = target->entity_id;
+        const std::string& entity_title    = target->title;
+        const std::string& entity_date     = target->date;
+        const std::string& entity_location = target->location;
 
         // Check if user just came back from Discord OAuth
         auto qs = crow::query_string(req.url_params);
@@ -188,7 +203,6 @@ void register_checkin_routes(LugApp& app,
         ctx["entity_date"] = entity_date;
         ctx["entity_location"] = entity_location;
         ctx["is_meeting"] = (entity_type == "meeting");
-        ctx["is_virtual_meeting"] = is_virtual_meeting;
 
         if (!checkin_msg.empty()) {
             ctx["checkin_success"] = true;
@@ -200,16 +214,9 @@ void register_checkin_routes(LugApp& app,
         }
 
         // Build Discord OAuth URL with checkin state
-        std::string redirect_uri;
-        {
-            std::string proto = req.get_header_value("X-Forwarded-Proto");
-            if (proto.empty()) proto = "http";
-            std::string host = req.get_header_value("X-Forwarded-Host");
-            if (host.empty()) host = req.get_header_value("Host");
-            if (host.empty()) host = "localhost";
-            redirect_uri = proto + "://" + host + "/auth/callback";
-        }
-        ctx["discord_oauth_url"] = oauth.get_auth_url("checkin:" + token, redirect_uri);
+        // /auth/login mints the CSRF state nonce + cookie and carries the
+        // token through OAuth so the callback lands back here.
+        ctx["discord_oauth_url"] = "/auth/login?checkin=" + token;
 
         auto tmpl = crow::mustache::load("checkin/_page.html");
         res.write(tmpl.render(ctx).dump());
@@ -228,7 +235,8 @@ void register_checkin_routes(LugApp& app,
             res.write(R"(<div class="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded text-sm">Please select a member.</div>)");
             return res;
         }
-        int64_t member_id = std::stoll(mid_raw);
+        int64_t member_id = 0;
+        try { member_id = std::stoll(mid_raw); } catch (...) {}
 
         // Verify the member exists
         auto member = member_repo.find_by_id(member_id);
@@ -238,19 +246,14 @@ void register_checkin_routes(LugApp& app,
         }
 
         // Find entity
-        std::string entity_type;
-        std::string entity_title;
-        int64_t entity_id = 0;
-        auto mtg = meeting_repo.find_by_checkin_token(token);
-        if (mtg) { entity_type = "meeting"; entity_id = mtg->id; entity_title = mtg->title; }
-        else {
-            auto ev = event_repo.find_by_checkin_token(token);
-            if (ev) { entity_type = "event"; entity_id = ev->id; entity_title = ev->title; }
-        }
-        if (entity_id == 0) {
-            res.write(R"(<div class="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded text-sm">Invalid check-in link.</div>)");
+        auto target = resolve_checkin(token, meeting_repo, event_repo, attendance);
+        if (!target) {
+            res.write(R"(<div class="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded text-sm">This check-in link is not active.</div>)");
             return res;
         }
+        const std::string& entity_type  = target->entity_type;
+        const std::string& entity_title = target->title;
+        const int64_t      entity_id    = target->entity_id;
 
         // Check for duplicate
         if (attendance.is_checked_in(member_id, entity_type, entity_id)) {
@@ -289,19 +292,14 @@ void register_checkin_routes(LugApp& app,
         }
 
         // Find entity
-        std::string entity_type;
-        std::string entity_title;
-        int64_t entity_id = 0;
-        auto mtg = meeting_repo.find_by_checkin_token(token);
-        if (mtg) { entity_type = "meeting"; entity_id = mtg->id; entity_title = mtg->title; }
-        else {
-            auto ev = event_repo.find_by_checkin_token(token);
-            if (ev) { entity_type = "event"; entity_id = ev->id; entity_title = ev->title; }
-        }
-        if (entity_id == 0) {
-            res.write(R"(<div class="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded text-sm">Invalid check-in link.</div>)");
+        auto target = resolve_checkin(token, meeting_repo, event_repo, attendance);
+        if (!target) {
+            res.write(R"(<div class="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded text-sm">This check-in link is not active.</div>)");
             return res;
         }
+        const std::string& entity_type  = target->entity_type;
+        const std::string& entity_title = target->title;
+        const int64_t      entity_id    = target->entity_id;
 
         // Duplicate detection: search for existing members with same first+last name
         auto all = member_repo.find_all();
@@ -350,14 +348,7 @@ void register_checkin_routes(LugApp& app,
         // Only answer for a token that currently resolves to a check-in the
         // same way GET /checkin/<token> does - this route is unauthenticated,
         // so without the check it was an open member-directory search.
-        bool token_ok = false;
-        if (auto mtg = meeting_repo.find_by_checkin_token(token)) {
-            token_ok = !mtg->is_virtual;
-        } else if (auto ev = event_repo.find_by_checkin_token(token)) {
-            token_ok = attendance.event_day_repo()
-                           .find_by_event_and_date(ev->id, AttendanceService::today_ymd())
-                           .has_value();
-        }
+        bool token_ok = resolve_checkin(token, meeting_repo, event_repo, attendance).has_value();
         if (!token_ok) {
             res.code = 404;
             res.write(R"(<option value="">Invalid check-in link</option>)");

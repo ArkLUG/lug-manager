@@ -1,14 +1,26 @@
 #include "integration_test_base.hpp"
+#include <ctime>
 
 // ═══════════════════════════════════════════════════════════════════════════
 // QR Check-in — token generation, public page, search, check-in flows
 // ═══════════════════════════════════════════════════════════════════════════
 
+// Public check-in only admits a meeting's token on the meeting's date, so
+// these tests schedule meetings for today (server-local, like the route).
+static std::string today_at(const char* hms) {
+    std::time_t t = std::time(nullptr);
+    std::tm tm{};
+    localtime_r(&t, &tm);
+    char buf[32];
+    std::snprintf(buf, sizeof(buf), "%04d-%02d-%02dT%s", tm.tm_year + 1900, tm.tm_mon + 1, tm.tm_mday, hms);
+    return buf;
+}
+
 TEST_F(IntegrationTest, GenerateCheckinTokenMeeting) {
     Meeting m;
     m.title = "Checkin Token Meeting";
-    m.start_time = "2026-10-01T19:00:00";
-    m.end_time = "2026-10-01T21:00:00";
+    m.start_time = today_at("19:00:00");
+    m.end_time = today_at("21:00:00");
     m.location = "Test Loc";
     m.scope = "lug_wide";
     auto created = meeting_svc->create(m);
@@ -39,8 +51,8 @@ TEST_F(IntegrationTest, GenerateCheckinTokenEvent) {
 TEST_F(IntegrationTest, GenerateCheckinTokenReusesExisting) {
     Meeting m;
     m.title = "Reuse Token Meeting";
-    m.start_time = "2026-10-02T19:00:00";
-    m.end_time = "2026-10-02T21:00:00";
+    m.start_time = today_at("19:00:00");
+    m.end_time = today_at("21:00:00");
     m.location = "Test";
     m.scope = "lug_wide";
     auto created = meeting_svc->create(m);
@@ -57,8 +69,8 @@ TEST_F(IntegrationTest, GenerateCheckinTokenReusesExisting) {
 TEST_F(IntegrationTest, VirtualMeetingNoCheckin) {
     Meeting m;
     m.title = "Virtual No Checkin";
-    m.start_time = "2026-10-03T19:00:00";
-    m.end_time = "2026-10-03T21:00:00";
+    m.start_time = today_at("19:00:00");
+    m.end_time = today_at("21:00:00");
     m.location = "Virtual (Discord)";
     m.is_virtual = true;
     m.scope = "lug_wide";
@@ -71,8 +83,8 @@ TEST_F(IntegrationTest, VirtualMeetingNoCheckin) {
 TEST_F(IntegrationTest, CheckinPageLoads) {
     Meeting m;
     m.title = "Checkin Page Meeting";
-    m.start_time = "2026-10-04T19:00:00";
-    m.end_time = "2026-10-04T21:00:00";
+    m.start_time = today_at("19:00:00");
+    m.end_time = today_at("21:00:00");
     m.location = "Test";
     m.scope = "lug_wide";
     auto created = meeting_svc->create(m);
@@ -101,8 +113,8 @@ TEST_F(IntegrationTest, CheckinPageInvalidToken) {
 TEST_F(IntegrationTest, CheckinSelectMember) {
     Meeting m;
     m.title = "Select Checkin Meeting";
-    m.start_time = "2026-10-05T19:00:00";
-    m.end_time = "2026-10-05T21:00:00";
+    m.start_time = today_at("19:00:00");
+    m.end_time = today_at("21:00:00");
     m.location = "Test";
     m.scope = "lug_wide";
     auto created = meeting_svc->create(m);
@@ -124,8 +136,8 @@ TEST_F(IntegrationTest, CheckinSelectMember) {
 TEST_F(IntegrationTest, CheckinSelectDuplicate) {
     Meeting m;
     m.title = "Dup Checkin Meeting";
-    m.start_time = "2026-10-06T19:00:00";
-    m.end_time = "2026-10-06T21:00:00";
+    m.start_time = today_at("19:00:00");
+    m.end_time = today_at("21:00:00");
     m.location = "Test";
     m.scope = "lug_wide";
     auto created = meeting_svc->create(m);
@@ -148,8 +160,8 @@ TEST_F(IntegrationTest, CheckinSelectDuplicate) {
 TEST_F(IntegrationTest, CheckinManualNewMember) {
     Meeting m;
     m.title = "Manual Checkin Meeting";
-    m.start_time = "2026-10-07T19:00:00";
-    m.end_time = "2026-10-07T21:00:00";
+    m.start_time = today_at("19:00:00");
+    m.end_time = today_at("21:00:00");
     m.location = "Test";
     m.scope = "lug_wide";
     auto created = meeting_svc->create(m);
@@ -180,8 +192,8 @@ TEST_F(IntegrationTest, CheckinManualNewMember) {
 TEST_F(IntegrationTest, CheckinManualExistingMember) {
     Meeting m;
     m.title = "Existing Manual Meeting";
-    m.start_time = "2026-10-08T19:00:00";
-    m.end_time = "2026-10-08T21:00:00";
+    m.start_time = today_at("19:00:00");
+    m.end_time = today_at("21:00:00");
     m.location = "Test";
     m.scope = "lug_wide";
     auto created = meeting_svc->create(m);
@@ -203,8 +215,8 @@ TEST_F(IntegrationTest, CheckinManualExistingMember) {
 TEST_F(IntegrationTest, CheckinSearchEndpoint) {
     Meeting m;
     m.title = "Search Checkin Meeting";
-    m.start_time = "2026-10-09T19:00:00";
-    m.end_time = "2026-10-09T21:00:00";
+    m.start_time = today_at("19:00:00");
+    m.end_time = today_at("21:00:00");
     m.location = "Test";
     m.scope = "lug_wide";
     auto created = meeting_svc->create(m);
@@ -229,8 +241,8 @@ TEST_F(IntegrationTest, CheckinSearchInvalidTokenRejected) {
 TEST_F(IntegrationTest, CheckinMemberNonAdminForbidden) {
     Meeting m;
     m.title = "Forbidden Checkin";
-    m.start_time = "2026-10-10T19:00:00";
-    m.end_time = "2026-10-10T21:00:00";
+    m.start_time = today_at("19:00:00");
+    m.end_time = today_at("21:00:00");
     m.location = "Test";
     m.scope = "lug_wide";
     auto created = meeting_svc->create(m);
@@ -260,4 +272,24 @@ TEST_F(IntegrationTest, CheckinEventFlow) {
     EXPECT_EQ(r.code, 200);
     expect_contains(r, "checked in successfully");
     EXPECT_TRUE(attendance_svc->is_checked_in(admin_member_id, "event", created.id));
+}
+
+// A meeting's QR link must stop working once the meeting date has passed -
+// it used to admit check-ins (of any member) forever.
+TEST_F(IntegrationTest, CheckinTokenForPastMeetingIsRejected) {
+    Meeting m;
+    m.title = "Long Past Meeting";
+    m.start_time = "2020-01-01T19:00:00";
+    m.end_time = "2020-01-01T21:00:00";
+    m.location = "Test";
+    m.scope = "lug_wide";
+    auto created = meeting_svc->create(m);
+    meeting_repo->update_checkin_token(created.id, "11111111-2222-4333-8444-555555555555");
+
+    auto page = GET("/checkin/11111111-2222-4333-8444-555555555555");
+    EXPECT_EQ(page.code, 404);
+    auto sel = POST("/checkin/11111111-2222-4333-8444-555555555555/select",
+                    "member_id=" + std::to_string(regular_member_id));
+    expect_contains(sel, "not active");
+    EXPECT_FALSE(attendance_repo->is_checked_in(regular_member_id, "meeting", created.id));
 }
