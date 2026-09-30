@@ -3,8 +3,11 @@
 #include <crow.h>
 #include <crow/mustache.h>
 #include <sstream>
+#include <chrono>
 #include <ctime>
+#include <mutex>
 #include <optional>
+#include <unordered_map>
 
 namespace {
 
@@ -52,6 +55,30 @@ std::optional<CheckinTarget> resolve_checkin(const std::string& token,
     }
     return std::nullopt;
 }
+
+// Caps how many brand-new member records one check-in link can create per
+// hour. /manual is unauthenticated, so without a cap anyone holding a live
+// QR link could flood the member list. Generous enough for a big event
+// walk-in rush; in-memory (resets on restart), which is fine for this.
+class NewMemberLimiter {
+public:
+    static constexpr int kPerHour = 60;
+
+    bool allow(const std::string& token) {
+        std::lock_guard<std::mutex> lock(mutex_);
+        auto now = std::chrono::steady_clock::now();
+        auto& w = windows_[token];
+        if (now - w.start > std::chrono::hours(1)) w = {now, 0};
+        if (w.count >= kPerHour) return false;
+        ++w.count;
+        return true;
+    }
+
+private:
+    struct Window { std::chrono::steady_clock::time_point start{}; int count = 0; };
+    std::mutex mutex_;
+    std::unordered_map<std::string, Window> windows_;
+};
 
 } // namespace
 
@@ -324,6 +351,12 @@ void register_checkin_routes(LugApp& app,
         }
 
         // No match — create new member and check in
+        static NewMemberLimiter new_member_limiter;
+        if (!new_member_limiter.allow(token)) {
+            res.code = 429;
+            res.write(R"(<div class="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded text-sm">Too many new sign-ups on this link right now. Please ask an organizer to check you in.</div>)");
+            return res;
+        }
         Member newm;
         newm.first_name = first;
         newm.last_name = last;
