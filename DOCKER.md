@@ -80,6 +80,7 @@ Only secrets need to be in `.env` — everything else is configured from the Set
 | `DISCORD_CLIENT_ID` | Yes | Discord OAuth2 client ID |
 | `DISCORD_CLIENT_SECRET` | Yes | Discord OAuth2 client secret |
 | `DISCORD_REDIRECT_URI` | Yes | OAuth2 callback URL (e.g. `https://lug.example.com/auth/callback`) |
+| `LUG_PUBLIC_URL` | Recommended | Public base URL (e.g. `https://lug.example.com`). Login redirects are built from it instead of the request's `Host`/`X-Forwarded-*` headers, and cookies are marked `Secure` when it is `https://`. If unset, those headers are used. |
 | `BOOTSTRAP_ADMIN_DISCORD_ID` | First run | Your Discord user ID — auto-creates admin account |
 | `LUG_PORT` | No | Server port (default: `8080`) |
 | `LUG_DB_PATH` | No | Database path (default: `/app/data/lug.db`) |
@@ -92,10 +93,12 @@ The container uses `/app/data` as its data directory (SQLite database, plus an a
 - **docker compose**: uses a named volume `lug-data`
 - **docker run**: mount a volume or bind mount to `/app/data`
 
+The server runs as the unprivileged `lug` user. The entrypoint starts as root only to `chown` `/app/data` to that user (so volumes created by older, root-running images keep working), then drops privileges before starting the app. Don't start the container with `--user`: the entrypoint then can't fix the volume's ownership.
+
 ### Backup the database:
 ```bash
 # docker compose
-docker compose exec lug-manager sqlite3 /app/data/lug.db ".backup '/app/data/backup.db'"
+docker compose exec -u lug lug-manager sqlite3 /app/data/lug.db ".backup '/app/data/backup.db'"
 docker compose cp lug-manager:/app/data/backup.db ./backup.db
 
 # docker run

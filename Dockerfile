@@ -45,8 +45,12 @@ RUN apt-get update && \
     ca-certificates \
     && rm -rf /var/lib/apt/lists/*
 
+# Unprivileged runtime user - see docker-entrypoint.sh
+RUN groupadd --system lug && useradd --system --gid lug --home-dir /app --shell /usr/sbin/nologin lug
+
 WORKDIR /app
 
+COPY docker-entrypoint.sh /usr/local/bin/docker-entrypoint.sh
 COPY --from=builder /build/build/lug_manager /app/lug_manager
 COPY --from=builder /build/src/templates     /app/src/templates
 COPY --from=builder /build/src/static        /app/src/static
@@ -60,4 +64,5 @@ VOLUME /app/data
 
 EXPOSE 8080
 
+ENTRYPOINT ["/usr/local/bin/docker-entrypoint.sh"]
 CMD ["./lug_manager"]
