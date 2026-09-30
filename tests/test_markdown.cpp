@@ -75,3 +75,21 @@ TEST(MarkdownRenderer, RawHtmlInlineSpanIsEscapedNotPassedThrough) {
     EXPECT_EQ(html.find("<img"), std::string::npos);
     EXPECT_NE(html.find("&lt;img"), std::string::npos);
 }
+
+// md4c passes link destinations through verbatim - script-capable schemes
+// must not survive as clickable links (notes render unescaped).
+TEST(MarkdownRenderer, JavascriptLinkIsNeutralized) {
+    auto html = render_markdown("[click](javascript:alert(1)) ![i](JaVaScRiPt:alert(2)) [d](data:text/html,x)");
+    EXPECT_EQ(html.find("javascript:"), std::string::npos);
+    EXPECT_EQ(html.find("JaVaScRiPt:"), std::string::npos);
+    EXPECT_EQ(html.find("data:"), std::string::npos);
+    EXPECT_NE(html.find("href=\"#\""), std::string::npos);
+}
+
+TEST(MarkdownRenderer, SafeLinksAreKept) {
+    auto html = render_markdown("[a](https://example.com/x?y=1) [b](/events/3) [c](mailto:a@b.c) [d](#top)");
+    EXPECT_NE(html.find("href=\"https://example.com/x?y=1\""), std::string::npos);
+    EXPECT_NE(html.find("href=\"/events/3\""), std::string::npos);
+    EXPECT_NE(html.find("href=\"mailto:a@b.c\""), std::string::npos);
+    EXPECT_NE(html.find("href=\"#top\""), std::string::npos);
+}
