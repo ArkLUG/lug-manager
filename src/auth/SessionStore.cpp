@@ -41,6 +41,19 @@ static bool is_expired(const std::string& expires_at) {
 // SessionStore
 // ---------------------------------------------------------------------------
 
+// Overwrites the session's role/display name with the member's current values.
+// Returns false if the member no longer exists. Done on every lookup (one PK
+// query) so a role change or member deletion takes effect immediately instead
+// of lingering for the session's 24h lifetime.
+static bool refresh_from_member(SqliteDatabase& db, Session& s) {
+    auto stmt = db.prepare("SELECT role, display_name FROM members WHERE id=?");
+    stmt.bind(1, s.member_id);
+    if (!stmt.step()) return false;
+    s.role         = stmt.col_text(0);
+    s.display_name = stmt.col_text(1);
+    return true;
+}
+
 SessionStore::SessionStore(SqliteDatabase& db) : db_(db) {
     // Ensure the sessions table exists
     db_.execute(R"(
@@ -114,6 +127,10 @@ std::optional<Session> SessionStore::find(const std::string& token) {
             del.step();
             return std::nullopt;
         }
+        if (!refresh_from_member(db_, it->second)) {
+            cache_.erase(it);
+            return std::nullopt;
+        }
         return it->second;
     }
 
@@ -131,12 +148,6 @@ std::optional<Session> SessionStore::find(const std::string& token) {
     s.role       = stmt.col_text(2);
     s.expires_at = stmt.col_text(3);
     s.created_at = stmt.col_text(4);
-    // Look up display name from members table
-    {
-        auto m_stmt = db_.prepare("SELECT display_name FROM members WHERE id=?");
-        m_stmt.bind(1, s.member_id);
-        if (m_stmt.step()) s.display_name = m_stmt.col_text(0);
-    }
 
     if (is_expired(s.expires_at)) {
         // Remove expired session
@@ -146,6 +157,7 @@ std::optional<Session> SessionStore::find(const std::string& token) {
         return std::nullopt;
     }
 
+    if (!refresh_from_member(db_, s)) return std::nullopt;
     cache_[s.token] = s;
     return s;
 }
@@ -163,7 +175,9 @@ void SessionStore::purge_expired() {
     std::lock_guard<std::mutex> lock(mutex_);
 
     // Remove expired sessions from DB
-    auto stmt = db_.prepare("DELETE FROM sessions WHERE expires_at < datetime('now')");
+    // expires_at is stored as YYYY-MM-DDTHH:MM:SS; compare in the same format
+    // (datetime('now') uses a space, which never sorts below 'T' same-day).
+    auto stmt = db_.prepare("DELETE FROM sessions WHERE expires_at < strftime('%Y-%m-%dT%H:%M:%S','now')");
     stmt.step();
 
     // Clean up expired entries from in-memory cache
