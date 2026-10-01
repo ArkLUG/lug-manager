@@ -37,6 +37,9 @@ public:
     std::string col_text(int idx) const;
     bool        col_bool(int idx) const;
     bool        col_is_null(int idx) const;
+    int         col_count() const;
+    std::string col_name(int idx) const;
+    bool        col_is_int(int idx) const;
 
     void reset();
 

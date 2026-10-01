@@ -7,7 +7,8 @@ void register_all_routes(LugApp& app, Services& svc) {
     register_meeting_routes(app, svc.meetings, svc.attendance, svc.chapter_members, svc.chapters, svc.discord, svc.audit);
     register_event_routes(app, svc.events, svc.attendance, svc.chapter_members, svc.discord, svc.members, svc.meetings, svc.chapters, svc.audit);
     if (!svc.rsvps) svc.rsvps = std::make_shared<RsvpRepository>(svc.attendance_repo.db());
-    register_rsvp_routes(app, svc.events, svc.rsvps, svc.chapter_members, svc.audit);
+    register_rsvp_routes(app, svc.events, svc.rsvps, svc.chapter_members, svc.audit,
+                         svc.member_repo, svc.discord, svc.attendance_repo.db());
     if (!svc.displays) svc.displays = std::make_shared<DisplayRequestRepository>(svc.attendance_repo.db());
     register_display_routes(app, svc.events, svc.displays, svc.chapter_members, svc.audit);
     if (!svc.dues) svc.dues = std::make_shared<DuesRepository>(svc.attendance_repo.db());
@@ -24,6 +25,7 @@ void register_all_routes(LugApp& app, Services& svc) {
     if (!svc.photos) svc.photos = std::make_shared<PhotoStore>(svc.data_dir);
     register_gallery_routes(app, svc.attendance_repo.db(), svc.photos, svc.events, svc.chapter_members,
                             svc.discord, svc.audit);
+    register_account_routes(app, svc.attendance_repo.db(), svc.members, svc.photos, svc.audit);
     register_series_routes(app, svc.series, svc.chapters, svc.chapter_members, svc.audit);
     if (!svc.backups) svc.backups = std::make_shared<BackupService>(svc.attendance_repo.db(), svc.data_dir);
     register_backup_routes(app, svc.backups, svc.settings, svc.audit);

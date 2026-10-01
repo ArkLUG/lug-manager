@@ -2,6 +2,7 @@
 #include "routes/EventAccess.hpp"
 #include "utils/LocalTime.hpp"
 #include "middleware/ApiKeyMiddleware.hpp"
+#include "repositories/NotificationPrefs.hpp"
 #include <crow/mustache.h>
 
 bool rsvp_open(const LugEvent& ev) {
@@ -63,11 +64,24 @@ std::string render_panel(const crow::request& req, LugApp& app, const LugEvent& 
     return crow::mustache::load("events/_rsvp.html").render(ctx).dump();
 }
 
+// Tell a member who just moved off the waitlist (unless they opted out).
+void notify_promoted(const LugEvent& ev, int64_t member_id, MemberRepository& members,
+                     DiscordClient& discord, SqliteDatabase& db) {
+    if (!NotificationPrefs(db).wants(member_id, "waitlist")) return;
+    auto m = members.find_by_id(member_id);
+    if (!m || m->discord_user_id.empty()) return;
+    discord.send_dm_async(m->discord_user_id,
+        "\U0001F389 A spot opened up for **" + ev.title + "** (" +
+        DiscordClient::friendly_time(ev.start_time, discord.get_timezone()) +
+        ") - you're off the waitlist and now going. If you can't make it, please cancel your RSVP so the next person gets the spot.");
+}
+
 } // namespace
 
 void register_rsvp_routes(LugApp& app, EventService& events,
                           std::shared_ptr<RsvpRepository> rsvps,
-                          ChapterMemberRepository& chapter_members, AuditService& audit) {
+                          ChapterMemberRepository& chapter_members, AuditService& audit,
+                          MemberRepository& members, DiscordClient& discord, SqliteDatabase& db) {
 
     // GET /events/<id>/rsvp - RSVP panel fragment (event detail page)
     CROW_ROUTE(app, "/events/<int>/rsvp")([&app, &events, rsvps, &chapter_members](
@@ -83,7 +97,7 @@ void register_rsvp_routes(LugApp& app, EventService& events,
 
     // POST /events/<id>/rsvp - toggle the current member's RSVP
     CROW_ROUTE(app, "/events/<int>/rsvp").methods("POST"_method)(
-        [&app, &events, rsvps, &chapter_members, &audit](const crow::request& req, int id) {
+        [&app, &events, rsvps, &chapter_members, &audit, &members, &discord, &db](const crow::request& req, int id) {
         crow::response res;
         if (!require_auth(req, res, app)) return res;
         auto ev = events.get(id);
@@ -95,9 +109,11 @@ void register_rsvp_routes(LugApp& app, EventService& events,
         if (rsvps->status_of(ev->id, a.member_id)) {
             auto promoted = rsvps->cancel(ev->id, a.member_id, ev->max_attendees);
             audit.log(req, app, "event.rsvp_cancel", "event", ev->id, ev->title, "Cancelled RSVP");
-            if (promoted)
+            if (promoted) {
                 audit.log(req, app, "event.rsvp_promoted", "event", ev->id, ev->title,
                           "Member " + std::to_string(*promoted) + " moved off the waitlist");
+                notify_promoted(*ev, *promoted, members, discord, db);
+            }
             flash = "Your RSVP was cancelled.";
         } else if (!rsvp_open(*ev)) {
             res.code = 409;
@@ -115,7 +131,7 @@ void register_rsvp_routes(LugApp& app, EventService& events,
 
     // POST /events/<id>/rsvp/<member_id>/remove - managers remove someone
     CROW_ROUTE(app, "/events/<int>/rsvp/<int>/remove").methods("POST"_method)(
-        [&app, &events, rsvps, &chapter_members, &audit](const crow::request& req, int id, int member_id) {
+        [&app, &events, rsvps, &chapter_members, &audit, &members, &discord, &db](const crow::request& req, int id, int member_id) {
         crow::response res;
         if (!require_auth(req, res, app)) return res;
         auto ev = events.get(id);
@@ -124,9 +140,11 @@ void register_rsvp_routes(LugApp& app, EventService& events,
         auto promoted = rsvps->cancel(ev->id, member_id, ev->max_attendees);
         audit.log(req, app, "event.rsvp_remove", "event", ev->id, ev->title,
                   "Removed RSVP of member " + std::to_string(member_id));
-        if (promoted)
+        if (promoted) {
             audit.log(req, app, "event.rsvp_promoted", "event", ev->id, ev->title,
                       "Member " + std::to_string(*promoted) + " moved off the waitlist");
+            notify_promoted(*ev, *promoted, members, discord, db);
+        }
         res.add_header("Content-Type", "text/html; charset=utf-8");
         res.add_header("HX-Trigger", "rsvpUpdated");
         res.write(render_panel(req, app, *ev, *rsvps, chapter_members));

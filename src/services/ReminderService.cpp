@@ -1,4 +1,5 @@
 #include "services/ReminderService.hpp"
+#include "repositories/NotificationPrefs.hpp"
 #include <iostream>
 
 ReminderService::ReminderService(SqliteDatabase& db, MeetingRepository& meetings,
@@ -57,8 +58,9 @@ ReminderService::Result ReminderService::run_once(std::time_t now) {
         if (discord_.sync_post_message(channel, msg)) ++r.events;
 
         if (dm_rsvps) {
+            NotificationPrefs prefs(db_);
             for (const auto& rs : rsvps_.list(e.id)) {
-                if (rs.status != "going") continue;
+                if (rs.status != "going" || !prefs.wants(rs.member_id, "event_reminder")) continue;
                 auto mem = members_.find_by_id(rs.member_id);
                 if (!mem || mem->discord_user_id.empty()) continue;
                 if (discord_.send_dm(mem->discord_user_id,

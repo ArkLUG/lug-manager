@@ -1,0 +1,38 @@
+<div class="max-w-3xl space-y-6" data-page-title="My Account">
+  <div class="flex flex-wrap items-center justify-between gap-2">
+    <div>
+      <h2 class="text-xl font-semibold text-gray-800">My Account</h2>
+      <p class="text-sm text-gray-500">Signed in as {{display_name}}</p>
+    </div>
+    <button hx-get="/members/me" hx-target="#modal" hx-swap="innerHTML"
+            class="px-4 py-2 bg-gray-800 text-white rounded-lg text-sm font-medium hover:bg-gray-700">Edit my profile &amp; privacy</button>
+  </div>
+
+  <section class="bg-white rounded-xl border border-gray-200 p-6">
+    <h3 class="font-semibold text-gray-800 mb-3">Notifications</h3>
+    {{{notifications}}}
+  </section>
+
+  <section class="bg-white rounded-xl border border-gray-200 p-6">
+    <h3 class="font-semibold text-gray-800 mb-3">Signed-in Devices</h3>
+    <div hx-get="/account/sessions" hx-trigger="load" hx-swap="outerHTML"><p class="text-xs text-gray-400">Loading…</p></div>
+  </section>
+
+  <section class="bg-white rounded-xl border border-gray-200 p-6 space-y-2">
+    <h3 class="font-semibold text-gray-800">Your data</h3>
+    <p class="text-sm text-gray-600">Download a copy of everything LUG Manager stores about you: your profile, attendance, RSVPs, dues, displays, shifts, photos and votes.</p>
+    <a href="/account/export" download class="inline-block px-4 py-2 border border-gray-300 rounded-lg text-sm text-gray-700 hover:bg-gray-50">Download my data (JSON)</a>
+  </section>
+
+  <section class="bg-white rounded-xl border border-red-200 p-6 space-y-3">
+    <h3 class="font-semibold text-red-700">Delete my account</h3>
+    <p class="text-sm text-gray-600">Permanently removes your member record, attendance, RSVPs, dues history, photos and challenge entries. This can't be undone. It doesn't remove you from the LUG Discord server: while you're still in it, a new basic record is created the next time you sign in or the member list syncs.</p>
+    <form hx-post="/account/delete" hx-target="#delete-result" hx-swap="innerHTML"
+          hx-confirm="Permanently delete your account?" class="flex flex-wrap items-center gap-2">
+      <input name="confirm" autocomplete="off" placeholder="Type DELETE" required
+             class="border border-gray-300 rounded-lg px-3 py-2 text-sm">
+      <button class="px-4 py-2 bg-red-600 text-white rounded-lg text-sm font-medium hover:bg-red-700">Delete my account</button>
+    </form>
+    <div id="delete-result"></div>
+  </section>
+</div>

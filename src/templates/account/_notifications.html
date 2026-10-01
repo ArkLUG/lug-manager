@@ -1,0 +1,9 @@
+<form id="notif-form" hx-post="/account/notifications" hx-trigger="change" hx-target="#notif-form" hx-swap="outerHTML" class="space-y-3">
+  {{#kinds}}
+  <label class="flex items-start gap-3 text-sm">
+    <input type="checkbox" name="{{key}}" value="1" {{#on}}checked{{/on}} class="mt-1 accent-yellow-400">
+    <span><span class="font-medium text-gray-800">{{label}}</span><br><span class="text-xs text-gray-500">{{help}}</span></span>
+  </label>
+  {{/kinds}}
+  <p class="text-xs text-gray-400">These only apply when the LUG has the matching reminders turned on. {{#flash}}<span class="text-green-600 font-medium">{{flash}}</span>{{/flash}}</p>
+</form>

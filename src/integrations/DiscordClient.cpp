@@ -1176,6 +1176,16 @@ void DiscordClient::update_event(const LugEvent& e) {
     });
 }
 
+void DiscordClient::send_dm_async(const std::string& discord_user_id, const std::string& content) {
+    pool_.enqueue([this, discord_user_id, content]() {
+        try {
+            send_dm(discord_user_id, content);
+        } catch (const std::exception& e) {
+            std::cerr << "[DiscordClient] send_dm failed: " << e.what() << "\n";
+        }
+    });
+}
+
 void DiscordClient::post_message(const std::string& channel_id, const std::string& content) {
     pool_.enqueue([this, channel_id, content]() {
         try {

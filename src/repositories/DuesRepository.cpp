@@ -97,7 +97,8 @@ std::vector<DuesStatusRow> DuesRepository::needing_reminder(const std::string& t
     auto stmt = db_.prepare(
         "SELECT id, display_name, COALESCE(discord_user_id,''), paid_until FROM members "
         "WHERE is_paid=1 AND COALESCE(paid_until,'') <> '' AND paid_until >= ? AND paid_until <= ? "
-        "  AND COALESCE(discord_user_id,'') <> '' AND dues_reminded_for <> paid_until");
+        "  AND COALESCE(discord_user_id,'') <> '' AND dues_reminded_for <> paid_until "
+        "  AND NOT EXISTS (SELECT 1 FROM notification_optouts o WHERE o.member_id = members.id AND o.kind = 'dues_reminder')");
     stmt.bind(1, today);
     stmt.bind(2, until);
     return rows(stmt);

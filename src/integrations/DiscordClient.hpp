@@ -123,6 +123,8 @@ public:
     // Direct message a user (opens the DM channel first). Fails quietly
     // (returns false) if they don't share a server or have DMs closed.
     bool send_dm(const std::string& discord_user_id, const std::string& content);
+    // Fire-and-forget send_dm on the client's worker pool (request handlers).
+    void send_dm_async(const std::string& discord_user_id, const std::string& content);
     // Guild channel/role/thread lists are cached for 2 minutes (settings and
     // forms used to hit Discord on every view). Call to force a fresh read.
     void clear_cache() const;

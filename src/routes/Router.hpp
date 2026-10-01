@@ -64,6 +64,7 @@
 #include "routes/ReportRoutes.hpp"
 #include "routes/ShiftRoutes.hpp"
 #include "routes/GalleryRoutes.hpp"
+#include "routes/AccountRoutes.hpp"
 #include <memory>
 
 struct Services {

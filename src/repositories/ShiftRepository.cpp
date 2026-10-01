@@ -88,7 +88,8 @@ std::vector<ShiftRepository::Due> ShiftRepository::due_reminders(const std::stri
         "COALESCE(e.title,''), s.starts_at FROM event_shift_signups u "
         "JOIN event_shifts s ON s.id = u.shift_id JOIN members m ON m.id = u.member_id "
         "LEFT JOIN lug_events e ON e.id = s.event_id "
-        "WHERE u.reminded_at IS NULL AND s.starts_at >= ? AND s.starts_at <= ?");
+        "WHERE u.reminded_at IS NULL AND s.starts_at >= ? AND s.starts_at <= ? "
+        "AND NOT EXISTS (SELECT 1 FROM notification_optouts o WHERE o.member_id = u.member_id AND o.kind = 'shift_reminder')");
     st.bind(1, from); st.bind(2, to);
     std::vector<Due> out;
     while (st.step())

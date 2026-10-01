@@ -71,6 +71,19 @@ bool Statement::col_is_null(int idx) const {
     return sqlite3_column_type(stmt_, idx) == SQLITE_NULL;
 }
 
+int Statement::col_count() const {
+    return sqlite3_column_count(stmt_);
+}
+
+std::string Statement::col_name(int idx) const {
+    const char* n = sqlite3_column_name(stmt_, idx);
+    return n ? n : "";
+}
+
+bool Statement::col_is_int(int idx) const {
+    return sqlite3_column_type(stmt_, idx) == SQLITE_INTEGER;
+}
+
 void Statement::reset() {
     std::lock_guard<std::recursive_mutex> guard(*lock_);
     sqlite3_reset(stmt_);
