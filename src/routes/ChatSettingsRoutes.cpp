@@ -16,11 +16,7 @@ struct Form {
 };
 
 crow::response page(const crow::request& req, LugApp& app, const std::string& html, const std::string& title, int code = 200) {
-    crow::response res;
-    res.code = code;
-    res.add_header("Content-Type", "text/html; charset=utf-8");
-    res.write(req.get_header_value("HX-Request") == "true" ? html : render_in_layout(req, app, html, title, "active_messages"));
-    return res;
+    return html_page(req, app, html, title, "active_messages", code);
 }
 
 std::string render_list(SqliteDatabase& db) {

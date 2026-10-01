@@ -56,10 +56,7 @@ void register_account_routes(LugApp& app, SqliteDatabase& db, MemberService& mem
         ctx["notifications"] = render_notifications(db, a.member_id);
         ctx["display_name"] = a.display_name;
         std::string body = crow::mustache::load("account/_content.html").render(ctx).dump();
-        res.add_header("Content-Type", "text/html; charset=utf-8");
-        res.write(req.get_header_value("HX-Request") == "true" ? body
-                  : render_in_layout(req, app, body, "My Account", "active_account"));
-        return res;
+        return html_page(req, app, body, "My Account", "active_account");
     });
 
     // POST /account/notifications - save the checkbox form (unchecked = off)

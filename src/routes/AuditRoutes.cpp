@@ -77,17 +77,8 @@ void register_audit_routes(LugApp& app, AuditService& audit) {
         }
         ctx["entries"] = std::move(arr);
 
-        bool is_htmx = req.get_header_value("HX-Request") == "true";
         auto content_tmpl = crow::mustache::load("settings/_audit.html");
         std::string content = content_tmpl.render(ctx).dump();
-
-        if (is_htmx) {
-            res.add_header("Content-Type", "text/html; charset=utf-8");
-            res.write(content);
-        } else {
-            res.add_header("Content-Type", "text/html; charset=utf-8");
-            res.write(render_in_layout(req, app, content, "Audit Log", "active_audit"));
-        }
-        return res;
+        return html_page(req, app, content, "Audit Log", "active_audit");
     });
 }

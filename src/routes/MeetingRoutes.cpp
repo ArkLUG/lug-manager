@@ -209,8 +209,8 @@ static std::string render_meeting_page(const crow::request& req,
     ctx["when_past"]        = when == "past";
     ctx["when_all"]         = when == "all";
 
-    bool is_htmx = req.get_header_value("HX-Request") == "true";
-    if (is_htmx) {
+    const bool htmx = is_htmx(req);
+    if (htmx) {
         auto tmpl = crow::mustache::load("meetings/_content.html");
         return tmpl.render(ctx).dump();
     }
@@ -418,18 +418,7 @@ void register_meeting_routes(LugApp& app, MeetingService& meetings, AttendanceSe
         ctx["attendees"]         = std::move(att_arr);
         ctx["attendance_count"]  = static_cast<int>(attendees.size());
 
-        res.add_header("Content-Type", "text/html; charset=utf-8");
-        bool is_htmx = req.get_header_value("HX-Request") == "true";
-        std::string content;
-        auto content_tmpl = crow::mustache::load("meetings/_detail.html");
-        content = content_tmpl.render(ctx).dump();
-
-        if (is_htmx) {
-            res.write(content);
-        } else {
-            res.write(render_in_layout(req, app, content, m->title, "active_meetings"));
-        }
-        return res;
+        return html_page(req, app, crow::mustache::load("meetings/_detail.html").render(ctx).dump(), m->title, "active_meetings");
     });
 
     // POST /meetings - create meeting (form POST)

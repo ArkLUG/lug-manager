@@ -29,7 +29,7 @@ crow::response page(const crow::request& req, LugApp& app, const std::string& bo
     res.code = code;
     res.add_header("Content-Type", "text/html; charset=utf-8");
     res.add_header("Cache-Control", "no-store");
-    if (standalone || req.get_header_value("HX-Request") == "true") res.write(body);
+    if (standalone || is_htmx(req)) res.write(body);
     else res.write(render_in_layout(req, app, body, "Setup", "active_setup"));
     return res;
 }

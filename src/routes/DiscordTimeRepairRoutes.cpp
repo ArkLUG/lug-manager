@@ -51,10 +51,7 @@ void register_discord_time_repair_routes(LugApp& app, SqliteDatabase& db, Discor
         ctx["timezone"] = discord.get_timezone();
         ctx["configured"] = !discord.get_guild_id().empty();
         std::string page = crow::mustache::load("settings/_discord_times.html").render(ctx).dump();
-        res.add_header("Content-Type", "text/html; charset=utf-8");
-        res.write(req.get_header_value("HX-Request") == "true" ? page
-                  : render_in_layout(req, app, page, "Discord times", "active_settings"));
-        return res;
+        return html_page(req, app, page, "Discord times", "active_settings");
     });
 
     auto run = [&db, &discord](bool apply, bool include_past) {

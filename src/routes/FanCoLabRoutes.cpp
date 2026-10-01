@@ -218,16 +218,6 @@ std::string render_fancolab(SqliteDatabase& db, SettingsRepository& settings, in
     return crow::mustache::load("fancolab/_page.html").render(ctx).dump();
 }
 
-// Full page or htmx fragment.
-crow::response page(const crow::request& req, LugApp& app, const std::string& html,
-                    const std::string& title, const std::string& active, int code = 200) {
-    crow::response res;
-    res.code = code;
-    res.add_header("Content-Type", "text/html; charset=utf-8");
-    res.write(req.get_header_value("HX-Request") == "true" ? html : render_in_layout(req, app, html, title, active));
-    return res;
-}
-
 // ── About page ──
 
 // Upload names referenced by the About text ("/about/photos/<name>").
@@ -261,7 +251,7 @@ void register_fan_colab_routes(LugApp& app, SqliteDatabase& db, SettingsReposito
     CROW_ROUTE(app, "/fancolab")([&app, &db, &settings](const crow::request& req) {
         crow::response res;
         if (!require_auth(req, res, app, "admin")) return res;
-        return page(req, app, render_fancolab(db, settings, year_param(req.url_params.get("year"))),
+        return html_page(req, app, render_fancolab(db, settings, year_param(req.url_params.get("year"))),
                     "LEGO Fan CoLab", "active_fancolab");
     });
 
@@ -277,7 +267,7 @@ void register_fan_colab_routes(LugApp& app, SqliteDatabase& db, SettingsReposito
             auto st = db.prepare("SELECT 1 FROM members WHERE id=?");
             st.bind(1, amb_id);
             if (!st.step())
-                return page(req, app, render_fancolab(db, settings, year, "That member doesn't exist.", true),
+                return html_page(req, app, render_fancolab(db, settings, year, "That member doesn't exist.", true),
                             "LEGO Fan CoLab", "active_fancolab", 400);
         }
         record_ambassador_change(db, std::max<int64_t>(amb_id, 0), AttendanceService::today_ymd());
@@ -285,7 +275,7 @@ void register_fan_colab_routes(LugApp& app, SqliteDatabase& db, SettingsReposito
         settings.set("community_ambassador_id", amb_id > 0 ? std::to_string(amb_id) : "");
         audit.log(req, app, "settings.update", "settings", 0, "LEGO Fan CoLab",
                   std::string(recognized ? "Recognized" : "Not recognized") + (amb_id > 0 ? ", ambassador #" + std::to_string(amb_id) : ""));
-        return page(req, app, render_fancolab(db, settings, year, "Saved."), "LEGO Fan CoLab", "active_fancolab");
+        return html_page(req, app, render_fancolab(db, settings, year, "Saved."), "LEGO Fan CoLab", "active_fancolab");
     });
 
     // POST /fancolab/terms - record a past Community Ambassador
@@ -302,7 +292,7 @@ void register_fan_colab_routes(LugApp& app, SqliteDatabase& db, SettingsReposito
             if (st.step()) name = st.col_text(0);
         }
         auto fail = [&](const std::string& msg) {
-            return page(req, app, render_fancolab(db, settings, year, msg, true), "LEGO Fan CoLab", "active_fancolab", 400);
+            return html_page(req, app, render_fancolab(db, settings, year, msg, true), "LEGO Fan CoLab", "active_fancolab", 400);
         };
         if (name.empty()) return fail("Choose a member.");
         if (!is_ymd(from) || !is_ymd(to)) return fail("Give both the start and end dates.");
@@ -314,7 +304,7 @@ void register_fan_colab_routes(LugApp& app, SqliteDatabase& db, SettingsReposito
             st.step();
         }
         audit.log(req, app, "fancolab.ambassador_term", "member", member, name, "Ambassador " + from + " to " + to);
-        return page(req, app, render_fancolab(db, settings, year, "Added " + name + "."), "LEGO Fan CoLab", "active_fancolab");
+        return html_page(req, app, render_fancolab(db, settings, year, "Added " + name + "."), "LEGO Fan CoLab", "active_fancolab");
     });
 
     // POST /fancolab/terms/<id> - correct a term's dates
@@ -332,7 +322,7 @@ void register_fan_colab_routes(LugApp& app, SqliteDatabase& db, SettingsReposito
             name = st.col_text(0); serving = st.col_int(1) != 0;
         }
         auto fail = [&](const std::string& msg) {
-            return page(req, app, render_fancolab(db, settings, year, msg, true), "LEGO Fan CoLab", "active_fancolab", 400);
+            return html_page(req, app, render_fancolab(db, settings, year, msg, true), "LEGO Fan CoLab", "active_fancolab", 400);
         };
         if (!is_ymd(from)) return fail("Give the start date.");
         if (serving && !to.empty()) return fail("To end the current ambassador's term, choose someone else (or nobody) above.");
@@ -347,7 +337,7 @@ void register_fan_colab_routes(LugApp& app, SqliteDatabase& db, SettingsReposito
             st.step();
         }
         audit.log(req, app, "fancolab.ambassador_term", "settings", id, name, "Dates " + from + " to " + (serving ? "now" : to));
-        return page(req, app, render_fancolab(db, settings, year, "Saved."), "LEGO Fan CoLab", "active_fancolab");
+        return html_page(req, app, render_fancolab(db, settings, year, "Saved."), "LEGO Fan CoLab", "active_fancolab");
     });
 
     // POST /fancolab/terms/<id>/delete - past terms only
@@ -364,7 +354,7 @@ void register_fan_colab_routes(LugApp& app, SqliteDatabase& db, SettingsReposito
             name = st.col_text(0); serving = st.col_int(1) != 0;
         }
         if (serving)
-            return page(req, app, render_fancolab(db, settings, year, "That's the current ambassador: choose someone else (or nobody) above instead.", true),
+            return html_page(req, app, render_fancolab(db, settings, year, "That's the current ambassador: choose someone else (or nobody) above instead.", true),
                         "LEGO Fan CoLab", "active_fancolab", 400);
         {
             auto st = db.prepare("DELETE FROM community_ambassador_terms WHERE id=?");
@@ -372,7 +362,7 @@ void register_fan_colab_routes(LugApp& app, SqliteDatabase& db, SettingsReposito
             st.step();
         }
         audit.log(req, app, "fancolab.ambassador_term", "settings", id, name, "Removed from ambassador history");
-        return page(req, app, render_fancolab(db, settings, year, "Removed."), "LEGO Fan CoLab", "active_fancolab");
+        return html_page(req, app, render_fancolab(db, settings, year, "Removed."), "LEGO Fan CoLab", "active_fancolab");
     });
 
     // POST /fancolab/tasks - add a yearly to-do
@@ -385,7 +375,7 @@ void register_fan_colab_routes(LugApp& app, SqliteDatabase& db, SettingsReposito
         title.erase(0, title.find_first_not_of(" \t\r\n"));
         title.erase(title.find_last_not_of(" \t\r\n") + 1);
         if (title.empty())
-            return page(req, app, render_fancolab(db, settings, year, "Write what needs doing.", true), "LEGO Fan CoLab", "active_fancolab", 400);
+            return html_page(req, app, render_fancolab(db, settings, year, "Write what needs doing.", true), "LEGO Fan CoLab", "active_fancolab", 400);
         {
             auto st = db.prepare("INSERT INTO fan_colab_tasks (title, sort_order) "
                                  "VALUES (?, (SELECT COALESCE(MAX(sort_order),0)+1 FROM fan_colab_tasks))");
@@ -393,7 +383,7 @@ void register_fan_colab_routes(LugApp& app, SqliteDatabase& db, SettingsReposito
             st.step();
         }
         audit.log(req, app, "fancolab.task", "settings", 0, title, "Added to the yearly to-do list");
-        return page(req, app, render_fancolab(db, settings, year), "LEGO Fan CoLab", "active_fancolab");
+        return html_page(req, app, render_fancolab(db, settings, year), "LEGO Fan CoLab", "active_fancolab");
     });
 
     // POST /fancolab/tasks/<id>/toggle - tick / untick for a year
@@ -426,7 +416,7 @@ void register_fan_colab_routes(LugApp& app, SqliteDatabase& db, SettingsReposito
         }
         audit.log(req, app, "fancolab.task", "settings", id, title,
                   std::string(was_done ? "Not done" : "Done") + " for " + std::to_string(year));
-        return page(req, app, render_fancolab(db, settings, year), "LEGO Fan CoLab", "active_fancolab");
+        return html_page(req, app, render_fancolab(db, settings, year), "LEGO Fan CoLab", "active_fancolab");
     });
 
     // POST /fancolab/tasks/<id>/delete
@@ -447,7 +437,7 @@ void register_fan_colab_routes(LugApp& app, SqliteDatabase& db, SettingsReposito
             st.step();
         }
         audit.log(req, app, "fancolab.task", "settings", id, title, "Removed from the yearly to-do list");
-        return page(req, app, render_fancolab(db, settings, year), "LEGO Fan CoLab", "active_fancolab");
+        return html_page(req, app, render_fancolab(db, settings, year), "LEGO Fan CoLab", "active_fancolab");
     });
 
     // GET /fancolab/summary?year= - printable one-page summary
@@ -617,7 +607,7 @@ void register_fan_colab_routes(LugApp& app, SqliteDatabase& db, SettingsReposito
     CROW_ROUTE(app, "/settings/about")([&app, &settings](const crow::request& req) {
         crow::response res;
         if (!require_auth(req, res, app, "admin")) return res;
-        return page(req, app, render_about_editor(settings), "Public pages", "active_about");
+        return html_page(req, app, render_about_editor(settings), "Public pages", "active_about");
     });
 
     // POST /settings/about - title, text (Markdown from the editor), options
@@ -627,7 +617,7 @@ void register_fan_colab_routes(LugApp& app, SqliteDatabase& db, SettingsReposito
         Form f(req);
         std::string md = f.get("markdown", kAboutMaxChars + 1);
         if (md.size() > kAboutMaxChars)
-            return page(req, app, render_about_editor(settings, "That's too long: keep it under " +
+            return html_page(req, app, render_about_editor(settings, "That's too long: keep it under " +
                         std::to_string(kAboutMaxChars) + " characters.", true), "Public pages", "active_about", 400);
         std::string title = f.get("about_title", 120);
         bool enabled = f.get("enabled", 2) == "1";
@@ -650,7 +640,7 @@ void register_fan_colab_routes(LugApp& app, SqliteDatabase& db, SettingsReposito
         }
         audit.log(req, app, "settings.update", "settings", 0, "About page",
                   std::string(enabled ? "Public" : "Hidden") + ", " + std::to_string(md.size()) + " characters");
-        return page(req, app, render_about_editor(settings, enabled ? "Saved. Your About page is public at /about."
+        return html_page(req, app, render_about_editor(settings, enabled ? "Saved. Your About page is public at /about."
                                                                     : "Saved. The page is hidden until you tick \"Show the page\"."),
                     "Public pages", "active_about");
     });

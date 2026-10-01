@@ -117,18 +117,7 @@ void register_discord_match_routes(LugApp& app,
             mctx["authorized_role_options"] = authorized_role_options.str();
         }
 
-        bool is_htmx = req.get_header_value("HX-Request") == "true";
-        if (is_htmx) {
-            auto tmpl = crow::mustache::load("settings/_discord_matches.html");
-            res.add_header("Content-Type", "text/html; charset=utf-8");
-            res.write(tmpl.render(mctx).dump());
-        } else {
-            auto content_tmpl = crow::mustache::load("settings/_discord_matches.html");
-            std::string content = content_tmpl.render(mctx).dump();
-            res.add_header("Content-Type", "text/html; charset=utf-8");
-            res.write(render_in_layout(req, app, content, "Discord Matches", "active_discord_matches"));
-        }
-        return res;
+        return html_page(req, app, crow::mustache::load("settings/_discord_matches.html").render(mctx).dump(), "Discord Matches", "active_discord_matches");
     });
 
     // POST /settings/discord-matches/<id>/link - link the Discord identity to an existing member
@@ -253,8 +242,8 @@ void register_discord_match_routes(LugApp& app,
 
         audit.log(req, app, "settings.update", "settings", 0, "", "Updated Discord match settings");
 
-        bool is_htmx = req.get_header_value("HX-Request") == "true";
-        if (is_htmx) {
+        const bool htmx = is_htmx(req);
+        if (htmx) {
             res.add_header("HX-Redirect", "/settings/discord-matches");
             res.code = 200;
         } else {

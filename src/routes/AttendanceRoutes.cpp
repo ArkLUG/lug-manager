@@ -297,17 +297,7 @@ void register_attendance_routes(LugApp& app, AttendanceService& attendance,
         ctx["member_count"]  = total_count;
         ctx["active_count"]  = active_count;
 
-        bool is_htmx = req.get_header_value("HX-Request") == "true";
-        if (is_htmx) {
-            auto tmpl = crow::mustache::load("attendance/_overview.html");
-            res.write(tmpl.render(ctx).dump());
-        } else {
-            auto content_tmpl = crow::mustache::load("attendance/_overview.html");
-            std::string content = content_tmpl.render(ctx).dump();
-            res.write(render_in_layout(req, app, content, "Attendance Overview", "active_attendance_overview"));
-        }
-        res.add_header("Content-Type", "text/html; charset=utf-8");
-        return res;
+        return html_page(req, app, crow::mustache::load("attendance/_overview.html").render(ctx).dump(), "Attendance Overview", "active_attendance_overview");
     });
 
     // GET /attendance - personal attendance history for current user
@@ -361,17 +351,7 @@ void register_attendance_routes(LugApp& app, AttendanceService& attendance,
         ctx["year_events"]   = year_events;
         ctx["has_history"]   = !history.empty();
 
-        bool is_htmx = req.get_header_value("HX-Request") == "true";
-        if (is_htmx) {
-            auto tmpl = crow::mustache::load("attendance/_content.html");
-            res.write(tmpl.render(ctx).dump());
-        } else {
-            auto content_tmpl = crow::mustache::load("attendance/_content.html");
-            std::string content = content_tmpl.render(ctx).dump();
-            res.write(render_in_layout(req, app, content, "My Attendance", "active_attendance"));
-        }
-        res.add_header("Content-Type", "text/html; charset=utf-8");
-        return res;
+        return html_page(req, app, crow::mustache::load("attendance/_content.html").render(ctx).dump(), "My Attendance", "active_attendance");
     });
 
     // GET /attendance/count/<type>/<id> - returns live count (for HTMX polling)

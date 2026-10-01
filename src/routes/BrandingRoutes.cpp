@@ -85,18 +85,7 @@ void register_branding_routes(LugApp& app, SettingsRepository& settings,
         // proxy/CDN in front of it) would keep showing the old cached image.
         mctx["logo_url"] = "/branding/logo?v=" + settings.get("branding_logo_updated_at", "0");
 
-        bool is_htmx = req.get_header_value("HX-Request") == "true";
-        if (is_htmx) {
-            auto tmpl = crow::mustache::load("settings/_branding.html");
-            res.add_header("Content-Type", "text/html; charset=utf-8");
-            res.write(tmpl.render(mctx).dump());
-        } else {
-            auto content_tmpl = crow::mustache::load("settings/_branding.html");
-            std::string content = content_tmpl.render(mctx).dump();
-            res.add_header("Content-Type", "text/html; charset=utf-8");
-            res.write(render_in_layout(req, app, content, "Branding Settings", "active_branding"));
-        }
-        return res;
+        return html_page(req, app, crow::mustache::load("settings/_branding.html").render(mctx).dump(), "Branding Settings", "active_branding");
     });
 
     // POST /settings/branding - upload a new logo (multipart/form-data, field "logo")
@@ -177,8 +166,8 @@ void register_branding_routes(LugApp& app, SettingsRepository& settings,
 
         audit.log(req, app, "settings.update", "settings", 0, "", "Removed custom logo");
 
-        bool is_htmx = req.get_header_value("HX-Request") == "true";
-        if (is_htmx) {
+        const bool htmx = is_htmx(req);
+        if (htmx) {
             res.add_header("HX-Redirect", "/settings/branding");
             res.code = 200;
         } else {

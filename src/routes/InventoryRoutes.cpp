@@ -511,10 +511,7 @@ void register_inventory_routes(LugApp& app, SqliteDatabase& db, AuditService& au
         crow::response res;
         if (!require_auth(req, res, app)) return res;
         std::string body = render(req, app, db);
-        res.add_header("Content-Type", "text/html; charset=utf-8");
-        res.write(req.get_header_value("HX-Request") == "true" ? body
-                  : render_in_layout(req, app, body, "Inventory", "active_inventory"));
-        return res;
+        return html_page(req, app, body, "Inventory", "active_inventory");
     });
 
     // CSV: one row per item and place (location, member on loan, not placed)

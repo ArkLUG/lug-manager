@@ -202,8 +202,8 @@ static std::string render_event_page(const crow::request& req,
     ctx["sort_is_location"] = (sort_col == "location");
     ctx["dir_is_asc"]       = (sort_dir == "ASC");
 
-    bool is_htmx = req.get_header_value("HX-Request") == "true";
-    if (is_htmx) {
+    const bool htmx = is_htmx(req);
+    if (htmx) {
         auto tmpl = crow::mustache::load("events/_content.html");
         return tmpl.render(ctx).dump();
     }
@@ -542,16 +542,9 @@ void register_event_routes(LugApp& app, EventService& events, AttendanceService&
         ctx["attendees"] = std::move(att_arr);
 
         res.add_header("Content-Type", "text/html; charset=utf-8");
-        bool is_htmx = req.get_header_value("HX-Request") == "true";
         auto content_tmpl = crow::mustache::load("events/_detail.html");
         std::string content = content_tmpl.render(ctx).dump();
-
-        if (is_htmx) {
-            res.write(content);
-        } else {
-            res.write(render_in_layout(req, app, content, ev->title, "active_events"));
-        }
-        return res;
+        return html_page(req, app, content, ev->title, "active_events");
     });
 
     // POST /events - create event (form POST)

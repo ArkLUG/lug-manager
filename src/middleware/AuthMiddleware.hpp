@@ -8,6 +8,9 @@
 #include <crow.h>
 #include <string>
 
+// True for requests made by htmx (they want a fragment, not a whole page).
+inline bool is_htmx(const crow::request& req) { return req.get_header_value("HX-Request") == "true"; }
+
 // Returns the value of cookie `name` from the Cookie header, or "" if absent.
 // Matches whole cookie names only (a bare find("session=") also matched e.g.
 // "xsession=").
@@ -92,7 +95,7 @@ struct AuthMiddleware {
             bool required = need == "everyone" || (need == "staff" && ctx.auth.role != "member");
             if (required && !has_two_factor(ctx.auth.member_id) && !allowed_without_2fa(req.url)) {
                 ctx.auth.must_setup_2fa = true;
-                if (req.get_header_value("HX-Request") == "true") {
+                if (is_htmx(req)) {
                     res.code = 200;
                     res.add_header("HX-Redirect", "/account/security");
                 } else {
@@ -215,6 +218,17 @@ inline std::string render_in_layout(const crow::request& req, App& app,
     return crow::mustache::load("layout.html").render(layout_ctx).dump();
 }
 
+// An HTML response: the fragment for htmx requests, else the whole page.
+template<typename App>
+inline crow::response html_page(const crow::request& req, App& app, const std::string& content,
+                                const std::string& page_title, const std::string& active_key, int code = 200) {
+    crow::response res;
+    res.code = code;
+    res.add_header("Content-Type", "text/html; charset=utf-8");
+    res.write(is_htmx(req) ? content : render_in_layout(req, app, content, page_title, active_key));
+    return res;
+}
+
 // Helper: check auth in route handlers.
 // Returns false and sets response if not authenticated/authorized.
 template<typename App>
@@ -222,8 +236,8 @@ inline bool require_auth(const crow::request& req, crow::response& res, App& app
                          const std::string& min_role = "member") {
     auto& ctx = app.template get_context<AuthMiddleware>(req);
     if (!ctx.auth.authenticated) {
-        bool is_htmx = req.get_header_value("HX-Request") == "true";
-        if (is_htmx) {
+        const bool htmx = is_htmx(req);
+        if (htmx) {
             res.code = 401;
             res.write(R"(<div class="text-red-500 p-4">Session expired. <a href="/login" class="underline">Login again</a></div>)");
         } else {
@@ -237,7 +251,7 @@ inline bool require_auth(const crow::request& req, crow::response& res, App& app
                  : true;
     if (!allowed) {
         res.code = 403;
-        if (req.get_header_value("HX-Request") == "true") {
+        if (is_htmx(req)) {
             res.add_header("Content-Type", "text/html; charset=utf-8");
             res.write(R"(<div class="text-red-500 text-sm p-2">You don't have permission to do that.</div>)");
         } else {
@@ -277,9 +291,9 @@ inline bool can_manage_chapter_content(const crow::request& req, crow::response&
         return true;
     }
 
-    bool is_htmx = req.get_header_value("HX-Request") == "true";
+    const bool htmx = is_htmx(req);
     res.code = 403;
-    if (is_htmx) {
+    if (htmx) {
         res.write(R"(<div class="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded">You don't have permission to manage content for this chapter.</div>)");
     } else {
         res.write(R"({"error":"insufficient chapter permissions"})");

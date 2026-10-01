@@ -232,15 +232,6 @@ void register_calendar_routes(LugApp& app, CalendarGenerator& cal,
         if (!Features::on("dues"))     ctx["has_dues_expiring"] = false;
 
         res.add_header("Content-Type", "text/html; charset=utf-8");
-        bool is_htmx = req.get_header_value("HX-Request") == "true";
-        if (is_htmx) {
-            auto tmpl = crow::mustache::load("dashboard/_content.html");
-            res.write(tmpl.render(ctx).dump());
-        } else {
-            auto content_tmpl = crow::mustache::load("dashboard/_content.html");
-            std::string content = content_tmpl.render(ctx).dump();
-            res.write(render_in_layout(req, app, content, "Dashboard", "active_dashboard"));
-        }
-        return res;
+        return html_page(req, app, crow::mustache::load("dashboard/_content.html").render(ctx).dump(), "Dashboard", "active_dashboard");
     });
 }

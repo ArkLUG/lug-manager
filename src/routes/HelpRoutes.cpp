@@ -39,15 +39,8 @@ void register_help_routes(LugApp& app, ChapterMemberRepository& chapter_members)
         ctx["lead_guide_title"] = Features::on("chapters") ? "Chapter Lead & Moderator Guide" : "Moderator Guide";
 
         res.add_header("Content-Type", "text/html; charset=utf-8");
-        bool is_htmx = req.get_header_value("HX-Request") == "true";
         auto content_tmpl = crow::mustache::load("help/_content.html");
         std::string content = content_tmpl.render(ctx).dump();
-
-        if (is_htmx) {
-            res.write(content);
-        } else {
-            res.write(render_in_layout(req, app, content, "Help & Getting Started", "active_help"));
-        }
-        return res;
+        return html_page(req, app, content, "Help & Getting Started", "active_help");
     });
 }

@@ -32,10 +32,7 @@ void register_feature_routes(LugApp& app, SettingsRepository& settings, AuditSer
         crow::response res;
         if (!require_auth(req, res, app, "admin")) return res;
         std::string body = render(settings);
-        res.add_header("Content-Type", "text/html; charset=utf-8");
-        res.write(req.get_header_value("HX-Request") == "true" ? body
-                  : render_in_layout(req, app, body, "Features", "active_features"));
-        return res;
+        return html_page(req, app, body, "Features", "active_features");
     });
 
     // POST /settings/features/leads-to-moderators - with chapters off, turn

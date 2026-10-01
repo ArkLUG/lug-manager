@@ -249,18 +249,7 @@ void register_chapter_routes(LugApp& app, ChapterService& chapters,
         }
         mctx["chapters"] = std::move(arr);
 
-        bool is_htmx = req.get_header_value("HX-Request") == "true";
-        if (is_htmx) {
-            auto tmpl = crow::mustache::load("chapters/_list.html");
-            res.add_header("Content-Type", "text/html; charset=utf-8");
-            res.write(tmpl.render(mctx).dump());
-        } else {
-            auto content_tmpl = crow::mustache::load("chapters/_list.html");
-            std::string content = content_tmpl.render(mctx).dump();
-            res.add_header("Content-Type", "text/html; charset=utf-8");
-            res.write(render_in_layout(req, app, content, "Chapters", "active_chapters"));
-        }
-        return res;
+        return html_page(req, app, crow::mustache::load("chapters/_list.html").render(mctx).dump(), "Chapters", "active_chapters");
     });
 
     // POST /chapters - create chapter (admin only)
@@ -365,16 +354,7 @@ void register_chapter_routes(LugApp& app, ChapterService& chapters,
         add_chapter_overview(mctx, members.repo().db(), *ch, ch_members, can_manage);
 
         res.add_header("Content-Type", "text/html; charset=utf-8");
-        bool is_htmx = req.get_header_value("HX-Request") == "true";
-        if (is_htmx) {
-            auto tmpl = crow::mustache::load("chapters/_detail.html");
-            res.write(tmpl.render(mctx).dump());
-        } else {
-            auto content_tmpl = crow::mustache::load("chapters/_detail.html");
-            std::string content = content_tmpl.render(mctx).dump();
-            res.write(render_in_layout(req, app, content, ch->name, "active_chapters"));
-        }
-        return res;
+        return html_page(req, app, crow::mustache::load("chapters/_detail.html").render(mctx).dump(), ch->name, "active_chapters");
     });
 
     // POST /chapters/<id>/lead - add a chapter lead (admin only)
@@ -611,16 +591,8 @@ void register_chapter_routes(LugApp& app, ChapterService& chapters,
         }
         mctx["member_options"] = member_opts.str();
 
-        res.add_header("Content-Type", "text/html; charset=utf-8");
-        bool is_htmx_req = req.get_header_value("HX-Request") == "true";
-        auto tmpl = crow::mustache::load("chapters/_members.html");
-        if (is_htmx_req) {
-            res.write(tmpl.render(mctx).dump());
-        } else {
-            std::string content = tmpl.render(mctx).dump();
-            res.write(render_in_layout(req, app, content, ch->name + " — Members", "active_chapters"));
-        }
-        return res;
+        return html_page(req, app, crow::mustache::load("chapters/_members.html").render(mctx).dump(),
+                         ch->name + " — Members", "active_chapters");
     });
 
     // POST /chapters/<id>/members - add or update a member's chapter role

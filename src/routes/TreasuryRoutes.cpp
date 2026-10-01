@@ -271,10 +271,7 @@ void register_treasury_routes(LugApp& app, SqliteDatabase& db, AuditService& aud
         crow::response res;
         if (!require_auth(req, res, app, "treasurer")) return res;
         std::string body = render(db, year_param(req));
-        res.add_header("Content-Type", "text/html; charset=utf-8");
-        res.write(req.get_header_value("HX-Request") == "true" ? body
-                  : render_in_layout(req, app, body, "Treasury", "active_treasury"));
-        return res;
+        return html_page(req, app, body, "Treasury", "active_treasury");
     });
 
     CROW_ROUTE(app, "/treasury.csv")([&app, &db](const crow::request& req) {

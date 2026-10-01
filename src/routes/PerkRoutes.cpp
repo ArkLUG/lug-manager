@@ -78,18 +78,7 @@ void register_perk_routes(LugApp& app, PerkLevelRepository& perks,
         ctx["years"] = std::move(year_arr);
         ctx["has_other_years"] = perk_years.size() > 1;
 
-        bool is_htmx = req.get_header_value("HX-Request") == "true";
-        auto tmpl = crow::mustache::load("settings/_perks.html");
-        std::string content = tmpl.render(ctx).dump();
-        if (is_htmx) {
-            res.add_header("Content-Type", "text/html; charset=utf-8");
-            res.write(content);
-            return res;
-        }
-
-        res.add_header("Content-Type", "text/html; charset=utf-8");
-        res.write(render_in_layout(req, app, content, "Perk Levels", "active_perks"));
-        return res;
+        return html_page(req, app, crow::mustache::load("settings/_perks.html").render(ctx).dump(), "Perk Levels", "active_perks");
     });
 
     // POST /perks — create perk level

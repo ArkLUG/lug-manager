@@ -54,10 +54,7 @@ void register_series_routes(LugApp& app, std::shared_ptr<SeriesService> series,
         crow::response res;
         if (!require_auth(req, res, app)) return res;
         std::string page = render(req, app, *series, chapters, chapter_members, "");
-        res.add_header("Content-Type", "text/html; charset=utf-8");
-        res.write(req.get_header_value("HX-Request") == "true" ? page
-                  : render_in_layout(req, app, page, "Recurring Meetings", "active_meetings"));
-        return res;
+        return html_page(req, app, page, "Recurring Meetings", "active_meetings");
     });
 
     CROW_ROUTE(app, "/meetings/series").methods("POST"_method)(

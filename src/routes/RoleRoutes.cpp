@@ -96,18 +96,7 @@ void register_role_routes(LugApp& app,
         mctx["guild_configured"]= !discord.get_guild_id().empty();
         mctx["has_discord_roles"]= !guild_roles.empty();
 
-        bool is_htmx = req.get_header_value("HX-Request") == "true";
-        if (is_htmx) {
-            auto tmpl = crow::mustache::load("settings/_roles.html");
-            res.add_header("Content-Type", "text/html; charset=utf-8");
-            res.write(tmpl.render(mctx).dump());
-        } else {
-            auto content_tmpl = crow::mustache::load("settings/_roles.html");
-            std::string content = content_tmpl.render(mctx).dump();
-            res.add_header("Content-Type", "text/html; charset=utf-8");
-            res.write(render_in_layout(req, app, content, "Role Mappings", "active_settings"));
-        }
-        return res;
+        return html_page(req, app, crow::mustache::load("settings/_roles.html").render(mctx).dump(), "Role Mappings", "active_settings");
     });
 
     // POST /settings/roles
@@ -137,8 +126,8 @@ void register_role_routes(LugApp& app,
 
         audit.log(req, app, "roles.update", "settings", 0, "", "Updated role mappings");
 
-        bool is_htmx = req.get_header_value("HX-Request") == "true";
-        if (is_htmx) {
+        const bool htmx = is_htmx(req);
+        if (htmx) {
             res.add_header("HX-Redirect", "/settings/roles");
             res.code = 200;
         } else {

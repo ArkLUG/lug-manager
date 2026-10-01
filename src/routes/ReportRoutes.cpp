@@ -206,10 +206,7 @@ void register_report_routes(LugApp& app, SqliteDatabase& db, EventService& event
         }
         add_fan_colab(ctx, db);
         std::string page = crow::mustache::load("reports/_annual.html").render(ctx).dump();
-        res.add_header("Content-Type", "text/html; charset=utf-8");
-        res.write(req.get_header_value("HX-Request") == "true" ? page
-                  : render_in_layout(req, app, page, "Annual Report " + ys, "active_reports"));
-        return res;
+        return html_page(req, app, page, "Annual Report " + ys, "active_reports");
     });
 
     CROW_ROUTE(app, "/events/<int>/report")([&app, &db, &events, &days, &day_att, displays, &chapter_members, &audit](

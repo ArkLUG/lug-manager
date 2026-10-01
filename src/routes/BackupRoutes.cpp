@@ -42,11 +42,7 @@ void register_backup_routes(LugApp& app, std::shared_ptr<BackupService> backups,
     CROW_ROUTE(app, "/settings/backups")([&app, backups, &settings](const crow::request& req) {
         crow::response res;
         if (!require_auth(req, res, app, "admin")) return res;
-        std::string page = render_page(*backups, settings, "");
-        res.add_header("Content-Type", "text/html; charset=utf-8");
-        if (req.get_header_value("HX-Request") == "true") res.write(page);
-        else res.write(render_in_layout(req, app, page, "Backups", "active_backups"));
-        return res;
+        return html_page(req, app, render_page(*backups, settings, ""), "Backups", "active_backups");
     });
 
     // POST /settings/backups - "Back up now"

@@ -485,18 +485,7 @@ void register_settings_routes(LugApp& app, SettingsRepository& settings,
         mctx["pending_match_count"] = pending_match_count;
         mctx["has_pending_matches"] = pending_match_count > 0;
 
-        bool is_htmx = req.get_header_value("HX-Request") == "true";
-        if (is_htmx) {
-            auto tmpl = crow::mustache::load("settings/_content.html");
-            res.add_header("Content-Type", "text/html; charset=utf-8");
-            res.write(tmpl.render(mctx).dump());
-        } else {
-            auto content_tmpl = crow::mustache::load("settings/_content.html");
-            std::string content = content_tmpl.render(mctx).dump();
-            res.add_header("Content-Type", "text/html; charset=utf-8");
-            res.write(render_in_layout(req, app, content, "Discord Settings", "active_settings"));
-        }
-        return res;
+        return html_page(req, app, crow::mustache::load("settings/_content.html").render(mctx).dump(), "Discord Settings", "active_settings");
     });
 
     // GET /settings/calendar - timezone and iCal display name.
@@ -512,18 +501,7 @@ void register_settings_routes(LugApp& app, SettingsRepository& settings,
         mctx["timezone"]      = settings.get("lug_timezone", discord.get_timezone());
         mctx["calendar_name"] = settings.get("ical_calendar_name", "LUG Events");
 
-        bool is_htmx = req.get_header_value("HX-Request") == "true";
-        if (is_htmx) {
-            auto tmpl = crow::mustache::load("settings/_calendar.html");
-            res.add_header("Content-Type", "text/html; charset=utf-8");
-            res.write(tmpl.render(mctx).dump());
-        } else {
-            auto content_tmpl = crow::mustache::load("settings/_calendar.html");
-            std::string content = content_tmpl.render(mctx).dump();
-            res.add_header("Content-Type", "text/html; charset=utf-8");
-            res.write(render_in_layout(req, app, content, "iCal Calendar Settings", "active_calendar"));
-        }
-        return res;
+        return html_page(req, app, crow::mustache::load("settings/_calendar.html").render(mctx).dump(), "iCal Calendar Settings", "active_calendar");
     });
 
     // GET /settings/google-calendar - service account path + calendar ID.
@@ -540,18 +518,7 @@ void register_settings_routes(LugApp& app, SettingsRepository& settings,
         mctx["google_calendar_id"] = settings.get("google_calendar_id");
         mctx["gcal_configured"]    = gcal.is_configured();
 
-        bool is_htmx = req.get_header_value("HX-Request") == "true";
-        if (is_htmx) {
-            auto tmpl = crow::mustache::load("settings/_google_calendar.html");
-            res.add_header("Content-Type", "text/html; charset=utf-8");
-            res.write(tmpl.render(mctx).dump());
-        } else {
-            auto content_tmpl = crow::mustache::load("settings/_google_calendar.html");
-            std::string content = content_tmpl.render(mctx).dump();
-            res.add_header("Content-Type", "text/html; charset=utf-8");
-            res.write(render_in_layout(req, app, content, "Google Calendar Settings", "active_google_calendar"));
-        }
-        return res;
+        return html_page(req, app, crow::mustache::load("settings/_google_calendar.html").render(mctx).dump(), "Google Calendar Settings", "active_google_calendar");
     });
 
     // The settings page is split into independent sections, each its own <form>
@@ -569,8 +536,8 @@ void register_settings_routes(LugApp& app, SettingsRepository& settings,
     // absent" case left to guard against, and no risk of a future new field
     // needing the same guard and it being missed again.
     auto redirect_to_settings = [](const crow::request& req, crow::response& res) {
-        bool is_htmx = req.get_header_value("HX-Request") == "true";
-        if (is_htmx) {
+        const bool htmx = is_htmx(req);
+        if (htmx) {
             res.add_header("HX-Redirect", "/settings");
             res.code = 200;
         } else {

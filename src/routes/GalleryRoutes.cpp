@@ -118,10 +118,7 @@ std::string render_challenge(const crow::request& req, LugApp& app, SqliteDataba
 }
 
 crow::response page(const crow::request& req, LugApp& app, const std::string& body, const std::string& title) {
-    crow::response res;
-    res.add_header("Content-Type", "text/html; charset=utf-8");
-    res.write(req.get_header_value("HX-Request") == "true" ? body : render_in_layout(req, app, body, title, "active_challenges"));
-    return res;
+    return html_page(req, app, body, title, "active_challenges");
 }
 
 } // namespace

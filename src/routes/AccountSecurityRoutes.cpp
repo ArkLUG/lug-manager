@@ -70,11 +70,8 @@ std::string render(SqliteDatabase& db, SettingsRepository& settings, int64_t id,
 }
 
 crow::response reply(const crow::request& req, LugApp& app, const std::string& html, int code = 200) {
-    crow::response res;
-    res.code = code;
-    res.add_header("Content-Type", "text/html; charset=utf-8");
+    auto res = html_page(req, app, html, "Password & two-factor", "active_account", code);
     res.add_header("Cache-Control", "no-store");
-    res.write(req.get_header_value("HX-Request") == "true" ? html : render_in_layout(req, app, html, "Password & two-factor", "active_account"));
     return res;
 }
 
@@ -217,10 +214,7 @@ void register_account_security_routes(LugApp& app, SqliteDatabase& db, SettingsR
     CROW_ROUTE(app, "/settings/sign-in")([&app, sign_in_page](const crow::request& req) {
         crow::response res;
         if (!require_auth(req, res, app, "admin")) return res;
-        res.add_header("Content-Type", "text/html; charset=utf-8");
-        std::string html = sign_in_page("");
-        res.write(req.get_header_value("HX-Request") == "true" ? html : render_in_layout(req, app, html, "Sign-in", "active_sign_in"));
-        return res;
+        return html_page(req, app, sign_in_page(""), "Sign-in", "active_sign_in");
     });
     CROW_ROUTE(app, "/settings/sign-in").methods("POST"_method)([&app, &settings, &audit, sign_in_page](const crow::request& req) {
         crow::response res;

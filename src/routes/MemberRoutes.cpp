@@ -73,8 +73,8 @@ static std::string render_members_page(const crow::request& req,
     ctx["can_see_dues"] = can_see_dues;
     Features::add_flags(ctx);
 
-    bool is_htmx = req.get_header_value("HX-Request") == "true";
-    if (is_htmx) {
+    const bool htmx = is_htmx(req);
+    if (htmx) {
         auto tmpl = crow::mustache::load("members/_content.html");
         return tmpl.render(ctx).dump();
     }

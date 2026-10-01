@@ -24,18 +24,7 @@ void register_api_key_routes(LugApp& app, ApiKeyRepository& api_keys, AuditServi
         mctx["keys"]      = std::move(arr);
         mctx["has_keys"]  = !keys.empty();
 
-        bool is_htmx = req.get_header_value("HX-Request") == "true";
-        if (is_htmx) {
-            auto tmpl = crow::mustache::load("settings/_api_keys.html");
-            res.add_header("Content-Type", "text/html; charset=utf-8");
-            res.write(tmpl.render(mctx).dump());
-        } else {
-            auto content_tmpl = crow::mustache::load("settings/_api_keys.html");
-            std::string content = content_tmpl.render(mctx).dump();
-            res.add_header("Content-Type", "text/html; charset=utf-8");
-            res.write(render_in_layout(req, app, content, "API Keys", "active_api_keys"));
-        }
-        return res;
+        return html_page(req, app, crow::mustache::load("settings/_api_keys.html").render(mctx).dump(), "API Keys", "active_api_keys");
     });
 
     // POST /settings/api-keys - create a key
@@ -86,8 +75,8 @@ void register_api_key_routes(LugApp& app, ApiKeyRepository& api_keys, AuditServi
         api_keys.revoke(static_cast<int64_t>(id));
         audit.log(req, app, "api_key.revoke", "api_key", id, label, "Revoked API key");
 
-        bool is_htmx = req.get_header_value("HX-Request") == "true";
-        if (is_htmx) {
+        const bool htmx = is_htmx(req);
+        if (htmx) {
             res.add_header("HX-Redirect", "/settings/api-keys");
             res.code = 200;
         } else {
