@@ -1,4 +1,5 @@
 #include "routes/InventoryRoutes.hpp"
+#include "utils/FormBody.hpp"
 #include "services/AttendanceService.hpp"
 #include "routes/EventAccess.hpp"
 #include "utils/Csv.hpp"
@@ -14,17 +15,7 @@
 
 namespace {
 
-struct Form {
-    crow::query_string q;
-    explicit Form(const crow::request& req) : q("?" + req.body) {}
-    std::string get(const char* k, size_t max = 200) const {
-        const char* v = q.get(k);
-        return v ? std::string(v).substr(0, max) : "";
-    }
-    int64_t num(const char* k, int64_t def = 0) const {
-        try { return std::stoll(get(k, 20)); } catch (...) { return def; }
-    }
-};
+using Form = FormBody;
 
 const char* KINDS[][2] = {{"storage", "Storage unit"}, {"trailer", "Trailer"}, {"home", "At a member's home"},
                           {"venue", "At a venue"}, {"other", "Other"}};

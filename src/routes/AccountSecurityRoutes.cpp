@@ -1,17 +1,11 @@
 #include "routes/AccountSecurityRoutes.hpp"
+#include "utils/FormBody.hpp"
 #include "auth/AccountSecurity.hpp"
 #include <crow/mustache.h>
 
 namespace {
 
-struct Form {
-    crow::query_string q;
-    explicit Form(const crow::request& req) : q("?" + req.body) {}
-    std::string get(const char* k, size_t max = 200) const {
-        const char* v = q.get(k);
-        return v ? std::string(v).substr(0, max) : "";
-    }
-};
+using Form = FormBody;
 
 std::string base_url(const std::string& public_url, const crow::request& req) {
     if (!public_url.empty()) return public_url;

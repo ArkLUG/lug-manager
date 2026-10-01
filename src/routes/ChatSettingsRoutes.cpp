@@ -1,4 +1,5 @@
 #include "routes/ChatSettingsRoutes.hpp"
+#include "utils/FormBody.hpp"
 #include "chat/Templates.hpp"
 #include "services/Notifier.hpp"
 #include "utils/HtmlEscape.hpp"
@@ -6,13 +7,8 @@
 
 namespace {
 
-struct Form {
-    crow::query_string q;
-    explicit Form(const crow::request& req) : q("?" + req.body) {}
-    std::string get(const char* k, size_t max = 8000) const {
-        const char* v = q.get(k);
-        return v ? std::string(v).substr(0, max) : "";
-    }
+struct Form : FormBody {
+    explicit Form(const crow::request& req) : FormBody(req, 8000) {}
 };
 
 crow::response page(const crow::request& req, LugApp& app, const std::string& html, const std::string& title, int code = 200) {
