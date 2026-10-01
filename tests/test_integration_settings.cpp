@@ -9,7 +9,8 @@ TEST_F(IntegrationTest, SettingsPageLoads) {
     EXPECT_EQ(r.code, 200);
     expect_contains(r, "Discord Settings");
     expect_contains(r, "Bulk Sync");
-    expect_contains(r, "Suppress");
+    expect_contains(r, "What to post");
+    expect_contains(r, "Quiet mode");
 }
 
 TEST_F(IntegrationTest, SettingsCalendarPageLoads) {

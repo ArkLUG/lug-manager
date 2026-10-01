@@ -1,4 +1,6 @@
 #include "services/MemberService.hpp"
+#include "services/Features.hpp"
+#include "utils/Utf8.hpp"
 #include "auth/AccountSecurity.hpp"
 #include "utils/Snowflake.hpp"
 #include <algorithm>
@@ -166,10 +168,10 @@ Member MemberService::update(int64_t id, const Member& updates) {
     if (!updates.role.empty() && updates.role != existing->role)
         repo_.set_role_source(id, "manual");
 
-    // Sync nickname to Discord if display name changed
-    if (discord_ && !m.discord_user_id.empty() && m.display_name != old_display_name) {
+    // Sync nickname to Discord if display name changed (and nicknames are ours to set)
+    if (discord_ && !m.discord_user_id.empty() && m.display_name != old_display_name && !nickname_for(m).empty()) {
         try {
-            discord_->set_member_nickname(m.discord_user_id, m.display_name);
+            discord_->set_member_nickname(m.discord_user_id, nickname_for(m));
         } catch (const std::exception& ex) {
             std::cerr << "[MemberService] Warning: failed to sync nickname to Discord: " << ex.what() << "\n";
         }
@@ -226,6 +228,20 @@ MemberService::NicknameResult MemberService::regenerate_all_nicknames() {
     return result;
 }
 
+// The Discord nickname LUG Manager gives a member (setting chat.discord.nicknames):
+// "display" (default) their display name, "full" first + last name, "off" none.
+std::string MemberService::nickname_for(const Member& m) {
+    std::string mode = "display";
+    {
+        auto st = repo_.db().prepare("SELECT value FROM lug_settings WHERE key='chat.discord.nicknames'");
+        if (st.step() && !st.col_text(0).empty()) mode = st.col_text(0);
+    }
+    if (mode == "off" || !Features::on("discord")) return "";
+    if (mode == "full" && !m.first_name.empty())
+        return utf8_truncate(m.first_name + (m.last_name.empty() ? "" : " " + m.last_name), 32);
+    return utf8_truncate(m.display_name, 32);
+}
+
 MemberService::SyncResult MemberService::sync_nicknames_to_discord() {
     SyncResult result;
     if (!discord_) return result;
@@ -237,7 +253,7 @@ MemberService::SyncResult MemberService::sync_nicknames_to_discord() {
     auto all = repo_.find_all();
     bool first = true;
     for (auto& m : all) {
-        if (m.discord_user_id.empty() || m.display_name.empty()) {
+        if (m.discord_user_id.empty() || nickname_for(m).empty()) {
             ++result.skipped;
             continue;
         }
@@ -247,7 +263,7 @@ MemberService::SyncResult MemberService::sync_nicknames_to_discord() {
         }
         first = false;
         try {
-            std::string err = discord_->set_member_nickname(m.discord_user_id, m.display_name);
+            std::string err = discord_->set_member_nickname(m.discord_user_id, nickname_for(m));
             if (err.empty()) {
                 ++result.synced;
             } else {

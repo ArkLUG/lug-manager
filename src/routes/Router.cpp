@@ -46,6 +46,7 @@ void register_all_routes(LugApp& app, Services& svc) {
     register_shows_routes(app, svc.attendance_repo.db(), svc.settings, svc.audit);
     register_fan_colab_routes(app, svc.attendance_repo.db(), svc.settings, svc.photos, svc.audit);
     register_discord_time_repair_routes(app, svc.attendance_repo.db(), svc.discord, svc.audit);
+    register_chat_settings_routes(app, svc.attendance_repo.db(), svc.chat, svc.notifier, svc.audit);
     register_account_security_routes(app, svc.attendance_repo.db(), svc.settings, svc.auth, svc.notifier, svc.audit, svc.public_url);
     register_feature_routes(app, svc.settings, svc.audit);
     register_setup_routes(app, svc.attendance_repo.db(), svc.settings, svc.discord, svc.calendar, svc.audit, svc.public_url);

@@ -1,5 +1,6 @@
 #include "utils/Offline.hpp"
 #include "integrations/DiscordClient.hpp"
+#include "services/Features.hpp"
 #include "utils/Utf8.hpp"
 #include <regex>
 #include <curl/curl.h>
@@ -156,6 +157,9 @@ void DiscordClient::clear_cache() const {
 std::string DiscordClient::discord_api_request_uncached(const std::string& method,
                                                        const std::string& endpoint,
                                                        const std::string& json_body) const {
+    // Discord switched off (Settings > Features): nothing is sent at all.
+    if (!Features::on("discord")) throw std::runtime_error("Discord is switched off");
+
     // Endpoints are built by concatenating ids that can originate from user
     // input (member discord_user_id via forms/API, channel/role ids from
     // settings). Refuse anything that could walk the URL path, so e.g. a

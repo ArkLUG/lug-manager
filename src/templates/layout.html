@@ -59,7 +59,8 @@
     [data-features-off~="series"] .f-series, [data-features-off~="reports"] .f-reports,
     [data-features-off~="kiosk"] .f-kiosk, [data-features-off~="qr_checkin"] .f-qr_checkin,
     [data-features-off~="calendar"] .f-calendar, [data-features-off~="discord_reports"] .f-discord_reports,
-    [data-features-off~="guardians"] .f-guardians { display: none !important; }
+    [data-features-off~="guardians"] .f-guardians, [data-features-off~="discord"] .f-discord,
+    [data-features-off~="fancolab"] .f-fancolab { display: none !important; }
     /* Help permission table: the Event Manager column is a chapter role */
     [data-features-off~="chapters"] .help-perm td:nth-child(4) { display: none; }
     /* HTMX loading indicator */
@@ -464,6 +465,16 @@
                     {{#active_features}}nav-active{{/active_features}}
                     {{^active_features}}nav-inactive{{/active_features}}">
             Features
+          </a>
+          <a hx-get="/settings/messages"
+             hx-target="#main-content"
+             hx-push-url="true"
+             hx-swap="innerHTML"
+             hx-indicator="#nav-spinner"
+             class="block px-3 py-2 rounded-lg text-sm cursor-pointer transition-colors
+                    {{#active_messages}}nav-active{{/active_messages}}
+                    {{^active_messages}}nav-inactive{{/active_messages}}">
+            Message wording
           </a>
           <a hx-get="/settings/sign-in"
              hx-target="#main-content"

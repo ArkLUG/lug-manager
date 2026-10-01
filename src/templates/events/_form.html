@@ -230,11 +230,24 @@
                 placeholder="Additional notes, reports, follow-ups...">{{notes}}</textarea>
     </div>
 
-    <div class="flex gap-6">
-      <label class="flex items-center gap-2 text-sm text-gray-700 cursor-pointer">
+    <details class="f-discord text-sm border border-gray-200 rounded-lg px-3 py-2" {{#has_chat_skip}}open{{/has_chat_skip}}>
+      <summary class="cursor-pointer text-gray-700">Discord: leave out parts of this event's posts</summary>
+      <input type="hidden" name="chat_opts" value="1">
+      <div class="grid sm:grid-cols-2 gap-x-6 gap-y-1 mt-2 text-gray-700">
+        <label class="flex items-center gap-2"><input type="checkbox" name="skip_thread" value="1" {{#skip_thread}}checked{{/skip_thread}} class="rounded border-gray-300"> No discussion thread</label>
+        <label class="flex items-center gap-2"><input type="checkbox" name="skip_announce" value="1" {{#skip_announce}}checked{{/skip_announce}} class="rounded border-gray-300"> No announcement in the LUG channel</label>
+        <label class="flex items-center gap-2"><input type="checkbox" name="skip_chapter_announce" value="1" {{#skip_chapter_announce}}checked{{/skip_chapter_announce}} class="rounded border-gray-300"> No copy in the chapter's channel</label>
+        <label class="flex items-center gap-2"><input type="checkbox" name="skip_scheduled" value="1" {{#skip_scheduled}}checked{{/skip_scheduled}} class="rounded border-gray-300"> No Discord event (Events tab)</label>
+        <label class="flex items-center gap-2"><input type="checkbox" name="skip_update_note" value="1" {{#skip_update_note}}checked{{/skip_update_note}} class="rounded border-gray-300"> No "Event updated" notes</label>
+      </div>
+      <p class="text-xs text-gray-400 mt-1">Applies to what's posted from now on; to take everything down, tick "Don't post to Discord at all".</p>
+    </details>
+
+    <div class="flex flex-wrap gap-x-6 gap-y-2">
+      <label class="f-discord flex items-center gap-2 text-sm text-gray-700 cursor-pointer">
         <input type="checkbox" name="suppress_discord" {{#suppress_discord}}checked{{/suppress_discord}}
                class="rounded border-gray-300">
-        Suppress Discord updates
+        Don't post to Discord at all
       </label>
       <label class="flex items-center gap-2 text-sm text-gray-700 cursor-pointer">
         <input type="checkbox" name="suppress_calendar" {{#suppress_calendar}}checked{{/suppress_calendar}}

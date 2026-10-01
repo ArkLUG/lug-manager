@@ -419,28 +419,30 @@ void register_settings_routes(LugApp& app, SettingsRepository& settings,
             return oss.str();
         };
 
+        const bool discord_on = Features::on("discord");
+        const bool fetch = discord_on && !guild_id.empty();   // no Discord calls when it's off
         std::string no_guild = "Enter a Guild ID first, then refresh";
-        std::string channel_options = guild_id.empty() ? "<option value=\"\">" + no_guild + "</option>"
+        std::string channel_options = !fetch ? "<option value=\"\">" + no_guild + "</option>"
             : build_options(discord.fetch_text_channels(), lug_channel,
                             "-- Select a channel --",
                             "No text channels found (check guild ID &amp; bot permissions)");
-        std::string forum_options = guild_id.empty() ? "<option value=\"\">" + no_guild + "</option>"
+        std::string forum_options = !fetch ? "<option value=\"\">" + no_guild + "</option>"
             : build_options(discord.fetch_forum_channels(), forum_channel,
                             "-- Select a forum channel --",
                             "No forum channels found (check guild ID &amp; bot permissions)");
-        std::string event_reports_forum_options = guild_id.empty() ? "<option value=\"\">" + no_guild + "</option>"
+        std::string event_reports_forum_options = !fetch ? "<option value=\"\">" + no_guild + "</option>"
             : build_options(discord.fetch_forum_channels(), event_reports_forum,
                             "-- Select a forum channel --",
                             "No forum channels found (check guild ID &amp; bot permissions)");
-        std::string meeting_reports_forum_options = guild_id.empty() ? "<option value=\"\">" + no_guild + "</option>"
+        std::string meeting_reports_forum_options = !fetch ? "<option value=\"\">" + no_guild + "</option>"
             : build_options(discord.fetch_forum_channels(), meeting_reports_forum,
                             "-- Select a forum channel --",
                             "No forum channels found (check guild ID &amp; bot permissions)");
-        auto all_roles = guild_id.empty() ? std::vector<DiscordRole>{} : discord.fetch_guild_roles();
-        std::string role_options = guild_id.empty()
+        auto all_roles = !fetch ? std::vector<DiscordRole>{} : discord.fetch_guild_roles();
+        std::string role_options = !fetch
             ? "<option value=\"\">" + no_guild + "</option>"
             : build_role_options(all_roles, announce_role_id);
-        std::string non_lug_role_options = guild_id.empty()
+        std::string non_lug_role_options = !fetch
             ? "<option value=\"\">" + no_guild + "</option>"
             : build_role_options(all_roles, non_lug_role_id);
 
@@ -462,6 +464,23 @@ void register_settings_routes(LugApp& app, SettingsRepository& settings,
         mctx["meeting_reports_forum_id"] = meeting_reports_forum;
         mctx["event_reports_forum_options"]   = event_reports_forum_options;
         mctx["meeting_reports_forum_options"] = meeting_reports_forum_options;
+        mctx["discord_on"] = discord_on;
+        {
+            chat::Provider* dp = events.chat() ? events.chat()->provider("discord") : nullptr;
+            auto sw = [&](const char* name) { return dp ? events.chat()->switch_on(*dp, name) : true; };
+            for (const char* n : {"meeting_announce", "meeting_scheduled", "event_thread", "event_announce",
+                                  "event_chapter_announce", "event_scheduled", "dms", "challenges", "member_sync"})
+                mctx[std::string("sw_") + n] = sw(n);
+            mctx["quiet"] = settings.get("chat.quiet", "0") == "1";
+            mctx["discord_sign_in"] = settings.get("auth_discord_enabled", "1") != "0";
+            std::string nick = settings.get("chat.discord.nicknames", "display");
+            mctx["nick_display"] = nick != "full" && nick != "off";
+            mctx["nick_full"] = nick == "full";
+            mctx["nick_off"] = nick == "off";
+            auto st = settings.db().prepare("SELECT COUNT(*) FROM chat_activity WHERE ok=0 AND created_at > datetime('now','-7 days')");
+            int64_t failed = st.step() ? st.col_int(0) : 0;
+            if (failed > 0) mctx["recent_failures"] = failed;
+        }
         int pending_match_count = static_cast<int>(pending_discord_matches.find_all_unresolved().size());
         mctx["pending_match_count"] = pending_match_count;
         mctx["has_pending_matches"] = pending_match_count > 0;
@@ -580,8 +599,17 @@ void register_settings_routes(LugApp& app, SettingsRepository& settings,
         std::string forum_channel  = get_param("discord_events_forum_channel_id");
         std::string announce_role  = get_param("discord_announcement_role_id");
         std::string non_lug_role   = get_param("discord_non_lug_event_role_id");
-        std::string suppress_pings   = get_param("discord_suppress_pings");
-        std::string suppress_updates = get_param("discord_suppress_updates");
+        std::string suppress_pings   = get_param("pings_on") == "1" ? "0" : "1";
+        std::string suppress_updates = get_param("update_notes_on") == "1" ? "0" : "1";
+        for (const char* n : {"meeting_announce", "meeting_scheduled", "event_thread", "event_announce",
+                              "event_chapter_announce", "event_scheduled", "dms", "challenges", "member_sync"})
+            settings.set(std::string("chat.discord.") + n, get_param((std::string("chat_") + n).c_str()) == "1" ? "1" : "0");
+        settings.set("chat.quiet", get_param("chat_quiet") == "1" ? "1" : "0");
+        settings.set("auth_discord_enabled", get_param("auth_discord_enabled") == "1" ? "1" : "0");
+        {
+            std::string nick = get_param("nicknames");
+            settings.set("chat.discord.nicknames", nick == "full" || nick == "off" ? nick : "display");
+        }
         std::string ev_reports  = get_param("discord_event_reports_forum_channel_id");
         std::string mtg_reports = get_param("discord_meeting_reports_forum_channel_id");
 
@@ -610,6 +638,7 @@ void register_settings_routes(LugApp& app, SettingsRepository& settings,
                              non_lug_role, discord.get_timezone());
         discord.set_suppress_pings(suppress_pings == "1");
         discord.set_suppress_updates(suppress_updates == "1");
+        discord.set_events_forum_channel_id(forum_channel);   // reconfigure() can't clear it
         discord.set_event_reports_forum_id(ev_reports);
         discord.set_meeting_reports_forum_id(mtg_reports);
 
@@ -776,7 +805,6 @@ void register_settings_routes(LugApp& app, SettingsRepository& settings,
         try {
             auto ev_result  = events.sync_all_to_discord();
             auto mtg_result = meetings.sync_all_to_discord();
-            auto nick_result = members.sync_nicknames_to_discord();
 
             std::ostringstream html;
             html << "<span class=\"text-green-700 font-medium\">"
@@ -784,11 +812,9 @@ void register_settings_routes(LugApp& app, SettingsRepository& settings,
                  << (ev_result.errors > 0 ? ", <span class=\"text-red-600\">" + std::to_string(ev_result.errors) + " errors</span>" : "")
                  << " · Meetings: " << mtg_result.synced << " synced"
                  << (mtg_result.errors > 0 ? ", <span class=\"text-red-600\">" + std::to_string(mtg_result.errors) + " errors</span>" : "")
-                 << " · Nicknames: " << nick_result.synced << " updated"
-                 << (nick_result.errors > 0 ? ", <span class=\"text-red-600\">" + std::to_string(nick_result.errors) + " errors</span>" : "")
                  << "</span>";
             audit.log(req, app, "sync.all", "settings", 0, "",
-                      "Events: " + std::to_string(ev_result.synced) + " synced, Meetings: " + std::to_string(mtg_result.synced) + " synced, Nicknames: " + std::to_string(nick_result.synced) + " updated");
+                      "Events: " + std::to_string(ev_result.synced) + " synced, Meetings: " + std::to_string(mtg_result.synced) + " synced");
             res.write(html.str());
         } catch (const std::exception& ex) {
             res.write("<span class=\"text-red-600\">Error: " + html_escape(ex.what()) + "</span>");

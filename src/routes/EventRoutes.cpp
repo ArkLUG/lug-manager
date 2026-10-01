@@ -1,4 +1,5 @@
 #include "routes/EventRoutes.hpp"
+#include "routes/ChatFormHelpers.hpp"
 #include "utils/UrlEncode.hpp"
 #include "utils/JsonEscape.hpp"
 #include "services/EventConversion.hpp"
@@ -417,6 +418,7 @@ void register_event_routes(LugApp& app, EventService& events, AttendanceService&
         mctx["has_thread"]         = !ev->discord_thread_id.empty();
         mctx["discord_thread_id"]  = ev->discord_thread_id;
         mctx["suppress_discord"]   = ev->suppress_discord;
+        add_chat_skip_ctx(mctx, events.chat(), "event", ev->id);
         mctx["suppress_calendar"]  = ev->suppress_calendar;
         mctx["is_private"]         = ev->is_private;
         mctx["excludes_perks"]     = ev->excludes_perks;
@@ -600,6 +602,7 @@ void register_event_routes(LugApp& app, EventService& events, AttendanceService&
             try { e.max_attendees = std::stoi(max_str); } catch (...) { e.max_attendees = 0; }
         }
         e.suppress_discord  = (get_param("suppress_discord") == "on" || get_param("suppress_discord") == "1");
+        e.chat_skip         = chat_skip_from_form([&](const char* k) { return get_param(k); }, "event");
         e.suppress_calendar = (get_param("suppress_calendar") == "on" || get_param("suppress_calendar") == "1");
         e.is_private        = (get_param("is_private") == "on" || get_param("is_private") == "1");
         e.excludes_perks    = (get_param("excludes_perks") == "on" || get_param("excludes_perks") == "1");
@@ -685,6 +688,7 @@ void register_event_routes(LugApp& app, EventService& events, AttendanceService&
                 updates.discord_ping_role_ids = csv;
             }
             updates.suppress_discord  = (gp("suppress_discord") == "on" || gp("suppress_discord") == "1");
+            updates.chat_skip         = chat_skip_from_form([&](const char* k) { return gp(k); }, "event");
             updates.suppress_calendar = (gp("suppress_calendar") == "on" || gp("suppress_calendar") == "1");
             updates.is_private        = (gp("is_private") == "on" || gp("is_private") == "1");
             updates.excludes_perks    = (gp("excludes_perks") == "on" || gp("excludes_perks") == "1");

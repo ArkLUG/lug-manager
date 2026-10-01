@@ -1,0 +1,23 @@
+<div class="max-w-3xl space-y-5" data-page-title="Message wording">
+  <div>
+    <h2 class="text-xl font-semibold text-gray-800">Message wording</h2>
+    <p class="text-sm text-gray-500">Everything LUG Manager sends: posts in Discord, messages to members (a Discord DM, or an email if they're not on Discord) and sign-in emails. Change the wording, add your own touches, or leave the built-in text.</p>
+  </div>
+  {{#groups}}
+  <section class="bg-white rounded-xl border border-gray-200">
+    <h3 class="font-semibold text-gray-800 px-5 pt-4 pb-2">{{name}}</h3>
+    <ul class="divide-y divide-gray-100">
+      {{#items}}
+      <li>
+        <a hx-get="/settings/messages/{{key}}" hx-target="#main-content" hx-push-url="true" hx-swap="innerHTML"
+           class="flex items-start justify-between gap-3 px-5 py-3 hover:bg-gray-50 cursor-pointer">
+          <span><span class="text-sm font-medium text-gray-800">{{label}}</span>
+            <span class="block text-xs text-gray-500">{{help}}</span></span>
+          {{#customized}}<span class="text-xs px-2 py-0.5 rounded-full bg-yellow-100 text-yellow-800 whitespace-nowrap">Customized</span>{{/customized}}
+        </a>
+      </li>
+      {{/items}}
+    </ul>
+  </section>
+  {{/groups}}
+</div>

@@ -49,6 +49,9 @@ public:
                             const std::string& announcement_role_id = "",
                             const std::string& non_lug_event_role_id = "",
                             const std::string& timezone = "");
+    // Unlike reconfigure(), these can clear the value (Settings > Discord).
+    void        set_events_forum_channel_id(const std::string& id) { std::lock_guard<std::mutex> l(cfg_mutex_); events_forum_channel_id_ = id; }
+    void        set_lug_channel_id(const std::string& id)           { std::lock_guard<std::mutex> l(cfg_mutex_); lug_channel_id_ = id; }
     void        set_timezone(const std::string& tz) { if (tz.empty()) return; std::lock_guard<std::mutex> l(cfg_mutex_); timezone_ = tz; }
     std::string get_guild_id()                  const { std::lock_guard<std::mutex> l(cfg_mutex_); return guild_id_; }
     std::string get_lug_channel_id()            const { std::lock_guard<std::mutex> l(cfg_mutex_); return lug_channel_id_; }

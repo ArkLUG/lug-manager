@@ -68,6 +68,7 @@ public:
         std::vector<std::string> error_details;
     };
     SyncResult sync_nicknames_to_discord();
+    std::string nickname_for(const Member& m);   // "" = leave their nickname alone
 
 private:
     MemberRepository& repo_;

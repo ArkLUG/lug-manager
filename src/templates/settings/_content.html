@@ -13,9 +13,23 @@
         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
       </button>
     </div>
-    <p class="text-sm text-gray-500 mb-6">Configure which Discord server and channels the LUG Manager posts to. Changes take effect immediately.</p>
+    <p class="text-sm text-gray-500 mb-4">Which Discord server LUG Manager works with, where it posts, and what it posts. Changes take effect immediately.</p>
+    {{^discord_on}}
+    <div class="rounded-lg bg-gray-50 border border-gray-200 p-4 text-sm text-gray-700">
+      <strong>Discord is switched off.</strong> Nothing is posted to Discord, members sign in with email (and a password or link), and messages to members go by email.
+      Turn it on under <a hx-get="/settings/features" hx-target="#main-content" hx-push-url="true" hx-swap="innerHTML" class="underline cursor-pointer">Settings &gt; Features</a>.
+    </div>
+    {{/discord_on}}
+
+    {{#discord_on}}
+    <div class="flex flex-wrap gap-2 mb-5 text-sm">
+      <a hx-get="/settings/messages" hx-target="#main-content" hx-push-url="true" hx-swap="innerHTML" class="px-3 py-1.5 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 cursor-pointer">Message wording</a>
+      <a hx-get="/settings/chat-activity" hx-target="#main-content" hx-push-url="true" hx-swap="innerHTML" class="px-3 py-1.5 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 cursor-pointer">Activity log{{#recent_failures}} <span class="ml-1 px-1.5 rounded-full bg-red-100 text-red-700 text-xs">{{recent_failures}} failed</span>{{/recent_failures}}</a>
+      <a hx-get="/settings/discord-times" hx-target="#main-content" hx-push-url="true" hx-swap="innerHTML" class="px-3 py-1.5 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 cursor-pointer">Repair times</a>
+    </div>
 
     <form hx-post="/settings/discord" hx-target="#settings-feedback" hx-swap="innerHTML" class="space-y-5">
+      <h3 class="text-base font-semibold text-gray-900 border-b border-gray-200 pb-1">Server, channels and roles</h3>
 
       <!-- Guild ID -->
       <div>
@@ -103,31 +117,32 @@
         <p class="text-xs text-gray-400 mt-1">This role will be @mentioned when a Non-LUG event is posted. Leave empty to use no ping.</p>
       </div>
 
-      <!-- Suppress Pings -->
-      <div>
-        <label class="flex items-center gap-3 cursor-pointer">
-          <input type="checkbox" name="discord_suppress_pings" value="1"
-                 {{#suppress_pings}}checked{{/suppress_pings}}
-                 class="w-4 h-4 accent-yellow-400 rounded">
-          <div>
-            <span class="text-sm font-medium text-gray-700">Suppress all @mentions in announcements</span>
-            <p class="text-xs text-gray-400">When enabled, Discord announcements will not ping any roles. Useful for testing or quiet periods.</p>
-          </div>
-        </label>
-      </div>
-
-      <!-- Suppress Update Messages -->
-      <div>
-        <label class="flex items-center gap-3 cursor-pointer">
-          <input type="checkbox" name="discord_suppress_updates" value="1"
-                 {{#suppress_updates}}checked{{/suppress_updates}}
-                 class="w-4 h-4 accent-yellow-400 rounded">
-          <div>
-            <span class="text-sm font-medium text-gray-700">Suppress update notifications</span>
-            <p class="text-xs text-gray-400">When enabled, editing events won't post "Event Updated" messages in Discord threads. Useful when bulk-editing imported events.</p>
-          </div>
-        </label>
-      </div>
+      <h3 class="text-base font-semibold text-gray-900 border-b border-gray-200 pb-1 pt-2">What to post</h3>
+      <label class="flex items-start gap-3 cursor-pointer rounded-lg bg-amber-50 border border-amber-200 p-3">
+        <input type="checkbox" name="chat_quiet" value="1" {{#quiet}}checked{{/quiet}} class="mt-0.5 w-4 h-4 accent-yellow-400 rounded">
+        <div><span class="text-sm font-medium text-gray-800">Quiet mode</span>
+          <p class="text-xs text-gray-600">Nothing new is posted or messaged; existing posts are still edited or removed when things change. For maintenance, imports, or a test period.</p></div>
+      </label>
+      <fieldset class="grid sm:grid-cols-2 gap-x-6 gap-y-2 text-sm">
+        <legend class="text-sm font-medium text-gray-700 mb-1">For each new meeting</legend>
+        <label class="flex items-center gap-2"><input type="checkbox" name="chat_meeting_announce" value="1" {{#sw_meeting_announce}}checked{{/sw_meeting_announce}} class="accent-yellow-400"> An announcement (LUG channel, or the chapter's)</label>
+        <label class="flex items-center gap-2"><input type="checkbox" name="chat_meeting_scheduled" value="1" {{#sw_meeting_scheduled}}checked{{/sw_meeting_scheduled}} class="accent-yellow-400"> A Discord event (Events tab)</label>
+      </fieldset>
+      <fieldset class="grid sm:grid-cols-2 gap-x-6 gap-y-2 text-sm">
+        <legend class="text-sm font-medium text-gray-700 mb-1">For each new event</legend>
+        <label class="flex items-center gap-2"><input type="checkbox" name="chat_event_thread" value="1" {{#sw_event_thread}}checked{{/sw_event_thread}} class="accent-yellow-400"> A discussion thread</label>
+        <label class="flex items-center gap-2"><input type="checkbox" name="chat_event_announce" value="1" {{#sw_event_announce}}checked{{/sw_event_announce}} class="accent-yellow-400"> An announcement in the LUG channel</label>
+        <label class="flex items-center gap-2"><input type="checkbox" name="chat_event_chapter_announce" value="1" {{#sw_event_chapter_announce}}checked{{/sw_event_chapter_announce}} class="accent-yellow-400"> A copy in the chapter's channel</label>
+        <label class="flex items-center gap-2"><input type="checkbox" name="chat_event_scheduled" value="1" {{#sw_event_scheduled}}checked{{/sw_event_scheduled}} class="accent-yellow-400"> A Discord event (Events tab)</label>
+        <label class="flex items-center gap-2"><input type="checkbox" name="update_notes_on" value="1" {{^suppress_updates}}checked{{/suppress_updates}} class="accent-yellow-400"> An "Event updated" note in its thread when it's edited</label>
+      </fieldset>
+      <fieldset class="grid sm:grid-cols-2 gap-x-6 gap-y-2 text-sm">
+        <legend class="text-sm font-medium text-gray-700 mb-1">Also</legend>
+        <label class="flex items-center gap-2"><input type="checkbox" name="pings_on" value="1" {{^suppress_pings}}checked{{/suppress_pings}} class="accent-yellow-400"> Mention (ping) the announcement roles</label>
+        <label class="flex items-center gap-2"><input type="checkbox" name="chat_dms" value="1" {{#sw_dms}}checked{{/sw_dms}} class="accent-yellow-400"> Send members direct messages (otherwise email)</label>
+        <label class="flex items-center gap-2"><input type="checkbox" name="chat_challenges" value="1" {{#sw_challenges}}checked{{/sw_challenges}} class="accent-yellow-400"> Announce build challenge winners</label>
+      </fieldset>
+      <p class="text-xs text-gray-400">Each meeting and event can also turn parts off for itself (in its form, under Discord). Changing these doesn't remove anything already posted.</p>
 
       <!-- Reminders -->
       <div class="space-y-2">
@@ -187,6 +202,18 @@
         <p class="text-xs text-gray-400 mt-1">Forum channel where meeting reports are published.</p>
       </div>
 
+      <h3 class="text-base font-semibold text-gray-900 border-b border-gray-200 pb-1 pt-2">Members</h3>
+      <div class="space-y-2 text-sm">
+        <label class="flex items-center gap-2"><input type="checkbox" name="auth_discord_enabled" value="1" {{#discord_sign_in}}checked{{/discord_sign_in}} class="accent-yellow-400"> Members can sign in with Discord</label>
+        <label class="flex items-center gap-2"><input type="checkbox" name="chat_member_sync" value="1" {{#sw_member_sync}}checked{{/sw_member_sync}} class="accent-yellow-400"> Sync the member list and roles from the server every 6 hours</label>
+        <label class="block">Discord nicknames
+          <select name="nicknames" class="mt-1 w-full sm:w-auto px-3 py-2 border border-gray-300 rounded-lg text-sm">
+            <option value="display" {{#nick_display}}selected{{/nick_display}}>Set to their LUG Manager display name (e.g. Ann B.)</option>
+            <option value="full" {{#nick_full}}selected{{/nick_full}}>Set to their full name (e.g. Ann Builder)</option>
+            <option value="off" {{#nick_off}}selected{{/nick_off}}>Don't change nicknames</option>
+          </select></label>
+      </div>
+
       <div class="flex items-center gap-3 pt-2">
         <button type="submit"
                 class="px-5 py-2 bg-yellow-400 text-gray-900 rounded-lg text-sm font-semibold hover:bg-yellow-300 transition-colors">
@@ -204,8 +231,10 @@
       </div>
 
     </form>
+    {{/discord_on}}
   </div>
 
+  {{#discord_on}}
   <div class="bg-white rounded-xl border border-gray-200 p-6">
     <h2 class="text-xl font-bold text-gray-900 mb-1">Role Management</h2>
     <p class="text-sm text-gray-500 mb-4">Map Discord roles to LUG app roles so members can log in automatically.</p>
@@ -220,7 +249,7 @@
 
   <div class="bg-white rounded-xl border border-gray-200 p-6">
     <h2 class="text-xl font-bold text-gray-900 mb-1">Bulk Sync</h2>
-    <p class="text-sm text-gray-500 mb-4">Force-push all events and meetings to Discord and/or Google Calendar. Useful after initial setup or bulk edits. To correct times sent by older versions without notifying anyone, use <a hx-get="/settings/discord-times" hx-target="#main-content" hx-push-url="true" hx-swap="innerHTML" class="underline cursor-pointer">Repair times on Discord</a> instead.</p>
+    <p class="text-sm text-gray-500 mb-4">Re-send every event and meeting to Discord and/or Google Calendar (existing posts are edited, nicknames aren't touched). Useful after initial setup or bulk edits. To correct times sent by older versions without notifying anyone, use <a hx-get="/settings/discord-times" hx-target="#main-content" hx-push-url="true" hx-swap="innerHTML" class="underline cursor-pointer">Repair times on Discord</a> instead.</p>
     <div class="flex flex-wrap items-center gap-3">
       <button hx-post="/api/discord/sync-all"
               hx-target="#bulk-sync-result"
@@ -295,10 +324,13 @@
     </div>
   </div>
 
+  {{/discord_on}}
   <div hx-get="/settings/public-shows" hx-trigger="load" hx-swap="outerHTML"></div>
 
+  {{#discord_on}}
   <div class="bg-blue-50 border border-blue-200 rounded-xl p-4 text-sm text-blue-800">
     <strong>Note:</strong> The Discord bot token is set via the <code class="bg-blue-100 px-1 rounded">DISCORD_BOT_TOKEN</code> environment variable and cannot be changed here. Each chapter has its own announcements channel configured on the chapter's settings page.
   </div>
+  {{/discord_on}}
 
 </div>

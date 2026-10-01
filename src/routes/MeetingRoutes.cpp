@@ -1,4 +1,5 @@
 #include "routes/MeetingRoutes.hpp"
+#include "routes/ChatFormHelpers.hpp"
 #include "utils/UrlEncode.hpp"
 #include "utils/MarkdownRenderer.hpp"
 #include "utils/AuditDiff.hpp"
@@ -317,6 +318,7 @@ void register_meeting_routes(LugApp& app, MeetingService& meetings, AttendanceSe
             mctx["voice_channel_options"] = vopts.str();
         }
         mctx["suppress_discord"]  = m->suppress_discord;
+        add_chat_skip_ctx(mctx, meetings.chat(), "meeting", m->id);
         mctx["suppress_calendar"] = m->suppress_calendar;
         mctx["is_private"]        = m->is_private;
         mctx["excludes_perks"]    = m->excludes_perks;
@@ -453,6 +455,7 @@ void register_meeting_routes(LugApp& app, MeetingService& meetings, AttendanceSe
         m.is_virtual        = (get_param("is_virtual") == "on" || get_param("is_virtual") == "1");
         m.discord_voice_channel_id = get_param("discord_voice_channel_id");
         m.suppress_discord  = (get_param("suppress_discord") == "on" || get_param("suppress_discord") == "1");
+        m.chat_skip         = chat_skip_from_form([&](const char* k) { return get_param(k); }, "meeting");
         m.suppress_calendar = (get_param("suppress_calendar") == "on" || get_param("suppress_calendar") == "1");
         m.is_private        = (get_param("is_private") == "on" || get_param("is_private") == "1");
         m.excludes_perks    = (get_param("excludes_perks") == "on" || get_param("excludes_perks") == "1");
@@ -525,6 +528,7 @@ void register_meeting_routes(LugApp& app, MeetingService& meetings, AttendanceSe
             updates.is_virtual        = (gp("is_virtual") == "on" || gp("is_virtual") == "1");
             updates.discord_voice_channel_id = gp("discord_voice_channel_id");
             updates.suppress_discord  = (gp("suppress_discord") == "on" || gp("suppress_discord") == "1");
+            updates.chat_skip         = chat_skip_from_form([&](const char* k) { return gp(k); }, "meeting");
             updates.suppress_calendar = (gp("suppress_calendar") == "on" || gp("suppress_calendar") == "1");
             updates.is_private        = (gp("is_private") == "on" || gp("is_private") == "1");
             updates.excludes_perks    = (gp("excludes_perks") == "on" || gp("excludes_perks") == "1");

@@ -231,11 +231,15 @@ int main() {
         session_cleaner.detach();
 
         // Background thread: sync Discord guild members every 6 hours
-        std::thread member_syncer([&member_sync_service, &audit_service] {
+        std::thread member_syncer([&member_sync_service, &audit_service, &settings_repo] {
             // Initial delay: wait 30 seconds after startup before first sync
             std::this_thread::sleep_for(std::chrono::seconds(30));
             while (true) {
                 try {
+                    if (!Features::on("discord") || settings_repo.get("chat.discord.member_sync", "1") == "0") {
+                        std::this_thread::sleep_for(std::chrono::hours(6));
+                        continue;
+                    }
                     std::cout << "[member-sync] Starting periodic Discord member sync...\n";
                     SyncResult r = member_sync_service.sync_from_guild();
                     if (!r.error_message.empty()) {

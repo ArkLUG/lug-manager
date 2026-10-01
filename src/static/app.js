@@ -53,6 +53,15 @@
     'bulk-clear':         function () { call('bulkClear'); },
     'copy':               copyFrom,
     'select-self':        function (el) { el.select(); },
+    'insert-text':        function (el) {
+      var t = document.querySelector(el.dataset.target);
+      if (!t) return;
+      var a = t.selectionStart || 0, b = t.selectionEnd || 0, text = el.dataset.text || '';
+      t.value = t.value.slice(0, a) + text + t.value.slice(b);
+      t.focus();
+      t.selectionStart = t.selectionEnd = a + text.length;
+      t.dispatchEvent(new Event('keyup', { bubbles: true }));
+    },
     'print':              function () { window.print(); },
     'fullscreen':         function () { var d = document.documentElement; if (d.requestFullscreen) d.requestFullscreen(); }
   };

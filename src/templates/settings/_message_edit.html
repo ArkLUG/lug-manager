@@ -1,0 +1,60 @@
+<div id="message-editor" class="max-w-4xl space-y-4" data-page-title="{{label}}">
+  <div>
+    <a hx-get="/settings/messages" hx-target="#main-content" hx-push-url="true" hx-swap="innerHTML" class="text-sm text-gray-500 hover:underline cursor-pointer">&larr; Message wording</a>
+    <h2 class="text-xl font-semibold text-gray-800 mt-1">{{label}}</h2>
+    <p class="text-sm text-gray-500">{{help}}</p>
+  </div>
+  {{#flash}}<div role="status" class="bg-green-50 text-green-800 rounded-lg px-4 py-2 text-sm">{{flash}}</div>{{/flash}}
+  {{#error}}<div role="alert" class="bg-red-50 text-red-700 rounded-lg px-4 py-2 text-sm">{{error}}</div>{{/error}}
+  <div class="grid lg:grid-cols-2 gap-4">
+    <form hx-post="/settings/messages/{{key}}" hx-target="#message-editor" hx-swap="outerHTML" class="bg-white rounded-xl border border-gray-200 p-5 space-y-3 text-sm">
+      {{#has_subject}}
+      <label class="block">{{#is_email_only}}Email subject{{/is_email_only}}{{^is_email_only}}Title (email subject){{/is_email_only}}
+        <input id="msg-subject" name="subject" value="{{subject}}" maxlength="300"
+               hx-post="/settings/messages/{{key}}/preview" hx-trigger="keyup changed delay:400ms" hx-target="#msg-preview" hx-swap="innerHTML" hx-include="#msg-body"
+               class="mt-1 w-full border border-gray-300 rounded-lg px-3 py-2"></label>
+      {{/has_subject}}
+      <label class="block">Message
+        <textarea id="msg-body" name="body" rows="10" maxlength="8000"
+                  hx-post="/settings/messages/{{key}}/preview" hx-trigger="keyup changed delay:400ms" hx-target="#msg-preview" hx-swap="innerHTML" hx-include="#msg-subject"
+                  class="mt-1 w-full border border-gray-300 rounded-lg px-3 py-2 font-mono text-sm">{{body}}</textarea></label>
+      <div>
+        <div class="text-xs text-gray-500 mb-1">Insert a placeholder (click):</div>
+        <div class="flex flex-wrap gap-1">
+          {{#placeholders}}<button type="button" data-action="insert-text" data-target="#msg-body" data-text="{{token}}"
+                  title="{{help}} - e.g. {{sample}}"
+                  class="text-xs px-2 py-1 rounded border {{#required}}border-yellow-400 bg-yellow-50{{/required}}{{^required}}border-gray-300 bg-gray-50{{/required}} font-mono hover:bg-gray-100">{{token}}</button>{{/placeholders}}
+        </div>
+      </div>
+      <details class="text-xs text-gray-600">
+        <summary class="cursor-pointer">How the wording works</summary>
+        <ul class="mt-1 space-y-1 list-disc list-inside">
+          <li>A placeholder in curly brackets is replaced by its value.</li>
+          <li>A line whose placeholders are all empty is left out (so "Location: …" disappears when there's no location).</li>
+          <li>Put optional bits in double square brackets, like <code>[[ at {location}]]</code>: they're left out when a placeholder in them is empty.</li>
+          {{^is_email_only}}<li><strong>**bold**</strong> and *italic* work in Discord{{#is_dm}}; in emails they're turned into plain text{{/is_dm}}.</li>{{/is_email_only}}
+          <li>To write a curly bracket itself, double it.</li>
+        </ul>
+      </details>
+      <div class="flex flex-wrap items-center gap-2 pt-1">
+        <button class="px-4 py-2 bg-gray-800 text-white rounded-lg font-medium hover:bg-gray-700">Save</button>
+        {{#customized}}<button type="button" hx-post="/settings/messages/{{key}}/reset" hx-target="#message-editor" hx-swap="outerHTML"
+                hx-confirm="Go back to the built-in wording?" class="px-3 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50">Reset to built-in</button>{{/customized}}
+        <button type="button" hx-post="/settings/messages/{{key}}/test" hx-target="#msg-test" hx-swap="innerHTML"
+                class="px-3 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50">Send me a test</button>
+        <span id="msg-test"></span>
+      </div>
+      <p class="text-xs text-gray-400">"Send me a test" uses the saved wording and example values.</p>
+    </form>
+    <section class="bg-white rounded-xl border border-gray-200 p-5 space-y-2">
+      <h3 class="text-sm font-semibold text-gray-700">Preview <span class="font-normal text-gray-400">(example values)</span></h3>
+      <div id="msg-preview" class="rounded-lg bg-gray-50 border border-gray-200 p-3">
+        {{#preview_subject}}<div class="text-xs text-gray-500">Subject</div><div class="text-sm font-medium text-gray-800 mb-2">{{preview_subject}}</div>{{/preview_subject}}
+        <pre class="whitespace-pre-wrap break-words text-sm text-gray-800 font-sans">{{preview}}</pre>
+      </div>
+      <dl class="text-xs text-gray-600 space-y-1 pt-2">
+        {{#placeholders}}<div><dt class="inline font-mono text-gray-800">{{token}}</dt> <dd class="inline">{{help}}{{#required}} <strong>(needed)</strong>{{/required}}</dd></div>{{/placeholders}}
+      </dl>
+    </section>
+  </div>
+</div>

@@ -159,7 +159,7 @@ void register_auth_routes(LugApp& app, AuthService& auth, DiscordOAuth& oauth,
         mctx["email_login"] = email_links_on();
         mctx["password_login"] = password_login_on();
         mctx["forgot"] = password_login_on() && g_email_login;
-        mctx["discord_login"] = auth_setting("auth_discord_enabled", "1") != "0";
+        mctx["discord_login"] = auth_setting("auth_discord_enabled", "1") != "0" && Features::on("discord");
         if (error == "password")        mctx["error_password"]       = true;
         if (error == "locked")          mctx["error_locked"]         = true;
         if (error == "expired")         mctx["error_expired"]        = true;
@@ -176,7 +176,7 @@ void register_auth_routes(LugApp& app, AuthService& auth, DiscordOAuth& oauth,
     // GET /auth/login[?checkin=<token>] - redirect to Discord OAuth2 with a
     // fresh state nonce bound to this browser via the oauth_state cookie.
     CROW_ROUTE(app, "/auth/login")([&](const crow::request& req) {
-        if (auth_setting("auth_discord_enabled", "1") == "0") {
+        if (auth_setting("auth_discord_enabled", "1") == "0" || !Features::on("discord")) {
             crow::response off;
             off.redirect(build_url(req, "/login"));
             return off;
@@ -198,6 +198,11 @@ void register_auth_routes(LugApp& app, AuthService& auth, DiscordOAuth& oauth,
 
     // GET /auth/callback - handle OAuth2 callback (normal login or checkin)
     CROW_ROUTE(app, "/auth/callback")([&](const crow::request& req) {
+        if (auth_setting("auth_discord_enabled", "1") == "0" || !Features::on("discord")) {
+            crow::response off;
+            off.redirect(build_url(req, "/login"));
+            return off;
+        }
         auto params = crow::query_string(req.url_params);
         const char* code_raw  = params.get("code");
         const char* error_raw = params.get("error");
