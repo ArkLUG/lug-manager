@@ -174,8 +174,8 @@ Member MemberService::update(int64_t id, const Member& updates) {
     return repo_.find_by_id(id).value_or(m);
 }
 
-void MemberService::delete_member(int64_t id) {
-    if (discord_) {
+void MemberService::delete_member(int64_t id, bool kick_from_discord) {
+    if (discord_ && kick_from_discord) {
         auto member = repo_.find_by_id(id);
         if (member && !member->discord_user_id.empty()) {
             try {

@@ -36,7 +36,9 @@ public:
 
     Member create(const Member& m);
     Member update(int64_t id, const Member& updates);
-    void   delete_member(int64_t id);
+    // kick_from_discord: also remove a linked member from the Discord server
+    // (the normal admin "Delete member" behavior).
+    void   delete_member(int64_t id, bool kick_from_discord = true);
     void   set_paid(int64_t id, bool paid, const std::string& paid_until);
     void   set_chapter(int64_t id, int64_t chapter_id);
 

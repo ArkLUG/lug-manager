@@ -248,6 +248,8 @@ void register_settings_routes(LugApp& app, SettingsRepository& settings,
                              << "hx-vals='{\"member_id\": " << c.member_id << ", \"change_type\": \"created\"}' "
                              << "hx-target=\"#sync-change-" << c.member_id << "-\" "
                              << "hx-swap=\"outerHTML\" "
+                             << "hx-confirm=\"Delete the imported record for " << html_escape(c.member_name)
+                             << "? (They stay in the Discord server and may be re-imported by the next sync.)\" "
                              << "class=\"text-red-600 hover:text-red-800 font-medium\">Delete</button></td>";
                     } else {
                         std::string label = c.field;
@@ -309,7 +311,9 @@ void register_settings_routes(LugApp& app, SettingsRepository& settings,
             // Revert creation = delete the member
             auto del_m = members.get(member_id);
             std::string del_name = del_m ? del_m->display_name : "ID:" + std::to_string(member_id);
-            members.delete_member(member_id);
+            // Undo of an auto-import only - never kick the person from the
+            // Discord server (delete_member's default) for that.
+            members.delete_member(member_id, /*kick_from_discord=*/false);
             audit.log(req, app, "member.revert_sync_delete", "member", member_id, del_name, "Reverted sync — deleted member");
             res.write(R"(<tr class="border-t border-gray-100 bg-red-50"><td colspan="5" class="px-3 py-2 text-red-700 text-center">Member deleted</td></tr>)");
             res.add_header("Content-Type", "text/html; charset=utf-8");
