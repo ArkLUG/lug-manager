@@ -1,5 +1,6 @@
 #include "routes/SetupRoutes.hpp"
 #include "services/Features.hpp"
+#include "services/FanCoLab.hpp"
 #include "auth/SessionStore.hpp"
 #include "utils/HtmlEscape.hpp"
 #include <crow/mustache.h>
@@ -78,6 +79,21 @@ std::string render_checklist(SettingsRepository& settings, SqliteDatabase& db, c
         zones[i]["zone"] = z; zones[i]["selected"] = tz == z; ++i;
     }
     ctx["zones"] = std::move(zones);
+    // Optional: LEGO Fan CoLab recognition + Community Ambassador
+    auto fc = fan_colab_info(db);
+    ctx["fan_colab_recognized"] = fc.recognized;
+    ctx["fan_colab_done"] = fc.recognized && fc.ambassador_id > 0 && !fc.ambassador.empty();
+    crow::json::wvalue people = crow::json::wvalue::list();
+    {
+        auto st = db.prepare("SELECT id, display_name FROM members ORDER BY display_name COLLATE NOCASE");
+        i = 0;
+        while (st.step()) {
+            people[i]["id"] = st.col_int(0); people[i]["name"] = st.col_text(1);
+            people[i]["selected"] = st.col_int(0) == fc.ambassador_id;
+            ++i;
+        }
+    }
+    ctx["people"] = std::move(people);
     if (!flash.empty()) ctx["flash"] = flash;
     return crow::mustache::load("setup/_checklist.html").render(ctx).dump();
 }
@@ -193,6 +209,26 @@ void register_setup_routes(LugApp& app, SqliteDatabase& db, SettingsRepository& 
                             settings.get("discord_announcement_role_id", ""),
                             settings.get("discord_non_lug_event_role_id", ""), discord.get_timezone());
         audit.log(req, app, "settings.update", "settings", 0, "Setup", "Discord server " + guild);
+        return page(req, app, render_checklist(settings, db, "Saved."), true);
+    });
+
+    // POST /setup/fancolab - Recognized LEGO Fan Community + Community Ambassador
+    CROW_ROUTE(app, "/setup/fancolab").methods("POST"_method)([&app, &db, &settings, &audit](const crow::request& req) {
+        crow::response res;
+        if (!require_auth(req, res, app, "admin")) return res;
+        bool recognized = form(req, "fan_colab_recognized", 2) == "1";
+        std::string amb = form(req, "community_ambassador_id", 20);
+        int64_t amb_id = 0;
+        try { amb_id = std::stoll(amb); } catch (...) {}
+        if (amb_id > 0) {
+            auto st = db.prepare("SELECT 1 FROM members WHERE id=?");
+            st.bind(1, amb_id);
+            if (!st.step()) return page(req, app, render_checklist(settings, db, "That member doesn't exist."), true, 400);
+        }
+        settings.set("fan_colab_recognized", recognized ? "1" : "0");
+        settings.set("community_ambassador_id", amb_id > 0 ? std::to_string(amb_id) : "");
+        audit.log(req, app, "settings.update", "settings", 0, "LEGO Fan CoLab",
+                  std::string(recognized ? "Recognized" : "Not recognized") + (amb_id > 0 ? ", ambassador #" + std::to_string(amb_id) : ""));
         return page(req, app, render_checklist(settings, db, "Saved."), true);
     });
 

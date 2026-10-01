@@ -1,7 +1,7 @@
 {
   "name": "LUG Manager",
   "short_name": "LUG",
-  "description": "Meetings, events, attendance and members for your LEGO User Group",
+  "description": "Members, meetings, shows and check-ins for your LEGO User Group or LEGO fan community",
   "start_url": "/dashboard",
   "scope": "/",
   "display": "standalone",

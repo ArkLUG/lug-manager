@@ -15,6 +15,7 @@
         <h1 class="text-2xl font-bold">{{title}}</h1>
         <p class="text-gray-600">{{start}}{{#multi_day}} – {{end}}{{/multi_day}}{{#location}} · {{location}}{{/location}}</p>
         {{#lead}}<p class="text-gray-600">Event lead: {{lead}}</p>{{/lead}}
+        {{#fan_colab_recognized}}<p class="text-gray-600">{{fan_colab_name}} - a Recognized LEGO® Fan Community (LEGO Fan CoLab){{#community_ambassador}} · Community Ambassador: {{community_ambassador}}{{/community_ambassador}}</p>{{/fan_colab_recognized}}
       </div>
       <button class="no-print px-3 py-1.5 border border-gray-300 rounded-lg" data-action="print">Print / Save PDF</button>
     </div>

@@ -1,3 +1,4 @@
+#include "services/FanCoLab.hpp"
 #include <set>
 #include "utils/Money.hpp"
 #include "routes/ReportRoutes.hpp"
@@ -196,6 +197,7 @@ void register_report_routes(LugApp& app, SqliteDatabase& db, EventService& event
             ctx["venues"] = std::move(v);
             ctx["has_venues"] = i > 0;
         }
+        add_fan_colab(ctx, db);
         std::string page = crow::mustache::load("reports/_annual.html").render(ctx).dump();
         res.add_header("Content-Type", "text/html; charset=utf-8");
         res.write(req.get_header_value("HX-Request") == "true" ? page
@@ -272,6 +274,7 @@ void register_report_routes(LugApp& app, SqliteDatabase& db, EventService& event
             st.bind(1, ev->id);
             if (st.step() && st.col_int(0) > 0) ctx["public_interest"] = st.col_int(0);
         }
+        add_fan_colab(ctx, db);
         ctx["asset_v"] = asset_version();
         audit.log(req, app, "event.report_view", "event", ev->id, ev->title, "Viewed event report");
         res.add_header("Content-Type", "text/html; charset=utf-8");

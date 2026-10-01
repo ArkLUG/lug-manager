@@ -2,6 +2,10 @@
 
 **Run your LEGO® User Group in one place**: members, meetings, shows, check-ins, dues, volunteers, build challenges, inventory and money, with Discord and Google Calendar built in. Self-hosted, open source, and light enough for a small home server.
 
+**Who it's for:**
+- LEGO User Groups (LUGs), adult fan (AFOL) clubs, and other LEGO fan communities, big or small.
+- Groups recognized in **LEGO Fan CoLab** (formerly the LEGO Ambassador Network) as a *Recognized LEGO Fan Community*. You can record your Community Ambassador, and your reports show your recognition.
+
 **[Try the demo →](https://arklug.github.io/lug-manager/)** It's a fictional "Brickton LUG". Switch between a member, a moderator and an admin from the yellow bar. Nothing you do there is saved.
 
 > **Notice:** This project was built entirely using AI (Claude Code by Anthropic). All code, documentation, templates, and configuration were generated through AI-assisted development.
@@ -25,7 +29,8 @@
 - Volunteer shifts, display (MOC) table requests, and a visitor tap counter for public shows.
 - QR self check-in, a venue kiosk screen, and attendance by the people running the event.
 - Event photos, Markdown notes, and reports posted to a Discord forum.
-- A printable per-event report (suited to LEGO Ambassador Network reporting) and an annual report covering growth, retention, venues and a five-year trend.
+- A printable per-event report, suited to LEGO Fan CoLab reporting (formerly the LEGO Ambassador Network).
+- An annual report covering growth, retention, venues and a five-year trend.
 
 **Discord, calendars and the public**
 - Announcements, forum threads, scheduled events, reminders, role sync and DMs.
@@ -65,6 +70,7 @@ Then:
    - which features you use
    - your Discord server and announcements channel
    - which Discord roles are admins
+   - optionally, your LEGO Fan CoLab recognition and Community Ambassador
 3. **Put it behind HTTPS** with a reverse proxy, and set `LUG_PUBLIC_URL`. Cookies are marked secure when that URL is `https://`.
 
 Data lives in the `/app/data` volume: the database, uploads and backups.
@@ -288,4 +294,4 @@ fly.toml, render.yaml cloud hosting configs (see HOSTING.md)
 
 Pull requests are welcome. Please make sure `ctest` passes, the code builds without warnings, and new features come with tests.
 
-*LEGO® is a trademark of the LEGO Group, which does not sponsor, authorize or endorse this project.*
+*LEGO® is a trademark of the LEGO Group, which does not sponsor, authorize or endorse this project. LUG Manager is an independent, fan-made tool and is not part of LEGO Fan CoLab.*

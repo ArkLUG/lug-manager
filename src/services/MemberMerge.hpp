@@ -59,6 +59,9 @@ public:
         for (const auto& r : refs)
             exec(std::string("UPDATE ") + r[0] + " SET " + r[1] + "=?1 WHERE " + r[1] + "=?2", keep_id, drop_id);
 
+        // The Community Ambassador setting follows the person.
+        exec("UPDATE lug_settings SET value=CAST(?1 AS TEXT) WHERE key='community_ambassador_id' AND value=CAST(?2 AS TEXT)",
+             keep_id, drop_id);
         // Fill blanks on the kept record from the duplicate.
         static const char* text_cols[] = {"discord_username", "email", "phone", "address_line1", "address_line2", "city",
                                           "state", "zip", "birthday", "guardian_name", "guardian_phone", "guardian_email",

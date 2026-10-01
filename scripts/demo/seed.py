@@ -179,6 +179,8 @@ q("UPDATE members SET guardian_name='Pavel Novak', consent_on_file=0, photo_rele
 # An email-only member (no Discord)
 q("UPDATE members SET discord_user_id=NULL, discord_username='' WHERE id=?", (members[20],))
 q("UPDATE members SET is_treasurer=1 WHERE id=?", (MOD,))
+# A Recognized LEGO Fan Community (LEGO Fan CoLab) with Ben as Community Ambassador
+q("INSERT OR REPLACE INTO lug_settings (key, value) VALUES ('fan_colab_recognized', '1'), ('community_ambassador_id', ?)", (str(BEN),))
 
 # ── Perk levels (this year) ──
 year = TODAY.year

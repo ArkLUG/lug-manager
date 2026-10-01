@@ -10,7 +10,7 @@
   <Support>https://github.com/ArkLUG/lug-manager/issues</Support>
   <Project>https://github.com/ArkLUG/lug-manager</Project>
   <ReadMe>https://github.com/ArkLUG/lug-manager#readme</ReadMe>
-  <Overview>LUG Manager runs a LEGO User Group in one place: members, meetings, shows, check-ins, dues, volunteer shifts, build challenges, inventory and money, with Discord sign-in, announcements and role sync, and Google Calendar/iCal feeds.[br][br]
+  <Overview>LUG Manager runs a LEGO User Group (LUG) or other LEGO fan community in one place: members, meetings, shows, check-ins, dues, volunteer shifts, build challenges, inventory and money, with Discord sign-in, announcements and role sync, and Google Calendar/iCal feeds.[br][br]
 Before installing, create a Discord application and bot (see the project README) and fill in the Discord fields below. On first start the container log prints a one-time /setup?token=... link to create the first admin, then a short setup checklist walks you through the rest.[br][br]
 Put it behind HTTPS (e.g. a reverse proxy) and set Public URL to that address. Try the demo first: https://arklug.github.io/lug-manager/</Overview>
   <Category>Productivity: Tools: Other:</Category>

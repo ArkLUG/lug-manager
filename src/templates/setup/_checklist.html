@@ -49,6 +49,20 @@
     <a hx-get="/settings/roles" hx-target="#main-content" hx-push-url="true" class="inline-block px-4 py-2 border border-gray-300 rounded-lg text-sm text-gray-700 hover:bg-gray-50 cursor-pointer">Map Discord roles</a>
   </section>
 
+  <section class="bg-white rounded-xl border border-gray-200 p-5 space-y-3">
+    <h3 class="font-semibold text-gray-800">{{#fan_colab_done}}&#10003; {{/fan_colab_done}}5. LEGO Fan CoLab <span class="text-xs font-normal text-gray-400">(optional)</span></h3>
+    <p class="text-sm text-gray-600">LEGO Fan CoLab replaced the LEGO Ambassador Network in 2026; recognized LUGs are now <em>Recognized LEGO Fan Communities</em>. If yours is one, say so here: it's shown on your reports and public shows page. Fan CoLab asks for a named Community Ambassador - ideally not the same person as your president or chair.</p>
+    <form hx-post="/setup/fancolab" hx-target="#setup-page" hx-swap="outerHTML" class="grid grid-cols-1 md:grid-cols-2 gap-2 text-sm items-end">
+      <label class="flex items-center gap-2 md:col-span-2"><input type="checkbox" name="fan_colab_recognized" value="1" {{#fan_colab_recognized}}checked{{/fan_colab_recognized}} class="accent-yellow-400"> We're a Recognized LEGO Fan Community</label>
+      <label>Community Ambassador
+        <select name="community_ambassador_id" data-tomselect="single" class="mt-1 w-full">
+          <option value="">None yet</option>
+          {{#people}}<option value="{{id}}" {{#selected}}selected{{/selected}}>{{name}}</option>{{/people}}
+        </select></label>
+      <div><button class="px-4 py-2 bg-gray-800 text-white rounded-lg font-medium hover:bg-gray-700">Save</button></div>
+    </form>
+  </section>
+
   {{^completed}}
   <div class="flex items-center justify-between gap-3">
     <span class="text-xs text-gray-400">You can come back to this page any time from Settings &gt; Setup.</span>

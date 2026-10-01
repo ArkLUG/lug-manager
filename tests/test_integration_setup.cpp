@@ -64,3 +64,39 @@ TEST_F(IntegrationTest, SetupChecklistForAdmins) {
     EXPECT_NE(fin.headers.find("HX-Redirect: /dashboard"), std::string::npos);
     expect_not_contains(GET("/dashboard", admin_token), "Finish setting up your LUG");
 }
+
+#include "services/MemberMerge.hpp"
+TEST_F(IntegrationTest, SetupFanCoLabRecognitionAndAmbassador) {
+    // Neutral default name until the LUG names itself
+    expect_contains(GET("/dashboard", member_token), ">LEGO fan community</div>");
+    EXPECT_EQ(POST("/setup/fancolab", "fan_colab_recognized=1", member_token).code, 403);
+    EXPECT_EQ(POST("/setup/fancolab", "fan_colab_recognized=1&community_ambassador_id=999999", admin_token).code, 400);
+
+    LugEvent e;
+    e.title = "CoLab Show"; e.start_time = "2030-05-01T09:00:00"; e.end_time = "2030-05-01T16:00:00";
+    e.scope = "lug_wide"; e.status = "confirmed"; e.suppress_discord = true; e.suppress_calendar = true;
+    auto ev = event_svc->create(e);
+    std::string report = "/events/" + std::to_string(ev.id) + "/report";
+    expect_not_contains(GET(report, admin_token), "Recognized LEGO");
+
+    settings_repo->set("lug_name", "Test LUG");
+    auto r = POST("/setup/fancolab", "fan_colab_recognized=1&community_ambassador_id=" + std::to_string(regular_member_id), admin_token);
+    EXPECT_EQ(r.code, 200);
+    expect_contains(r, "&#10003; 5. LEGO Fan CoLab");
+    expect_contains(GET(report, admin_token), "Test LUG - a Recognized LEGO® Fan Community (LEGO Fan CoLab) · Community Ambassador: Regular U.");
+    expect_contains(GET("/reports/annual?year=2030", admin_token), "Community Ambassador: Regular U.");
+    Features::set("public_shows", true);
+    expect_contains(GET("/shows"), "A Recognized LEGO® Fan Community");
+
+    // The ambassador follows a member merge
+    Member dup; dup.first_name = "Reg"; dup.last_name = "Dup"; dup.display_name = "Reg D."; dup.role = "member";
+    int64_t keep = member_repo->create(dup).id;
+    MemberMerge(*db).merge(keep, regular_member_id);
+    EXPECT_EQ(settings_repo->get("community_ambassador_id", ""), std::to_string(keep));
+    expect_contains(GET(report, admin_token), "Community Ambassador: Reg D.");
+
+    // Not recognized -> nothing shown
+    POST("/setup/fancolab", "community_ambassador_id=", admin_token);
+    expect_not_contains(GET(report, admin_token), "Recognized LEGO");
+    expect_not_contains(GET("/shows"), "Recognized LEGO");
+}

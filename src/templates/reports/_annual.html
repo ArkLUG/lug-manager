@@ -1,6 +1,9 @@
 <div class="max-w-5xl space-y-5" data-page-title="Annual Report">
   <div class="flex flex-wrap items-center justify-between gap-2">
-    <h2 class="text-xl font-semibold text-gray-800">{{year}} in Numbers</h2>
+    <div>
+      <h2 class="text-xl font-semibold text-gray-800">{{year}} in Numbers</h2>
+      {{#fan_colab_recognized}}<p class="text-sm text-gray-500">{{fan_colab_name}} - a Recognized LEGO® Fan Community (LEGO Fan CoLab){{#community_ambassador}} · Community Ambassador: {{community_ambassador}}{{/community_ambassador}}</p>{{/fan_colab_recognized}}
+    </div>
     <div class="flex items-center gap-2 text-sm">
       <a hx-get="/reports/annual?year={{prev_year}}" hx-target="#main-content" hx-push-url="true" hx-swap="innerHTML" class="px-3 py-1.5 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 cursor-pointer">&larr; {{prev_year}}</a>
       <a hx-get="/reports/annual?year={{next_year}}" hx-target="#main-content" hx-push-url="true" hx-swap="innerHTML" class="px-3 py-1.5 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 cursor-pointer">{{next_year}} &rarr;</a>
