@@ -118,7 +118,7 @@
               {{^scope_lug_wide}}{{^scope_non_lug}}{{#chapter_name}}<span class="text-xs text-gray-500">{{chapter_name}}</span>{{/chapter_name}}{{^chapter_name}}<span class="text-xs text-gray-400">Chapter</span>{{/chapter_name}}{{/scope_non_lug}}{{/scope_lug_wide}}
             </td>
             <td class="px-4 py-3 truncate max-w-[12rem] hidden md:table-cell">
-              {{#location}}<a href="#" onclick="window.open(mapUrl('{{location}}'),'_blank');return false"
+              {{#location}}<a href="#" data-location="{{location}}" onclick="window.open(mapUrl(this.dataset.location),'_blank');return false"
                  class="inline-flex items-center gap-1 text-indigo-600 underline decoration-indigo-300 hover:decoration-indigo-600 hover:text-indigo-800">
                 <svg class="w-3.5 h-3.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
                 <span class="truncate">{{location}}</span>
