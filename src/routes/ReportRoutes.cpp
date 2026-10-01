@@ -1,3 +1,4 @@
+#include <set>
 #include "utils/Money.hpp"
 #include "routes/ReportRoutes.hpp"
 #include "routes/EventAccess.hpp"
@@ -116,6 +117,84 @@ void register_report_routes(LugApp& app, SqliteDatabase& db, EventService& event
             }
             ctx["events"] = std::move(evs);
             ctx["has_events"] = i > 0;
+        }
+        // ── Growth & retention ──
+        auto active_ids = [&](int y) {
+            std::set<int64_t> ids;
+            auto st = db.prepare(
+                "SELECT a.member_id FROM attendance a JOIN meetings mt ON mt.id = a.entity_id "
+                " WHERE a.entity_type='meeting' AND mt.start_time >= ?1 AND mt.start_time < ?2 "
+                "UNION SELECT eda.member_id FROM event_day_attendance eda JOIN event_days ed ON ed.id = eda.event_day_id "
+                " WHERE ed.day_date >= ?1 AND ed.day_date < ?2");
+            st.bind(1, std::to_string(y) + "-01-01"); st.bind(2, std::to_string(y + 1) + "-01-01");
+            while (st.step()) ids.insert(st.col_int(0));
+            return ids;
+        };
+        {
+            auto now_ids = active_ids(year), prev_ids = active_ids(year - 1);
+            int returning = 0;
+            for (auto id : prev_ids) returning += now_ids.count(id) ? 1 : 0;
+            ctx["prev_active"] = static_cast<int>(prev_ids.size());
+            ctx["returning"] = returning;
+            ctx["lapsed"] = static_cast<int>(prev_ids.size()) - returning;
+            ctx["first_timers"] = static_cast<int>(now_ids.size()) - returning;
+            ctx["retention_pct"] = prev_ids.empty() ? 0 : returning * 100 / static_cast<int>(prev_ids.size());
+            ctx["has_prev"] = !prev_ids.empty();
+        }
+        // Five-year trend
+        {
+            crow::json::wvalue rows = crow::json::wvalue::list();
+            int i = 0;
+            for (int y = year - 4; y <= year; ++y) {
+                std::vector<std::string> r{std::to_string(y) + "-01-01", std::to_string(y + 1) + "-01-01"};
+                int64_t held = scalar(db, "SELECT COUNT(*) FROM meetings WHERE status <> 'cancelled' AND start_time >= ? AND start_time < ?", r);
+                int64_t checkins = scalar(db, "SELECT COUNT(*) FROM attendance a JOIN meetings mt ON mt.id = a.entity_id "
+                                              "WHERE a.entity_type='meeting' AND mt.start_time >= ? AND mt.start_time < ?", r);
+                int64_t visitors = scalar(db, "SELECT COALESCE(SUM(public_kids+public_teens+public_adults),0) FROM lug_events "
+                                              "WHERE start_time >= ? AND start_time < ?", r);
+                rows[i]["year"] = y;
+                rows[i]["active"] = static_cast<int>(active_ids(y).size());
+                rows[i]["new_members"] = scalar(db, "SELECT COUNT(*) FROM members WHERE created_at >= ? AND created_at < ?", r);
+                rows[i]["meetings"] = held;
+                char avg[16];
+                std::snprintf(avg, sizeof(avg), "%.1f", held ? static_cast<double>(checkins) / held : 0.0);
+                rows[i]["avg"] = std::string(avg);
+                rows[i]["visitors"] = visitors;
+                rows[i]["current"] = y == year;
+                ++i;
+            }
+            ctx["trend"] = std::move(rows);
+        }
+        // New members per month
+        {
+            int nm[12] = {0};
+            auto st = db.prepare("SELECT CAST(substr(created_at,6,2) AS INTEGER), COUNT(*) FROM members "
+                                 "WHERE created_at >= ? AND created_at < ? GROUP BY 1");
+            st.bind(1, lo); st.bind(2, hi);
+            while (st.step()) { int m = static_cast<int>(st.col_int(0)); if (m >= 1 && m <= 12) nm[m - 1] = static_cast<int>(st.col_int(1)); }
+            int top = *std::max_element(nm, nm + 12);
+            crow::json::wvalue arr = crow::json::wvalue::list();
+            for (int i = 0; i < 12; ++i) {
+                arr[i]["label"] = mon[i]; arr[i]["count"] = nm[i]; arr[i]["pct"] = top > 0 ? nm[i] * 100 / top : 0;
+            }
+            ctx["new_months"] = std::move(arr);
+        }
+        // Busiest venues (meetings + events, by location)
+        {
+            auto st = db.prepare(
+                "SELECT loc, COUNT(*) AS gatherings, SUM(n) AS people FROM ("
+                " SELECT TRIM(mt.location) AS loc, (SELECT COUNT(*) FROM attendance a WHERE a.entity_type='meeting' AND a.entity_id=mt.id) AS n "
+                "  FROM meetings mt WHERE mt.status <> 'cancelled' AND mt.is_virtual = 0 AND mt.start_time >= ?1 AND mt.start_time < ?2 "
+                " UNION ALL SELECT TRIM(e.location), e.public_kids + e.public_teens + e.public_adults + "
+                "  (SELECT COUNT(DISTINCT eda.member_id) FROM event_day_attendance eda JOIN event_days ed ON ed.id = eda.event_day_id WHERE ed.event_id = e.id) "
+                "  FROM lug_events e WHERE e.status <> 'cancelled' AND e.start_time >= ?1 AND e.start_time < ?2) "
+                "WHERE COALESCE(loc,'') <> '' GROUP BY loc COLLATE NOCASE ORDER BY people DESC, gatherings DESC LIMIT 8");
+            st.bind(1, lo); st.bind(2, hi);
+            crow::json::wvalue v = crow::json::wvalue::list();
+            int i = 0;
+            while (st.step()) { v[i]["place"] = st.col_text(0); v[i]["gatherings"] = st.col_int(1); v[i]["people"] = st.col_int(2); ++i; }
+            ctx["venues"] = std::move(v);
+            ctx["has_venues"] = i > 0;
         }
         std::string page = crow::mustache::load("reports/_annual.html").render(ctx).dump();
         res.add_header("Content-Type", "text/html; charset=utf-8");

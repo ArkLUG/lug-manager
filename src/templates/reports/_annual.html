@@ -31,6 +31,43 @@
     </div>
   </div>
 
+  <div class="bg-white rounded-xl border border-gray-200 p-5 space-y-4">
+    <h3 class="font-semibold text-gray-800">Growth &amp; retention</h3>
+    <div class="grid grid-cols-2 md:grid-cols-4 gap-3 text-sm">
+      <div><div class="text-2xl font-bold text-gray-800">{{returning}}</div><div class="text-xs text-gray-500">came back from {{prev_year}}{{#has_prev}} ({{retention_pct}}%){{/has_prev}}</div></div>
+      <div><div class="text-2xl font-bold text-gray-800">{{first_timers}}</div><div class="text-xs text-gray-500">active for the first time</div></div>
+      <div><div class="text-2xl font-bold text-gray-800">{{lapsed}}</div><div class="text-xs text-gray-500">active in {{prev_year}}, not this year</div></div>
+      <div><div class="text-2xl font-bold text-gray-800">{{members_new}}</div><div class="text-xs text-gray-500">new member records</div></div>
+    </div>
+    <div class="overflow-x-auto">
+      <table class="w-full text-sm">
+        <thead><tr class="text-left text-xs text-gray-500 border-b border-gray-200"><th class="py-1">Year</th><th class="py-1 text-right">Active</th><th class="py-1 text-right">New</th><th class="py-1 text-right">Meetings</th><th class="py-1 text-right">Avg / meeting</th><th class="py-1 text-right">Visitors</th></tr></thead>
+        <tbody class="divide-y divide-gray-100">{{#trend}}<tr class="{{#current}}font-semibold{{/current}}"><td class="py-1">{{year}}</td><td class="text-right">{{active}}</td><td class="text-right">{{new_members}}</td><td class="text-right">{{meetings}}</td><td class="text-right">{{avg}}</td><td class="text-right">{{visitors}}</td></tr>{{/trend}}</tbody>
+      </table>
+    </div>
+    <div>
+      <div class="text-xs text-gray-500 mb-1">New members by month</div>
+      <div class="flex items-end gap-2 h-24" role="img" aria-label="New members per month">
+        {{#new_months}}
+        <div class="flex-1 flex flex-col items-center justify-end h-full">
+          <span class="text-xs text-gray-500">{{count}}</span>
+          <div class="w-full bg-indigo-400 rounded-t" style="height: {{pct}}%"></div>
+          <span class="text-xs text-gray-500 mt-1">{{label}}</span>
+        </div>
+        {{/new_months}}
+      </div>
+    </div>
+  </div>
+
+  <div class="bg-white rounded-xl border border-gray-200 p-5">
+    <h3 class="font-semibold text-gray-800 mb-2">Busiest venues</h3>
+    {{#has_venues}}
+    <table class="w-full text-sm"><thead><tr class="text-left text-xs text-gray-500"><th>Place</th><th class="text-right">Meetings/events</th><th class="text-right">People</th></tr></thead>
+      <tbody class="divide-y divide-gray-100">{{#venues}}<tr><td class="py-1 text-gray-800">{{place}}</td><td class="text-right">{{gatherings}}</td><td class="text-right">{{people}}</td></tr>{{/venues}}</tbody></table>
+    {{/has_venues}}
+    {{^has_venues}}<p class="text-sm text-gray-400">No in-person meetings or events this year.</p>{{/has_venues}}
+  </div>
+
   <div class="grid md:grid-cols-2 gap-4">
     <div class="bg-white rounded-xl border border-gray-200 p-5">
       <h3 class="font-semibold text-gray-800 mb-2">Most active members</h3>
