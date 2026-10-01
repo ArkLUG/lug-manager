@@ -249,7 +249,7 @@ ctest --test-dir build --output-on-failure -j$(nproc)
 
 There are 58 test suites, unit and integration. **Tests never contact real services:**
 - The test fixture sets `LUG_OFFLINE=1`.
-- Discord and Google Calendar run against local fakes that record every request. These are `tests/fake_discord.hpp` and `tests/fake_google.hpp`, built on `tests/fake_server.hpp`.
+- Discord and Google Calendar run against local fakes that record every request. These are `tests/support/fake_discord.hpp` and `tests/support/fake_google.hpp`, built on `tests/support/fake_server.hpp`.
 - Email uses a capturing mailer.
 
 **Browser checks:** these need Firefox and Selenium. Point them at a running server with `LUG_BASE`.
@@ -281,26 +281,41 @@ python3 -m http.server 8000 --directory /tmp/site      # http://localhost:8000/l
 
 ### Adding another chat service (Slack, Matrix, ...)
 
-Discord is one `chat::Provider` (`src/chat/Provider.hpp`, implemented in `src/chat/DiscordProvider.hpp`). `chat::ChatHub` decides what to post and keeps it in step; a provider only knows how to talk to its service. To add one:
+Discord is one `chat::Provider` (`src/chat/Provider.hpp`, implemented in `src/integrations/discord/DiscordProvider.hpp`). `chat::ChatHub` decides what to post and keeps it in step; a provider only knows how to talk to its service. To add one:
 
 1. Implement `chat::Provider`: post/edit/delete messages, threads (or report `caps().threads = false`), scheduled events (or `false`), direct messages, where things go (`place()`, chapter channels), and mention syntax. `inert()` must make member-supplied text unable to ping anyone.
 2. Register it next to Discord in `register_all_routes` (`svc.chat->add(...)`), and add a `Features` entry and a settings page for its channels.
-3. Its posts are recorded in `chat_posts`, its switches are `chat.<id>.<name>` settings, and the message templates are shared. Test it like `tests/test_chat_hub.cpp` does with a recording provider.
+3. Its posts are recorded in `chat_posts`, its switches are `chat.<id>.<name>` settings, and the message templates are shared. Test it like `tests/unit/test_chat_hub.cpp` does with a recording provider.
 
 ### Layout
+
+Code is grouped by area, and every code folder has a `CMakeLists.txt` that lists its files (add new files there). Everything except `main.cpp` builds into the `lug_core` library, which the server and the tests link.
 
 ```
 src/
   main.cpp            start-up, background jobs (sync, reminders, digest, backups)
-  routes/             HTTP handlers (one file per area; api/ = /api/v1)
-  services/           business logic (events, sync, reminders, digest, features, notifier...)
-  repositories/       SQLite access
-  integrations/       Discord, Discord OAuth, Google Calendar, iCal, SMTP mailer
+  routes/             HTTP handlers by area: accounts/ members/ events/ meetings/
+                      attendance/ community/ settings/ pages/, and api/
+                      (/api/v1: members/ events/ admin/)
+  services/           business logic: events/ members/ notifications/, plus
+                      features, audit, backups, photos, Fan CoLab
+  repositories/       SQLite access: members/ events/ admin/
+  integrations/       one folder per outside service:
+    discord/            REST client, OAuth, chat provider; sync/ (members,
+                        roles), matches/ (match queue), time_repair/
+    google_calendar/  email/  ical/
+  chat/               chat-service layer: Provider interface, ChatHub, templates
+  auth/               sessions, passwords, two-factor
   middleware/         auth, CSP and security headers, feature gating
+  db/ models/ config/ async/ utils/ (text/, web/)
   templates/          Mustache pages and partials
   static/             CSS/JS (vendored), app.js behaviours, OpenAPI docs
 sql/migrations/       applied automatically at start-up
-tests/                unit + integration suites, fakes, e2e browser checks
+tests/
+  unit/               no server
+  integration/<area>/ the whole app on a local port, against fake services
+  support/            test fixture and the fake Discord/Google servers
+  e2e/                browser checks (Python + Selenium)
 scripts/              Tailwind build, theme CSS generator, demo site
 cmake/                build helpers (Crow template patch)
 unraid/               Unraid Community Applications template

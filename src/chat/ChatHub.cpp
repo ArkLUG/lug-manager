@@ -1,7 +1,7 @@
 #include "chat/ChatHub.hpp"
 #include "chat/Format.hpp"
-#include "integrations/DiscordClient.hpp"
-#include "utils/Utf8.hpp"
+#include "integrations/discord/DiscordClient.hpp"
+#include "utils/text/Utf8.hpp"
 #include <nlohmann/json.hpp>
 #include <iostream>
 

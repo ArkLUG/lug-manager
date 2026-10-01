@@ -1,6 +1,6 @@
 #pragma once
 // Date/place formatting shared by the chat message placeholders.
-#include "integrations/DiscordClient.hpp"
+#include "integrations/discord/DiscordClient.hpp"
 #include <sstream>
 #include <string>
 #include <vector>

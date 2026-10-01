@@ -1,5 +1,5 @@
 #include "auth/AuthService.hpp"
-#include "services/RoleSync.hpp"
+#include "integrations/discord/sync/RoleSync.hpp"
 #include <stdexcept>
 #include <iostream>
 

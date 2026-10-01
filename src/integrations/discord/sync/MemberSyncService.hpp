@@ -1,0 +1,57 @@
+#pragma once
+#include "integrations/discord/DiscordClient.hpp"
+#include "repositories/members/MemberRepository.hpp"
+#include "integrations/discord/sync/RoleMappingRepository.hpp"
+#include "repositories/members/ChapterRepository.hpp"
+#include "repositories/members/ChapterMemberRepository.hpp"
+#include "integrations/discord/matches/PendingDiscordMatchRepository.hpp"
+#include "repositories/admin/SettingsRepository.hpp"
+#include <string>
+#include <vector>
+
+struct SyncChangeDetail {
+    int64_t     member_id = 0;
+    std::string member_name;       // display name for UI
+    std::string change_type;       // "created"|"updated"|"chapter_lead_added"
+    std::string field;             // which field changed (e.g. "role", "display_name")
+    std::string old_value;
+    std::string new_value;
+};
+
+struct SyncResult {
+    int imported        = 0;  // New member records created
+    int updated          = 0;  // Existing members updated (name, role, or chapter lead)
+    int skipped          = 0;  // No role mapping match — not a LUG member
+    int held_for_review  = 0;  // Unmatched guild member plausibly matches an existing
+                                // discord-less member — held in the review queue, not auto-created
+    int errors           = 0;
+    std::string error_message;
+    std::vector<SyncChangeDetail> changes;
+};
+
+class MemberSyncService {
+public:
+    MemberSyncService(DiscordClient& discord,
+                      MemberRepository& member_repo,
+                      RoleMappingRepository& role_mappings,
+                      ChapterRepository& chapter_repo,
+                      ChapterMemberRepository& chapter_member_repo,
+                      PendingDiscordMatchRepository& pending_matches_repo,
+                      SettingsRepository* settings = nullptr);
+
+    // Import/update all guild members and sync chapter lead roles.
+    // Creates new members, updates display names and LUG roles, promotes/demotes chapter leads.
+    // Preserves dues/paid status. An unmatched guild member whose name plausibly matches an
+    // existing member with no discord_user_id is held in the review queue instead of being
+    // auto-created as a duplicate — see PendingDiscordMatchRepository.
+    SyncResult sync_from_guild();
+
+private:
+    DiscordClient&                 discord_;
+    MemberRepository&              member_repo_;
+    RoleMappingRepository&         role_mappings_;
+    ChapterRepository&             chapter_repo_;
+    ChapterMemberRepository&       chapter_member_repo_;
+    PendingDiscordMatchRepository& pending_matches_;
+    SettingsRepository*            settings_; // nullable — notification is skipped if null/unset
+};

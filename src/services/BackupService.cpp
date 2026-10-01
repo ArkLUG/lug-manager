@@ -1,5 +1,5 @@
 #include "services/BackupService.hpp"
-#include "utils/ZipWriter.hpp"
+#include "utils/web/ZipWriter.hpp"
 #include <algorithm>
 #include <filesystem>
 #include <fstream>

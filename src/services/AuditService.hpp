@@ -1,6 +1,6 @@
 #pragma once
-#include "utils/ClientIp.hpp"
-#include "repositories/AuditLogRepository.hpp"
+#include "utils/web/ClientIp.hpp"
+#include "repositories/admin/AuditLogRepository.hpp"
 #include "middleware/AuthMiddleware.hpp"
 #include <crow.h>
 #include <string>

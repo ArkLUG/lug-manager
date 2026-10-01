@@ -1,9 +1,9 @@
 #pragma once
 #include "auth/SessionStore.hpp"
-#include "repositories/MemberRepository.hpp"
-#include "repositories/RoleMappingRepository.hpp"
-#include "integrations/DiscordOAuth.hpp"
-#include "integrations/DiscordClient.hpp"
+#include "repositories/members/MemberRepository.hpp"
+#include "integrations/discord/sync/RoleMappingRepository.hpp"
+#include "integrations/discord/DiscordOAuth.hpp"
+#include "integrations/discord/DiscordClient.hpp"
 #include "models/Session.hpp"
 #include "models/Member.hpp"
 #include <optional>

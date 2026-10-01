@@ -1,10 +1,10 @@
 #pragma once
 #include "auth/AuthService.hpp"
 #include "auth/SessionStore.hpp"
-#include "repositories/ChapterMemberRepository.hpp"
-#include "repositories/SettingsRepository.hpp"
+#include "repositories/members/ChapterMemberRepository.hpp"
+#include "repositories/admin/SettingsRepository.hpp"
 #include "services/Features.hpp"
-#include "utils/AssetVersion.hpp"
+#include "utils/web/AssetVersion.hpp"
 #include <crow.h>
 #include <string>
 

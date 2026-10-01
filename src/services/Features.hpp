@@ -1,5 +1,5 @@
 #pragma once
-#include "repositories/SettingsRepository.hpp"
+#include "repositories/admin/SettingsRepository.hpp"
 #include <crow/mustache.h>
 #include <map>
 #include <mutex>

@@ -1,0 +1,17 @@
+# Unit tests: no server, an in-memory database at most.
+lug_add_tests(
+  test_auth_crypto.cpp
+  test_chat_hub.cpp
+  test_chat_templates.cpp
+  test_discord_content.cpp
+  test_discord_signature.cpp
+  test_html_escape.cpp
+  test_markdown.cpp
+  test_perk_progress.cpp
+  test_repositories.cpp
+  test_role_system.cpp
+  test_series.cpp
+  test_services.cpp
+  test_suppression.cpp
+  test_utils.cpp
+)

@@ -1,5 +1,5 @@
 #pragma once
-#include "repositories/ApiKeyRepository.hpp"
+#include "repositories/admin/ApiKeyRepository.hpp"
 #include "utils/Crypto.hpp"
 #include <crow.h>
 #include <string>

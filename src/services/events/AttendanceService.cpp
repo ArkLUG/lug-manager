@@ -1,0 +1,192 @@
+#include "services/events/AttendanceService.hpp"
+#include "utils/LocalTime.hpp"
+#include <ctime>
+#include <cstdio>
+
+AttendanceService::AttendanceService(AttendanceRepository& repo, MemberRepository& member_repo,
+                                       EventRepository& event_repo,
+                                       EventDayRepository& event_day_repo,
+                                       EventDayAttendanceRepository& event_day_attendance_repo)
+    : repo_(repo), member_repo_(member_repo), event_repo_(event_repo),
+      event_day_repo_(event_day_repo), event_day_attendance_repo_(event_day_attendance_repo) {}
+
+// static
+std::string AttendanceService::today_ymd() {
+    std::tm tm_now = local_tm(std::time(nullptr));
+    char buf[16];
+    std::strftime(buf, sizeof(buf), "%Y-%m-%d", &tm_now);
+    return buf;
+}
+
+bool AttendanceService::meeting_self_checkin_open(const Meeting& m) {
+    if (m.status == "cancelled") return false;
+    std::string date = m.start_time.substr(0, 10);
+    std::time_t now = std::time(nullptr);
+    for (int d = -1; d <= 1; ++d) {
+        std::tm tm = local_tm(now + static_cast<std::time_t>(d) * 86400);
+        char buf[16];
+        std::strftime(buf, sizeof(buf), "%Y-%m-%d", &tm);
+        if (date == buf) return true;
+    }
+    return false;
+}
+
+bool AttendanceService::check_in(int64_t member_id, const std::string& entity_type,
+                                  int64_t entity_id, const std::string& notes,
+                                  bool is_virtual) {
+    if (entity_type == "event") {
+        // Only check in if today matches one of the event's days.
+        std::string today = today_ymd();
+        auto day = event_day_repo_.find_by_event_and_date(entity_id, today);
+        if (!day) return false;
+        return event_day_attendance_repo_.check_in(day->id, member_id, notes);
+    }
+    return repo_.check_in(member_id, entity_type, entity_id, notes, is_virtual);
+}
+
+bool AttendanceService::check_out(int64_t member_id, const std::string& entity_type,
+                                   int64_t entity_id) {
+    if (entity_type == "event") {
+        // Remove all day-attendance rows for this member on this event.
+        auto days = event_day_repo_.find_by_event(entity_id);
+        for (const auto& d : days) {
+            auto rows = event_day_attendance_repo_.find_by_day(d.id);
+            for (const auto& r : rows) {
+                if (r.member_id == member_id) {
+                    event_day_attendance_repo_.remove_by_id(r.id);
+                }
+            }
+        }
+        return true;
+    }
+    return repo_.check_out(member_id, entity_type, entity_id);
+}
+
+std::vector<Attendance> AttendanceService::get_attendees(const std::string& entity_type,
+                                                          int64_t entity_id) {
+    if (entity_type == "event") {
+        // Project event-day attendance into the legacy Attendance shape so
+        // existing callers (and templates) still work. Each row represents a
+        // single day of attendance.
+        auto rows = event_day_attendance_repo_.find_by_event(entity_id);
+        std::vector<Attendance> out;
+        out.reserve(rows.size());
+        for (const auto& r : rows) {
+            Attendance a;
+            a.id                      = r.id;
+            a.member_id               = r.member_id;
+            a.entity_type             = "event";
+            a.entity_id               = entity_id;
+            a.checked_in_at           = r.checked_in_at;
+            a.notes                   = r.notes;
+            a.is_virtual              = false;
+            a.member_display_name     = r.member_display_name;
+            a.member_discord_username = r.member_discord_username;
+            out.push_back(a);
+        }
+        return out;
+    }
+    return repo_.find_by_entity(entity_type, entity_id);
+}
+
+int AttendanceService::get_count(const std::string& entity_type, int64_t entity_id) {
+    if (entity_type == "event") {
+        return event_day_attendance_repo_.count_distinct_members_by_event(entity_id);
+    }
+    return repo_.count_by_entity(entity_type, entity_id);
+}
+
+bool AttendanceService::is_checked_in(int64_t member_id, const std::string& entity_type,
+                                       int64_t entity_id) {
+    if (entity_type == "event") {
+        auto days = event_day_repo_.find_by_event(entity_id);
+        for (const auto& d : days) {
+            if (event_day_attendance_repo_.is_checked_in(d.id, member_id)) return true;
+        }
+        return false;
+    }
+    return repo_.is_checked_in(member_id, entity_type, entity_id);
+}
+
+bool AttendanceService::set_virtual(int64_t attendance_id, bool is_virtual) {
+    return repo_.set_virtual(attendance_id, is_virtual);
+}
+
+bool AttendanceService::remove_by_id(int64_t attendance_id) {
+    return repo_.remove_by_id(attendance_id);
+}
+
+std::vector<Attendance> AttendanceService::get_member_history(int64_t member_id) {
+    // Combine meeting history from the attendance table with event-day
+    // attendance. A multi-day event collapses to a single history row
+    // (grouped by event_id) rather than one row per day attended - the
+    // member either attended the event or didn't, from this page's
+    // perspective; per-day detail lives on the event page itself.
+    auto meetings = repo_.find_by_member(member_id);
+    std::vector<Attendance> combined = meetings;
+    auto& db = repo_.db();
+    auto stmt = db.prepare(
+        "SELECT MIN(eda.id), eda.member_id, ed.event_id, MIN(eda.checked_in_at), "
+        "COALESCE(GROUP_CONCAT(NULLIF(eda.notes, ''), ' | '), ''), COUNT(*) "
+        "FROM event_day_attendance eda "
+        "JOIN event_days ed ON ed.id = eda.event_day_id "
+        "WHERE eda.member_id=? "
+        "GROUP BY ed.event_id "
+        "ORDER BY MIN(eda.checked_in_at) DESC");
+    stmt.bind(1, member_id);
+    while (stmt.step()) {
+        Attendance a;
+        a.id            = stmt.col_int(0);
+        a.member_id     = stmt.col_int(1);
+        a.entity_type   = "event";
+        a.entity_id     = stmt.col_int(2);
+        a.checked_in_at = stmt.col_text(3);
+        a.notes         = stmt.col_text(4);
+        a.is_virtual    = false;
+        a.days_attended = static_cast<int>(stmt.col_int(5));
+        combined.push_back(a);
+    }
+    return combined;
+}
+
+std::vector<AttendanceRepository::MemberAttendanceSummary> AttendanceService::get_all_member_summaries() {
+    return repo_.get_all_member_summaries();
+}
+
+std::vector<AttendanceRepository::MemberAttendanceSummary> AttendanceService::get_all_member_summaries_by_year(int year) {
+    return repo_.get_all_member_summaries_by_year(year);
+}
+
+std::vector<AttendanceRepository::MemberAttendanceSummary> AttendanceService::get_overview_paginated(const AttendanceRepository::OverviewParams& p) {
+    return repo_.get_overview_paginated(p);
+}
+
+int AttendanceService::count_overview(const AttendanceRepository::OverviewParams& p) {
+    return repo_.count_overview(p);
+}
+
+std::vector<int> AttendanceService::get_attendance_years() {
+    return repo_.get_attendance_years();
+}
+
+bool AttendanceService::check_in_to_day(int64_t member_id, int64_t event_day_id) {
+    return event_day_attendance_repo_.check_in(event_day_id, member_id);
+}
+
+std::unordered_map<int64_t, int> AttendanceService::counts_for(const std::string& entity_type,
+                                                               const std::vector<int64_t>& ids) {
+    std::unordered_map<int64_t, int> out;
+    if (ids.empty()) return out;
+    std::string in = "(";
+    for (size_t i = 0; i < ids.size(); ++i) in += (i ? ",?" : "?");
+    in += ")";
+    auto& db = repo_.db();
+    auto stmt = db.prepare(entity_type == "event"
+        ? "SELECT ed.event_id, COUNT(DISTINCT eda.member_id) FROM event_day_attendance eda "
+          "JOIN event_days ed ON ed.id = eda.event_day_id WHERE ed.event_id IN " + in + " GROUP BY ed.event_id"
+        : "SELECT entity_id, COUNT(*) FROM attendance WHERE entity_type='meeting' AND entity_id IN " + in +
+          " GROUP BY entity_id");
+    for (size_t i = 0; i < ids.size(); ++i) stmt.bind(static_cast<int>(i + 1), ids[i]);
+    while (stmt.step()) out[stmt.col_int(0)] = static_cast<int>(stmt.col_int(1));
+    return out;
+}

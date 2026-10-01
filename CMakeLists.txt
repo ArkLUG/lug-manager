@@ -48,36 +48,28 @@ pkg_check_modules(CURL    REQUIRED libcurl)
 pkg_check_modules(SQLITE3 REQUIRED sqlite3)
 find_package(OpenSSL REQUIRED)
 
-# Collect all source files
-file(GLOB_RECURSE SOURCES
-  src/config/*.cpp
-  src/db/*.cpp
-  src/models/*.cpp
-  src/repositories/*.cpp
-  src/services/*.cpp
-  src/integrations/*.cpp
-  src/async/*.cpp
-  src/auth/*.cpp
-  src/chat/*.cpp
-  src/routes/*.cpp
-  src/utils/*.cpp
-  src/main.cpp
-)
-
-add_executable(lug_manager ${SOURCES})
-
-target_include_directories(lug_manager PRIVATE
+# ─── The app ────────────────────────────────────────────────────────────────
+# Everything except main() is the lug_core library, which the server and the
+# tests both link. Each folder under src/ has its own CMakeLists.txt that adds
+# its files to it (listed by name - add new files there).
+find_package(ZLIB REQUIRED)
+add_library(lug_core STATIC)
+target_include_directories(lug_core PUBLIC
   ${CMAKE_SOURCE_DIR}/src
   ${CURL_INCLUDE_DIRS}
   ${SQLITE3_INCLUDE_DIRS}
   ${ASIO_INCLUDE_DIR}
   ${md4c_SOURCE_DIR}/src
 )
-
-target_link_libraries(lug_manager PRIVATE
+# /static is served by StaticRoutes (caching + ETags); Crow's built-in static
+# handler is disabled. Compression gzips dynamic responses and text assets.
+target_compile_definitions(lug_core PUBLIC CROW_DISABLE_STATIC_DIR CROW_ENABLE_COMPRESSION)
+target_compile_options(lug_core PRIVATE -Wall -Wextra -O2)
+target_link_libraries(lug_core PUBLIC
   Crow::Crow
   nlohmann_json::nlohmann_json
   md4c-html
+  ZLIB::ZLIB
   ${CURL_LIBRARIES}
   ${SQLITE3_LIBRARIES}
   OpenSSL::SSL
@@ -85,73 +77,11 @@ target_link_libraries(lug_manager PRIVATE
   pthread
 )
 
-target_compile_options(lug_manager PRIVATE -Wall -Wextra -O2)
-
-# /static is served by StaticRoutes (caching + ETags); Crow's built-in static
-# handler is disabled. Compression gzips dynamic responses and text assets.
-find_package(ZLIB REQUIRED)
-target_compile_definitions(lug_manager PRIVATE CROW_DISABLE_STATIC_DIR CROW_ENABLE_COMPRESSION)
-target_link_libraries(lug_manager PRIVATE ZLIB::ZLIB)
+add_subdirectory(src)
 
 # ─── Tests ──────────────────────────────────────────────────────────────────
 option(BUILD_TESTS "Build unit and integration tests" ON)
 if(BUILD_TESTS)
   enable_testing()
-
-  FetchContent_Declare(googletest
-    GIT_REPOSITORY https://github.com/google/googletest.git
-    GIT_TAG        v1.14.0
-    GIT_SHALLOW    TRUE
-  )
-  set(BUILD_GMOCK OFF CACHE BOOL "" FORCE)
-  set(INSTALL_GTEST OFF CACHE BOOL "" FORCE)
-  FetchContent_MakeAvailable(googletest)
-
-  # Collect all source files EXCEPT main.cpp (tests provide their own main)
-  file(GLOB_RECURSE LIB_SOURCES
-    src/config/*.cpp
-    src/db/*.cpp
-    src/models/*.cpp
-    src/repositories/*.cpp
-    src/services/*.cpp
-    src/integrations/*.cpp
-    src/async/*.cpp
-    src/auth/*.cpp
-    src/chat/*.cpp
-    src/routes/*.cpp
-    src/utils/*.cpp
-  )
-
-  # Shared test helper library (app code without main/routes)
-  add_library(lug_lib STATIC ${LIB_SOURCES})
-  target_include_directories(lug_lib PUBLIC
-    ${CMAKE_SOURCE_DIR}/src
-    ${CURL_INCLUDE_DIRS}
-    ${SQLITE3_INCLUDE_DIRS}
-    ${ASIO_INCLUDE_DIR}
-    ${md4c_SOURCE_DIR}/src
-  )
-  target_compile_definitions(lug_lib PUBLIC CROW_DISABLE_STATIC_DIR CROW_ENABLE_COMPRESSION)
-  target_link_libraries(lug_lib PUBLIC
-    ZLIB::ZLIB
-    Crow::Crow
-    nlohmann_json::nlohmann_json
-    md4c-html
-    ${CURL_LIBRARIES}
-    ${SQLITE3_LIBRARIES}
-    OpenSSL::SSL
-    OpenSSL::Crypto
-    pthread
-  )
-
-  # Test executables
-  file(GLOB TEST_SOURCES tests/*.cpp)
-  foreach(test_file ${TEST_SOURCES})
-    get_filename_component(test_name ${test_file} NAME_WE)
-    add_executable(${test_name} ${test_file})
-    target_link_libraries(${test_name} PRIVATE lug_lib gtest gtest_main)
-    target_include_directories(${test_name} PRIVATE ${CMAKE_SOURCE_DIR}/src ${CMAKE_SOURCE_DIR}/tests)
-    add_test(NAME ${test_name} COMMAND ${test_name}
-             WORKING_DIRECTORY ${CMAKE_SOURCE_DIR})
-  endforeach()
+  add_subdirectory(tests)
 endif()
