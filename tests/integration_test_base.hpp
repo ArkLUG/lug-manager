@@ -269,6 +269,7 @@ protected:
         // Pick a unique port using PID to avoid collisions between parallel test binaries.
         // Each test within a binary reuses the same port (sequential execution).
         port = 19000 + (static_cast<int>(getpid()) % 10000);
+        app->use_compression(crow::compression::algorithm::GZIP); // as in main.cpp
         app->port(port).concurrency(1);
         server_thread = std::thread([this]() { app->run(); });
         // Wait for server to be ready

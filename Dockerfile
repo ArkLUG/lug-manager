@@ -9,6 +9,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     sqlite3 \
     libsqlite3-dev \
     libssl-dev \
+    zlib1g-dev \
     git \
     curl \
     ca-certificates \

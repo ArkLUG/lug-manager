@@ -4,13 +4,13 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>{{page_title}} — LUG Manager</title>
-  {{#has_logo}}<link rel="icon" href="{{logo_url}}">{{/has_logo}}{{^has_logo}}<link rel="icon" href="/static/icon-192.png">{{/has_logo}}
-  <link rel="stylesheet" href="/static/tailwind.min.css" id="tw-local">
-  <script src="/static/theme.js"></script>
-  <link rel="stylesheet" href="/static/theme.css">
+  {{#has_logo}}<link rel="icon" href="{{logo_url}}">{{/has_logo}}{{^has_logo}}<link rel="icon" href="/static/icon-192.png?v={{asset_v}}">{{/has_logo}}
+  <link rel="stylesheet" href="/static/tailwind.min.css?v={{asset_v}}" id="tw-local">
+  <script src="/static/theme.js?v={{asset_v}}"></script>
+  <link rel="stylesheet" href="/static/theme.css?v={{asset_v}}">
   <link rel="manifest" href="/manifest.webmanifest">
   <meta name="theme-color" content="#111827">
-  <link rel="apple-touch-icon" href="/static/apple-touch-icon.png">
+  <link rel="apple-touch-icon" href="/static/apple-touch-icon.png?v={{asset_v}}">
   <script>
     // Fall back to play CDN in local dev when CSS hasn't been generated yet
     document.getElementById('tw-local').addEventListener('error', function() {
@@ -18,17 +18,17 @@
       document.head.appendChild(s);
     });
   </script>
-  <script src="https://unpkg.com/htmx.org@1.9.12"></script>
-  <link href="https://cdn.jsdelivr.net/npm/tom-select@2/dist/css/tom-select.default.min.css" rel="stylesheet">
-  <script src="https://cdn.jsdelivr.net/npm/tom-select@2/dist/js/tom-select.complete.min.js"></script>
-  <link rel="stylesheet" href="/static/dataTables.min.css">
-  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/easymde@2/dist/easymde.min.css">
-  <script src="/static/jquery.min.js"></script>
-  <script src="/static/dataTables.min.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/easymde@2/dist/easymde.min.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/qrcodejs@1.0.0/qrcode.min.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/driver.js@1.3.1/dist/driver.js.iife.js"></script>
-  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/driver.js@1.3.1/dist/driver.css">
+  <script src="/static/vendor/htmx-1.9.12.min.js?v={{asset_v}}"></script>
+  <link href="/static/vendor/tom-select-2.6.2.default.min.css?v={{asset_v}}" rel="stylesheet">
+  <script src="/static/vendor/tom-select-2.6.2.complete.min.js?v={{asset_v}}"></script>
+  <link rel="stylesheet" href="/static/dataTables.min.css?v={{asset_v}}">
+  <link rel="stylesheet" href="/static/vendor/easymde-2.21.0.min.css?v={{asset_v}}">
+  <script src="/static/jquery.min.js?v={{asset_v}}"></script>
+  <script src="/static/dataTables.min.js?v={{asset_v}}"></script>
+  <script src="/static/vendor/easymde-2.21.0.min.js?v={{asset_v}}"></script>
+  <script src="/static/vendor/qrcode-1.0.0.min.js?v={{asset_v}}"></script>
+  <script src="/static/vendor/driver-1.3.1.iife.js?v={{asset_v}}"></script>
+  <link rel="stylesheet" href="/static/vendor/driver-1.3.1.css?v={{asset_v}}">
   <script>
   /* Shared page-level tour helper — each page passes its own steps array */
   function pageTour(steps) {

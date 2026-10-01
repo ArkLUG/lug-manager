@@ -42,6 +42,9 @@ w(f"""{D} {{
   --lm-text-5: #8d96a2;    /* gray-500 */
 }}""")
 
+# Scrollbars (modal, tables) follow the theme too.
+w(f"{D} * {{ scrollbar-color: #4B5563 transparent; }}")
+
 # Page background (body carries bg-gray-100)
 w(f"{D} body.bg-gray-100 {{ background-color: var(--lm-bg); }}")
 

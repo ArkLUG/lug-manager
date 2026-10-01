@@ -284,6 +284,7 @@ int main() {
         std::cout << "[lug-manager] Templates: " << config.templates_dir << "\n";
         std::cout << "[lug-manager] Calendar feed: /calendar.ics\n";
 
+        app.use_compression(crow::compression::algorithm::GZIP);
         app.port(config.port)
            .multithreaded()
            .run();

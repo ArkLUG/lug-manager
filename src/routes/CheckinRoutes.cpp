@@ -1,4 +1,5 @@
 #include "routes/CheckinRoutes.hpp"
+#include "utils/AssetVersion.hpp"
 #include "utils/HtmlEscape.hpp"
 #include "routes/EventAccess.hpp"
 #include <algorithm>
@@ -200,6 +201,7 @@ void register_checkin_routes(LugApp& app,
             auto tmpl = crow::mustache::load("checkin/_page.html");
             crow::mustache::context ctx;
             ctx["not_found"] = true;
+            ctx["asset_v"] = asset_version();
             res.write(tmpl.render(ctx).dump());
             return res;
         }
@@ -255,6 +257,7 @@ void register_checkin_routes(LugApp& app,
         // token through OAuth so the callback lands back here.
         ctx["discord_oauth_url"] = "/auth/login?checkin=" + token;
 
+        ctx["asset_v"] = asset_version();
         auto tmpl = crow::mustache::load("checkin/_page.html");
         res.write(tmpl.render(ctx).dump());
         return res;
@@ -447,6 +450,7 @@ void register_checkin_routes(LugApp& app,
         (void)req;
         crow::response res;
         res.add_header("Content-Type", "text/html; charset=utf-8");
+        ctx["asset_v"] = asset_version();
         res.write(crow::mustache::load("checkin/_kiosk.html").render(ctx).dump());
         return res;
     };

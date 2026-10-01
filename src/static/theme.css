@@ -19,6 +19,7 @@ html[data-theme="dark"] {
   --lm-text-4: #a7afba;    /* gray-600 */
   --lm-text-5: #8d96a2;    /* gray-500 */
 }
+html[data-theme="dark"] * { scrollbar-color: #4B5563 transparent; }
 html[data-theme="dark"] body.bg-gray-100 { background-color: var(--lm-bg); }
 html[data-theme="dark"] .bg-white { background-color: var(--lm-surface); }
 html[data-theme="dark"] .bg-gray-50 { background-color: var(--lm-surface-2); }

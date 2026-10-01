@@ -85,8 +85,11 @@ target_link_libraries(lug_manager PRIVATE
 
 target_compile_options(lug_manager PRIVATE -Wall -Wextra -O2)
 
-# Tell Crow where to find static files (served at /static/<path>)
-target_compile_definitions(lug_manager PRIVATE CROW_STATIC_DIRECTORY="src/static/")
+# /static is served by StaticRoutes (caching + ETags); Crow's built-in static
+# handler is disabled. Compression gzips dynamic responses and text assets.
+find_package(ZLIB REQUIRED)
+target_compile_definitions(lug_manager PRIVATE CROW_DISABLE_STATIC_DIR CROW_ENABLE_COMPRESSION)
+target_link_libraries(lug_manager PRIVATE ZLIB::ZLIB)
 
 # ─── Tests ──────────────────────────────────────────────────────────────────
 option(BUILD_TESTS "Build unit and integration tests" ON)
@@ -125,7 +128,9 @@ if(BUILD_TESTS)
     ${ASIO_INCLUDE_DIR}
     ${md4c_SOURCE_DIR}/src
   )
+  target_compile_definitions(lug_lib PUBLIC CROW_DISABLE_STATIC_DIR CROW_ENABLE_COMPRESSION)
   target_link_libraries(lug_lib PUBLIC
+    ZLIB::ZLIB
     Crow::Crow
     nlohmann_json::nlohmann_json
     md4c-html

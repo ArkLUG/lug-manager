@@ -5,6 +5,14 @@
 // OS (prefers-color-scheme), including live changes. Sets
 // <html data-theme="light|dark">; the dark styles live in /static/theme.css.
 (function () {
+  // Collect CSP violations / JS errors for debugging and the browser smoke
+  // test (tests/e2e/smoke.py): window.__lmProblems.
+  window.__lmProblems = [];
+  document.addEventListener('securitypolicyviolation', function (e) {
+    window.__lmProblems.push('csp: ' + e.violatedDirective + ' ' + e.blockedURI + ' ' + (e.sample || ''));
+  });
+  window.addEventListener('error', function (e) { window.__lmProblems.push('error: ' + e.message); });
+
   var KEY = 'lm-theme';
   var media = window.matchMedia ? window.matchMedia('(prefers-color-scheme: dark)') : null;
 

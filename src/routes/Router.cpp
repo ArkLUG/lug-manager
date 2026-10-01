@@ -15,6 +15,7 @@ void register_all_routes(LugApp& app, Services& svc) {
     register_member_bulk_routes(app, svc.members, svc.audit);
     register_session_routes(app, svc.auth, svc.audit);
     register_pwa_routes(app);
+    register_static_routes(app);
     if (!svc.backups) svc.backups = std::make_shared<BackupService>(svc.attendance_repo.db(), svc.data_dir);
     register_backup_routes(app, svc.backups, svc.settings, svc.audit);
     register_export_routes(app, svc.member_repo, svc.attendance_repo, svc.perks, svc.audit);

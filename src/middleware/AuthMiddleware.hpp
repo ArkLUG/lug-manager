@@ -2,6 +2,7 @@
 #include "auth/AuthService.hpp"
 #include "repositories/ChapterMemberRepository.hpp"
 #include "repositories/SettingsRepository.hpp"
+#include "utils/AssetVersion.hpp"
 #include <crow.h>
 #include <string>
 
@@ -86,9 +87,11 @@ struct AuthMiddleware {
         if (res.get_header_value("Content-Security-Policy").empty())
             res.set_header("Content-Security-Policy",
                 "default-src 'self'; "
-                "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://cdn.jsdelivr.net https://unpkg.com https://cdn.tailwindcss.com; "
-                "style-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://unpkg.com https://maxcdn.bootstrapcdn.com; "
-                "font-src 'self' data: https://cdn.jsdelivr.net https://maxcdn.bootstrapcdn.com; "
+                // Libraries are vendored under /static/vendor; cdn.tailwindcss.com is only the
+                // dev fallback when tailwind.min.css hasn't been built, maxcdn is EasyMDE's icons.
+                "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://cdn.tailwindcss.com; "
+                "style-src 'self' 'unsafe-inline' https://maxcdn.bootstrapcdn.com; "
+                "font-src 'self' data: https://maxcdn.bootstrapcdn.com; "
                 "img-src 'self' data: blob: https:; "
                 "connect-src 'self'; "
                 "worker-src 'self'; manifest-src 'self'; "
@@ -108,6 +111,7 @@ inline void set_layout_auth(const crow::request& req, App& app,
     // nested inside the "Settings" accordion, so they don't need a second copy).
     layout_ctx["is_chapter_lead_not_admin"] = ctx.auth.is_chapter_lead() && !ctx.auth.is_admin();
     layout_ctx["display_name"] = ctx.auth.display_name;
+    layout_ctx["asset_v"]      = asset_version();
     layout_ctx["role"]         = ctx.auth.role;
     if (!ctx.auth.display_name.empty())
         layout_ctx["display_name_initial"] = std::string(1, ctx.auth.display_name[0]);

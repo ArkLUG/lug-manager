@@ -1,4 +1,5 @@
 #include "routes/AuthRoutes.hpp"
+#include "utils/AssetVersion.hpp"
 #include <crow.h>
 #include <algorithm>
 #include <cctype>
@@ -84,6 +85,7 @@ void register_auth_routes(LugApp& app, AuthService& auth, DiscordOAuth& oauth,
 
         crow::response res;
         res.add_header("Content-Type", "text/html; charset=utf-8");
+        mctx["asset_v"] = asset_version();
         res.write(tmpl.render(mctx).dump());
         return res;
     });
