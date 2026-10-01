@@ -190,7 +190,13 @@ void register_perk_levels_api_routes(LugApp& app, PerkLevelRepository& perks,
             return res;
         }
 
-        int synced = sync_perk_roles(perks, members, attendance, discord, year);
+        int synced = 0;
+        try {
+            synced = sync_perk_roles(perks, members, attendance, discord, year);
+        } catch (const std::exception& e) {
+            envelope_error(res, 502, std::string("could not read Discord member list: ") + e.what(), "upstream_error");
+            return res;
+        }
 
         auto& ctx = app.template get_context<ApiKeyMiddleware>(req);
         audit.log_system("perk.sync_roles", "perk", 0, "",

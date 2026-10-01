@@ -893,10 +893,10 @@ TEST_F(IntegrationTest, ApiPerkLevelsCloneRequiresAdmin) {
 }
 
 // New endpoint: POST /api/v1/perk-levels/sync-roles - bulk-syncs every
-// member's Discord perk roles against the current year's tiers. No bot
-// configured in this fixture, so add/remove_member_role calls throw and are
-// caught (see the route's catch(...) around each call) - this test verifies
-// the endpoint completes and reports a member count regardless.
+// member's Discord perk roles against the current year's tiers. No Discord
+// server is configured in this fixture, so the member list is empty and
+// nobody is synced (members not in the server are skipped) - this test
+// verifies the endpoint completes and reports the year/count.
 TEST_F(IntegrationTest, ApiPerkLevelsSyncRoles) {
     std::string admin_key = make_api_key("admin");
     std::time_t now = std::time(nullptr);
@@ -909,7 +909,7 @@ TEST_F(IntegrationTest, ApiPerkLevelsSyncRoles) {
     EXPECT_EQ(res.code, 200);
     auto body = json::parse(res.body);
     EXPECT_EQ(body["data"]["year"].get<int>(), current_year);
-    EXPECT_GE(body["data"]["synced"].get<int>(), 1);
+    EXPECT_EQ(body["data"]["synced"].get<int>(), 0);
 }
 
 TEST_F(IntegrationTest, ApiPerkLevelsSyncRolesRequiresAdmin) {

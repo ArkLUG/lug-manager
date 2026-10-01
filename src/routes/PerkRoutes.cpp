@@ -296,7 +296,15 @@ void register_perk_routes(LugApp& app, PerkLevelRepository& perks,
             return res;
         }
 
-        int synced = sync_perk_roles(perks, members, attendance, discord, sync_year);
+        int synced = 0;
+        try {
+            synced = sync_perk_roles(perks, members, attendance, discord, sync_year);
+        } catch (const std::exception& e) {
+            res.add_header("Content-Type", "text/html; charset=utf-8");
+            res.write("<span class=\"text-red-600 text-xs\">Couldn't read the Discord member list: " +
+                      html_escape(e.what()) + "</span>");
+            return res;
+        }
 
         audit.log(req, app, "perk.sync_roles", "perk", 0, "", "Synced " + std::to_string(synced) + " members");
         res.add_header("Content-Type", "text/html; charset=utf-8");
