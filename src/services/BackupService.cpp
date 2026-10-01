@@ -24,7 +24,16 @@ std::string BackupService::create() {
     // Path is built from our own timestamped name only; quote-escape anyway.
     std::string quoted;
     for (char c : path) { quoted += c; if (c == '\'') quoted += '\''; }
-    db_.execute("VACUUM INTO '" + quoted + "'");
+    // Snapshot through a separate connection when the DB is a real file: in
+    // WAL mode its read doesn't block the app's shared connection, so pages
+    // keep working while a large backup runs. (:memory: DBs - tests - can only
+    // be reached through the original connection.)
+    if (!db_.path().empty() && db_.path() != ":memory:") {
+        SqliteDatabase snap(db_.path());
+        snap.execute("VACUUM INTO '" + quoted + "'");
+    } else {
+        db_.execute("VACUUM INTO '" + quoted + "'");
+    }
     return name;
 }
 

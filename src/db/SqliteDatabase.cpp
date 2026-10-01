@@ -79,7 +79,7 @@ void Statement::reset() {
 
 // ---------- SqliteDatabase ----------
 
-SqliteDatabase::SqliteDatabase(const std::string& path) {
+SqliteDatabase::SqliteDatabase(const std::string& path) : path_(path) {
     int rc = sqlite3_open(path.c_str(), &db_);
     if (rc != SQLITE_OK) {
         throw DbError(std::string("Cannot open database: ") + sqlite3_errmsg(db_));

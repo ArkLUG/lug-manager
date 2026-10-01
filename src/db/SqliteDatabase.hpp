@@ -57,11 +57,13 @@ public:
     void      execute(const std::string& sql);         // DDL / simple statements
     int64_t   last_insert_rowid();
     sqlite3*  raw() { return db_; }
+    const std::string& path() const { return path_; }
 
 private:
     friend class Transaction;
     friend class Statement;
     sqlite3* db_ = nullptr;
+    std::string path_;
     // One connection is shared by every request thread and the background
     // workers. Each prepare/step/execute holds this mutex, and a Transaction
     // holds it for its whole lifetime, so other threads' statements can't

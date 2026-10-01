@@ -462,3 +462,23 @@ TEST(TemplateCache, ServesCachedTextAndPicksUpEdits) {
     std::filesystem::remove_all(dir);
     crow::mustache::set_base("src/templates");
 }
+
+// ── Backups from a file DB use their own connection ────────────────────────
+#include "services/BackupService.hpp"
+TEST(BackupService, FileDatabaseSnapshotViaSeparateConnection) {
+    auto dir = std::filesystem::temp_directory_path() / "lm_backup_test";
+    std::filesystem::remove_all(dir);
+    std::filesystem::create_directories(dir);
+    {
+        SqliteDatabase db((dir / "lug.db").string());
+        db.execute("CREATE TABLE t (v INTEGER); INSERT INTO t VALUES (42);");
+        BackupService b(db, dir.string());
+        std::string name = b.create();
+        SqliteDatabase copy((dir / "backups" / name).string());
+        auto s = copy.prepare("SELECT v FROM t");
+        ASSERT_TRUE(s.step());
+        EXPECT_EQ(s.col_int(0), 42);
+        EXPECT_EQ(b.list().size(), 1u);
+    }
+    std::filesystem::remove_all(dir);
+}
