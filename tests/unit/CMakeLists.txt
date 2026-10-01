@@ -6,6 +6,7 @@ lug_add_tests(
   test_discord_content.cpp
   test_discord_signature.cpp
   test_html_escape.cpp
+  test_live_hub.cpp
   test_markdown.cpp
   test_perk_progress.cpp
   test_repositories.cpp

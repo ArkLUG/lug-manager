@@ -55,7 +55,7 @@ A ready-made template is in [`unraid/lug-manager.xml`](unraid/lug-manager.xml). 
 The defaults:
 - Data goes to `/mnt/user/appdata/lug-manager`.
 - Files there belong to `nobody:users`, because `PUID`=99 and `PGID`=100 (under *Show more settings*).
-- For HTTPS, put it behind your usual reverse proxy, such as Nginx Proxy Manager, SWAG or Traefik.
+- For HTTPS, put it behind your usual reverse proxy, such as Nginx Proxy Manager, SWAG or Traefik. Turn on websocket support for it (in Nginx Proxy Manager: *Websockets Support*), so pages update live; without it everything still works, pages just don't update by themselves.
 
 ## Fly.io
 

@@ -8,6 +8,7 @@
   <link rel="stylesheet" href="/static/tailwind.min.css?v={{asset_v}}" id="tw-local">
   <script src="/static/theme.js?v={{asset_v}}"></script>
   <script src="/static/app.js?v={{asset_v}}" defer></script>
+  <script src="/static/live.js?v={{asset_v}}" defer></script>
   <link rel="stylesheet" href="/static/theme.css?v={{asset_v}}">
   <link rel="manifest" href="/manifest.webmanifest">
   <meta name="theme-color" content="#111827">
@@ -138,7 +139,7 @@
     }
   </style>
 </head>
-<body class="bg-gray-100 min-h-screen flex" hx-boost="false" data-features-off="{{features_off}}">
+<body class="bg-gray-100 min-h-screen flex" hx-boost="false" data-features-off="{{features_off}}"{{#role}} data-live="1"{{/role}}>
   <a href="#main-content" class="skip-link">Skip to content</a>
 
   <!-- ===== SIDEBAR ===== -->

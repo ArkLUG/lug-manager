@@ -1,4 +1,5 @@
 #include "routes/community/GalleryRoutes.hpp"
+#include "live/LiveHub.hpp"
 #include "utils/LocalTime.hpp"
 #include "routes/events/EventAccess.hpp"
 #include "services/events/AttendanceService.hpp"
@@ -336,6 +337,7 @@ void register_gallery_routes(LugApp& app, SqliteDatabase& db, std::shared_ptr<Ph
             ins.bind(1, c->id); ins.bind(2, (int64_t)eid); ins.bind(3, me);
             ins.step();
         }
+        live::changed_by(req, "challenge", c->id);
         res.write(render_challenge(req, app, db, *c));
         return res;
     });

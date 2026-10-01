@@ -1,4 +1,5 @@
 #include "routes/community/InventoryRoutes.hpp"
+#include "live/LiveHub.hpp"
 #include "utils/web/FormBody.hpp"
 #include "services/events/AttendanceService.hpp"
 #include "routes/events/EventAccess.hpp"
@@ -417,6 +418,7 @@ void register_pack_routes(LugApp& app, SqliteDatabase& db, AuditService& audit, 
         auto up = db.prepare("UPDATE inventory_pack SET packed = 1 - packed WHERE event_id=? AND item_id=?");
         up.bind(1, ev->id); up.bind(2, static_cast<int64_t>(item));
         up.step();
+        live::changed_by(req, "event", ev->id);
         return pack_panel(req, app, db, *ev, chapter_members);
     });
 

@@ -54,6 +54,7 @@
 - Treasury: income, expenses, receipts and a yearly balance, with a treasurer role that isn't full admin.
 - Feature toggles: switch off anything your LUG doesn't use. Its data is kept.
 - First-run setup, an audit log of every change, CSV exports, daily backups (photos included) and a JSON API.
+- Live pages: when someone changes something, everyone else's open pages update by themselves. If you're in the middle of editing, an "Updated - refresh" button waits for you instead. (Behind a reverse proxy, allow websockets.)
 - Dark mode, phone-friendly pages, and installable as an app.
 
 ## Install

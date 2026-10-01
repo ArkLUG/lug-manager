@@ -1,4 +1,5 @@
 #include "routes/attendance/CheckinRoutes.hpp"
+#include "live/LiveHub.hpp"
 #include "utils/web/AssetVersion.hpp"
 #include "utils/text/HtmlEscape.hpp"
 #include "routes/events/EventAccess.hpp"
@@ -563,6 +564,7 @@ void register_checkin_routes(LugApp& app,
             return res;
         }
         auto v = event_repo.add_visitors(ev->id, kind, d == "1" ? 1 : -1);
+        live::changed_by(req, "event", ev->id);
         res.add_header("Content-Type", "text/html; charset=utf-8");
         res.write(counter_html(ev->id, v));
         return res;

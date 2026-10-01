@@ -1,3 +1,4 @@
+#include "live/LiveHub.hpp"
 #include "utils/Offline.hpp"
 #include <crow.h>
 #include <crow/mustache.h>
@@ -251,6 +252,7 @@ int main() {
                                   << " skipped=" << r.skipped
                                   << " held_for_review=" << r.held_for_review
                                   << " errors=" << r.errors << "\n";
+                        if (r.imported || r.updated) live::changed("member");
                         if (r.held_for_review > 0) {
                             audit_service.log_system("member_sync.held_for_review", "member", 0, "",
                                 std::to_string(r.held_for_review) + " Discord member(s) held for admin review");
@@ -293,11 +295,14 @@ int main() {
                             std::cout << "[backup] Daily backup created\n";
                     }
                     if (Features::on("series"))
-                    if (int made = series_service.materialize(AttendanceService::today_ymd()))
+                    if (int made = series_service.materialize(AttendanceService::today_ymd())) {
                         std::cout << "[series] Scheduled " << made << " recurring meeting(s)\n";
+                        live::changed("meeting");
+                    }
                     auto d = dues_service.run_once();
                     if (d.expired || d.reminded)
                         std::cout << "[dues] " << d.expired << " lapsed, " << d.reminded << " reminded\n";
+                    if (d.expired) live::changed("member");
                     if (int n = loan_reminders.run_once(AttendanceService::today_ymd()))
                         std::cout << "[inventory] Reminded " << n << " borrower(s)\n";
                     if (int n = digest_service.run_once())

@@ -1,4 +1,5 @@
 #include "routes/events/ShowsRoutes.hpp"
+#include "live/LiveHub.hpp"
 #include "utils/web/ClientIp.hpp"
 #include "services/FanCoLab.hpp"
 #include "services/events/AttendanceService.hpp"
@@ -198,6 +199,7 @@ void register_shows_routes(LugApp& app, SqliteDatabase& db, SettingsRepository& 
             up.bind(1, static_cast<int64_t>(id));
             up.step();
         }
+        live::changed("event", id);
         if (undo) mine.erase(id); else mine.insert(id);
         std::string v;
         for (auto e : mine) v += (v.empty() ? "" : ",") + std::to_string(e);

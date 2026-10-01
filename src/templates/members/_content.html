@@ -340,5 +340,16 @@
       htmx.process(document.getElementById('members-table'));
     }
   });
+  // Live updates: reload the rows in place (keeps paging, search and sort).
+  // (live.js loads deferred: on a full page load it isn't there yet.)
+  function liveHook() {
+    if (!window.LiveSync) return;
+    window.LiveSync.onChange(document.getElementById('members-table'), function(changes) {
+      if (changes !== 'all' && !changes.some(function(c) { return /^(member|chapter|chapter_member|perk)\b/.test(c); })) return true;
+      if (window.membersTable) window.membersTable.ajax.reload(null, false);
+      return true;
+    });
+  }
+  if (window.LiveSync) liveHook(); else document.addEventListener('DOMContentLoaded', liveHook);
 })();
 </script>
