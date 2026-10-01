@@ -23,7 +23,7 @@
     {{#has_shows}}
     <ul class="space-y-4">
       {{#shows}}
-      <li class="bg-white border border-gray-200 rounded-xl p-5">
+      <li id="show-{{id}}" class="bg-white border border-gray-200 rounded-xl p-5">
         <div class="flex flex-wrap items-baseline justify-between gap-2">
           <h2 class="text-lg font-semibold">{{title}}</h2>
           {{#tentative}}<span class="text-xs px-2 py-0.5 rounded bg-amber-100 text-amber-800">Date to be confirmed</span>{{/tentative}}
@@ -32,6 +32,14 @@
         {{#location}}<p class="text-sm text-gray-600">{{location}}</p>{{/location}}
         {{#fee}}<p class="text-sm text-gray-600">Admission: {{fee}}</p>{{/fee}}
         {{#description_html}}<div class="prose prose-sm max-w-none text-gray-700 mt-2">{{{description_html}}}</div>{{/description_html}}
+        <div class="flex flex-wrap items-center gap-3 mt-3 text-sm">
+          <form method="post" action="/shows/{{id}}/interest{{#embed}}?embed=1{{/embed}}">
+            {{#mine}}<button class="px-3 py-1.5 rounded-lg bg-yellow-400 text-gray-900 font-semibold">&#10003; You're coming</button>{{/mine}}
+            {{^mine}}<button class="px-3 py-1.5 rounded-lg border border-gray-300 text-gray-700 hover:bg-gray-50">I plan to come</button>{{/mine}}
+          </form>
+          {{#has_interest}}<span class="text-gray-500">{{interest}} planning to come</span>{{/has_interest}}
+          {{#has_shifts}}<a href="/events/{{id}}" {{#embed}}target="_blank" rel="noopener"{{/embed}} class="text-indigo-600 hover:text-indigo-800">LUG members: volunteer at this show</a>{{/has_shifts}}
+        </div>
       </li>
       {{/shows}}
     </ul>

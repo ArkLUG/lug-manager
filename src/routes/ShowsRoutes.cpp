@@ -4,25 +4,34 @@
 #include "utils/MarkdownRenderer.hpp"
 #include "utils/Utf8.hpp"
 #include <crow/mustache.h>
+#include <algorithm>
 #include <ctime>
+#include <deque>
+#include <map>
+#include <mutex>
+#include <set>
+#include <sstream>
 
 namespace {
 
 struct Show {
     int64_t id = 0;
     std::string title, description, location, start, end, status, fee;
+    int64_t interest = 0;
+    bool has_shifts = false;
 };
 
 std::vector<Show> upcoming(SqliteDatabase& db) {
     std::vector<Show> out;
     auto st = db.prepare(
-        "SELECT id, title, description, location, start_time, end_time, status, entrance_fee FROM lug_events "
+        "SELECT id, title, description, location, start_time, end_time, status, entrance_fee, public_interest, "
+        "EXISTS(SELECT 1 FROM event_shifts s WHERE s.event_id = lug_events.id) FROM lug_events "
         "WHERE is_private=0 AND status <> 'cancelled' AND substr(COALESCE(NULLIF(end_time,''), start_time),1,10) >= ? "
         "ORDER BY start_time LIMIT 50");
     st.bind(1, AttendanceService::today_ymd());
     while (st.step())
         out.push_back({st.col_int(0), st.col_text(1), st.col_text(2), st.col_text(3), st.col_text(4),
-                       st.col_text(5), st.col_text(6), st.col_text(7)});
+                       st.col_text(5), st.col_text(6), st.col_text(7), st.col_int(8), st.col_int(9) != 0});
     return out;
 }
 
@@ -56,6 +65,29 @@ std::string when(const Show& s) {
     return fmt(a, "%a, %b %d") + " - " + fmt(b, "%a, %b %d, %Y");
 }
 
+// Events this browser said it's coming to (cookie "si": comma-separated ids).
+std::set<int64_t> interested(const crow::request& req) {
+    std::set<int64_t> out;
+    std::stringstream ss(get_cookie(req, "si"));
+    std::string tok;
+    while (std::getline(ss, tok, ',')) { try { out.insert(std::stoll(tok)); } catch (...) {} }
+    return out;
+}
+
+// Per-IP cap on interest clicks, so the public count can't be pumped.
+bool rate_ok(const std::string& ip) {
+    static std::mutex mu;
+    static std::map<std::string, std::deque<std::time_t>> hits;
+    std::lock_guard<std::mutex> l(mu);
+    std::time_t now = std::time(nullptr);
+    auto& q = hits[ip];
+    while (!q.empty() && now - q.front() > 3600) q.pop_front();
+    if (q.size() >= 30) return false;
+    q.push_back(now);
+    if (hits.size() > 10000) hits.clear();
+    return true;
+}
+
 bool enabled(SettingsRepository& settings) { return settings.get("public_shows_enabled", "") == "1"; }
 
 std::string settings_card(SettingsRepository& settings, const std::string& flash = "") {
@@ -76,6 +108,7 @@ void register_shows_routes(LugApp& app, SqliteDatabase& db, SettingsRepository& 
         crow::response res;
         if (!enabled(settings)) { res.code = 404; return res; }
         bool embed = req.url_params.get("embed") != nullptr;
+        auto mine = interested(req);
         crow::mustache::context ctx;
         crow::json::wvalue arr = crow::json::wvalue::list();
         int i = 0;
@@ -87,7 +120,12 @@ void register_shows_routes(LugApp& app, SqliteDatabase& db, SettingsRepository& 
             if (!s.fee.empty()) o["fee"] = s.fee;
             o["tentative"] = s.status == "tentative";
             if (!s.description.empty()) o["description_html"] = render_markdown(utf8_truncate(s.description, 1500));
-            if (!s.location.empty()) o["map_q"] = s.location;
+            o["id"] = s.id;
+            o["interest"] = s.interest;
+            o["has_interest"] = s.interest > 0;
+            o["mine"] = mine.count(s.id) > 0;
+            o["has_shifts"] = s.has_shifts;
+            o["embed"] = embed;
         }
         ctx["shows"] = std::move(arr);
         ctx["has_shows"] = i > 0;
@@ -99,13 +137,13 @@ void register_shows_routes(LugApp& app, SqliteDatabase& db, SettingsRepository& 
         ctx["embed"] = embed;
         ctx["asset_v"] = asset_version();
         res.add_header("Content-Type", "text/html; charset=utf-8");
-        res.add_header("Cache-Control", "public, max-age=300");
+        res.add_header("Cache-Control", "private, no-cache");   // per-browser "you're coming" state
         if (embed) {
             // Meant to be iframed on the LUG's own website.
             res.add_header("X-Frame-Options", "ALLOWALL");
             res.add_header("Content-Security-Policy",
                 "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; "
-                "object-src 'none'; base-uri 'none'; form-action 'none'; frame-ancestors *");
+                "object-src 'none'; base-uri 'none'; form-action 'self'; frame-ancestors *");
         }
         res.write(crow::mustache::load("shows/public.html").render(ctx).dump());
         return res;
@@ -127,11 +165,53 @@ void register_shows_routes(LugApp& app, SqliteDatabase& db, SettingsRepository& 
             o["entrance_fee"] = s.fee;
             o["tentative"] = s.status == "tentative";
             o["description"] = utf8_truncate(s.description, 1500);
+            o["planning_to_come"] = s.interest;
         }
         res.add_header("Content-Type", "application/json");
         res.add_header("Access-Control-Allow-Origin", "*");
         res.add_header("Cache-Control", "public, max-age=300");
         res.write(out.dump());
+        return res;
+    });
+
+    // POST /shows/<id>/interest - "I plan to come" toggle (no login)
+    CROW_ROUTE(app, "/shows/<int>/interest").methods("POST"_method)([&db, &settings](const crow::request& req, int id) {
+        crow::response res;
+        if (!enabled(settings)) { res.code = 404; return res; }
+        bool listed = false;
+        for (const auto& s : upcoming(db)) listed |= s.id == id;
+        if (!listed) { res.code = 404; return res; }
+        bool embed = req.url_params.get("embed") != nullptr;
+        res.code = 303;
+        res.set_header("Location", std::string(embed ? "/shows?embed=1" : "/shows") + "#show-" + std::to_string(id));
+        std::string ip = req.get_header_value("X-Forwarded-For");
+        if (ip.empty()) ip = req.remote_ip_address;
+        auto mine = interested(req);
+        bool undo = mine.count(id) > 0;
+        if (!rate_ok(ip)) return res;
+        {
+            auto up = db.prepare(undo ? "UPDATE lug_events SET public_interest=MAX(public_interest-1,0) WHERE id=?"
+                                      : "UPDATE lug_events SET public_interest=public_interest+1 WHERE id=?");
+            up.bind(1, static_cast<int64_t>(id));
+            up.step();
+        }
+        if (undo) mine.erase(id); else mine.insert(id);
+        std::string v;
+        for (auto e : mine) v += (v.empty() ? "" : ",") + std::to_string(e);
+        res.add_header("Set-Cookie", "si=" + v + "; Path=/shows; Max-Age=31536000; SameSite=Lax");
+        return res;
+    });
+
+    // GET /events/<id>/public-interest - count for the event page (members)
+    CROW_ROUTE(app, "/events/<int>/public-interest")([&app, &db](const crow::request& req, int id) {
+        crow::response res;
+        if (!require_auth(req, res, app)) return res;
+        auto st = db.prepare("SELECT public_interest FROM lug_events WHERE id=?");
+        st.bind(1, static_cast<int64_t>(id));
+        int64_t n = st.step() ? st.col_int(0) : 0;
+        res.add_header("Content-Type", "text/html; charset=utf-8");
+        if (n > 0) res.write("<span class=\"text-xs text-gray-500\">" + std::to_string(n) +
+                             " visitor(s) said they plan to come (public shows page)</span>");
         return res;
     });
 

@@ -188,6 +188,11 @@ void register_report_routes(LugApp& app, SqliteDatabase& db, EventService& event
                 ctx["money_net"] = money(st.col_int(0) - st.col_int(1));
             }
         }
+        {
+            auto st = db.prepare("SELECT public_interest FROM lug_events WHERE id=?");
+            st.bind(1, ev->id);
+            if (st.step() && st.col_int(0) > 0) ctx["public_interest"] = st.col_int(0);
+        }
         ctx["asset_v"] = asset_version();
         audit.log(req, app, "event.report_view", "event", ev->id, ev->title, "Viewed event report");
         res.add_header("Content-Type", "text/html; charset=utf-8");

@@ -70,3 +70,44 @@ TEST_F(IntegrationTest, ShowsListsPublicUpcomingOnly) {
     POST("/settings/public-shows", "title=x", admin_token);   // unticked -> off
     EXPECT_EQ(GET("/shows").code, 404);
 }
+
+TEST_F(IntegrationTest, ShowsInterestAndVolunteerLink) {
+    auto pub = event_svc->create(show("Interest Show", "2099-09-05T10:00:00", "2099-09-05T16:00:00"));
+    auto priv_e = show("Private One", "2099-09-06T10:00:00", "2099-09-06T16:00:00");
+    priv_e.is_private = true;
+    auto priv = event_svc->create(priv_e);
+    std::string id = std::to_string(pub.id);
+    EXPECT_EQ(POST("/shows/" + id + "/interest").code, 404);             // page disabled
+    POST("/settings/public-shows", "enabled=1", admin_token);
+
+    auto r = POST("/shows/" + id + "/interest");
+    EXPECT_EQ(r.code, 303);
+    EXPECT_NE(r.location.find("/shows#show-" + id), std::string::npos);
+    EXPECT_NE(r.headers.find("si=" + id), std::string::npos);
+    EXPECT_EQ(POST("/shows/" + std::to_string(priv.id) + "/interest").code, 404);
+
+    expect_contains(GET("/shows"), "1 planning to come");
+    std::vector<std::string> cookie = {"Cookie: si=" + id};
+    auto mine = http("GET", "/shows", "", "", false, "", false, cookie);
+    expect_contains(mine, "You're coming");
+    // Clicking again from the same browser undoes it
+    http("POST", "/shows/" + id + "/interest", "", "", false, "", false, cookie);
+    expect_not_contains(GET("/shows"), "planning to come");
+    // Embedded form posts back to the embed view
+    EXPECT_NE(POST("/shows/" + id + "/interest?embed=1").location.find("/shows?embed=1#show-"), std::string::npos);
+
+    // Volunteer link once the show has shifts; members see the count on the event
+    expect_not_contains(GET("/shows"), "volunteer at this show");
+    POST("/events/" + id + "/shifts", "title=Setup&day=2099-09-05&from=08:00&to=09:00&slots=2", admin_token);
+    expect_contains(GET("/shows"), "volunteer at this show");
+    expect_contains(GET("/events/" + id + "/public-interest", member_token), "1 visitor(s)");
+    expect_contains(GET("/events/" + id + "/report", admin_token), "Said they'd come");
+    EXPECT_NE(GET("/events/" + id + "/public-interest").code, 200);
+
+    // Per-IP cap (30/hour) stops count pumping
+    for (int i = 0; i < 40; ++i) POST("/shows/" + id + "/interest");
+    auto st = db->prepare("SELECT public_interest FROM lug_events WHERE id=?");
+    st.bind(1, pub.id);
+    ASSERT_TRUE(st.step());
+    EXPECT_LE(st.col_int(0), 30);
+}
