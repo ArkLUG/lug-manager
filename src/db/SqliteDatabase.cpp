@@ -88,6 +88,11 @@ SqliteDatabase::SqliteDatabase(const std::string& path) {
     execute("PRAGMA journal_mode=WAL");
     execute("PRAGMA foreign_keys=ON");
     execute("PRAGMA synchronous=NORMAL");
+    // Bigger page cache (16 MB), memory-mapped reads (64 MB) and in-memory
+    // temp tables: cheap wins for the overview/report queries.
+    execute("PRAGMA cache_size=-16000");
+    execute("PRAGMA mmap_size=67108864");
+    execute("PRAGMA temp_store=MEMORY");
 }
 
 SqliteDatabase::~SqliteDatabase() {

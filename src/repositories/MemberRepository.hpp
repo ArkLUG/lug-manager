@@ -28,6 +28,10 @@ public:
     bool   update(const Member& m);  // Returns false if not found
     // members.role_source: "manual" | "discord" - see services/RoleSync.hpp
     std::string get_role_source(int64_t id);
+    // Exact first+last name match (case-insensitive, indexed - migration 053).
+    std::optional<Member> find_by_full_name(const std::string& first, const std::string& last);
+    // Name-only search for the public check-in page (never matches email etc.).
+    std::vector<Member> search_names(const std::string& q, int limit);
     // Personal calendar feed token (migration 052): SHA-256 of the token.
     void        set_calendar_token_hash(int64_t id, const std::string& hash);
     int64_t     find_by_calendar_token_hash(const std::string& hash); // 0 if none

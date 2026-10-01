@@ -300,3 +300,42 @@ TEST_F(IntegrationTest, KioskForManagersOnly) {
     expect_contains(recent, "checked in");
     EXPECT_EQ(GET("/kiosk/bogus/1/recent", admin_token).code, 404);
 }
+
+// Public search matches names only (not email) and is capped.
+TEST_F(IntegrationTest, CheckinSearchNamesOnlyAndCapped) {
+    Meeting m;
+    m.title = "Search Cap Meeting";
+    m.start_time = today_at("19:00:00");
+    m.end_time = today_at("21:00:00");
+    m.scope = "lug_wide";
+    auto mtg = meeting_svc->create(m);
+    meeting_repo->update_checkin_token(mtg.id, "33333333-4444-4555-8666-777777777777");
+    for (int i = 0; i < 20; ++i) {
+        Member x;
+        x.first_name = "Zork";
+        x.last_name = "Num" + std::to_string(i);
+        x.display_name = "Zork N" + std::to_string(i);
+        x.email = "secret" + std::to_string(i) + "@example.com";
+        member_repo->create(x);
+    }
+    std::string base = "/checkin/33333333-4444-4555-8666-777777777777/search?q=";
+    auto by_email = GET(base + "secret1");
+    EXPECT_EQ(by_email.body.find("Zork"), std::string::npos);
+    auto by_name = GET(base + "Zork");
+    size_t n = 0, pos = 0;
+    while ((pos = by_name.body.find("<option value=\"", pos)) != std::string::npos) { ++n; ++pos; }
+    EXPECT_LE(n, 16u); // 15 results + the "-- Select your name --" placeholder
+}
+
+TEST_F(IntegrationTest, ManualCheckinMatchesExistingCaseInsensitively) {
+    Meeting m;
+    m.title = "Manual Match Meeting";
+    m.start_time = today_at("19:00:00");
+    m.end_time = today_at("21:00:00");
+    m.scope = "lug_wide";
+    auto mtg = meeting_svc->create(m);
+    meeting_repo->update_checkin_token(mtg.id, "44444444-5555-4666-8777-888888888888");
+    auto r = POST("/checkin/44444444-5555-4666-8777-888888888888/manual", "first_name=regular&last_name=USER");
+    expect_contains(r, "Welcome back");
+    EXPECT_TRUE(attendance_repo->is_checked_in(regular_member_id, "meeting", mtg.id));
+}

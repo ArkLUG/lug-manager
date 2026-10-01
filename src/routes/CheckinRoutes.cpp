@@ -342,10 +342,10 @@ void register_checkin_routes(LugApp& app,
         const int64_t      entity_id    = target->entity_id;
 
         // Duplicate detection: search for existing members with same first+last name
-        auto all = member_repo.find_all();
-        for (const auto& m : all) {
-            if (strcasecmp(m.first_name.c_str(), first.c_str()) == 0 &&
-                strcasecmp(m.last_name.c_str(), last.c_str()) == 0) {
+        // Indexed exact-name lookup (was: load every member and compare in C++).
+        if (auto found = member_repo.find_by_full_name(first, last)) {
+            const Member& m = *found;
+            {
                 // Found a match — check if already checked in
                 if (attendance.is_checked_in(m.id, entity_type, entity_id)) {
                     res.write("<div class=\"bg-yellow-50 border border-yellow-200 text-yellow-700 px-4 py-3 rounded text-sm\">"
@@ -410,7 +410,9 @@ void register_checkin_routes(LugApp& app,
             return res;
         }
 
-        auto results = member_repo.find_search(q);
+        // Name fields only, capped: this page is public, so it must not let
+        // anyone probe by email/Discord handle or dump the whole list.
+        auto results = member_repo.search_names(q, 15);
         std::ostringstream html;
         html << "<option value=\"\">-- Select your name --</option>\n";
         for (const auto& m : results) {

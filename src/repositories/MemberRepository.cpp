@@ -426,3 +426,25 @@ int64_t MemberRepository::find_by_calendar_token_hash(const std::string& hash) {
     stmt.bind(1, hash);
     return stmt.step() ? stmt.col_int(0) : 0;
 }
+
+std::optional<Member> MemberRepository::find_by_full_name(const std::string& first, const std::string& last) {
+    auto stmt = db_.prepare(std::string(kSelectAllCols) +
+        " WHERE m.last_name = ? COLLATE NOCASE AND m.first_name = ? COLLATE NOCASE ORDER BY m.id LIMIT 1");
+    stmt.bind(1, last);
+    stmt.bind(2, first);
+    if (!stmt.step()) return std::nullopt;
+    return row_to_member(stmt);
+}
+
+std::vector<Member> MemberRepository::search_names(const std::string& q, int limit) {
+    std::string pattern = "%" + q + "%";
+    auto stmt = db_.prepare(std::string(kSelectAllCols) +
+        " WHERE m.display_name LIKE ?1 OR m.first_name LIKE ?1 OR m.last_name LIKE ?1"
+        " OR (m.first_name || ' ' || m.last_name) LIKE ?1"
+        " ORDER BY m.display_name ASC LIMIT ?2");
+    stmt.bind(1, pattern);
+    stmt.bind(2, static_cast<int64_t>(limit));
+    std::vector<Member> result;
+    while (stmt.step()) result.push_back(row_to_member(stmt));
+    return result;
+}
