@@ -42,14 +42,7 @@ void register_help_routes(LugApp& app, ChapterMemberRepository& chapter_members)
         if (is_htmx) {
             res.write(content);
         } else {
-            crow::mustache::context layout_ctx;
-            layout_ctx["content"]     = content;
-            layout_ctx["page_title"]  = "Help & Getting Started";
-            layout_ctx["active_help"] = true;
-            layout_ctx["is_admin"]    = is_admin;
-            set_layout_auth(req, app, layout_ctx);
-            auto layout = crow::mustache::load("layout.html");
-            res.write(layout.render(layout_ctx).dump());
+            res.write(render_in_layout(req, app, content, "Help & Getting Started", "active_help"));
         }
         return res;
     });

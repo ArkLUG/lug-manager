@@ -208,14 +208,7 @@ static std::string render_event_page(const crow::request& req,
 
     auto content_tmpl = crow::mustache::load("events/_content.html");
     std::string content = content_tmpl.render(ctx).dump();
-    crow::mustache::context layout_ctx;
-    layout_ctx["content"]       = content;
-    layout_ctx["page_title"]    = all_events ? "All Events" : "Events";
-    layout_ctx["active_events"] = true;
-    layout_ctx["is_admin"]      = is_admin;
-        set_layout_auth(req, app, layout_ctx);
-    auto layout = crow::mustache::load("layout.html");
-    return layout.render(layout_ctx).dump();
+    return render_in_layout(req, app, content, (all_events ? "All Events" : "Events"), "active_events");
 }
 
 void register_event_routes(LugApp& app, EventService& events, AttendanceService& attendance,
@@ -551,14 +544,7 @@ void register_event_routes(LugApp& app, EventService& events, AttendanceService&
         if (is_htmx) {
             res.write(content);
         } else {
-            crow::mustache::context layout_ctx;
-            layout_ctx["content"]       = content;
-            layout_ctx["page_title"]    = ev->title;
-            layout_ctx["active_events"] = true;
-            layout_ctx["is_admin"]      = is_admin;
-        set_layout_auth(req, app, layout_ctx);
-            auto layout = crow::mustache::load("layout.html");
-            res.write(layout.render(layout_ctx).dump());
+            res.write(render_in_layout(req, app, content, ev->title, "active_events"));
         }
         return res;
     });

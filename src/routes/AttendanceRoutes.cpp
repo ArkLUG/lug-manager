@@ -284,14 +284,7 @@ void register_attendance_routes(LugApp& app, AttendanceService& attendance,
         } else {
             auto content_tmpl = crow::mustache::load("attendance/_overview.html");
             std::string content = content_tmpl.render(ctx).dump();
-            crow::mustache::context layout_ctx;
-            layout_ctx["content"]           = content;
-            layout_ctx["page_title"]                 = "Attendance Overview";
-            layout_ctx["active_attendance_overview"] = true;
-            layout_ctx["is_admin"]                   = true;
-        set_layout_auth(req, app, layout_ctx);
-            auto layout = crow::mustache::load("layout.html");
-            res.write(layout.render(layout_ctx).dump());
+            res.write(render_in_layout(req, app, content, "Attendance Overview", "active_attendance_overview"));
         }
         res.add_header("Content-Type", "text/html; charset=utf-8");
         return res;
@@ -347,14 +340,7 @@ void register_attendance_routes(LugApp& app, AttendanceService& attendance,
         } else {
             auto content_tmpl = crow::mustache::load("attendance/_content.html");
             std::string content = content_tmpl.render(ctx).dump();
-            crow::mustache::context layout_ctx;
-            layout_ctx["content"]           = content;
-            layout_ctx["page_title"]        = "My Attendance";
-            layout_ctx["active_attendance"] = true;
-            layout_ctx["is_admin"]          = ctx_auth.auth.role == "admin";
-        set_layout_auth(req, app, layout_ctx);
-            auto layout = crow::mustache::load("layout.html");
-            res.write(layout.render(layout_ctx).dump());
+            res.write(render_in_layout(req, app, content, "My Attendance", "active_attendance"));
         }
         res.add_header("Content-Type", "text/html; charset=utf-8");
         return res;

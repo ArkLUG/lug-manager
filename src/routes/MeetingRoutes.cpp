@@ -196,14 +196,7 @@ static std::string render_meeting_page(const crow::request& req,
 
     auto content_tmpl = crow::mustache::load("meetings/_content.html");
     std::string content = content_tmpl.render(ctx).dump();
-    crow::mustache::context layout_ctx;
-    layout_ctx["content"]          = content;
-    layout_ctx["page_title"]       = "Meetings";
-    layout_ctx["active_meetings"]  = true;
-    layout_ctx["is_admin"]         = is_admin;
-        set_layout_auth(req, app, layout_ctx);
-    auto layout = crow::mustache::load("layout.html");
-    return layout.render(layout_ctx).dump();
+    return render_in_layout(req, app, content, "Meetings", "active_meetings");
 }
 
 void register_meeting_routes(LugApp& app, MeetingService& meetings, AttendanceService& attendance,
@@ -411,14 +404,7 @@ void register_meeting_routes(LugApp& app, MeetingService& meetings, AttendanceSe
         if (is_htmx) {
             res.write(content);
         } else {
-            crow::mustache::context layout_ctx;
-            layout_ctx["content"]         = content;
-            layout_ctx["page_title"]      = m->title;
-            layout_ctx["active_meetings"] = true;
-            layout_ctx["is_admin"]        = is_admin;
-        set_layout_auth(req, app, layout_ctx);
-            auto layout = crow::mustache::load("layout.html");
-            res.write(layout.render(layout_ctx).dump());
+            res.write(render_in_layout(req, app, content, m->title, "active_meetings"));
         }
         return res;
     });

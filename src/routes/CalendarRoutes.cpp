@@ -124,14 +124,7 @@ void register_calendar_routes(LugApp& app, CalendarGenerator& cal,
         } else {
             auto content_tmpl = crow::mustache::load("dashboard/_content.html");
             std::string content = content_tmpl.render(ctx).dump();
-            crow::mustache::context layout_ctx;
-            layout_ctx["content"]           = content;
-            layout_ctx["page_title"]        = "Dashboard";
-            layout_ctx["active_dashboard"]  = true;
-            layout_ctx["is_admin"]          = auth_ctx.auth.role == "admin";
-        set_layout_auth(req, app, layout_ctx);
-            auto layout = crow::mustache::load("layout.html");
-            res.write(layout.render(layout_ctx).dump());
+            res.write(render_in_layout(req, app, content, "Dashboard", "active_dashboard"));
         }
         return res;
     });

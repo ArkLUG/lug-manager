@@ -78,14 +78,7 @@ static std::string render_members_page(const crow::request& req,
 
     auto content_tmpl = crow::mustache::load("members/_content.html");
     std::string content = content_tmpl.render(ctx).dump();
-    crow::mustache::context layout_ctx;
-    layout_ctx["content"]        = content;
-    layout_ctx["page_title"]     = "Members";
-    layout_ctx["active_members"] = true;
-    layout_ctx["is_admin"]       = is_admin;
-        set_layout_auth(req, app, layout_ctx);
-    auto layout = crow::mustache::load("layout.html");
-    return layout.render(layout_ctx).dump();
+    return render_in_layout(req, app, content, "Members", "active_members");
 }
 
 void register_member_routes(LugApp& app, MemberService& members, AttendanceRepository& attendance_repo, AuditService& audit) {

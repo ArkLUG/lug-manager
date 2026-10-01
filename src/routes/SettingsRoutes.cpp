@@ -492,15 +492,8 @@ void register_settings_routes(LugApp& app, SettingsRepository& settings,
         } else {
             auto content_tmpl = crow::mustache::load("settings/_content.html");
             std::string content = content_tmpl.render(mctx).dump();
-            crow::mustache::context layout_ctx;
-            layout_ctx["content"]         = content;
-            layout_ctx["page_title"]      = "Discord Settings";
-            layout_ctx["active_settings"] = true;
-            layout_ctx["is_admin"]        = true;
-        set_layout_auth(req, app, layout_ctx);
-            auto layout = crow::mustache::load("layout.html");
             res.add_header("Content-Type", "text/html; charset=utf-8");
-            res.write(layout.render(layout_ctx).dump());
+            res.write(render_in_layout(req, app, content, "Discord Settings", "active_settings"));
         }
         return res;
     });
@@ -526,15 +519,8 @@ void register_settings_routes(LugApp& app, SettingsRepository& settings,
         } else {
             auto content_tmpl = crow::mustache::load("settings/_calendar.html");
             std::string content = content_tmpl.render(mctx).dump();
-            crow::mustache::context layout_ctx;
-            layout_ctx["content"]         = content;
-            layout_ctx["page_title"]      = "iCal Calendar Settings";
-            layout_ctx["active_calendar"] = true;
-            layout_ctx["is_admin"]        = true;
-            set_layout_auth(req, app, layout_ctx);
-            auto layout = crow::mustache::load("layout.html");
             res.add_header("Content-Type", "text/html; charset=utf-8");
-            res.write(layout.render(layout_ctx).dump());
+            res.write(render_in_layout(req, app, content, "iCal Calendar Settings", "active_calendar"));
         }
         return res;
     });
@@ -561,15 +547,8 @@ void register_settings_routes(LugApp& app, SettingsRepository& settings,
         } else {
             auto content_tmpl = crow::mustache::load("settings/_google_calendar.html");
             std::string content = content_tmpl.render(mctx).dump();
-            crow::mustache::context layout_ctx;
-            layout_ctx["content"]                = content;
-            layout_ctx["page_title"]              = "Google Calendar Settings";
-            layout_ctx["active_google_calendar"]  = true;
-            layout_ctx["is_admin"]                = true;
-            set_layout_auth(req, app, layout_ctx);
-            auto layout = crow::mustache::load("layout.html");
             res.add_header("Content-Type", "text/html; charset=utf-8");
-            res.write(layout.render(layout_ctx).dump());
+            res.write(render_in_layout(req, app, content, "Google Calendar Settings", "active_google_calendar"));
         }
         return res;
     });

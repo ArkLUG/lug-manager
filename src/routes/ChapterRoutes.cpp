@@ -105,15 +105,8 @@ void register_chapter_routes(LugApp& app, ChapterService& chapters,
         } else {
             auto content_tmpl = crow::mustache::load("chapters/_list.html");
             std::string content = content_tmpl.render(mctx).dump();
-            crow::mustache::context layout_ctx;
-            layout_ctx["content"]        = content;
-            layout_ctx["page_title"]     = "Chapters";
-            layout_ctx["active_chapters"]= true;
-            layout_ctx["is_admin"]       = ctx.auth.role == "admin";
-        set_layout_auth(req, app, layout_ctx);
-            auto layout = crow::mustache::load("layout.html");
             res.add_header("Content-Type", "text/html; charset=utf-8");
-            res.write(layout.render(layout_ctx).dump());
+            res.write(render_in_layout(req, app, content, "Chapters", "active_chapters"));
         }
         return res;
     });
@@ -230,14 +223,7 @@ void register_chapter_routes(LugApp& app, ChapterService& chapters,
         } else {
             auto content_tmpl = crow::mustache::load("chapters/_detail.html");
             std::string content = content_tmpl.render(mctx).dump();
-            crow::mustache::context layout_ctx;
-            layout_ctx["content"]         = content;
-            layout_ctx["page_title"]      = ch->name;
-            layout_ctx["active_chapters"] = true;
-            layout_ctx["is_admin"]        = is_admin;
-        set_layout_auth(req, app, layout_ctx);
-            auto layout = crow::mustache::load("layout.html");
-            res.write(layout.render(layout_ctx).dump());
+            res.write(render_in_layout(req, app, content, ch->name, "active_chapters"));
         }
         return res;
     });
@@ -500,14 +486,7 @@ void register_chapter_routes(LugApp& app, ChapterService& chapters,
             res.write(tmpl.render(mctx).dump());
         } else {
             std::string content = tmpl.render(mctx).dump();
-            crow::mustache::context layout_ctx;
-            layout_ctx["content"]         = content;
-            layout_ctx["page_title"]      = ch->name + " — Members";
-            layout_ctx["active_chapters"] = true;
-            layout_ctx["is_admin"]        = is_admin;
-        set_layout_auth(req, app, layout_ctx);
-            auto layout = crow::mustache::load("layout.html");
-            res.write(layout.render(layout_ctx).dump());
+            res.write(render_in_layout(req, app, content, ch->name + " — Members", "active_chapters"));
         }
         return res;
     });

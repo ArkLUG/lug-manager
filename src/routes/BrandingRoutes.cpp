@@ -93,15 +93,8 @@ void register_branding_routes(LugApp& app, SettingsRepository& settings,
         } else {
             auto content_tmpl = crow::mustache::load("settings/_branding.html");
             std::string content = content_tmpl.render(mctx).dump();
-            crow::mustache::context layout_ctx;
-            layout_ctx["content"]         = content;
-            layout_ctx["page_title"]      = "Branding Settings";
-            layout_ctx["active_branding"] = true;
-            layout_ctx["is_admin"]        = true;
-            set_layout_auth(req, app, layout_ctx);
-            auto layout = crow::mustache::load("layout.html");
             res.add_header("Content-Type", "text/html; charset=utf-8");
-            res.write(layout.render(layout_ctx).dump());
+            res.write(render_in_layout(req, app, content, "Branding Settings", "active_branding"));
         }
         return res;
     });

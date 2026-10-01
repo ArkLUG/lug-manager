@@ -83,15 +83,8 @@ void register_audit_routes(LugApp& app, AuditService& audit) {
             res.add_header("Content-Type", "text/html; charset=utf-8");
             res.write(content);
         } else {
-            crow::mustache::context layout_ctx;
-            layout_ctx["content"]         = content;
-            layout_ctx["page_title"]      = "Audit Log";
-            layout_ctx["active_audit"]    = true;
-            layout_ctx["is_admin"]        = true;
-            set_layout_auth(req, app, layout_ctx);
-            auto layout = crow::mustache::load("layout.html");
             res.add_header("Content-Type", "text/html; charset=utf-8");
-            res.write(layout.render(layout_ctx).dump());
+            res.write(render_in_layout(req, app, content, "Audit Log", "active_audit"));
         }
         return res;
     });

@@ -115,6 +115,22 @@ inline void set_layout_auth(const crow::request& req, App& app,
     }
 }
 
+// Renders `content` (an already-rendered page fragment) inside layout.html
+// with the sidebar/auth context filled in. `active_key` is the sidebar flag
+// to highlight, e.g. "active_members".
+template<typename App>
+inline std::string render_in_layout(const crow::request& req, App& app,
+                                    const std::string& content,
+                                    const std::string& page_title,
+                                    const std::string& active_key) {
+    crow::mustache::context layout_ctx;
+    layout_ctx["content"]    = content;
+    layout_ctx["page_title"] = page_title;
+    layout_ctx[active_key]   = true;
+    set_layout_auth(req, app, layout_ctx);
+    return crow::mustache::load("layout.html").render(layout_ctx).dump();
+}
+
 // Helper: check auth in route handlers.
 // Returns false and sets response if not authenticated/authorized.
 template<typename App>

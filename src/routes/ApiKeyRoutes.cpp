@@ -32,15 +32,8 @@ void register_api_key_routes(LugApp& app, ApiKeyRepository& api_keys, AuditServi
         } else {
             auto content_tmpl = crow::mustache::load("settings/_api_keys.html");
             std::string content = content_tmpl.render(mctx).dump();
-            crow::mustache::context layout_ctx;
-            layout_ctx["content"]          = content;
-            layout_ctx["page_title"]       = "API Keys";
-            layout_ctx["active_api_keys"]  = true;
-            layout_ctx["is_admin"]         = true;
-            set_layout_auth(req, app, layout_ctx);
-            auto layout = crow::mustache::load("layout.html");
             res.add_header("Content-Type", "text/html; charset=utf-8");
-            res.write(layout.render(layout_ctx).dump());
+            res.write(render_in_layout(req, app, content, "API Keys", "active_api_keys"));
         }
         return res;
     });
