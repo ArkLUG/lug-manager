@@ -50,9 +50,10 @@
 
       <div>
         <label class="block text-sm font-medium text-gray-700 mb-1">Email</label>
-        <input type="email" name="email" value="{{email}}"
-               class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-yellow-400"
+        <input type="email" name="email" value="{{email}}" {{#is_edit}}{{^is_admin}}readonly{{/is_admin}}{{/is_edit}}
+               class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-yellow-400 read-only:bg-gray-50 read-only:text-gray-500"
                placeholder="member@example.com">
+        {{#is_edit}}{{^is_admin}}<p class="text-xs text-gray-400 mt-1">It's their sign-in address, so only an admin or the member can change it.</p>{{/is_admin}}{{/is_edit}}
       </div>
 
       <div>

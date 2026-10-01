@@ -479,3 +479,31 @@ TEST_F(IntegrationTest, CrossSiteChangesRefused) {
                     {"Sec-Fetch-Site: same-origin"});
     EXPECT_EQ(own.code, 200);
 }
+
+// A chapter lead must not be able to point an admin's (or anyone's) sign-in
+// email at themselves and then reset the password.
+TEST_F(IntegrationTest, ChapterLeadCannotChangeSignInEmail) {
+    Member before = *member_repo->find_by_id(admin_member_id);
+    POST("/members/" + std::to_string(admin_member_id),
+         "first_name=Ad&last_name=Min&email=attacker%40example.org", chapter_lead_token);
+    EXPECT_EQ(member_repo->find_by_id(admin_member_id)->email, before.email);
+    EXPECT_EQ(PUT("/members/" + std::to_string(admin_member_id), R"({"email":"attacker@example.org"})",
+                  chapter_lead_token).code, 403);
+    EXPECT_EQ(member_repo->find_by_id(admin_member_id)->email, before.email);
+    // Admins still can.
+    POST("/members/" + std::to_string(regular_member_id), "first_name=Reg&last_name=User&email=reg%40example.org", admin_token);
+    EXPECT_EQ(member_repo->find_by_id(regular_member_id)->email, "reg@example.org");
+}
+
+// The JSON edit is partial: fields it doesn't send are left alone.
+TEST_F(IntegrationTest, JsonMemberEditKeepsOtherFields) {
+    Member m = *member_repo->find_by_id(regular_member_id);
+    m.phone = "5015550100"; m.city = "Brickton"; m.email = "keep@example.org";
+    member_repo->update(m);
+    EXPECT_EQ(PUT("/members/" + std::to_string(regular_member_id), R"({"is_paid":true})", admin_token).code, 200);
+    auto after = *member_repo->find_by_id(regular_member_id);
+    EXPECT_EQ(after.city, "Brickton");
+    EXPECT_EQ(after.email, "keep@example.org");
+    EXPECT_FALSE(after.phone.empty());
+    EXPECT_TRUE(after.is_paid);
+}

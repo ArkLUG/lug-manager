@@ -475,6 +475,13 @@ void register_member_routes(LugApp& app, MemberService& members, AttendanceRepos
         updates.last_name        = get_param("last_name");
         updates.discord_username = get_param("discord_username");
         updates.email            = get_param("email");
+        // The email is a sign-in address (password reset, email links): if a
+        // chapter lead could change it, they could take over the account -
+        // an admin's included. Only admins (or the member, on their own page).
+        if (!caller_is_admin) {
+            auto cur = members.get(static_cast<int64_t>(id));
+            updates.email = cur ? cur->email : "";
+        }
         // Only admins may change an existing member's LUG role - otherwise a
         // chapter lead could demote an admin or promote a peer. Empty = unchanged.
         updates.role             = caller_is_admin ? get_param("role") : "";
@@ -575,14 +582,22 @@ void register_member_routes(LugApp& app, MemberService& members, AttendanceRepos
 
         // Only admins may change LUG roles (see the form handler above);
         // without this a chapter lead could PUT {"role":"admin"} on themselves.
-        if (body.has("role") && !app.get_context<AuthMiddleware>(req).auth.is_admin()) {
+        // Same for the sign-in email (account takeover via password reset).
+        if ((body.has("role") || body.has("email")) && !app.get_context<AuthMiddleware>(req).auth.is_admin()) {
             res.code = 403;
-            res.write(R"({"error":"only admins can change roles"})");
+            res.write(R"({"error":"only admins can change roles and emails"})");
+            res.add_header("Content-Type", "application/json");
+            return res;
+        }
+        auto existing = members.get(static_cast<int64_t>(id));
+        if (!existing) {
+            res.code = 404;
+            res.write(R"({"error":"member not found"})");
             res.add_header("Content-Type", "application/json");
             return res;
         }
 
-        Member updates;
+        Member updates = *existing;   // partial update: fields not sent stay as they are
         if (body.has("display_name")) updates.display_name = body["display_name"].s();
         if (body.has("email"))        updates.email        = body["email"].s();
         if (body.has("role"))         updates.role         = body["role"].s();

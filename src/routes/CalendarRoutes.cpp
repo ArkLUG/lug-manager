@@ -28,7 +28,6 @@ void register_calendar_routes(LugApp& app, CalendarGenerator& cal,
         return res;
     });
 
-    // GET /dashboard - main dashboard page
     // GET /calendar/chapter/<id>/feed.ics[?lug_wide=0] - one chapter's items
     // (+ LUG-wide items unless lug_wide=0). Public, like /calendar.ics.
     CROW_ROUTE(app, "/calendar/chapter/<int>/feed.ics")([&](const crow::request& req, int chapter_id) {
@@ -78,6 +77,7 @@ void register_calendar_routes(LugApp& app, CalendarGenerator& cal,
         return res;
     });
 
+    // GET /dashboard - main dashboard page
     CROW_ROUTE(app, "/dashboard")([&](const crow::request& req) {
         crow::response res;
         if (!require_auth(req, res, app)) return res;
