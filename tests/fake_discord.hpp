@@ -1,29 +1,16 @@
 #pragma once
 // A local stand-in for the Discord API (and Discord OAuth) for integration
-// tests. Point the app at it with LUG_DISCORD_BASE=http://127.0.0.1:<port>;
-// nothing ever reaches the real Discord. Records every request so tests can
-// assert what the app would have sent.
-#include <crow.h>
+// tests. Constructing one points the app at it (LUG_DISCORD_BASE); nothing
+// ever reaches the real Discord. Records every request so tests can assert
+// what the app would have sent.
+#include "fake_server.hpp"
 #include <nlohmann/json.hpp>
-#include <atomic>
-#include <chrono>
 #include <map>
-#include <mutex>
-#include <regex>
 #include <set>
-#include <string>
-#include <thread>
-#include <vector>
-#include <unistd.h>
-#include <netinet/in.h>
-#include <sys/socket.h>
-#include <curl/curl.h>
-#include <stdexcept>
 
-class FakeDiscord {
+class FakeDiscord : public FakeServer {
 public:
     using json = nlohmann::json;
-    struct Request { std::string method, path, body; };
     struct GuildMember { std::string id, username, global_name, nick; std::set<std::string> roles; bool bot = false; };
 
     std::string guild_id = "900000000000000001";
@@ -36,47 +23,12 @@ public:
     bool members_empty = false;      // members list comes back []
     int  rate_limit_next = 0;        // answer the next N requests with 429
 
-    // A free port picked by the OS (port 0), so parallel test binaries never collide.
-    static int free_port() {
-        int fd = socket(AF_INET, SOCK_STREAM, 0);
-        sockaddr_in a{}; a.sin_family = AF_INET; a.sin_addr.s_addr = htonl(INADDR_LOOPBACK); a.sin_port = 0;
-        socklen_t len = sizeof(a);
-        int p = 0;
-        if (bind(fd, reinterpret_cast<sockaddr*>(&a), sizeof(a)) == 0 &&
-            getsockname(fd, reinterpret_cast<sockaddr*>(&a), &len) == 0) p = ntohs(a.sin_port);
-        close(fd);
-        return p;
-    }
-
-    explicit FakeDiscord(int port = free_port()) : port_(port) {
-        app_.loglevel(crow::LogLevel::Warning);
-        // (CROW_CATCHALL_ROUTE doesn't get request bodies, so use a wildcard path)
-        CROW_ROUTE(app_, "/<path>")
-            .methods(crow::HTTPMethod::Get, crow::HTTPMethod::Post, crow::HTTPMethod::Put,
-                     crow::HTTPMethod::Patch, crow::HTTPMethod::Delete)(
-            [this](const crow::request& req, const std::string&) { return handle(req); });
-        future_ = app_.bindaddr("127.0.0.1").port(port_).concurrency(2).run_async();
-        // Wait (bounded) until it answers - never hang a test run on a bind failure.
-        bool up = false;
-        for (int i = 0; i < 100 && !up; ++i) {
-            std::this_thread::sleep_for(std::chrono::milliseconds(20));
-            CURL* c = curl_easy_init();
-            std::string u = "http://127.0.0.1:" + std::to_string(port_) + "/ping";
-            curl_easy_setopt(c, CURLOPT_URL, u.c_str());
-            curl_easy_setopt(c, CURLOPT_NOBODY, 1L);
-            curl_easy_setopt(c, CURLOPT_TIMEOUT, 1L);
-            up = curl_easy_perform(c) == CURLE_OK;
-            curl_easy_cleanup(c);
-        }
-        if (!up) throw std::runtime_error("FakeDiscord didn't start on port " + std::to_string(port_));
-        clear();   // forget the startup pings
-        setenv("LUG_DISCORD_BASE", ("http://127.0.0.1:" + std::to_string(port_)).c_str(), 1);
+    FakeDiscord() {
+        start();
+        setenv("LUG_DISCORD_BASE", base_url().c_str(), 1);
         add_member("800000000000000099", "lugbot", {}, true);
     }
-    ~FakeDiscord() {
-        unsetenv("LUG_DISCORD_BASE");
-        app_.stop();
-    }
+    ~FakeDiscord() override { stop(); unsetenv("LUG_DISCORD_BASE"); }
 
     void add_member(const std::string& id, const std::string& username, std::set<std::string> member_roles = {},
                     bool bot = false, const std::string& nick = "") {
@@ -90,36 +42,12 @@ public:
         return it == members.end() ? std::set<std::string>{} : it->second.roles;
     }
 
-    std::vector<Request> requests() { std::lock_guard<std::mutex> l(mu_); return log_; }
-    void clear() { std::lock_guard<std::mutex> l(mu_); log_.clear(); }
-    // Requests whose "METHOD path" matches the regex.
-    std::vector<Request> matching(const std::string& re) {
-        std::regex r(re);
-        std::vector<Request> out;
-        for (const auto& q : requests())
-            if (std::regex_search(q.method + " " + q.path, r)) out.push_back(q);
-        return out;
-    }
-    // Waits up to `ms` for a matching request (for fire-and-forget calls on the worker pool).
-    bool wait_for(const std::string& re, int ms = 3000) {
-        for (int i = 0; i < ms / 20; ++i) {
-            if (!matching(re).empty()) return true;
-            std::this_thread::sleep_for(std::chrono::milliseconds(20));
-        }
-        return false;
-    }
+protected:
+    crow::response reply(int code, const json& j) { return json_reply(code, j.dump()); }
 
-private:
-    crow::response reply(int code, const json& j) {
-        crow::response r(code, j.dump());
-        r.set_header("Content-Type", "application/json");
-        return r;
-    }
-
-    crow::response handle(const crow::request& req) {
+    crow::response handle(const crow::request& req) override {
         std::string path = req.url, method = crow::method_name(req.method);
-        std::lock_guard<std::mutex> l(mu_);
-        log_.push_back({method, req.raw_url, req.body});
+        std::lock_guard<std::mutex> state_lock(mu_);
         if (rate_limit_next > 0) {
             --rate_limit_next;
             return reply(429, {{"message", "You are being rate limited."}, {"retry_after", 0.01}, {"global", false}});
@@ -191,11 +119,6 @@ private:
     }
 
     std::string next_id() { return std::to_string(700000000000000000ULL + ++seq_); }
-
-    int port_;
-    crow::SimpleApp app_;
-    std::future<void> future_;
-    std::mutex mu_;
-    std::vector<Request> log_;
+    std::mutex mu_;   // guards the member/role state the tests touch
     unsigned long long seq_ = 0;
 };
