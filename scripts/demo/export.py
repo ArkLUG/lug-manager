@@ -111,6 +111,10 @@ def rewrite(text, role, full_page, page_role=None):
             return m.group(0)                       # forms are blocked by demo.js
         return f'{attr}={quote}{html.escape(site_url(role, url))}{quote}'
     text = ATTR.sub(sub, text)
+    # Server-side tables (members) would ask the server to search/sort/page;
+    # in the static demo the exported JSON holds every row, so let DataTables
+    # do it in the browser instead.
+    text = text.replace("serverSide: true,", "serverSide: false,")
     if full_page:
         cfg = html.escape(json.dumps({"base": BASE, "role": page_role or role}), quote=True)
         inject = (f'<meta name="lug-demo" content="{cfg}">'

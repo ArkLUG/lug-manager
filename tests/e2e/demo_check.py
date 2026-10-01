@@ -83,6 +83,23 @@ else:
 d.get(f"{BASE}/admin/members/"); d.execute_script(HOOK); time.sleep(1.5)
 rows = d.find_elements(By.CSS_SELECTOR, "#members-table tbody tr")
 if len(rows) < 5: problems.append(f"members table has {len(rows)} rows")
+# Search, sort and paging work in the static demo
+box = d.find_elements(By.CSS_SELECTOR, ".dt-search input, .dataTables_filter input")
+if box:
+    box[0].send_keys("Torres"); time.sleep(0.8)
+    shown = [r.text for r in d.find_elements(By.CSS_SELECTOR, "#members-table tbody tr")]
+    if len(shown) != 1 or "Maya" not in shown[0]: problems.append(f"members search: {shown}")
+    box[0].clear(); box[0].send_keys(" "); box[0].clear(); time.sleep(0.5)
+    d.execute_script("arguments[0].value=''; arguments[0].dispatchEvent(new Event('input'))", box[0]); time.sleep(0.6)
+else:
+    problems.append("no members search box")
+head = d.find_elements(By.CSS_SELECTOR, "#members-table thead th")
+if head:
+    d.execute_script("arguments[0].click()", head[0]); time.sleep(0.5)
+    first_asc = d.find_element(By.CSS_SELECTOR, "#members-table tbody tr td").text
+    d.execute_script("arguments[0].click()", head[0]); time.sleep(0.5)
+    first_desc = d.find_element(By.CSS_SELECTOR, "#members-table tbody tr td").text
+    if first_asc == first_desc: problems.append("members sort didn't change order")
 view = d.find_elements(By.CSS_SELECTOR, '#members-table button[hx-get$="/view"]')
 if view:
     d.execute_script("arguments[0].click()", view[0]); time.sleep(0.8)
