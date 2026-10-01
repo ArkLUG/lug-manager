@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Event Report — {{title}}</title>
+  <link rel="stylesheet" href="/static/tailwind.min.css?v={{asset_v}}">
+  <style>@media print { .no-print { display: none } body { background: #fff } }</style>
+</head>
+<body class="bg-white text-gray-900 p-8">
+  <div class="max-w-3xl mx-auto space-y-5 text-sm">
+    <div class="flex items-start justify-between gap-4">
+      <div>
+        <h1 class="text-2xl font-bold">{{title}}</h1>
+        <p class="text-gray-600">{{start}}{{#multi_day}} – {{end}}{{/multi_day}}{{#location}} · {{location}}{{/location}}</p>
+        {{#lead}}<p class="text-gray-600">Event lead: {{lead}}</p>{{/lead}}
+      </div>
+      <button class="no-print px-3 py-1.5 border border-gray-300 rounded-lg" onclick="window.print()">Print / Save PDF</button>
+    </div>
+
+    <table class="w-full border border-gray-300">
+      <tbody class="divide-y divide-gray-200">
+        <tr><th class="text-left p-2 bg-gray-50 w-1/3">Public visitors</th><td class="p-2">{{visitors}} ({{kids}} kids, {{teens}} teens, {{adults}} adults)</td></tr>
+        <tr><th class="text-left p-2 bg-gray-50">Members participating</th><td class="p-2">{{members}}</td></tr>
+        <tr><th class="text-left p-2 bg-gray-50">Displays</th><td class="p-2">{{displays}} approved ({{display_sqft}} sq ft){{#mocs}}<div class="text-gray-600 mt-1">{{mocs}}</div>{{/mocs}}</td></tr>
+        {{#entrance_fee}}<tr><th class="text-left p-2 bg-gray-50">Entrance fee</th><td class="p-2">{{entrance_fee}}</td></tr>{{/entrance_fee}}
+        {{#social}}<tr><th class="text-left p-2 bg-gray-50">Social media</th><td class="p-2 whitespace-pre-line">{{social}}</td></tr>{{/social}}
+        {{#feedback}}<tr><th class="text-left p-2 bg-gray-50">Highlights / feedback</th><td class="p-2 whitespace-pre-line">{{feedback}}</td></tr>{{/feedback}}
+      </tbody>
+    </table>
+
+    {{#description}}<div><h2 class="font-semibold mb-1">About the event</h2><p class="whitespace-pre-line text-gray-700">{{description}}</p></div>{{/description}}
+
+    <div>
+      <h2 class="font-semibold mb-1">Member attendance by day</h2>
+      <table class="w-full border border-gray-300">
+        <thead><tr class="bg-gray-50 text-left"><th class="p-2">Day</th><th class="p-2">Members</th><th class="p-2">Who</th></tr></thead>
+        <tbody class="divide-y divide-gray-200">{{#days}}<tr><td class="p-2">{{day}} ({{date}})</td><td class="p-2">{{count}}</td><td class="p-2 text-gray-600">{{names}}</td></tr>{{/days}}</tbody>
+      </table>
+    </div>
+    {{#notes}}<div><h2 class="font-semibold mb-1">Notes</h2><p class="whitespace-pre-line text-gray-700">{{notes}}</p></div>{{/notes}}
+  </div>
+</body>
+</html>

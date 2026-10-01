@@ -1,0 +1,189 @@
+#include "routes/ReportRoutes.hpp"
+#include "routes/EventAccess.hpp"
+#include "utils/LocalTime.hpp"
+#include "utils/AssetVersion.hpp"
+#include <crow/mustache.h>
+#include <algorithm>
+#include <cstdio>
+
+namespace {
+
+int64_t scalar(SqliteDatabase& db, const std::string& sql, const std::vector<std::string>& args) {
+    auto st = db.prepare(sql);
+    for (size_t i = 0; i < args.size(); ++i) st.bind(static_cast<int>(i + 1), args[i]);
+    return st.step() ? st.col_int(0) : 0;
+}
+
+std::string money(int64_t cents) {
+    char b[32];
+    std::snprintf(b, sizeof(b), "$%lld.%02lld", static_cast<long long>(cents / 100), static_cast<long long>(cents % 100));
+    return b;
+}
+
+} // namespace
+
+void register_report_routes(LugApp& app, SqliteDatabase& db, EventService& events,
+                            EventDayRepository& days, EventDayAttendanceRepository& day_att,
+                            std::shared_ptr<DisplayRequestRepository> displays,
+                            ChapterMemberRepository& chapter_members, AuditService& audit) {
+
+    CROW_ROUTE(app, "/reports/annual")([&app, &db](const crow::request& req) {
+        crow::response res;
+        if (!require_auth(req, res, app, "admin")) return res;
+        int year = local_tm(std::time(nullptr)).tm_year + 1900;
+        if (const char* y = req.url_params.get("year")) { try { year = std::stoi(y); } catch (...) {} }
+        std::string ys = std::to_string(year), lo = ys + "-01-01", hi = std::to_string(year + 1) + "-01-01";
+        const std::vector<std::string> range{lo, hi};
+
+        crow::mustache::context ctx;
+        ctx["year"] = year;
+        ctx["prev_year"] = year - 1;
+        ctx["next_year"] = year + 1;
+        ctx["members_total"] = scalar(db, "SELECT COUNT(*) FROM members WHERE created_at < ?", {hi});
+        ctx["members_new"]   = scalar(db, "SELECT COUNT(*) FROM members WHERE created_at >= ? AND created_at < ?", range);
+        ctx["members_paid"]  = scalar(db, "SELECT COUNT(*) FROM members WHERE is_paid=1", {});
+        ctx["dues_collected"] = money(scalar(db,
+            "SELECT COALESCE(SUM(amount_cents),0) FROM dues_payments WHERE paid_on >= ? AND paid_on < ?", range));
+        ctx["meetings_held"] = scalar(db,
+            "SELECT COUNT(*) FROM meetings WHERE status <> 'cancelled' AND start_time >= ? AND start_time < ?", range);
+        ctx["meeting_checkins"] = scalar(db,
+            "SELECT COUNT(*) FROM attendance a JOIN meetings mt ON mt.id = a.entity_id "
+            "WHERE a.entity_type='meeting' AND mt.start_time >= ? AND mt.start_time < ?", range);
+        ctx["events_held"] = scalar(db,
+            "SELECT COUNT(*) FROM lug_events WHERE status <> 'cancelled' AND start_time >= ? AND start_time < ?", range);
+        ctx["event_attendees"] = scalar(db,
+            "SELECT COUNT(*) FROM (SELECT DISTINCT ed.event_id, eda.member_id FROM event_day_attendance eda "
+            "JOIN event_days ed ON ed.id = eda.event_day_id WHERE ed.day_date >= ? AND ed.day_date < ?)", range);
+        ctx["active_members"] = scalar(db,
+            "SELECT COUNT(*) FROM (SELECT a.member_id FROM attendance a JOIN meetings mt ON mt.id = a.entity_id "
+            " WHERE a.entity_type='meeting' AND mt.start_time >= ?1 AND mt.start_time < ?2 "
+            " UNION SELECT eda.member_id FROM event_day_attendance eda JOIN event_days ed ON ed.id = eda.event_day_id "
+            " WHERE ed.day_date >= ?1 AND ed.day_date < ?2)", range);
+        int64_t kids = scalar(db, "SELECT COALESCE(SUM(public_kids),0) FROM lug_events WHERE start_time >= ? AND start_time < ?", range);
+        int64_t teens = scalar(db, "SELECT COALESCE(SUM(public_teens),0) FROM lug_events WHERE start_time >= ? AND start_time < ?", range);
+        int64_t adults = scalar(db, "SELECT COALESCE(SUM(public_adults),0) FROM lug_events WHERE start_time >= ? AND start_time < ?", range);
+        ctx["visitors_total"] = kids + teens + adults;
+        ctx["visitors_kids"] = kids;
+        ctx["visitors_teens"] = teens;
+        ctx["visitors_adults"] = adults;
+
+        // Check-ins per month (meetings + event-days), as CSS bars.
+        int per_month[12] = {0};
+        {
+            auto st = db.prepare(
+                "SELECT CAST(substr(d,6,2) AS INTEGER), COUNT(*) FROM ("
+                " SELECT mt.start_time AS d FROM attendance a JOIN meetings mt ON mt.id = a.entity_id "
+                "  WHERE a.entity_type='meeting' AND mt.start_time >= ?1 AND mt.start_time < ?2 "
+                " UNION ALL SELECT ed.day_date FROM event_day_attendance eda JOIN event_days ed ON ed.id = eda.event_day_id "
+                "  WHERE ed.day_date >= ?1 AND ed.day_date < ?2) GROUP BY 1");
+            st.bind(1, lo); st.bind(2, hi);
+            while (st.step()) { int m = static_cast<int>(st.col_int(0)); if (m >= 1 && m <= 12) per_month[m - 1] = static_cast<int>(st.col_int(1)); }
+        }
+        int peak = *std::max_element(per_month, per_month + 12);
+        static const char* mon[] = {"Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"};
+        crow::json::wvalue months = crow::json::wvalue::list();
+        for (int i = 0; i < 12; ++i) {
+            months[i]["label"] = mon[i];
+            months[i]["count"] = per_month[i];
+            months[i]["pct"] = peak > 0 ? per_month[i] * 100 / peak : 0;
+        }
+        ctx["months"] = std::move(months);
+
+        // Top attendees
+        {
+            auto st = db.prepare(
+                "SELECT COALESCE(m.display_name,''), COUNT(*) AS n FROM ("
+                " SELECT a.member_id AS mid FROM attendance a JOIN meetings mt ON mt.id = a.entity_id "
+                "  WHERE a.entity_type='meeting' AND mt.start_time >= ?1 AND mt.start_time < ?2 "
+                " UNION ALL SELECT DISTINCT eda.member_id FROM event_day_attendance eda JOIN event_days ed ON ed.id = eda.event_day_id "
+                "  WHERE ed.day_date >= ?1 AND ed.day_date < ?2 GROUP BY ed.event_id, eda.member_id) x "
+                "JOIN members m ON m.id = x.mid GROUP BY x.mid ORDER BY n DESC, m.display_name LIMIT 10");
+            st.bind(1, lo); st.bind(2, hi);
+            crow::json::wvalue top = crow::json::wvalue::list();
+            int i = 0;
+            while (st.step()) { top[i]["name"] = st.col_text(0); top[i]["count"] = st.col_int(1); ++i; }
+            ctx["top"] = std::move(top);
+            ctx["has_top"] = i > 0;
+        }
+        // Events
+        {
+            auto st = db.prepare(
+                "SELECT e.id, e.title, substr(e.start_time,1,10), e.public_kids + e.public_teens + e.public_adults, "
+                "(SELECT COUNT(DISTINCT eda.member_id) FROM event_day_attendance eda JOIN event_days ed ON ed.id = eda.event_day_id WHERE ed.event_id = e.id) "
+                "FROM lug_events e WHERE e.status <> 'cancelled' AND e.start_time >= ? AND e.start_time < ? ORDER BY e.start_time");
+            st.bind(1, lo); st.bind(2, hi);
+            crow::json::wvalue evs = crow::json::wvalue::list();
+            int i = 0;
+            while (st.step()) {
+                evs[i]["id"] = st.col_int(0); evs[i]["title"] = st.col_text(1); evs[i]["date"] = st.col_text(2);
+                evs[i]["visitors"] = st.col_int(3); evs[i]["members"] = st.col_int(4); ++i;
+            }
+            ctx["events"] = std::move(evs);
+            ctx["has_events"] = i > 0;
+        }
+        std::string page = crow::mustache::load("reports/_annual.html").render(ctx).dump();
+        res.add_header("Content-Type", "text/html; charset=utf-8");
+        res.write(req.get_header_value("HX-Request") == "true" ? page
+                  : render_in_layout(req, app, page, "Annual Report " + ys, "active_reports"));
+        return res;
+    });
+
+    CROW_ROUTE(app, "/events/<int>/report")([&app, &events, &days, &day_att, displays, &chapter_members, &audit](
+            const crow::request& req, int id) {
+        crow::response res;
+        if (!require_auth(req, res, app)) return res;
+        auto ev = events.get(id);
+        if (!ev) { res.code = 404; return res; }
+        if (!can_manage_event(req, app, *ev, chapter_members)) { res.code = 403; return res; }
+
+        crow::mustache::context ctx;
+        ctx["title"] = ev->title;
+        ctx["start"] = ev->start_time.substr(0, 10);
+        ctx["end"] = ev->end_time.substr(0, 10);
+        ctx["multi_day"] = ev->end_time.substr(0, 10) != ev->start_time.substr(0, 10);
+        ctx["location"] = ev->location;
+        ctx["lead"] = ev->event_lead_name;
+        ctx["description"] = ev->description;
+        ctx["entrance_fee"] = ev->entrance_fee;
+        ctx["kids"] = ev->public_kids;
+        ctx["teens"] = ev->public_teens;
+        ctx["adults"] = ev->public_adults;
+        ctx["visitors"] = ev->public_kids + ev->public_teens + ev->public_adults;
+        ctx["social"] = ev->social_media_links;
+        ctx["feedback"] = ev->event_feedback;
+        ctx["notes"] = ev->notes;
+
+        crow::json::wvalue dayarr = crow::json::wvalue::list();
+        auto dl = days.find_by_event(ev->id);
+        std::unordered_map<int64_t, bool> distinct;
+        for (size_t i = 0; i < dl.size(); ++i) {
+            auto rows = day_att.find_by_day(dl[i].id);
+            dayarr[i]["day"] = dl[i].day_number;
+            dayarr[i]["date"] = dl[i].day_date;
+            dayarr[i]["count"] = static_cast<int>(rows.size());
+            std::string names;
+            for (const auto& r : rows) { names += (names.empty() ? "" : ", ") + r.member_display_name; distinct[r.member_id] = true; }
+            dayarr[i]["names"] = names;
+        }
+        ctx["days"] = std::move(dayarr);
+        ctx["members"] = static_cast<int>(distinct.size());
+
+        int approved = 0; long sq_in = 0; std::string mocs;
+        for (const auto& d : displays->list_for_event(ev->id)) {
+            if (d.status != "approved") continue;
+            ++approved;
+            sq_in += static_cast<long>(d.width_in) * d.depth_in;
+            mocs += (mocs.empty() ? "" : "; ") + d.title + " (" + d.member_display_name + ")";
+        }
+        char sqft[32];
+        std::snprintf(sqft, sizeof(sqft), "%.1f", sq_in / 144.0);
+        ctx["displays"] = approved;
+        ctx["display_sqft"] = std::string(sqft);
+        ctx["mocs"] = mocs;
+        ctx["asset_v"] = asset_version();
+        audit.log(req, app, "event.report_view", "event", ev->id, ev->title, "Viewed event report");
+        res.add_header("Content-Type", "text/html; charset=utf-8");
+        res.write(crow::mustache::load("reports/_event.html").render(ctx).dump());
+        return res;
+    });
+}

@@ -1,0 +1,49 @@
+<div class="max-w-5xl space-y-5" data-page-title="Annual Report">
+  <div class="flex flex-wrap items-center justify-between gap-2">
+    <h2 class="text-xl font-semibold text-gray-800">{{year}} in Numbers</h2>
+    <div class="flex items-center gap-2 text-sm">
+      <a hx-get="/reports/annual?year={{prev_year}}" hx-target="#main-content" hx-push-url="true" hx-swap="innerHTML" class="px-3 py-1.5 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 cursor-pointer">&larr; {{prev_year}}</a>
+      <a hx-get="/reports/annual?year={{next_year}}" hx-target="#main-content" hx-push-url="true" hx-swap="innerHTML" class="px-3 py-1.5 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 cursor-pointer">{{next_year}} &rarr;</a>
+      <a href="/attendance/overview.csv?year={{year}}" class="px-3 py-1.5 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50">Attendance CSV</a>
+    </div>
+  </div>
+
+  <div class="grid grid-cols-2 md:grid-cols-4 gap-3">
+    <div class="bg-white rounded-xl border border-gray-200 p-4"><div class="text-2xl font-bold text-gray-900">{{members_total}}</div><div class="text-xs text-gray-500">members ({{members_new}} new)</div></div>
+    <div class="bg-white rounded-xl border border-gray-200 p-4"><div class="text-2xl font-bold text-gray-900">{{active_members}}</div><div class="text-xs text-gray-500">members attended something</div></div>
+    <div class="bg-white rounded-xl border border-gray-200 p-4"><div class="text-2xl font-bold text-gray-900">{{meetings_held}}</div><div class="text-xs text-gray-500">meetings &middot; {{meeting_checkins}} check-ins</div></div>
+    <div class="bg-white rounded-xl border border-gray-200 p-4"><div class="text-2xl font-bold text-gray-900">{{events_held}}</div><div class="text-xs text-gray-500">events &middot; {{event_attendees}} member attendances</div></div>
+    <div class="bg-white rounded-xl border border-gray-200 p-4"><div class="text-2xl font-bold text-gray-900">{{visitors_total}}</div><div class="text-xs text-gray-500">public visitors ({{visitors_kids}} kids, {{visitors_teens}} teens, {{visitors_adults}} adults)</div></div>
+    <div class="bg-white rounded-xl border border-gray-200 p-4"><div class="text-2xl font-bold text-gray-900">{{dues_collected}}</div><div class="text-xs text-gray-500">dues recorded</div></div>
+    <div class="bg-white rounded-xl border border-gray-200 p-4"><div class="text-2xl font-bold text-gray-900">{{members_paid}}</div><div class="text-xs text-gray-500">currently paid members</div></div>
+  </div>
+
+  <div class="bg-white rounded-xl border border-gray-200 p-5">
+    <h3 class="font-semibold text-gray-800 mb-3">Check-ins by month</h3>
+    <div class="flex items-end gap-2 h-40" role="img" aria-label="Check-ins per month">
+      {{#months}}
+      <div class="flex-1 flex flex-col items-center justify-end h-full">
+        <span class="text-xs text-gray-500">{{count}}</span>
+        <div class="w-full bg-yellow-400 rounded-t" style="height: {{pct}}%"></div>
+        <span class="text-xs text-gray-500 mt-1">{{label}}</span>
+      </div>
+      {{/months}}
+    </div>
+  </div>
+
+  <div class="grid md:grid-cols-2 gap-4">
+    <div class="bg-white rounded-xl border border-gray-200 p-5">
+      <h3 class="font-semibold text-gray-800 mb-2">Most active members</h3>
+      {{#has_top}}<ol class="text-sm space-y-1 list-decimal list-inside text-gray-700">{{#top}}<li>{{name}} <span class="text-gray-400">({{count}})</span></li>{{/top}}</ol>{{/has_top}}
+      {{^has_top}}<p class="text-sm text-gray-400">No attendance yet.</p>{{/has_top}}
+    </div>
+    <div class="bg-white rounded-xl border border-gray-200 p-5">
+      <h3 class="font-semibold text-gray-800 mb-2">Events</h3>
+      {{#has_events}}
+      <table class="w-full text-sm"><thead><tr class="text-left text-xs text-gray-500"><th>Date</th><th>Event</th><th class="text-right">Members</th><th class="text-right">Visitors</th></tr></thead>
+        <tbody class="divide-y divide-gray-100">{{#events}}<tr><td class="py-1 text-gray-500">{{date}}</td><td class="text-gray-800"><a href="/events/{{id}}/report" target="_blank" class="hover:underline">{{title}}</a></td><td class="text-right">{{members}}</td><td class="text-right">{{visitors}}</td></tr>{{/events}}</tbody></table>
+      {{/has_events}}
+      {{^has_events}}<p class="text-sm text-gray-400">No events this year.</p>{{/has_events}}
+    </div>
+  </div>
+</div>

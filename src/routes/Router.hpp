@@ -61,6 +61,7 @@
 #include "routes/PwaRoutes.hpp"
 #include "routes/StaticRoutes.hpp"
 #include "routes/SeriesRoutes.hpp"
+#include "routes/ReportRoutes.hpp"
 #include <memory>
 
 struct Services {
