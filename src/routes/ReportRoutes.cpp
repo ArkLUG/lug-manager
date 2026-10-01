@@ -1,3 +1,4 @@
+#include "utils/Money.hpp"
 #include "routes/ReportRoutes.hpp"
 #include "routes/EventAccess.hpp"
 #include "utils/LocalTime.hpp"
@@ -14,11 +15,6 @@ int64_t scalar(SqliteDatabase& db, const std::string& sql, const std::vector<std
     return st.step() ? st.col_int(0) : 0;
 }
 
-std::string money(int64_t cents) {
-    char b[32];
-    std::snprintf(b, sizeof(b), "$%lld.%02lld", static_cast<long long>(cents / 100), static_cast<long long>(cents % 100));
-    return b;
-}
 
 } // namespace
 
@@ -128,7 +124,7 @@ void register_report_routes(LugApp& app, SqliteDatabase& db, EventService& event
         return res;
     });
 
-    CROW_ROUTE(app, "/events/<int>/report")([&app, &events, &days, &day_att, displays, &chapter_members, &audit](
+    CROW_ROUTE(app, "/events/<int>/report")([&app, &db, &events, &days, &day_att, displays, &chapter_members, &audit](
             const crow::request& req, int id) {
         crow::response res;
         if (!require_auth(req, res, app)) return res;
@@ -180,6 +176,18 @@ void register_report_routes(LugApp& app, SqliteDatabase& db, EventService& event
         ctx["displays"] = approved;
         ctx["display_sqft"] = std::string(sqft);
         ctx["mocs"] = mocs;
+        {
+            auto st = db.prepare("SELECT COALESCE(SUM(CASE WHEN kind='income' THEN amount_cents END),0), "
+                                 "COALESCE(SUM(CASE WHEN kind='expense' THEN amount_cents END),0), COUNT(*) "
+                                 "FROM treasury_entries WHERE event_id=?");
+            st.bind(1, ev->id);
+            if (st.step() && st.col_int(2) > 0) {
+                ctx["has_money"] = true;
+                ctx["money_in"] = money(st.col_int(0));
+                ctx["money_out"] = money(st.col_int(1));
+                ctx["money_net"] = money(st.col_int(0) - st.col_int(1));
+            }
+        }
         ctx["asset_v"] = asset_version();
         audit.log(req, app, "event.report_view", "event", ev->id, ev->title, "Viewed event report");
         res.add_header("Content-Type", "text/html; charset=utf-8");

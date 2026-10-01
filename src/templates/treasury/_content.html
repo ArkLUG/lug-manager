@@ -1,0 +1,92 @@
+<div id="treasury-page" class="max-w-6xl space-y-5" data-page-title="Treasury">
+  <div class="flex flex-wrap items-center justify-between gap-2">
+    <div>
+      <h2 class="text-xl font-semibold text-gray-800">Treasury {{year}}</h2>
+      <p class="text-sm text-gray-500">Dues recorded on member records plus the other income and expenses entered here.</p>
+    </div>
+    <div class="flex items-center gap-2 text-sm">
+      <a hx-get="/treasury?year={{prev_year}}" hx-target="#main-content" hx-push-url="true" hx-swap="innerHTML" class="px-3 py-1.5 border border-gray-300 rounded-lg cursor-pointer hover:bg-gray-50">&larr; {{prev_year}}</a>
+      <a hx-get="/treasury?year={{next_year}}" hx-target="#main-content" hx-push-url="true" hx-swap="innerHTML" class="px-3 py-1.5 border border-gray-300 rounded-lg cursor-pointer hover:bg-gray-50">{{next_year}} &rarr;</a>
+      <a href="/treasury.csv?year={{year}}" download class="px-3 py-1.5 border border-gray-300 rounded-lg hover:bg-gray-50">Export CSV</a>
+    </div>
+  </div>
+  {{#flash}}<div class="text-sm rounded-lg px-4 py-2 border {{#flash_error}}border-red-200 bg-red-50 text-red-700{{/flash_error}}{{^flash_error}}border-green-200 bg-green-50 text-green-700{{/flash_error}}">{{flash}}</div>{{/flash}}
+
+  <div class="grid grid-cols-2 md:grid-cols-6 gap-3">
+    <div class="bg-white rounded-xl border border-gray-200 p-4"><div class="text-xs text-gray-500">Start of year</div><div class="text-lg font-semibold text-gray-800">{{opening}}</div></div>
+    <div class="bg-white rounded-xl border border-gray-200 p-4"><div class="text-xs text-gray-500">Dues</div><div class="text-lg font-semibold text-green-700">{{dues}}</div></div>
+    <div class="bg-white rounded-xl border border-gray-200 p-4"><div class="text-xs text-gray-500">Other income</div><div class="text-lg font-semibold text-green-700">{{income}}</div></div>
+    <div class="bg-white rounded-xl border border-gray-200 p-4"><div class="text-xs text-gray-500">Expenses</div><div class="text-lg font-semibold text-red-600">{{expense}}</div></div>
+    <div class="bg-white rounded-xl border border-gray-200 p-4"><div class="text-xs text-gray-500">Net for {{year}}</div><div class="text-lg font-semibold {{#net_negative}}text-red-600{{/net_negative}}{{^net_negative}}text-gray-800{{/net_negative}}">{{net}}</div></div>
+    <div class="bg-white rounded-xl border border-gray-200 p-4"><div class="text-xs text-gray-500">End of year</div><div class="text-lg font-semibold {{#closing_negative}}text-red-600{{/closing_negative}}{{^closing_negative}}text-gray-800{{/closing_negative}}">{{closing}}</div></div>
+  </div>
+
+  <section class="bg-white rounded-xl border border-gray-200 p-5">
+    <h3 class="font-semibold text-gray-800 mb-3">Record income or an expense</h3>
+    <form hx-post="/treasury" hx-target="#treasury-page" hx-swap="outerHTML" class="grid grid-cols-1 md:grid-cols-6 gap-2 text-sm items-end">
+      <label>Date <input type="date" name="entry_on" value="{{today}}" required class="mt-1 w-full border border-gray-300 rounded-lg px-2 py-1.5"></label>
+      <label>Type
+        <select name="kind" class="mt-1 w-full border border-gray-300 rounded-lg px-2 py-1.5">
+          <option value="expense">Expense</option>
+          <option value="income">Income</option>
+        </select></label>
+      <label>Amount <input name="amount" required inputmode="decimal" placeholder="25.00" class="mt-1 w-full border border-gray-300 rounded-lg px-2 py-1.5"></label>
+      <label>Category <input name="category" list="treasury-cats" maxlength="60" placeholder="Table fee, supplies, donation..." class="mt-1 w-full border border-gray-300 rounded-lg px-2 py-1.5"></label>
+      <datalist id="treasury-cats">{{#known_categories}}<option value="{{name}}">{{/known_categories}}</datalist>
+      <label class="md:col-span-2">For event <span class="text-gray-400">(optional)</span>
+        <select name="event_id" class="mt-1 w-full border border-gray-300 rounded-lg px-2 py-1.5">
+          <option value="">-</option>
+          {{#event_options}}<option value="{{id}}">{{label}}</option>{{/event_options}}
+        </select></label>
+      <input name="description" maxlength="300" placeholder="Description" class="md:col-span-5 border border-gray-300 rounded-lg px-2 py-1.5">
+      <button class="px-4 py-2 bg-yellow-400 text-gray-900 rounded-lg font-semibold hover:bg-yellow-300">Record</button>
+    </form>
+  </section>
+
+  <div class="grid grid-cols-1 lg:grid-cols-3 gap-5">
+    <section class="bg-white rounded-xl border border-gray-200 p-5">
+      <h3 class="font-semibold text-gray-800 mb-3">By category</h3>
+      {{#has_categories}}
+      <table class="w-full text-sm"><thead><tr class="text-left text-xs text-gray-500 border-b border-gray-200"><th class="py-1.5">Category</th><th class="py-1.5 text-right">In</th><th class="py-1.5 text-right">Out</th></tr></thead>
+      <tbody class="divide-y divide-gray-100">{{#categories}}<tr><td class="py-1.5">{{name}}</td><td class="py-1.5 text-right text-green-700">{{in}}</td><td class="py-1.5 text-right text-red-600">{{out}}</td></tr>{{/categories}}</tbody></table>
+      {{/has_categories}}
+      {{^has_categories}}<p class="text-sm text-gray-400">Nothing recorded for {{year}}.</p>{{/has_categories}}
+    </section>
+    <section class="bg-white rounded-xl border border-gray-200 p-5">
+      <h3 class="font-semibold text-gray-800 mb-3">By event</h3>
+      {{#has_events}}
+      <table class="w-full text-sm"><thead><tr class="text-left text-xs text-gray-500 border-b border-gray-200"><th class="py-1.5">Event</th><th class="py-1.5 text-right">Net</th></tr></thead>
+      <tbody class="divide-y divide-gray-100">{{#events}}<tr><td class="py-1.5">{{name}}<div class="text-xs text-gray-500">in {{in}} · out {{out}}</div></td><td class="py-1.5 text-right {{#negative}}text-red-600{{/negative}}">{{net}}</td></tr>{{/events}}</tbody></table>
+      {{/has_events}}
+      {{^has_events}}<p class="text-sm text-gray-400">No entries linked to events.</p>{{/has_events}}
+    </section>
+    <section class="bg-white rounded-xl border border-gray-200 p-5">
+      <h3 class="font-semibold text-gray-800 mb-3">By month</h3>
+      <table class="w-full text-sm"><thead><tr class="text-left text-xs text-gray-500 border-b border-gray-200"><th class="py-1">Month</th><th class="py-1 text-right">In</th><th class="py-1 text-right">Out</th></tr></thead>
+      <tbody class="divide-y divide-gray-100">{{#months}}<tr><td class="py-1">{{name}}</td><td class="py-1 text-right text-green-700">{{in}}</td><td class="py-1 text-right text-red-600">{{out}}</td></tr>{{/months}}</tbody></table>
+    </section>
+  </div>
+
+  <section class="bg-white rounded-xl border border-gray-200 p-5">
+    <h3 class="font-semibold text-gray-800 mb-3">Ledger</h3>
+    {{#has_lines}}
+    <div class="overflow-x-auto">
+    <table class="w-full text-sm">
+      <thead><tr class="text-left text-xs text-gray-500 border-b border-gray-200"><th class="py-2 pr-3">Date</th><th class="py-2 pr-3">Category</th><th class="py-2 pr-3">Description</th><th class="py-2 pr-3 text-right">Amount</th><th class="py-2"></th></tr></thead>
+      <tbody class="divide-y divide-gray-100">
+      {{#lines}}
+        <tr>
+          <td class="py-2 pr-3 text-gray-600 whitespace-nowrap">{{on}}</td>
+          <td class="py-2 pr-3">{{category}}</td>
+          <td class="py-2 pr-3">{{description}}{{#event}}<div class="text-xs text-gray-500">{{event}}</div>{{/event}}{{#who}}<div class="text-xs text-gray-400">by {{who}}</div>{{/who}}</td>
+          <td class="py-2 pr-3 text-right font-medium whitespace-nowrap {{#income}}text-green-700{{/income}}{{^income}}text-red-600{{/income}}">{{amount}}</td>
+          <td class="py-2 text-right">{{#can_delete}}<button hx-post="/treasury/{{id}}/delete" hx-target="#treasury-page" hx-swap="outerHTML" hx-confirm="Delete this entry?" class="text-xs text-red-600 hover:text-red-800">Delete</button>{{/can_delete}}</td>
+        </tr>
+      {{/lines}}
+      </tbody>
+    </table>
+    </div>
+    {{/has_lines}}
+    {{^has_lines}}<p class="text-sm text-gray-400">No money recorded for {{year}}. Dues amounts entered on member records appear here automatically.</p>{{/has_lines}}
+  </section>
+</div>

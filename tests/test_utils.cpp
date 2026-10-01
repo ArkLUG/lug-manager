@@ -541,3 +541,18 @@ TEST(Mustache, EmptyStringIsFalsy) {
     auto out = crow::mustache::compile("[{{#a}}A{{/a}}{{^a}}noA{{/a}}][{{#b}}B={{b}}{{/b}}{{^b}}noB{{/b}}]").render_string(c);
     EXPECT_EQ(out, "[noA][B=x]");
 }
+
+#include "utils/Money.hpp"
+TEST(Money, ParseAndFormat) {
+    EXPECT_EQ(parse_cents("25"), 2500);
+    EXPECT_EQ(parse_cents("$25.5"), 2550);
+    EXPECT_EQ(parse_cents("1,250.05"), 125005);
+    EXPECT_EQ(parse_cents(""), 0);
+    EXPECT_EQ(parse_cents("-5"), -1);
+    EXPECT_EQ(parse_cents("1.234"), -1);
+    EXPECT_EQ(parse_cents("abc"), -1);
+    EXPECT_EQ(money(0), "$0.00");
+    EXPECT_EQ(money(5), "$0.05");
+    EXPECT_EQ(money(123456789), "$1,234,567.89");
+    EXPECT_EQ(money(-500), "-$5.00");
+}

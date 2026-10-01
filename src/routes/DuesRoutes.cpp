@@ -1,5 +1,6 @@
 #include "routes/DuesRoutes.hpp"
 #include "utils/LocalTime.hpp"
+#include "utils/Money.hpp"
 #include <crow/mustache.h>
 #include <algorithm>
 #include <cstdio>
@@ -19,24 +20,6 @@ bool is_ymd(const std::string& s) {
     return std::regex_match(s, re);
 }
 
-// "25", "25.5", "$25.00" -> cents; -1 if unparseable.
-int64_t parse_cents(std::string s) {
-    s.erase(std::remove(s.begin(), s.end(), '$'), s.end());
-    if (s.empty()) return 0;
-    static const std::regex re(R"((\d{1,7})(?:\.(\d{1,2}))?)");
-    std::smatch m;
-    if (!std::regex_match(s, m, re)) return -1;
-    int64_t cents = std::stoll(m[1].str()) * 100;
-    if (m[2].matched) cents += std::stoll(m[2].str().size() == 1 ? m[2].str() + "0" : m[2].str());
-    return cents;
-}
-
-std::string money(int64_t cents) {
-    char buf[32];
-    std::snprintf(buf, sizeof(buf), "$%lld.%02lld", static_cast<long long>(cents / 100),
-                  static_cast<long long>(cents % 100));
-    return buf;
-}
 
 std::string render_panel(const crow::request& req, LugApp& app, const Member& m,
                          DuesRepository& dues, const std::string& flash = "") {

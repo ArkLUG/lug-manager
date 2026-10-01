@@ -66,6 +66,7 @@
 #include "routes/GalleryRoutes.hpp"
 #include "routes/AccountRoutes.hpp"
 #include "routes/InventoryRoutes.hpp"
+#include "routes/TreasuryRoutes.hpp"
 #include <memory>
 
 struct Services {
