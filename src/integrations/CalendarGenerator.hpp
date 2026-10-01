@@ -5,6 +5,7 @@
 #include "repositories/ChapterRepository.hpp"
 #include <string>
 #include <mutex>
+#include <unordered_map>
 #include <chrono>
 
 class CalendarGenerator {
@@ -45,6 +46,7 @@ private:
     std::chrono::steady_clock::time_point cache_time_;
     bool                                  cache_valid_ = false;
     mutable std::mutex                    mutex_;
+    std::unordered_map<std::string, std::pair<std::chrono::steady_clock::time_point, std::string>> variant_cache_;
 
     std::string generate_ics() const;
     std::string generate_ics(const Filter& f) const;

@@ -1,4 +1,5 @@
 #include "integrations/CalendarGenerator.hpp"
+#include <unordered_map>
 #include <sstream>
 #include <iostream>
 #include <algorithm>
@@ -15,12 +16,14 @@ CalendarGenerator::CalendarGenerator(MeetingRepository& meetings,
 void CalendarGenerator::invalidate() {
     std::lock_guard<std::mutex> lock(mutex_);
     cache_valid_ = false;
+    variant_cache_.clear();
 }
 
 void CalendarGenerator::set_timezone(const std::string& tz) {
     std::lock_guard<std::mutex> lock(mutex_);
     if (!tz.empty()) timezone_ = tz;
     cache_valid_ = false;
+    variant_cache_.clear();
 }
 
 std::string CalendarGenerator::get_ics() {
@@ -180,8 +183,17 @@ std::string CalendarGenerator::make_vevent(const std::string& uid,
 }
 
 std::string CalendarGenerator::get_ics(const Filter& f) {
+    // Variant feeds are cached like the main one (5 minutes, cleared by invalidate()).
+    std::string key = std::to_string(f.chapter_id) + (f.include_lug_wide ? "w" : "") +
+                      (f.full_details ? "p" : "") + "|" + f.name_suffix;
     std::lock_guard<std::mutex> lock(mutex_);
-    return generate_ics(f);
+    auto now = std::chrono::steady_clock::now();
+    auto it = variant_cache_.find(key);
+    if (it != variant_cache_.end() && now - it->second.first < std::chrono::seconds(300))
+        return it->second.second;
+    std::string ics = generate_ics(f);
+    variant_cache_[key] = {now, ics};
+    return ics;
 }
 
 std::string CalendarGenerator::generate_ics() const {
@@ -200,15 +212,20 @@ std::string CalendarGenerator::generate_ics(const Filter& f) const {
     oss << "METHOD:PUBLISH\r\n";
 
     // Helper to build prefixed calendar title
-    auto cal_title = [this](const std::string& title, const std::string& scope,
-                            int64_t chapter_id, const std::string& status = "") -> std::string {
+    // Chapter shorthands, loaded once per feed (was one lookup per item).
+    std::unordered_map<int64_t, std::string> shorthand;
+    if (chapters_)
+        for (const auto& ch : chapters_->find_all()) shorthand[ch.id] = ch.shorthand;
+
+    auto cal_title = [&shorthand](const std::string& title, const std::string& scope,
+                                  int64_t chapter_id, const std::string& status = "") -> std::string {
         std::string prefix;
         if (status == "tentative") prefix += "[Tentative] ";
         if (scope == "non_lug")        prefix += "[Non-LUG] ";
         else if (scope == "lug_wide")  prefix += "[LUG Wide] ";
-        if (chapter_id > 0 && chapters_) {
-            auto ch = chapters_->find_by_id(chapter_id);
-            if (ch && !ch->shorthand.empty()) prefix = "[" + ch->shorthand + "] " + prefix;
+        if (chapter_id > 0) {
+            auto it = shorthand.find(chapter_id);
+            if (it != shorthand.end() && !it->second.empty()) prefix = "[" + it->second + "] " + prefix;
         }
         return prefix + title;
     };

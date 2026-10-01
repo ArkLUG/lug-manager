@@ -50,3 +50,12 @@ TEST_F(IntegrationTest, PersonalFeedShowsPrivateDetails) {
     EXPECT_EQ(GET(path).code, 404);
     EXPECT_EQ(GET("/calendar/me/" + std::string(64, 'a') + "/feed.ics").code, 404);
 }
+
+// Feed variants are cached but a new meeting invalidates them.
+TEST_F(IntegrationTest, ChapterFeedCacheInvalidatedByChanges) {
+    std::string url = "/calendar/chapter/" + std::to_string(test_chapter_id) + "/feed.ics";
+    meeting_svc->create(mk("First Cached", "chapter", test_chapter_id));
+    expect_contains(GET(url), "First Cached");
+    meeting_svc->create(mk("Second Fresh", "chapter", test_chapter_id));
+    expect_contains(GET(url), "Second Fresh");
+}
