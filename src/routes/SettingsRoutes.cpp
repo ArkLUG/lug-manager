@@ -458,6 +458,9 @@ void register_settings_routes(LugApp& app, SettingsRepository& settings,
         mctx["non_lug_role_options"]  = non_lug_role_options;
         mctx["suppress_pings"]       = (suppress_pings == "1");
         mctx["suppress_updates"]     = (suppress_updates == "1");
+        mctx["reminders_enabled"]    = settings.get("discord_reminders_enabled") == "1";
+        mctx["reminder_hours"]       = settings.get("discord_reminder_hours", "24");
+        mctx["reminder_dm_rsvps"]    = settings.get("discord_reminder_dm_rsvps") == "1";
         mctx["event_reports_forum_id"]   = event_reports_forum;
         mctx["meeting_reports_forum_id"] = meeting_reports_forum;
         mctx["event_reports_forum_options"]   = event_reports_forum_options;
@@ -592,6 +595,13 @@ void register_settings_routes(LugApp& app, SettingsRepository& settings,
         settings.set("discord_non_lug_event_role_id",   non_lug_role);
         settings.set("discord_suppress_pings",   suppress_pings   == "1" ? "1" : "0");
         settings.set("discord_suppress_updates", suppress_updates == "1" ? "1" : "0");
+        settings.set("discord_reminders_enabled", get_param("discord_reminders_enabled") == "1" ? "1" : "0");
+        settings.set("discord_reminder_dm_rsvps", get_param("discord_reminder_dm_rsvps") == "1" ? "1" : "0");
+        {
+            int hours = static_cast<int>(parse_id(get_param("discord_reminder_hours")));
+            if (hours < 1 || hours > 24 * 14) hours = 24;
+            settings.set("discord_reminder_hours", std::to_string(hours));
+        }
         settings.set("discord_event_reports_forum_channel_id",   ev_reports);
         settings.set("discord_meeting_reports_forum_channel_id", mtg_reports);
 

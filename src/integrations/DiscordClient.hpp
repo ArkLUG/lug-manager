@@ -5,6 +5,7 @@
 #include "models/Meeting.hpp"
 #include "models/LugEvent.hpp"
 #include <string>
+#include <ctime>
 #include <vector>
 #include <functional>
 #include <atomic>
@@ -113,6 +114,16 @@ public:
 
     // Post a plain message to a channel
     void post_message(const std::string& channel_id, const std::string& content);
+    // Synchronous post; returns false if Discord didn't return a message.
+    bool sync_post_message(const std::string& channel_id, const std::string& content);
+    // Direct message a user (opens the DM channel first). Fails quietly
+    // (returns false) if they don't share a server or have DMs closed.
+    bool send_dm(const std::string& discord_user_id, const std::string& content);
+    // Interprets an ISO "YYYY-MM-DDTHH:MM[:SS]" in IANA zone tz_name and
+    // returns the UTC epoch, or -1 if unparseable.
+    static std::time_t local_to_epoch(const std::string& iso, const std::string& tz_name);
+    // "Tue 6/2 7:00 PM CDT" for a LUG-local ISO time.
+    static std::string friendly_time(const std::string& iso, const std::string& tz_name);
 
     // Posts a message with a single "Resolve" button to a channel (fire-and-forget).
     // custom_id must encode enough state for the interaction handler to act on the

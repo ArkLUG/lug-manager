@@ -37,6 +37,7 @@
 #include "auth/AuthService.hpp"
 #include "auth/SessionStore.hpp"
 #include "middleware/AuthMiddleware.hpp"
+#include "services/ReminderService.hpp"
 #include "services/MemberSyncService.hpp"
 #include "routes/Router.hpp"
 
@@ -241,6 +242,27 @@ int main() {
             }
         });
         member_syncer.detach();
+
+        // Discord reminders (opt-in via Settings): check every 10 minutes.
+        ReminderService reminder_service(db, meeting_repo, event_repo, chapter_repo,
+                                                member_repo, settings_repo, discord_client);
+        std::thread reminder_thread([&reminder_service] {
+            std::this_thread::sleep_for(std::chrono::seconds(60));
+            while (true) {
+                try {
+                    auto r = reminder_service.run_once();
+                    if (r.meetings || r.events || r.dms)
+                        std::cout << "[reminders] Sent " << r.meetings << " meeting, " << r.events
+                                  << " event reminders, " << r.dms << " DMs\n";
+                } catch (const std::exception& e) {
+                    std::cerr << "[reminders] Error: " << e.what() << "\n";
+                } catch (...) {
+                    std::cerr << "[reminders] Unknown error\n";
+                }
+                std::this_thread::sleep_for(std::chrono::minutes(10));
+            }
+        });
+        reminder_thread.detach();
 
         std::cout << "[lug-manager] Starting on port " << config.port << "\n";
         std::cout << "[lug-manager] Templates: " << config.templates_dir << "\n";

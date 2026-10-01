@@ -1225,3 +1225,58 @@ std::string DiscordClient::publish_report_to_forum(const std::string& forum_chan
     }
     return "";
 }
+
+bool DiscordClient::sync_post_message(const std::string& channel_id, const std::string& content) {
+    if (channel_id.empty()) return false;
+    json body;
+    body["content"] = content;
+    try {
+        auto j = json::parse(discord_api_request("POST", "/channels/" + channel_id + "/messages", body.dump()));
+        return j.contains("id");
+    } catch (const std::exception& e) {
+        std::cerr << "[DiscordClient] sync_post_message failed: " << e.what() << "\n";
+        return false;
+    }
+}
+
+bool DiscordClient::send_dm(const std::string& discord_user_id, const std::string& content) {
+    if (discord_user_id.empty()) return false;
+    try {
+        json open;
+        open["recipient_id"] = discord_user_id;
+        auto ch = json::parse(discord_api_request("POST", "/users/@me/channels", open.dump()));
+        if (!ch.contains("id")) return false;
+        return sync_post_message(ch["id"].get<std::string>(), content);
+    } catch (const std::exception& e) {
+        std::cerr << "[DiscordClient] send_dm failed: " << e.what() << "\n";
+        return false;
+    }
+}
+
+std::time_t DiscordClient::local_to_epoch(const std::string& iso, const std::string& tz_name) {
+    if (iso.size() < 16) return -1;
+    std::string utc = tz_convert(iso, tz_name).utc_iso; // "YYYY-MM-DDTHH:MM:SSZ"
+    std::tm t{};
+    if (sscanf(utc.c_str(), "%d-%d-%dT%d:%d:%d", &t.tm_year, &t.tm_mon, &t.tm_mday,
+               &t.tm_hour, &t.tm_min, &t.tm_sec) != 6) return -1;
+    t.tm_year -= 1900;
+    t.tm_mon  -= 1;
+    return timegm(&t);
+}
+
+std::string DiscordClient::friendly_time(const std::string& iso, const std::string& tz_name) {
+    if (iso.size() < 16) return iso;
+    int y = 0, mo = 0, d = 0, h = 0, mi = 0;
+    if (sscanf(iso.c_str(), "%d-%d-%dT%d:%d", &y, &mo, &d, &h, &mi) != 5) return iso;
+    std::tm t{};
+    t.tm_year = y - 1900; t.tm_mon = mo - 1; t.tm_mday = d; t.tm_hour = 12;
+    timegm(&t); // normalizes and fills tm_wday
+    static const char* days[] = {"Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"};
+    char buf[64];
+    std::snprintf(buf, sizeof(buf), "%s %d/%d %d:%02d %s", days[t.tm_wday], mo, d,
+                  h % 12 == 0 ? 12 : h % 12, mi, h >= 12 ? "PM" : "AM");
+    std::string out = buf;
+    std::string abbrev = tz_convert(iso, tz_name).abbrev;
+    if (!abbrev.empty()) out += " " + abbrev;
+    return out;
+}

@@ -128,6 +128,30 @@
         </label>
       </div>
 
+      <!-- Reminders -->
+      <div class="space-y-2">
+        <label class="flex items-center gap-3 cursor-pointer">
+          <input type="checkbox" name="discord_reminders_enabled" value="1"
+                 {{#reminders_enabled}}checked{{/reminders_enabled}}
+                 class="w-4 h-4 accent-yellow-400 rounded">
+          <div>
+            <span class="text-sm font-medium text-gray-700">Post reminders before meetings and events</span>
+            <p class="text-xs text-gray-400">Meetings get a reminder in the channel they were announced in; events in their thread. Skips cancelled and Discord-suppressed items.</p>
+          </div>
+        </label>
+        <div class="flex flex-wrap items-center gap-4 pl-7">
+          <label class="flex items-center gap-2 text-sm text-gray-700">
+            <input type="number" name="discord_reminder_hours" min="1" max="336" value="{{reminder_hours}}"
+                   class="w-20 border border-gray-300 rounded-lg px-2 py-1 text-sm"> hours before
+          </label>
+          <label class="flex items-center gap-2 text-sm text-gray-700 cursor-pointer">
+            <input type="checkbox" name="discord_reminder_dm_rsvps" value="1"
+                   {{#reminder_dm_rsvps}}checked{{/reminder_dm_rsvps}} class="w-4 h-4 accent-yellow-400 rounded">
+            Also DM members who RSVP'd to events
+          </label>
+        </div>
+      </div>
+
       <!-- Event Thread Forum Channel -->
       <div>
         <label class="block text-sm font-medium text-gray-700 mb-1">Event Thread Forum Channel</label>
