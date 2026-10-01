@@ -70,8 +70,12 @@ std::vector<DiscordChannel> DiscordClient::fetch_forum_channels() const {
 }
 
 std::vector<DiscordChannel> DiscordClient::fetch_text_channels() const {
-    if (get_guild_id().empty()) return {};
-    std::string resp = discord_api_request("GET", "/guilds/" + get_guild_id() + "/channels");
+    return fetch_text_channels(get_guild_id());
+}
+
+std::vector<DiscordChannel> DiscordClient::fetch_text_channels(const std::string& guild_id) const {
+    if (guild_id.empty()) return {};
+    std::string resp = discord_api_request("GET", "/guilds/" + guild_id + "/channels");
     std::vector<DiscordChannel> result;
     try {
         auto j = json::parse(resp);

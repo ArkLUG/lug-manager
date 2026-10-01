@@ -1,6 +1,7 @@
 #include "routes/SettingsRoutes.hpp"
 #include "utils/ParseId.hpp"
 #include "utils/HtmlEscape.hpp"
+#include "utils/Snowflake.hpp"
 #include "utils/JsonEscape.hpp"
 #include <crow/mustache.h>
 #include <sstream>
@@ -29,22 +30,15 @@ void register_settings_routes(LugApp& app, SettingsRepository& settings,
             auto qs = crow::query_string(req.url_params);
             const char* s = qs.get("selected");
             if (s) selected = s;
-            const char* g = qs.get("guild_id");
-            if (g) override_guild = g;
+            const char* g = qs.get("discord_guild_id"); // from hx-include="#guild-id-input"
+            if (!g) g = qs.get("guild_id");
+            if (g && is_safe_discord_id(g)) override_guild = g;
         }
 
-        // Temporarily use an override guild_id if provided (for live preview when user types)
-        std::string saved_guild = discord.get_guild_id();
-        if (!override_guild.empty() && override_guild != saved_guild) {
-            discord.reconfigure(override_guild, "");
-        }
-
-        auto channels = discord.fetch_text_channels();
-
-        // Restore original guild if we overrode it
-        if (!override_guild.empty() && override_guild != saved_guild) {
-            discord.reconfigure(saved_guild, "");
-        }
+        // Preview channels for a typed-but-unsaved guild id without touching the
+        // shared client's configuration (the old temporary reconfigure() wiped
+        // the announcement/non-LUG role ids and raced other requests).
+        auto channels = discord.fetch_text_channels(override_guild.empty() ? discord.get_guild_id() : override_guild);
 
         std::ostringstream html;
         html << "<option value=\"\">-- Select a channel --</option>\n";

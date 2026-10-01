@@ -67,6 +67,8 @@ public:
 
     // Fetch text channels (type 0/5) or forum channels (type 15) from the configured guild
     std::vector<DiscordChannel> fetch_text_channels()  const;
+    // Same for an explicit guild (Settings preview of a not-yet-saved guild id).
+    std::vector<DiscordChannel> fetch_text_channels(const std::string& guild_id) const;
     std::vector<DiscordChannel> fetch_forum_channels() const;
     std::vector<DiscordChannel> fetch_voice_channels() const;
 

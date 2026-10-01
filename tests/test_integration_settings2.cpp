@@ -252,3 +252,13 @@ TEST_F(IntegrationTest, DiscordOptionRoutesAcceptRefresh) {
     auto page = GET("/settings", admin_token);
     expect_contains(page, "/api/discord/channel-options?refresh=1");
 }
+
+// Previewing channels for a typed guild id used to reconfigure the shared
+// Discord client and wipe the announcement / non-LUG role ids.
+TEST_F(IntegrationTest, ChannelPreviewKeepsRoleConfig) {
+    discord_client->reconfigure("111111111111111111", "222222222222222222", "", "333333333333333333", "444444444444444444");
+    GET("/api/discord/channel-options?discord_guild_id=555555555555555555", admin_token);
+    EXPECT_EQ(discord_client->get_announcement_role_id(), "333333333333333333");
+    EXPECT_EQ(discord_client->get_non_lug_event_role_id(), "444444444444444444");
+    EXPECT_EQ(discord_client->get_guild_id(), "111111111111111111");
+}
