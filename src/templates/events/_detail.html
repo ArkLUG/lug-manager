@@ -98,6 +98,14 @@
     </div>
   </div>
   {{/f_photos}}
+  {{#f_inventory}}{{#can_manage}}
+  <div class="mt-4 pt-4 border-t border-gray-200">
+    <h4 class="text-sm font-medium text-gray-500 mb-2">Pack list</h4>
+    <div hx-get="/events/{{id}}/pack" hx-trigger="load" hx-swap="outerHTML">
+      <p class="text-xs text-gray-400">Loading...</p>
+    </div>
+  </div>
+  {{/can_manage}}{{/f_inventory}}
   {{#f_shifts}}
   <div class="mt-4 pt-4 border-t border-gray-200">
     <h4 class="text-sm font-medium text-gray-500 mb-2">Volunteer shifts</h4>

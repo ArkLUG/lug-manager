@@ -1,5 +1,6 @@
 // LUG inventory and check-out.
 #include "integration_test_base.hpp"
+#include "services/Features.hpp"
 
 namespace {
 int64_t item_id(SqliteDatabase& db, const std::string& name) {
@@ -235,4 +236,85 @@ TEST_F(IntegrationTest, InventoryKeeperFollowsMemberMerge) {
     auto st = db->prepare("SELECT keeper_id FROM storage_locations WHERE name='Garage'");
     ASSERT_TRUE(st.step());
     EXPECT_EQ(st.col_int(0), regular_member_id);
+}
+
+namespace {
+const std::string kInvPng(
+    "\x89PNG\r\n\x1a\n\0\0\0\rIHDR\0\0\0\x01\0\0\0\x01\x08\x06\0\0\0\x1f\x15\xc4\x89"
+    "\0\0\0\rIDATx\x9cc\xf8\x0f\0\0\x01\x01\0\x05\x18\xd8N\0\0\0\0IEND\xae\x42\x60\x82", 67);
+}
+
+TEST_F(IntegrationTest, InventoryPhotoAndCondition) {
+    ASSERT_EQ(POST("/inventory", "name=Display+case&quantity=2", admin_token).code, 200);
+    std::string id = std::to_string(item_id(*db, "Display case"));
+    EXPECT_EQ(POST_FILE("/inventory/" + id + "/photo", "photo", "c.png", kInvPng, member_token).code, 403);
+    EXPECT_EQ(POST_FILE("/inventory/" + id + "/photo", "photo", "c.svg", "<svg/>", admin_token).code, 400);
+    auto up = POST_FILE("/inventory/" + id + "/photo", "photo", "c.png", kInvPng, admin_token);
+    EXPECT_EQ(up.code, 200);
+    auto f = db->prepare("SELECT photo_file FROM inventory_items WHERE id=?");
+    f.bind(1, static_cast<int64_t>(std::stoll(id)));
+    ASSERT_TRUE(f.step());
+    std::string file = f.col_text(0);
+    f.reset();
+    ASSERT_FALSE(file.empty());
+    expect_contains(GET("/inventory", member_token), "/uploads/" + file);
+    EXPECT_EQ(GET("/uploads/" + file, member_token).code, 200);
+
+    // Condition shows as a badge with its note
+    ASSERT_EQ(POST("/inventory/" + id, "name=Display+case&quantity=2&condition=needs_repair&condition_note=Cracked+lid", admin_token).code, 200);
+    auto page = GET("/inventory", member_token);
+    expect_contains(page, "Needs repair");
+    expect_contains(page, "Cracked lid");
+    POST("/inventory/" + id, "name=Display+case&quantity=2&condition=bogus", admin_token);   // unknown -> good
+    expect_not_contains(GET("/inventory", member_token), "Needs repair");
+
+    // Removing the photo deletes the file
+    EXPECT_EQ(POST("/inventory/" + id + "/photo/delete", "", admin_token).code, 200);
+    EXPECT_EQ(GET("/uploads/" + file, member_token).code, 404);
+}
+
+TEST_F(IntegrationTest, EventPackList) {
+    LugEvent e;
+    e.title = "Pack Show"; e.start_time = "2099-07-01T09:00:00"; e.end_time = "2099-07-01T17:00:00";
+    e.scope = "lug_wide"; e.status = "confirmed"; e.suppress_discord = true; e.suppress_calendar = true;
+    auto ev = event_svc->create(e);
+    std::string base = "/events/" + std::to_string(ev.id) + "/pack";
+    ASSERT_EQ(POST("/inventory/locations", "name=Trailer&kind=trailer", admin_token).code, 200);
+    int64_t trailer = loc_id(*db, "Trailer");
+    ASSERT_EQ(POST("/inventory", "name=Table&quantity=4&location_id=" + std::to_string(trailer), admin_token).code, 200);
+    ASSERT_EQ(POST("/inventory", "name=Banner&quantity=1", admin_token).code, 200);
+    std::string table = std::to_string(item_id(*db, "Table")), banner = std::to_string(item_id(*db, "Banner"));
+    POST("/inventory/" + banner, "name=Banner&quantity=1&condition=worn&condition_note=Faded", admin_token);
+
+    // Event managers build it; members can't change it
+    EXPECT_EQ(POST(base, "item_id=" + table + "&quantity=3", member_token).code, 403);
+    auto add = POST(base, "item_id=" + table + "&quantity=3&note=For+the+train+layout", admin_token);
+    EXPECT_EQ(add.code, 200);
+    expect_contains(add, "3 &times; Table");
+    expect_contains(add, "4 at Trailer");                       // where to fetch it
+    expect_contains(add, "For the train layout");
+    auto over = POST(base, "item_id=" + banner + "&quantity=2", admin_token);
+    expect_contains(over, "The LUG only owns 1.");
+    expect_contains(over, "Worn - Faded");
+    EXPECT_EQ(POST(base, "item_id=999999&quantity=1", admin_token).code, 404);
+    EXPECT_EQ(POST(base, "item_id=" + table + "&quantity=0", admin_token).code, 400);
+    expect_contains(POST(base, "item_id=" + table + "&quantity=4", admin_token), "4 &times; Table");   // update, not duplicate
+
+    // Packing
+    expect_contains(GET(base, member_token), "0 of 2 packed");
+    EXPECT_EQ(POST(base + "/" + table + "/toggle", "", member_token).code, 403);
+    expect_contains(POST(base + "/" + table + "/toggle", "", admin_token), "1 of 2 packed");
+    expect_contains(POST(base + "/" + banner + "/toggle", "", admin_token), "2 of 2 packed");
+    auto print = GET(base + "/print", member_token);
+    EXPECT_EQ(print.code, 200);
+    expect_contains(print, "Pack list: Pack Show");
+    expect_contains(print, "4 at Trailer");
+    EXPECT_EQ(POST(base + "/" + banner + "/remove", "", admin_token).code, 200);
+    expect_contains(GET(base, admin_token), "1 of 1 packed");
+
+    // Event page shows the panel to managers; switching inventory off hides it and its pages
+    expect_contains(GET_HTMX("/events/" + std::to_string(ev.id), admin_token), "/pack\"");
+    Features::set("inventory", false);
+    EXPECT_EQ(GET(base, admin_token).code, 404);
+    expect_not_contains(GET_HTMX("/events/" + std::to_string(ev.id), admin_token), "/pack\"");
 }

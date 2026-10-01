@@ -1,0 +1,43 @@
+<div id="pack-panel-{{event_id}}" class="space-y-2 text-sm">
+  {{#flash}}<p class="text-xs text-gray-500">{{flash}}</p>{{/flash}}
+  {{#has_lines}}
+  <div class="flex items-center justify-between gap-2">
+    <span class="text-xs {{#all_packed}}text-green-700 font-medium{{/all_packed}}{{^all_packed}}text-gray-500{{/all_packed}}">{{packed_count}} of {{line_count}} packed</span>
+    <a href="/events/{{event_id}}/pack/print" target="_blank" class="text-xs px-2.5 py-1 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50">Print checklist</a>
+  </div>
+  <ul class="divide-y divide-gray-100">
+    {{#lines}}
+    <li class="flex items-start gap-2 py-1.5">
+      {{#can_manage}}
+      <button hx-post="/events/{{event_id}}/pack/{{item_id}}/toggle" hx-target="#pack-panel-{{event_id}}" hx-swap="outerHTML"
+              aria-label="{{#packed}}Mark not packed{{/packed}}{{^packed}}Mark packed{{/packed}}"
+              class="mt-0.5 w-5 h-5 flex-shrink-0 rounded border {{#packed}}bg-green-600 border-green-600 text-white{{/packed}}{{^packed}}border-gray-300{{/packed}} text-xs leading-none">{{#packed}}&#10003;{{/packed}}</button>
+      {{/can_manage}}
+      {{^can_manage}}<span class="mt-0.5 w-5 h-5 flex-shrink-0 rounded border {{#packed}}bg-green-600 border-green-600 text-white{{/packed}}{{^packed}}border-gray-300{{/packed}} text-xs text-center">{{#packed}}&#10003;{{/packed}}</span>{{/can_manage}}
+      <div class="flex-1 min-w-0">
+        <div class="{{#packed}}line-through text-gray-400{{/packed}}{{^packed}}text-gray-900{{/packed}}">{{quantity}} &times; {{name}}</div>
+        {{#where}}<div class="text-xs text-gray-500">{{where}}</div>{{/where}}
+        {{#short}}<div class="text-xs text-red-600">The LUG only owns {{owned}}.</div>{{/short}}
+        {{#condition}}<div class="text-xs text-amber-700">{{condition}}</div>{{/condition}}
+        {{#note}}<div class="text-xs text-gray-500">{{note}}</div>{{/note}}
+      </div>
+      {{#can_manage}}
+      <button hx-post="/events/{{event_id}}/pack/{{item_id}}/remove" hx-target="#pack-panel-{{event_id}}" hx-swap="outerHTML"
+              aria-label="Remove {{name}}" class="text-xs text-gray-400 hover:text-red-600">&times;</button>
+      {{/can_manage}}
+    </li>
+    {{/lines}}
+  </ul>
+  {{/has_lines}}
+  {{^has_lines}}<p class="text-xs text-gray-400">Nothing on the pack list yet.</p>{{/has_lines}}
+  {{#can_manage}}{{#has_item_options}}
+  <form hx-post="/events/{{event_id}}/pack" hx-target="#pack-panel-{{event_id}}" hx-swap="outerHTML" class="flex flex-wrap items-center gap-2 pt-1">
+    <select name="item_id" aria-label="Item" class="flex-1 min-w-[10rem] border border-gray-300 rounded-lg px-2 py-1 text-xs">
+      {{#item_options}}<option value="{{id}}">{{label}}</option>{{/item_options}}
+    </select>
+    <input type="number" name="quantity" value="1" min="1" aria-label="How many" class="w-16 border border-gray-300 rounded-lg px-2 py-1 text-xs">
+    <input name="note" maxlength="200" placeholder="Note" class="w-32 border border-gray-300 rounded-lg px-2 py-1 text-xs">
+    <button class="text-xs px-3 py-1 bg-gray-800 text-white rounded-lg">Add</button>
+  </form>
+  {{/has_item_options}}{{/can_manage}}
+</div>

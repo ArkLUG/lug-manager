@@ -1,5 +1,6 @@
 #include "routes/InventoryRoutes.hpp"
 #include "services/AttendanceService.hpp"
+#include "routes/EventAccess.hpp"
 #include "utils/Csv.hpp"
 #include <crow/mustache.h>
 #include <map>
@@ -31,6 +32,13 @@ const char* KINDS[][2] = {{"storage", "Storage unit"}, {"trailer", "Trailer"}, {
 std::string kind_label(const std::string& k) {
     for (const auto& p : KINDS) if (k == p[0]) return p[1];
     return "Other";
+}
+
+const char* CONDITIONS[][2] = {{"good", "Good"}, {"worn", "Worn"}, {"needs_repair", "Needs repair"}, {"broken", "Broken"}};
+
+std::string condition_label(const std::string& c) {
+    for (const auto& p : CONDITIONS) if (c == p[0]) return p[1];
+    return "Good";
 }
 
 bool valid_kind(const std::string& k) {
@@ -182,7 +190,8 @@ std::string render(const crow::request& req, LugApp& app, SqliteDatabase& db, co
     int i = 0, n_opt = 0;
     auto st = db.prepare(
         "SELECT i.id, i.name, i.category, i.quantity, i.notes, "
-        "COALESCE((SELECT SUM(l.quantity) FROM inventory_loans l WHERE l.item_id=i.id AND l.returned_at IS NULL),0) "
+        "COALESCE((SELECT SUM(l.quantity) FROM inventory_loans l WHERE l.item_id=i.id AND l.returned_at IS NULL),0), "
+        "i.photo_file, i.condition, i.condition_note "
         "FROM inventory_items i WHERE i.archived=0 ORDER BY i.category COLLATE NOCASE, i.name COLLATE NOCASE");
     while (st.step()) {
         int64_t id = st.col_int(0), qty = st.col_int(3), out = st.col_int(5);
@@ -204,6 +213,16 @@ std::string render(const crow::request& req, LugApp& app, SqliteDatabase& db, co
         it["category"] = st.col_text(2);
         it["quantity"] = qty;
         it["notes"] = st.col_text(4);
+        if (!st.col_text(6).empty()) it["photo"] = st.col_text(6);
+        std::string cond = st.col_text(7);
+        it["condition_label"] = condition_label(cond);
+        it["condition_issue"] = cond != "good";
+        it["condition_broken"] = cond == "broken" || cond == "needs_repair";
+        if (!st.col_text(8).empty()) it["condition_note"] = st.col_text(8);
+        for (int c = 0; c < 4; ++c) {
+            it["conditions"][c]["value"] = CONDITIONS[c][0]; it["conditions"][c]["label"] = CONDITIONS[c][1];
+            it["conditions"][c]["selected"] = cond == CONDITIONS[c][0];
+        }
         it["available"] = qty - out;
         it["out"] = out;
         it["has_out"] = out > 0;
@@ -279,9 +298,214 @@ crow::response fragment(const crow::request& req, LugApp& app, SqliteDatabase& d
     return res;
 }
 
+// ── Pack lists: what to bring to an event ──
+std::string where_kept(SqliteDatabase& db, int64_t item) {
+    auto st = db.prepare("SELECT k.quantity, s.name FROM inventory_stock k JOIN storage_locations s ON s.id=k.location_id "
+                         "WHERE k.item_id=? ORDER BY k.quantity DESC");
+    st.bind(1, item);
+    std::string out;
+    while (st.step()) out += (out.empty() ? "" : ", ") + std::to_string(st.col_int(0)) + " at " + st.col_text(1);
+    return out;
+}
+
+crow::mustache::context pack_ctx(SqliteDatabase& db, const LugEvent& ev, bool manage, const std::string& flash) {
+    crow::mustache::context ctx;
+    ctx["event_id"] = ev.id;
+    ctx["event_title"] = ev.title;
+    ctx["event_date"] = ev.start_time.substr(0, 10);
+    ctx["event_location"] = ev.location;
+    ctx["can_manage"] = manage;
+    if (!flash.empty()) ctx["flash"] = flash;
+    crow::json::wvalue lines = crow::json::wvalue::list();
+    int n = 0, packed = 0;
+    auto st = db.prepare("SELECT p.item_id, i.name, p.quantity, p.packed, p.note, i.quantity, i.condition, i.condition_note "
+                         "FROM inventory_pack p JOIN inventory_items i ON i.id=p.item_id WHERE p.event_id=? "
+                         "ORDER BY p.packed, i.category COLLATE NOCASE, i.name COLLATE NOCASE");
+    st.bind(1, ev.id);
+    while (st.step()) {
+        auto& l = lines[n++];
+        int64_t item = st.col_int(0);
+        l["item_id"] = item; l["event_id"] = ev.id;
+        l["name"] = st.col_text(1); l["quantity"] = st.col_int(2);
+        bool done = st.col_int(3) != 0;
+        l["packed"] = done; packed += done;
+        if (!st.col_text(4).empty()) l["note"] = st.col_text(4);
+        l["short"] = st.col_int(2) > st.col_int(5);
+        l["owned"] = st.col_int(5);
+        std::string where = where_kept(db, item);
+        if (!where.empty()) l["where"] = where;
+        if (st.col_text(6) != "good") {
+            l["condition"] = condition_label(st.col_text(6)) +
+                             (st.col_text(7).empty() ? "" : " - " + st.col_text(7));
+        }
+        l["can_manage"] = manage;
+    }
+    ctx["lines"] = std::move(lines);
+    ctx["has_lines"] = n > 0;
+    ctx["packed_count"] = packed;
+    ctx["line_count"] = n;
+    ctx["all_packed"] = n > 0 && packed == n;
+    if (manage) {
+        crow::json::wvalue opts = crow::json::wvalue::list();
+        auto os = db.prepare("SELECT id, name, quantity FROM inventory_items WHERE archived=0 ORDER BY name COLLATE NOCASE");
+        int k = 0;
+        while (os.step()) {
+            opts[k]["id"] = os.col_int(0);
+            opts[k]["label"] = os.col_text(1) + " (" + std::to_string(os.col_int(2)) + " owned)";
+            ++k;
+        }
+        ctx["item_options"] = std::move(opts);
+        ctx["has_item_options"] = k > 0;
+    }
+    return ctx;
+}
+
+crow::response pack_panel(const crow::request& req, LugApp& app, SqliteDatabase& db, const LugEvent& ev,
+                          ChapterMemberRepository& cm, int code = 200, const std::string& flash = "") {
+    crow::response res;
+    res.code = code;
+    res.add_header("Content-Type", "text/html; charset=utf-8");
+    res.write(crow::mustache::load("inventory/_pack.html").render(
+        pack_ctx(db, ev, can_manage_event(req, app, ev, cm), flash)).dump());
+    return res;
+}
+
+void register_pack_routes(LugApp& app, SqliteDatabase& db, AuditService& audit, EventService& events,
+                          ChapterMemberRepository& chapter_members) {
+    // GET /events/<id>/pack - the event's pack list panel (members can see it)
+    CROW_ROUTE(app, "/events/<int>/pack")([&app, &db, &events, &chapter_members](const crow::request& req, int id) {
+        crow::response res;
+        if (!require_auth(req, res, app)) return res;
+        auto ev = events.get(id);
+        if (!ev) { res.code = 404; return res; }
+        return pack_panel(req, app, db, *ev, chapter_members);
+    });
+
+    // GET /events/<id>/pack/print - printable checklist
+    CROW_ROUTE(app, "/events/<int>/pack/print")([&app, &db, &events](const crow::request& req, int id) {
+        crow::response res;
+        if (!require_auth(req, res, app)) return res;
+        auto ev = events.get(id);
+        if (!ev) { res.code = 404; return res; }
+        auto ctx = pack_ctx(db, *ev, false, "");
+        ctx["asset_v"] = asset_version();
+        res.add_header("Content-Type", "text/html; charset=utf-8");
+        res.write(crow::mustache::load("inventory/pack_print.html").render(ctx).dump());
+        return res;
+    });
+
+    // POST /events/<id>/pack - add an item (or change its quantity)
+    CROW_ROUTE(app, "/events/<int>/pack").methods("POST"_method)(
+        [&app, &db, &audit, &events, &chapter_members](const crow::request& req, int id) {
+        crow::response res;
+        if (!require_auth(req, res, app)) return res;
+        auto ev = events.get(id);
+        if (!ev) { res.code = 404; return res; }
+        if (!can_manage_event(req, app, *ev, chapter_members)) { res.code = 403; return res; }
+        Form f(req);
+        int64_t item = f.num("item_id"), qty = f.num("quantity", 1);
+        std::string name;
+        {
+            auto st = db.prepare("SELECT name FROM inventory_items WHERE id=? AND archived=0");
+            st.bind(1, item);
+            if (!st.step()) return pack_panel(req, app, db, *ev, chapter_members, 404, "That item doesn't exist.");
+            name = st.col_text(0);
+        }
+        if (qty < 1 || qty > 100000) return pack_panel(req, app, db, *ev, chapter_members, 400, "How many should we bring?");
+        {
+            auto up = db.prepare("INSERT INTO inventory_pack (event_id, item_id, quantity, note) VALUES (?,?,?,?) "
+                                 "ON CONFLICT(event_id, item_id) DO UPDATE SET quantity=excluded.quantity, note=excluded.note");
+            up.bind(1, ev->id); up.bind(2, item); up.bind(3, qty); up.bind(4, f.get("note", 200));
+            up.step();
+        }
+        audit.log(req, app, "event.pack_add", "event", ev->id, ev->title, std::to_string(qty) + " x " + name);
+        return pack_panel(req, app, db, *ev, chapter_members, 200, "Added " + name + ".");
+    });
+
+    // POST /events/<id>/pack/<item>/toggle - packed / not packed
+    CROW_ROUTE(app, "/events/<int>/pack/<int>/toggle").methods("POST"_method)(
+        [&app, &db, &events, &chapter_members](const crow::request& req, int id, int item) {
+        crow::response res;
+        if (!require_auth(req, res, app)) return res;
+        auto ev = events.get(id);
+        if (!ev) { res.code = 404; return res; }
+        if (!can_manage_event(req, app, *ev, chapter_members)) { res.code = 403; return res; }
+        auto up = db.prepare("UPDATE inventory_pack SET packed = 1 - packed WHERE event_id=? AND item_id=?");
+        up.bind(1, ev->id); up.bind(2, static_cast<int64_t>(item));
+        up.step();
+        return pack_panel(req, app, db, *ev, chapter_members);
+    });
+
+    // POST /events/<id>/pack/<item>/remove
+    CROW_ROUTE(app, "/events/<int>/pack/<int>/remove").methods("POST"_method)(
+        [&app, &db, &audit, &events, &chapter_members](const crow::request& req, int id, int item) {
+        crow::response res;
+        if (!require_auth(req, res, app)) return res;
+        auto ev = events.get(id);
+        if (!ev) { res.code = 404; return res; }
+        if (!can_manage_event(req, app, *ev, chapter_members)) { res.code = 403; return res; }
+        auto del = db.prepare("DELETE FROM inventory_pack WHERE event_id=? AND item_id=?");
+        del.bind(1, ev->id); del.bind(2, static_cast<int64_t>(item));
+        del.step();
+        audit.log(req, app, "event.pack_remove", "event", ev->id, ev->title, "Item #" + std::to_string(item));
+        return pack_panel(req, app, db, *ev, chapter_members);
+    });
+}
+
 } // namespace
 
-void register_inventory_routes(LugApp& app, SqliteDatabase& db, AuditService& audit) {
+void register_inventory_routes(LugApp& app, SqliteDatabase& db, AuditService& audit,
+                               std::shared_ptr<PhotoStore> photos, EventService& events,
+                               ChapterMemberRepository& chapter_members) {
+
+    // POST /inventory/<id>/photo - add or replace an item's photo (multipart "photo")
+    CROW_ROUTE(app, "/inventory/<int>/photo").methods("POST"_method)([&app, &db, &audit, photos](const crow::request& req, int id) {
+        crow::response res;
+        if (!require_auth(req, res, app, "chapter_lead")) return res;
+        std::string old, name;
+        {
+            auto st = db.prepare("SELECT photo_file, name FROM inventory_items WHERE id=? AND archived=0");
+            st.bind(1, static_cast<int64_t>(id));
+            if (!st.step()) return fragment(req, app, db, 404, "That item doesn't exist.");
+            old = st.col_text(0); name = st.col_text(1);
+        }
+        crow::multipart::message msg(req);
+        std::string bytes;
+        auto it = msg.part_map.find("photo");
+        if (it != msg.part_map.end()) bytes = it->second.body;
+        std::string err, file = photos->save(bytes, err);
+        if (file.empty()) return fragment(req, app, db, 400, err);
+        {
+            auto up = db.prepare("UPDATE inventory_items SET photo_file=? WHERE id=?");
+            up.bind(1, file); up.bind(2, static_cast<int64_t>(id));
+            up.step();
+        }
+        if (!old.empty()) photos->remove(old);
+        audit.log(req, app, "inventory.photo", "inventory", id, name, "Photo added");
+        return fragment(req, app, db, 200, "Photo added to " + name + ".");
+    });
+
+    CROW_ROUTE(app, "/inventory/<int>/photo/delete").methods("POST"_method)([&app, &db, &audit, photos](const crow::request& req, int id) {
+        crow::response res;
+        if (!require_auth(req, res, app, "chapter_lead")) return res;
+        std::string old, name;
+        {
+            auto st = db.prepare("SELECT photo_file, name FROM inventory_items WHERE id=? AND archived=0");
+            st.bind(1, static_cast<int64_t>(id));
+            if (!st.step()) return fragment(req, app, db, 404, "That item doesn't exist.");
+            old = st.col_text(0); name = st.col_text(1);
+        }
+        {
+            auto up = db.prepare("UPDATE inventory_items SET photo_file='' WHERE id=?");
+            up.bind(1, static_cast<int64_t>(id));
+            up.step();
+        }
+        if (!old.empty()) photos->remove(old);
+        audit.log(req, app, "inventory.photo", "inventory", id, name, "Photo removed");
+        return fragment(req, app, db, 200, "Photo removed.");
+    });
+
+    register_pack_routes(app, db, audit, events, chapter_members);
 
     CROW_ROUTE(app, "/inventory")([&app, &db](const crow::request& req) {
         crow::response res;
@@ -410,13 +634,20 @@ void register_inventory_routes(LugApp& app, SqliteDatabase& db, AuditService& au
         if (name.empty() || qty < 1 || qty > 100000) return fragment(req, app, db, 400, "Give the item a name and a quantity of at least 1.");
         if (qty < out_count(db, id) + placed_count(db, id))
             return fragment(req, app, db, 400, "More of " + name + " are at locations or on loan than that - move or return them first.");
-        auto up = db.prepare("UPDATE inventory_items SET name=?, category=?, quantity=?, notes=? WHERE id=? AND archived=0 RETURNING id");
+        std::string cond = f.get("condition", 20);
+        bool cond_ok = false;
+        for (const auto& c : CONDITIONS) cond_ok |= cond == c[0];
+        if (!cond_ok) cond = "good";
+        auto up = db.prepare("UPDATE inventory_items SET name=?, category=?, quantity=?, notes=?, condition=?, condition_note=? "
+                             "WHERE id=? AND archived=0 RETURNING id");
         up.bind(1, name); up.bind(2, f.get("category", 60)); up.bind(3, qty);
-        up.bind(4, f.get("notes", 1000)); up.bind(5, static_cast<int64_t>(id));
+        up.bind(4, f.get("notes", 1000)); up.bind(5, cond); up.bind(6, f.get("condition_note", 300));
+        up.bind(7, static_cast<int64_t>(id));
         bool found = up.step();
         up.reset();
         if (!found) return fragment(req, app, db, 404, "That item doesn't exist.");
-        audit.log(req, app, "inventory.update", "inventory", id, name, "Quantity " + std::to_string(qty));
+        audit.log(req, app, "inventory.update", "inventory", id, name,
+                  "Quantity " + std::to_string(qty) + ", " + condition_label(cond));
         return fragment(req, app, db, 200, "Saved " + name + ".");
     });
 

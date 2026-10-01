@@ -318,6 +318,16 @@ q("UPDATE inventory_items SET quantity = quantity + 1 WHERE id=?", (items["Acryl
 q("INSERT INTO inventory_loans (item_id, member_id, quantity, due_on, notes, checked_out_by, from_location_id) VALUES (?,?,?,?,?,?,?)",
   (items["Acrylic display case"], PRIYA, 1, d(-3), "Library display", ADMIN, garage))
 
+# Condition, photos and a pack list for Brick Fest
+q("UPDATE inventory_items SET condition='needs_repair', condition_note='One leg wobbles - needs a new bolt' WHERE id=?",
+  (items["6ft folding table"],))
+q("UPDATE inventory_items SET photo_file=? WHERE id=?", (save_picture("case"), items["Acrylic display case"]))
+q("UPDATE inventory_items SET photo_file=? WHERE id=?", (save_picture("banner"), items["Brickton LUG banner"]))
+for name, n, packed, note in [("6ft folding table", 6, 1, ""), ("48x48 grey baseplate", 24, 1, "Train layout"),
+                              ("Brickton LUG banner", 1, 0, ""), ("Extension cord (25ft)", 4, 0, "Moon base lights")]:
+    q("INSERT INTO inventory_pack (event_id, item_id, quantity, packed, note) VALUES (?,?,?,?,?)",
+      (up_fest, items[name], n, packed, note))
+
 # ── Treasury ──
 for days, kind, cat, cents, desc, eid in [(-300, "income", "Opening balance", 84000, "Carried over", None),
                                           (-96, "expense", "Table fee", 15000, "Expo Hall booth", past_fest),

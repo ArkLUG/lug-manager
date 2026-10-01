@@ -45,6 +45,8 @@
 - Inventory: tables, baseplates and display cases.
   - Storage locations (the storage unit, the show trailer, someone's garage), each with a person who looks after it. Items can be split across several locations.
   - Check-outs come from a location and are returned to it, with due-date reminders.
+  - A photo and a condition (good / worn / needs repair / broken) for each item.
+  - A pack list on each event, with what to bring, where it's kept, and a printable checklist to tick off.
 - Treasury: income, expenses, receipts and a yearly balance, with a treasurer role that isn't full admin.
 - Feature toggles: switch off anything your LUG doesn't use. Its data is kept.
 - First-run setup, an audit log of every change, CSV exports, daily backups (photos included) and a JSON API.
