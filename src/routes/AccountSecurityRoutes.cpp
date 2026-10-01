@@ -190,7 +190,7 @@ void register_account_security_routes(LugApp& app, SqliteDatabase& db, SettingsR
     // ── Admin ──
 
     // GET/POST /settings/sign-in - which sign-in methods, and who must use 2FA
-    auto sign_in_page = [&db, &settings](const std::string& flash) {
+    auto sign_in_page = [&db, &settings, public_url](const std::string& flash) {
         crow::mustache::context ctx;
         ctx["password_on"] = settings.get("auth_password_enabled", "1") != "0";
         ctx["links_on"] = settings.get("auth_email_links", "1") != "0";
@@ -208,6 +208,7 @@ void register_account_security_routes(LugApp& app, SqliteDatabase& db, SettingsR
                            "GROUP BY lower(email) HAVING COUNT(*) > 1)");
         ctx["shared_emails"] = shared;
         ctx["has_shared"] = shared > 0;
+        ctx["no_public_url"] = public_url.empty();
         if (!flash.empty()) ctx["flash"] = flash;
         return crow::mustache::load("settings/_sign_in.html").render(ctx).dump();
     };

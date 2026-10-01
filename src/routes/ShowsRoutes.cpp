@@ -1,5 +1,6 @@
-#include "services/FanCoLab.hpp"
 #include "routes/ShowsRoutes.hpp"
+#include "utils/ClientIp.hpp"
+#include "services/FanCoLab.hpp"
 #include "services/AttendanceService.hpp"
 #include "utils/AssetVersion.hpp"
 #include "utils/MarkdownRenderer.hpp"
@@ -187,8 +188,7 @@ void register_shows_routes(LugApp& app, SqliteDatabase& db, SettingsRepository& 
         bool embed = req.url_params.get("embed") != nullptr;
         res.code = 303;
         res.set_header("Location", std::string(embed ? "/shows?embed=1" : "/shows") + "#show-" + std::to_string(id));
-        std::string ip = req.get_header_value("X-Forwarded-For");
-        if (ip.empty()) ip = req.remote_ip_address;
+        const std::string ip = client_ip(req);
         auto mine = interested(req);
         bool undo = mine.count(id) > 0;
         if (!rate_ok(ip)) return res;

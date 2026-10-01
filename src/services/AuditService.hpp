@@ -1,4 +1,5 @@
 #pragma once
+#include "utils/ClientIp.hpp"
 #include "repositories/AuditLogRepository.hpp"
 #include "middleware/AuthMiddleware.hpp"
 #include <crow.h>
@@ -17,10 +18,8 @@ public:
              const std::string& entity_name,
              const std::string& details = "") {
         auto& ctx = app.template get_context<AuthMiddleware>(req);
-        std::string ip = req.get_header_value("X-Forwarded-For");
-        if (ip.empty()) ip = req.remote_ip_address;
         repo_.log(ctx.auth.member_id, ctx.auth.display_name,
-                  action, entity_type, entity_id, entity_name, details, ip);
+                  action, entity_type, entity_id, entity_name, details, client_ip(req));
     }
 
     // Log from a public/system context (no auth)
