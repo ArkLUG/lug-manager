@@ -93,7 +93,7 @@
   {{/has_notes}}
 
   {{#can_manage}}
-  <div class="f-discord_reports mt-4 pt-4 border-t border-gray-200" id="mtg-publish-{{id}}">
+  <div class="f-discord_reports f-discord mt-4 pt-4 border-t border-gray-200" id="mtg-publish-{{id}}">
     <div class="flex items-center justify-between">
       <h4 class="text-sm font-medium text-gray-500">Discord Report</h4>
       <button hx-post="/meetings/{{id}}/publish-report"

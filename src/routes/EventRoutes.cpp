@@ -333,7 +333,7 @@ void register_event_routes(LugApp& app, EventService& events, AttendanceService&
         mctx["title"]             = "Create New Event";
         Features::scope_flags(mctx, "", true);
         mctx["is_new"]            = true;
-        mctx["has_forum_channel"] = !discord.get_events_forum_channel_id().empty();
+        mctx["has_forum_channel"] = !discord.get_events_forum_channel_id().empty() && Features::on("discord");
         res.write(tmpl.render(mctx).dump());
         return res;
     });
@@ -414,7 +414,7 @@ void register_event_routes(LugApp& app, EventService& events, AttendanceService&
             mctx["chapter_options"] = opts.str();
         }
         Features::scope_flags(mctx, ev->scope, false);
-        mctx["has_forum_channel"]  = !discord.get_events_forum_channel_id().empty();
+        mctx["has_forum_channel"]  = !discord.get_events_forum_channel_id().empty() && Features::on("discord");
         mctx["has_thread"]         = !ev->discord_thread_id.empty();
         mctx["discord_thread_id"]  = ev->discord_thread_id;
         mctx["suppress_discord"]   = ev->suppress_discord;

@@ -33,7 +33,7 @@
       </select>
     </div>
 
-    <div>
+    <div class="f-discord">
       <label class="block text-sm font-medium text-gray-700 mb-1">Extra Role Pings <span class="text-gray-400">(optional)</span></label>
       <select name="discord_ping_role_ids" multiple
               class="ts-multi w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-yellow-400">
@@ -108,7 +108,7 @@
     </script>
 
     {{#has_forum_channel}}
-    <div id="event-thread-section">
+    <div id="event-thread-section" class="f-discord">
       <label class="block text-sm font-medium text-gray-700 mb-2">Discord Thread</label>
       {{#is_edit}}
       {{#has_thread}}
