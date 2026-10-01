@@ -7,6 +7,8 @@
 #include "repositories/EventDayRepository.hpp"
 #include "repositories/EventDayAttendanceRepository.hpp"
 #include "repositories/ChapterMemberRepository.hpp"
+#include "utils/LocalTime.hpp"
+#include <algorithm>
 
 // ═══════════════════════════════════════════════════════════════════════════
 // Member Repository
@@ -647,4 +649,27 @@ TEST_F(ChapterMemberRepoTest, FindByMember) {
     auto memberships = repo->find_by_member(member_id);
     ASSERT_EQ(memberships.size(), 1);
     EXPECT_EQ(memberships[0].chapter_id, chapter_id);
+}
+
+// "Upcoming" compares local wall-clock times with the local clock (times are
+// stored as local "YYYY-MM-DDTHH:MM:SS"); UTC or a ' ' separator would keep
+// finished items listed for the rest of the day, or drop ones still to come.
+TEST_F(EventRepoTest, UpcomingUsesLocalClock) {
+    setenv("TZ", "America/Chicago", 1);
+    tzset();
+    const std::time_t now = std::time(nullptr);
+    auto ended = make_event("Ended");
+    ended.start_time = local_iso(now - 6 * 3600);
+    ended.end_time   = local_iso(now - 3 * 3600);
+    auto later = make_event("Later");
+    later.start_time = local_iso(now + 2 * 3600);
+    later.end_time   = local_iso(now + 4 * 3600);
+    repo->create(ended);
+    repo->create(later);
+    std::vector<std::string> titles;
+    for (const auto& e : repo->find_upcoming()) titles.push_back(e.title);
+    EXPECT_EQ(std::count(titles.begin(), titles.end(), "Ended"), 0);
+    EXPECT_EQ(std::count(titles.begin(), titles.end(), "Later"), 1);
+    unsetenv("TZ");
+    tzset();
 }

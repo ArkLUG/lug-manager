@@ -67,7 +67,7 @@ std::vector<Meeting> MeetingRepository::find_all() {
 std::vector<Meeting> MeetingRepository::find_upcoming() {
     auto stmt = db_.prepare(
         std::string(kSelectAllCols) +
-        " WHERE start_time >= datetime('now', '-1 hour') ORDER BY start_time ASC");
+        " WHERE start_time >= strftime('%Y-%m-%dT%H:%M:%S', 'now', 'localtime', '-1 hour') ORDER BY start_time ASC");
     std::vector<Meeting> result;
     while (stmt.step()) {
         result.push_back(row_to_meeting(stmt));
@@ -100,7 +100,7 @@ std::vector<Meeting> MeetingRepository::find_by_chapter(int64_t chapter_id) {
 std::vector<Meeting> MeetingRepository::find_upcoming_by_chapter(int64_t chapter_id) {
     auto stmt = db_.prepare(
         std::string(kSelectAllCols) +
-        " WHERE chapter_id=? AND start_time >= datetime('now', '-1 hour') ORDER BY start_time ASC");
+        " WHERE chapter_id=? AND start_time >= strftime('%Y-%m-%dT%H:%M:%S', 'now', 'localtime', '-1 hour') ORDER BY start_time ASC");
     stmt.bind(1, chapter_id);
     std::vector<Meeting> result;
     while (stmt.step()) {

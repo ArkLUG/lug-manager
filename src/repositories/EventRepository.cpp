@@ -93,7 +93,7 @@ std::vector<LugEvent> EventRepository::find_upcoming() {
     // whole duration, not just until 1 hour after they start.
     auto stmt = db_.prepare(
         std::string(kSelectAllCols) +
-        " WHERE e.end_time >= datetime('now', '-1 hour') ORDER BY e.start_time ASC");
+        " WHERE COALESCE(NULLIF(e.end_time,''), e.start_time) >= strftime('%Y-%m-%dT%H:%M:%S', 'now', 'localtime', '-1 hour') ORDER BY e.start_time ASC");
     std::vector<LugEvent> result;
     while (stmt.step()) {
         result.push_back(row_to_event(stmt));
@@ -128,7 +128,7 @@ std::vector<LugEvent> EventRepository::find_upcoming_by_chapter(int64_t chapter_
     // for their whole duration.
     auto stmt = db_.prepare(
         std::string(kSelectAllCols) +
-        " WHERE e.chapter_id=? AND e.end_time >= datetime('now', '-1 hour') ORDER BY e.start_time ASC");
+        " WHERE e.chapter_id=? AND COALESCE(NULLIF(e.end_time,''), e.start_time) >= strftime('%Y-%m-%dT%H:%M:%S', 'now', 'localtime', '-1 hour') ORDER BY e.start_time ASC");
     stmt.bind(1, chapter_id);
     std::vector<LugEvent> result;
     while (stmt.step()) {
@@ -144,7 +144,7 @@ std::vector<LugEvent> EventRepository::find_paginated(const std::string& search,
     // "Upcoming" filters on end_time (not start_time) so a multi-day event stays
     // listed for its whole duration, not just until 1 hour after it starts.
     std::string where;
-    if (upcoming_only) where += " WHERE e.end_time >= datetime('now', '-1 hour')";
+    if (upcoming_only) where += " WHERE COALESCE(NULLIF(e.end_time,''), e.start_time) >= strftime('%Y-%m-%dT%H:%M:%S', 'now', 'localtime', '-1 hour')";
     if (!search.empty()) {
         where += upcoming_only ? " AND" : " WHERE";
         where += " (e.title LIKE ? OR e.description LIKE ? OR e.location LIKE ?)";
@@ -173,7 +173,7 @@ std::vector<LugEvent> EventRepository::find_paginated(const std::string& search,
 int EventRepository::count_filtered(const std::string& search, bool upcoming_only) {
     // See find_paginated(): "upcoming" filters on end_time, not start_time.
     std::string sql = "SELECT COUNT(*) FROM lug_events e";
-    if (upcoming_only) sql += " WHERE e.end_time >= datetime('now', '-1 hour')";
+    if (upcoming_only) sql += " WHERE COALESCE(NULLIF(e.end_time,''), e.start_time) >= strftime('%Y-%m-%dT%H:%M:%S', 'now', 'localtime', '-1 hour')";
     if (!search.empty()) {
         sql += upcoming_only ? " AND" : " WHERE";
         sql += " (e.title LIKE ? OR e.description LIKE ? OR e.location LIKE ?)";
