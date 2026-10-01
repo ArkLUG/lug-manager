@@ -40,6 +40,7 @@
 #include "services/ReminderService.hpp"
 #include "services/DuesService.hpp"
 #include "services/BackupService.hpp"
+#include "utils/TemplateCache.hpp"
 #include "services/MemberSyncService.hpp"
 #include "routes/Router.hpp"
 
@@ -52,6 +53,7 @@ int main() {
         auto templates_abs = std::filesystem::absolute(config.templates_dir).string();
         crow::mustache::set_global_base(templates_abs);
         crow::mustache::set_base(templates_abs);
+        install_template_cache();
         std::cout << "[lug-manager] Templates (abs): " << templates_abs << "\n";
 
         // Directory for admin-uploaded files (logo, etc.) - same durable

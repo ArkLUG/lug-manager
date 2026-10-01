@@ -12,6 +12,7 @@
 #include <filesystem>
 
 #include "db/SqliteDatabase.hpp"
+#include "utils/TemplateCache.hpp"
 #include "db/Migrations.hpp"
 #include "middleware/AuthMiddleware.hpp"
 #include "auth/AuthService.hpp"
@@ -245,6 +246,7 @@ protected:
         app->get_middleware<ApiKeyMiddleware>().api_keys = api_key_repo.get();
 
         crow::mustache::set_global_base("src/templates");
+        install_template_cache(); // as in main.cpp
 
         Services svc{
             *chapter_svc, *member_svc, *meeting_svc, *event_svc,

@@ -437,3 +437,28 @@ TEST(Migrations, Migration021MigratesReadonlyToMember) {
     ASSERT_TRUE(s.step());
     EXPECT_EQ(s.col_text(0), "member");
 }
+
+// ── Template cache ─────────────────────────────────────────────────────────
+#include "utils/TemplateCache.hpp"
+#include <filesystem>
+#include <fstream>
+#include <thread>
+
+TEST(TemplateCache, ServesCachedTextAndPicksUpEdits) {
+    auto dir = std::filesystem::temp_directory_path() / "lm_tpl_test";
+    std::filesystem::create_directories(dir);
+    crow::mustache::set_base(dir.string());
+    install_template_cache();
+    { std::ofstream(dir / "t.html") << "hello {{name}}"; }
+    crow::mustache::context ctx;
+    ctx["name"] = "world";
+    EXPECT_EQ(crow::mustache::load("t.html").render(ctx).dump(), "hello world");
+    // Edit with a later mtime -> reloaded
+    std::this_thread::sleep_for(std::chrono::milliseconds(20));
+    { std::ofstream(dir / "t.html") << "bye {{name}}"; }
+    std::filesystem::last_write_time(dir / "t.html",
+        std::filesystem::last_write_time(dir / "t.html") + std::chrono::seconds(2));
+    EXPECT_EQ(crow::mustache::load("t.html").render(ctx).dump(), "bye world");
+    std::filesystem::remove_all(dir);
+    crow::mustache::set_base("src/templates");
+}
