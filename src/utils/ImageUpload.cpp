@@ -80,6 +80,6 @@ std::string new_upload_name(const std::string& extension) {
 }
 
 bool valid_upload_name(const std::string& name) {
-    static const std::regex re(R"([0-9a-f]{32}\.(jpg|png|gif|webp))");
+    static const std::regex re(R"([0-9a-f]{32}\.(jpg|png|gif|webp|pdf))");
     return std::regex_match(name, re);
 }

@@ -10,7 +10,25 @@ class PhotoStore {
 public:
     static constexpr size_t kMaxBytes = 10 * 1024 * 1024;
 
-    explicit PhotoStore(std::string data_dir) : dir_(std::move(data_dir) + "/uploads") {}
+    // subdir: "uploads" (gallery/challenges) or "uploads/receipts" (treasury).
+    explicit PhotoStore(std::string data_dir, const std::string& subdir = "uploads")
+        : dir_(std::move(data_dir) + "/" + subdir) {}
+
+    // Receipts: a photo (as save()) or a PDF, stored as-is.
+    std::string save_receipt(const std::string& bytes, std::string& error) {
+        if (bytes.size() >= 5 && bytes.compare(0, 5, "%PDF-") == 0) {
+            if (bytes.size() > kMaxBytes) { error = "File too large (max 10 MB)."; return ""; }
+            std::filesystem::create_directories(dir_);
+            std::string name = new_upload_name(".pdf");
+            std::ofstream out(dir_ + "/" + name, std::ios::binary);
+            out.write(bytes.data(), static_cast<std::streamsize>(bytes.size()));
+            if (!out) { error = "Couldn't save the file."; return ""; }
+            return name;
+        }
+        std::string name = save(bytes, error);
+        if (name.empty() && !bytes.empty() && bytes.size() <= kMaxBytes) error = "A receipt must be a photo (JPEG, PNG, GIF, WebP) or a PDF.";
+        return name;
+    }
 
     // Validates, strips metadata and saves. Returns the stored name, or "" with `error` set.
     std::string save(const std::string& bytes, std::string& error) {
@@ -45,6 +63,7 @@ public:
 
     static std::string content_type(const std::string& name) {
         auto ext = name.substr(name.rfind('.'));
+        if (ext == ".pdf") return "application/pdf";
         return ext == ".png" ? "image/png" : ext == ".gif" ? "image/gif" : ext == ".webp" ? "image/webp" : "image/jpeg";
     }
 

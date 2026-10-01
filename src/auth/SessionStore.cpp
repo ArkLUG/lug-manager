@@ -48,11 +48,12 @@ static bool is_expired(const std::string& expires_at) {
 // query) so a role change or member deletion takes effect immediately instead
 // of lingering for the session's 24h lifetime.
 static bool refresh_from_member(SqliteDatabase& db, Session& s) {
-    auto stmt = db.prepare("SELECT role, display_name FROM members WHERE id=?");
+    auto stmt = db.prepare("SELECT role, display_name, is_treasurer FROM members WHERE id=?");
     stmt.bind(1, s.member_id);
     if (!stmt.step()) return false;
     s.role         = stmt.col_text(0);
     s.display_name = stmt.col_text(1);
+    s.treasurer    = stmt.col_int(2) != 0;
     return true;
 }
 

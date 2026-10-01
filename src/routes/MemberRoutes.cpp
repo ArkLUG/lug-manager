@@ -391,6 +391,11 @@ void register_member_routes(LugApp& app, MemberService& members, AttendanceRepos
         ctx["title"]    = "Edit Member";
         ctx["is_edit"]  = true;
         ctx["is_admin"] = app.get_context<AuthMiddleware>(req).auth.is_admin();
+        {
+            auto t = member_repo.db().prepare("SELECT is_treasurer FROM members WHERE id=?");
+            t.bind(1, m->id);
+            ctx["is_treasurer"] = t.step() && t.col_int(0) != 0;
+        }
         res.write(tmpl.render(ctx).dump());
         return res;
     });
@@ -490,6 +495,16 @@ void register_member_routes(LugApp& app, MemberService& members, AttendanceRepos
             int64_t new_chapter_id = parse_id(chapter_str);
             members.set_chapter(static_cast<int64_t>(id), new_chapter_id);
             if (auto g = guardian_from_form(get_param)) member_repo.set_guardian(static_cast<int64_t>(id), *g);
+            if (caller_is_admin && get_param("treasurer_form") == "1") {
+                bool want = get_param("is_treasurer") == "1";
+                auto t = member_repo.db().prepare("UPDATE members SET is_treasurer=? WHERE id=? AND is_treasurer<>? RETURNING display_name");
+                t.bind(1, static_cast<int64_t>(want)); t.bind(2, static_cast<int64_t>(id)); t.bind(3, static_cast<int64_t>(want));
+                if (t.step()) {
+                    std::string who = t.col_text(0);
+                    t.reset();
+                    audit.log(req, app, "member.treasurer", "member", id, who, want ? "Made treasurer" : "No longer treasurer");
+                }
+            }
             // Re-read after all changes (including chapter) for accurate diff
             auto after = members.get(static_cast<int64_t>(id));
             {

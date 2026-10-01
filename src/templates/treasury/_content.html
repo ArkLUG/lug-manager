@@ -23,7 +23,7 @@
 
   <section class="bg-white rounded-xl border border-gray-200 p-5">
     <h3 class="font-semibold text-gray-800 mb-3">Record income or an expense</h3>
-    <form hx-post="/treasury" hx-target="#treasury-page" hx-swap="outerHTML" class="grid grid-cols-1 md:grid-cols-6 gap-2 text-sm items-end">
+    <form hx-post="/treasury" hx-encoding="multipart/form-data" hx-target="#treasury-page" hx-swap="outerHTML" class="grid grid-cols-1 md:grid-cols-6 gap-2 text-sm items-end">
       <label>Date <input type="date" name="entry_on" value="{{today}}" required class="mt-1 w-full border border-gray-300 rounded-lg px-2 py-1.5"></label>
       <label>Type
         <select name="kind" class="mt-1 w-full border border-gray-300 rounded-lg px-2 py-1.5">
@@ -38,10 +38,29 @@
           <option value="">-</option>
           {{#event_options}}<option value="{{id}}">{{label}}</option>{{/event_options}}
         </select></label>
-      <input name="description" maxlength="300" placeholder="Description" class="md:col-span-5 border border-gray-300 rounded-lg px-2 py-1.5">
+      <input name="description" maxlength="300" placeholder="Description" class="md:col-span-3 border border-gray-300 rounded-lg px-2 py-1.5">
+      <label class="md:col-span-2 text-xs text-gray-500">Receipt <span class="text-gray-400">(photo or PDF, optional)</span>
+        <input type="file" name="receipt" accept="image/jpeg,image/png,image/gif,image/webp,application/pdf" class="mt-1 block w-full text-sm"></label>
       <button class="px-4 py-2 bg-yellow-400 text-gray-900 rounded-lg font-semibold hover:bg-yellow-300">Record</button>
     </form>
   </section>
+
+  <details class="bg-white rounded-xl border border-gray-200">
+    <summary class="cursor-pointer px-5 py-3 font-semibold text-gray-800">Record a dues payment</summary>
+    <form hx-post="/treasury/dues" hx-target="#treasury-page" hx-swap="outerHTML" class="px-5 pb-5 grid grid-cols-1 md:grid-cols-6 gap-2 text-sm items-end">
+      <label class="md:col-span-2">Member
+        <select name="member_id" required data-tomselect="single" class="mt-1 w-full">
+          <option value="">Choose a member…</option>
+          {{#members}}<option value="{{id}}">{{name}}</option>{{/members}}
+        </select></label>
+      <label>Paid on <input type="date" name="paid_on" value="{{today}}" required class="mt-1 w-full border border-gray-300 rounded-lg px-2 py-1.5"></label>
+      <label>Amount <input name="amount" required inputmode="decimal" placeholder="25.00" class="mt-1 w-full border border-gray-300 rounded-lg px-2 py-1.5"></label>
+      <label>Covers until <input type="date" name="covers_until" value="{{year_end}}" required class="mt-1 w-full border border-gray-300 rounded-lg px-2 py-1.5"></label>
+      <label>Method <input name="method" maxlength="40" placeholder="cash, card, PayPal" class="mt-1 w-full border border-gray-300 rounded-lg px-2 py-1.5"></label>
+      <input name="note" maxlength="300" placeholder="Note (optional)" class="md:col-span-5 border border-gray-300 rounded-lg px-2 py-1.5">
+      <button class="px-4 py-2 bg-gray-800 text-white rounded-lg font-medium hover:bg-gray-700">Record dues</button>
+    </form>
+  </details>
 
   <div class="grid grid-cols-1 lg:grid-cols-3 gap-5">
     <section class="bg-white rounded-xl border border-gray-200 p-5">
@@ -80,7 +99,13 @@
           <td class="py-2 pr-3">{{category}}</td>
           <td class="py-2 pr-3">{{description}}{{#event}}<div class="text-xs text-gray-500">{{event}}</div>{{/event}}{{#who}}<div class="text-xs text-gray-400">by {{who}}</div>{{/who}}</td>
           <td class="py-2 pr-3 text-right font-medium whitespace-nowrap {{#income}}text-green-700{{/income}}{{^income}}text-red-600{{/income}}">{{amount}}</td>
-          <td class="py-2 text-right">{{#can_delete}}<button hx-post="/treasury/{{id}}/delete" hx-target="#treasury-page" hx-swap="outerHTML" hx-confirm="Delete this entry?" class="text-xs text-red-600 hover:text-red-800">Delete</button>{{/can_delete}}</td>
+          <td class="py-2 text-right whitespace-nowrap">{{#can_delete}}
+            {{#receipt}}<a href="/treasury/receipts/{{receipt}}" target="_blank" rel="noopener" class="text-xs text-indigo-600 hover:text-indigo-800 mr-2">Receipt</a>{{/receipt}}
+            {{^receipt}}<form hx-post="/treasury/{{id}}/receipt" hx-encoding="multipart/form-data" hx-target="#treasury-page" hx-swap="outerHTML" class="inline">
+              <label class="text-xs text-gray-500 hover:text-gray-800 cursor-pointer mr-2">Attach receipt
+                <input type="file" name="receipt" accept="image/jpeg,image/png,image/gif,image/webp,application/pdf" data-change="submit" class="sr-only"></label>
+            </form>{{/receipt}}
+            <button hx-post="/treasury/{{id}}/delete" hx-target="#treasury-page" hx-swap="outerHTML" hx-confirm="Delete this entry?" class="text-xs text-red-600 hover:text-red-800">Delete</button>{{/can_delete}}</td>
         </tr>
       {{/lines}}
       </tbody>

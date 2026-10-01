@@ -71,7 +71,8 @@ public:
              "paid_until = CASE WHEN COALESCE((SELECT paid_until FROM members WHERE id=?2),'') > COALESCE(paid_until,'') "
              "  THEN (SELECT paid_until FROM members WHERE id=?2) ELSE paid_until END, "
              "consent_on_file = MAX(consent_on_file, (SELECT consent_on_file FROM members WHERE id=?2)), "
-             "photo_release = MAX(photo_release, (SELECT photo_release FROM members WHERE id=?2)) "
+             "photo_release = MAX(photo_release, (SELECT photo_release FROM members WHERE id=?2)), "
+             "is_treasurer = MAX(is_treasurer, (SELECT is_treasurer FROM members WHERE id=?2)) "
              "WHERE id=?1", keep_id, drop_id);
         if (role_rank(drop_role) > role_rank(keep_role))
             exec("UPDATE members SET role=(SELECT role FROM members WHERE id=?2), "

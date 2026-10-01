@@ -159,6 +159,14 @@
       </div>
     </details>
 
+    {{#is_edit}}{{#is_admin}}
+    <label class="flex items-center gap-2 text-sm text-gray-700">
+      <input type="hidden" name="treasurer_form" value="1">
+      <input type="checkbox" name="is_treasurer" value="1" {{#is_treasurer}}checked{{/is_treasurer}} class="accent-yellow-400">
+      Treasurer <span class="text-xs text-gray-400">(can use Treasury and record dues there)</span>
+    </label>
+    {{/is_admin}}{{/is_edit}}
+
     <div>
       <label class="block text-sm font-medium text-gray-700 mb-1">Chapter <span class="text-gray-400">(optional)</span></label>
       <select name="chapter_id" id="member-chapter-select"

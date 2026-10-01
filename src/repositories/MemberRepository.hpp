@@ -59,6 +59,8 @@ public:
     bool link_discord_id(int64_t member_id, const std::string& discord_user_id,
                           const std::string& discord_username);
 
+    SqliteDatabase& db() { return db_; }
+
 private:
     SqliteDatabase& db_;
     static Member row_to_member(Statement& stmt);

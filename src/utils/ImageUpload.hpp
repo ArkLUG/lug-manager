@@ -18,4 +18,5 @@ std::string strip_photo_metadata(const std::string& bytes, const PhotoInfo& info
 // Random file name "<32 hex><ext>" for storing an upload.
 std::string new_upload_name(const std::string& extension);
 // True for names produced by new_upload_name (safe to join to a directory).
+// ".pdf" is only ever produced for treasury receipts.
 bool valid_upload_name(const std::string& name);

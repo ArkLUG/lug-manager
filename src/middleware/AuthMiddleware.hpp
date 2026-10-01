@@ -33,8 +33,11 @@ struct AuthContext {
     std::string role;
     std::string discord_username;
     std::string display_name;
+    bool        treasurer     = false;
 
     bool is_admin()        const { return role == "admin"; }
+    // Treasury pages and recording dues there: admins and the treasurer(s).
+    bool can_treasury()    const { return is_admin() || treasurer; }
     bool is_moderator()    const { return role == "moderator"; }
     // Same privilege tier as chapter_lead - moderator is granted manually
     // (like chapter_lead), not via Discord role-mapping sync.
@@ -72,6 +75,7 @@ struct AuthMiddleware {
         ctx.auth.member_id     = session_opt->member_id;
         ctx.auth.role          = session_opt->role;
         ctx.auth.display_name  = session_opt->display_name;
+        ctx.auth.treasurer     = session_opt->treasurer;
     }
 
     // Baseline security headers on every response (this middleware runs for
@@ -131,6 +135,7 @@ inline void set_layout_auth(const crow::request& req, App& app,
     auto& ctx = app.template get_context<AuthMiddleware>(req);
     layout_ctx["is_admin"]        = ctx.auth.is_admin();
     layout_ctx["is_chapter_lead"] = ctx.auth.is_chapter_lead();
+    layout_ctx["can_treasury"]    = ctx.auth.can_treasury();
     // Sidebar's "Chapter Tools" accordion: chapter leads/moderators who are NOT
     // admin get their own small accordion (admins already see Discord Matches
     // nested inside the "Settings" accordion, so they don't need a second copy).
@@ -189,6 +194,7 @@ inline bool require_auth(const crow::request& req, crow::response& res, App& app
     }
     bool allowed = (min_role == "admin")        ? ctx.auth.is_admin()
                  : (min_role == "chapter_lead") ? ctx.auth.is_chapter_lead()
+                 : (min_role == "treasurer")    ? ctx.auth.can_treasury()
                  : true;
     if (!allowed) {
         res.code = 403;
