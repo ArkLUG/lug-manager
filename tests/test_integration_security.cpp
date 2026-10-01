@@ -293,3 +293,36 @@ TEST_F(IntegrationTest, ChapterLeadCannotLinkDiscordToAdmin) {
     auto admin_after = member_repo->find_by_id(admin_member_id);
     EXPECT_EQ(admin_after->discord_user_id, admin_before->discord_user_id);
 }
+
+// Members could self check-in to any past meeting (perk fraud).
+TEST_F(IntegrationTest, SelfCheckinToPastMeetingRejected) {
+    Meeting m;
+    m.title = "Old Meeting";
+    m.start_time = "2021-03-01T19:00:00";
+    m.end_time = "2021-03-01T21:00:00";
+    m.scope = "lug_wide";
+    auto mtg = meeting_svc->create(m);
+    auto r = POST("/meetings/" + std::to_string(mtg.id) + "/checkin", "virtual=0", member_token);
+    EXPECT_EQ(r.code, 400);
+    EXPECT_EQ(attendance_repo->count_by_entity("meeting", mtg.id), 0);
+}
+
+// An event manager of one chapter must not move a meeting into a chapter
+// (or LUG-wide) they don't manage.
+TEST_F(IntegrationTest, EventManagerCannotMoveMeetingToOtherChapter) {
+    Chapter other;
+    other.name = "Other Chapter";
+    other.shorthand = "OC";
+    auto oc = chapter_repo->create(other);
+    Meeting m;
+    m.title = "Movable";
+    m.start_time = "2026-08-01T19:00:00";
+    m.end_time = "2026-08-01T21:00:00";
+    m.scope = "chapter";
+    m.chapter_id = test_chapter_id;
+    auto mtg = meeting_svc->create(m);
+    auto r = PUT("/meetings/" + std::to_string(mtg.id),
+                 "title=Movable&chapter_id=" + std::to_string(oc.id), event_manager_token);
+    EXPECT_EQ(r.code, 403);
+    EXPECT_EQ(meeting_repo->find_by_id(mtg.id)->chapter_id, test_chapter_id);
+}

@@ -156,8 +156,8 @@ TEST_F(IntegrationTest, MeetingAttendancePanelMemberCanView) {
 TEST_F(IntegrationTest, MeetingSelfCheckinToggle) {
     Meeting m;
     m.title = "Self Checkin Meeting";
-    m.start_time = "2026-05-01T19:00:00";
-    m.end_time = "2026-05-01T21:00:00";
+    m.start_time = today_at("19:00:00");
+    m.end_time = today_at("21:00:00");
     m.scope = "lug_wide";
     auto mtg = meeting_svc->create(m);
 
@@ -177,8 +177,8 @@ TEST_F(IntegrationTest, MeetingSelfCheckinToggle) {
 TEST_F(IntegrationTest, MeetingVirtualCheckin) {
     Meeting m;
     m.title = "Virtual Checkin Meeting";
-    m.start_time = "2026-05-01T19:00:00";
-    m.end_time = "2026-05-01T21:00:00";
+    m.start_time = today_at("19:00:00");
+    m.end_time = today_at("21:00:00");
     m.scope = "lug_wide";
     auto mtg = meeting_svc->create(m);
 

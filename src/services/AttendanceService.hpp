@@ -6,6 +6,7 @@
 #include "repositories/MemberRepository.hpp"
 #include "models/Attendance.hpp"
 #include "models/Member.hpp"
+#include "models/Meeting.hpp"
 #include <vector>
 #include <optional>
 
@@ -47,6 +48,11 @@ public:
 
     // Returns today's YYYY-MM-DD in local time.
     static std::string today_ymd();
+    // Whether members may check themselves in to this meeting right now (QR
+    // link or the meeting page): not cancelled/virtual-QR rules aside, only
+    // on the meeting's date, +/-1 day since meeting times are LUG-local and
+    // the server clock may be UTC. Admin/lead check-ins are not limited.
+    static bool meeting_self_checkin_open(const Meeting& m);
 
 private:
     AttendanceRepository&          repo_;

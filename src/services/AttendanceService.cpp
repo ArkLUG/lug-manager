@@ -18,6 +18,19 @@ std::string AttendanceService::today_ymd() {
     return buf;
 }
 
+bool AttendanceService::meeting_self_checkin_open(const Meeting& m) {
+    if (m.status == "cancelled") return false;
+    std::string date = m.start_time.substr(0, 10);
+    std::time_t now = std::time(nullptr);
+    for (int d = -1; d <= 1; ++d) {
+        std::tm tm = local_tm(now + static_cast<std::time_t>(d) * 86400);
+        char buf[16];
+        std::strftime(buf, sizeof(buf), "%Y-%m-%d", &tm);
+        if (date == buf) return true;
+    }
+    return false;
+}
+
 bool AttendanceService::check_in(int64_t member_id, const std::string& entity_type,
                                   int64_t entity_id, const std::string& notes,
                                   bool is_virtual) {

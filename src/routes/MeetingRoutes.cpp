@@ -516,7 +516,15 @@ void register_meeting_routes(LugApp& app, MeetingService& meetings, AttendanceSe
             std::string scope = gp("scope");
             if (!scope.empty())       updates.scope       = scope;
             std::string ch = gp("chapter_id");
-            if (!ch.empty()) try { updates.chapter_id = std::stoll(ch); } catch (...) {}
+            if (!ch.empty()) {
+                int64_t new_chapter = parse_id(ch);
+                // Moving to another chapter (or LUG-wide, 0) needs rights there
+                // too, not just in the current chapter.
+                if (new_chapter != mtg_before->chapter_id &&
+                    !can_manage_chapter_content(req, res, app, new_chapter, chapter_members))
+                    return res;
+                updates.chapter_id = new_chapter;
+            }
             updates.is_virtual        = (gp("is_virtual") == "on" || gp("is_virtual") == "1");
             updates.discord_voice_channel_id = gp("discord_voice_channel_id");
             updates.suppress_discord  = (gp("suppress_discord") == "on" || gp("suppress_discord") == "1");
@@ -762,6 +770,13 @@ void register_meeting_routes(LugApp& app, MeetingService& meetings, AttendanceSe
                 R"(Virtual</button>)"
                 R"(</div>)");
         } else {
+            // Self check-in is only open around the meeting date (same rule as
+            // the QR link) - otherwise members could add past meetings for perks.
+            if (!mtg_checkin || !AttendanceService::meeting_self_checkin_open(*mtg_checkin)) {
+                res.code = 400;
+                res.write(R"(<span class="text-xs text-gray-500">Check-in is only open on the day of the meeting.</span>)");
+                return res;
+            }
             attendance.check_in(mbr_id, "meeting", static_cast<int64_t>(id), notes, is_virtual);
             audit.log(req, app, "meeting.self_checkin", "meeting", static_cast<int64_t>(id), mtg_checkin_title, "Self check-in");
             std::string icon = is_virtual

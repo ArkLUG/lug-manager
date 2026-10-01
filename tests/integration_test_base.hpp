@@ -1,4 +1,5 @@
 #pragma once
+#include <ctime>
 #include <gtest/gtest.h>
 #include <crow.h>
 #include <curl/curl.h>
@@ -48,6 +49,18 @@
 // ═══════════════════════════════════════════════════════════════════════════
 // Integration test fixture — boots a full Crow app on a random port
 // ═══════════════════════════════════════════════════════════════════════════
+
+// "YYYY-MM-DDT<hms>" for today on the server-local clock. Self/QR meeting
+// check-in is only open on the meeting's date, so tests that check in
+// schedule the meeting for today.
+inline std::string today_at(const char* hms) {
+    std::time_t t = std::time(nullptr);
+    std::tm tm{};
+    localtime_r(&t, &tm);
+    char buf[32];
+    std::snprintf(buf, sizeof(buf), "%04d-%02d-%02dT%s", tm.tm_year + 1900, tm.tm_mon + 1, tm.tm_mday, hms);
+    return buf;
+}
 
 class IntegrationTest : public ::testing::Test {
 protected:

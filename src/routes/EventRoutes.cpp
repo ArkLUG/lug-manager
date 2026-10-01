@@ -674,7 +674,15 @@ void register_event_routes(LugApp& app, EventService& events, AttendanceService&
             std::string scope = gp("scope");
             if (!scope.empty())                updates.scope           = scope;
             std::string ch = gp("chapter_id");
-            if (!ch.empty()) try { updates.chapter_id = std::stoll(ch); } catch (...) {}
+            if (!ch.empty()) {
+                int64_t new_chapter = parse_id(ch);
+                // Moving to another chapter (or LUG-wide, 0) needs rights there
+                // too, not just in the current chapter.
+                if (new_chapter != ev_before->chapter_id &&
+                    !can_manage_chapter_content(req, res, app, new_chapter, chapter_members))
+                    return res;
+                updates.chapter_id = new_chapter;
+            }
             std::string lead = gp("event_lead_id");
             if (!lead.empty()) try { updates.event_lead_id = std::stoll(lead); } catch (...) {}
             {

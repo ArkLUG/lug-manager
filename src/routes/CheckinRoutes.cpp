@@ -18,17 +18,6 @@ struct CheckinTarget {
     std::string title, date, location;
 };
 
-// Server-local date offset by `days` as YYYY-MM-DD (same clock as
-// AttendanceService::today_ymd()).
-std::string ymd_offset(int days) {
-    std::time_t t = std::time(nullptr) + static_cast<std::time_t>(days) * 86400;
-    std::tm tm{};
-    localtime_r(&t, &tm);
-    char buf[16];
-    std::strftime(buf, sizeof(buf), "%Y-%m-%d", &tm);
-    return buf;
-}
-
 // Single source of truth for "does this token admit check-ins right now?",
 // shared by every public /checkin route. A token is only live:
 //  - meetings: not virtual, not cancelled, and today is the meeting's date
@@ -41,10 +30,7 @@ std::optional<CheckinTarget> resolve_checkin(const std::string& token,
                                              EventRepository& event_repo,
                                              AttendanceService& attendance) {
     if (auto mtg = meeting_repo.find_by_checkin_token(token)) {
-        if (mtg->is_virtual || mtg->status == "cancelled") return std::nullopt;
-        std::string date = mtg->start_time.substr(0, 10);
-        if (date != ymd_offset(0) && date != ymd_offset(-1) && date != ymd_offset(1))
-            return std::nullopt;
+        if (mtg->is_virtual || !AttendanceService::meeting_self_checkin_open(*mtg)) return std::nullopt;
         return CheckinTarget{"meeting", mtg->id, mtg->title, mtg->start_time, mtg->location};
     }
     if (auto ev = event_repo.find_by_checkin_token(token)) {

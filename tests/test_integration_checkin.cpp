@@ -5,17 +5,6 @@
 // QR Check-in — token generation, public page, search, check-in flows
 // ═══════════════════════════════════════════════════════════════════════════
 
-// Public check-in only admits a meeting's token on the meeting's date, so
-// these tests schedule meetings for today (server-local, like the route).
-static std::string today_at(const char* hms) {
-    std::time_t t = std::time(nullptr);
-    std::tm tm{};
-    localtime_r(&t, &tm);
-    char buf[32];
-    std::snprintf(buf, sizeof(buf), "%04d-%02d-%02dT%s", tm.tm_year + 1900, tm.tm_mon + 1, tm.tm_mday, hms);
-    return buf;
-}
-
 TEST_F(IntegrationTest, GenerateCheckinTokenMeeting) {
     Meeting m;
     m.title = "Checkin Token Meeting";
