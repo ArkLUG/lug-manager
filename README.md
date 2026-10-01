@@ -1,6 +1,6 @@
 # LUG Manager
 
-**Run your LEGO® User Group in one place**: members, meetings, shows, check-ins, dues, volunteers, build challenges, inventory and money, with Discord and Google Calendar built in. Self-hosted, open source, and light enough for a small home server.
+**Run your LEGO® User Group in one place**: members, meetings, shows, check-ins, dues, volunteers, build challenges, inventory and money, with Discord (optional) and Google Calendar built in. Self-hosted, open source, and light enough for a small home server.
 
 **Who it's for:**
 - LEGO User Groups (LUGs), adult fan (AFOL) clubs, and other LEGO fan communities, big or small.
@@ -16,7 +16,8 @@
 
 **Members**
 - Member records with age range (KFOL/TFOL/AFOL), contact details and per-field privacy. Each member decides who sees their email, phone, address, birthday and Discord name.
-- Discord sign-in. Anyone in your Discord server can sign in, and Discord roles can map to admin. Members without Discord can sign in with an emailed link.
+- Sign in with an email and password, with Discord, or with an emailed link. Two-factor codes from an authenticator app (with recovery codes), and an option to require them for organisers or everyone. Forgot-password emails and admin-made set-password links.
+- With Discord: anyone in your server can sign in, and Discord roles can map to admin. Without Discord: add members with their email address and send them a set-password link.
 - Dues: a payment history, automatic expiry, an "expiring soon" list, renewal reminders and bulk updates.
 - Perk levels: yearly attendance tiers that hand out Discord roles automatically.
 - Young-member consent: guardian contact, signed consent and photo release, flagged at check-in.
@@ -34,7 +35,8 @@
 - A LEGO Fan CoLab page: Community Ambassador history, a yearly to-do list with a dashboard reminder, and the year's activity summary as a printable page or CSV.
 
 **Discord, calendars and the public**
-- Announcements, forum threads, scheduled events, reminders, role sync and DMs.
+- Discord (optional): announcements, forum threads, scheduled events, reminders, role sync and DMs, all kept in step as meetings and events change. Choose what's posted (per area, and per meeting or event), a quiet mode, an activity log of everything sent with retry for failures, and nickname options. Switch Discord off entirely and messages go by email.
+- Your own wording for every message: Discord posts, messages to members and sign-in emails, with placeholders and a live preview (Settings > Message wording).
 - Google Calendar sync, a public iCal feed, per-chapter feeds and a private personal feed.
 - A public "upcoming shows" page you can embed on your website, with an "I plan to come" button.
 - A public About page about your group, written in the app with a what-you-see-is-what-you-get editor (headings, lists, links, photos), with the past year's highlights.
@@ -96,9 +98,9 @@ Secrets and start-up options are environment variables, read from the environmen
 
 | Variable | Needed | What it's for |
 |---|---|---|
-| `DISCORD_CLIENT_ID`, `DISCORD_CLIENT_SECRET` | Yes | Discord sign-in (OAuth2 app) |
-| `DISCORD_REDIRECT_URI` | Yes | `https://your-host/auth/callback` |
-| `DISCORD_BOT_TOKEN` | Yes | Bot for announcements, roles, DMs and member sync |
+| `DISCORD_CLIENT_ID`, `DISCORD_CLIENT_SECRET` | With Discord | Discord sign-in (OAuth2 app) |
+| `DISCORD_REDIRECT_URI` | With Discord | `https://your-host/auth/callback` |
+| `DISCORD_BOT_TOKEN` | With Discord | Bot for announcements, roles, DMs and member sync |
 | `LUG_PUBLIC_URL` | Recommended | e.g. `https://lug.example.org`. Used for links in emails and redirects. |
 | `BOOTSTRAP_ADMIN_DISCORD_ID` | Optional | Makes this Discord account admin on first sign-in. The `/setup` link works too. |
 | `DISCORD_PUBLIC_KEY`, `DISCORD_APPLICATION_ID` | Optional | Lets duplicate-member matches be resolved from Discord buttons |
@@ -107,6 +109,13 @@ Secrets and start-up options are environment variables, read from the environmen
 | `ICAL_TIMEZONE`, `ICAL_CALENDAR_NAME`, `DISCORD_GUILD_ID` | Optional | Starting values; change them later in Settings |
 | `LUG_OFFLINE` | Never in production | `1` blocks every outbound request (Discord, Google, email). Use it for testing and copies of real data. |
 | `LUG_DOTENV` | Optional | `0` skips reading `.env` |
+
+### Without Discord
+
+Switch **Discord** off under Settings > Features (or untick it in the setup checklist). Then:
+- Create the first admin from the `/setup` link with an email address and a password.
+- Add members with their email addresses, and send each one a set-password link from their member page (Settings > Sign-in has the options, including required two-factor).
+- Notifications go by email if `LUG_SMTP_*` is set.
 
 ### Discord
 
@@ -125,6 +134,8 @@ Secrets and start-up options are environment variables, read from the environmen
 
 Members are synced from Discord every 6 hours. A Discord member who may already have a record (for example, a kid added by a parent) is held for review rather than duplicated.
 
+**What gets posted** is set under Settings > Discord: for each new meeting (announcement, Discord event) and event (thread, announcement, chapter copy, Discord event, update notes), pings, DMs and challenge winners. Each meeting and event can leave parts out for itself. **Quiet mode** posts nothing new (it only edits and removes), for imports or maintenance. Every post, edit, deletion and failure is in **Activity log**, where failed posts can be retried. **Repair times** fixes Discord copies of times sent by older versions without notifying anyone.
+
 ### Google Calendar (optional)
 
 1. Create a Google Cloud service account and download its JSON key.
@@ -136,9 +147,9 @@ Private meetings and events still appear on the calendar, but only as "Private L
 
 ### Email (optional)
 
-Set the four `LUG_SMTP_*` variables and `LUG_PUBLIC_URL`. Members with an email address but no Discord can then:
-- use **Email me a link** on the sign-in page (single use, valid 15 minutes, at most 3 per hour);
-- get reminders, waitlist notices, digests and dues reminders by email.
+Set the four `LUG_SMTP_*` variables and `LUG_PUBLIC_URL`. Then:
+- **Email me a link** and **Forgot it?** work on the sign-in page (single use, short-lived, rate limited);
+- members who can't get a Discord DM (no Discord, DMs off, or Discord switched off) get reminders, waitlist notices, digests and dues reminders by email.
 
 Every email has a no-login unsubscribe link and one-click `List-Unsubscribe` headers.
 
@@ -168,6 +179,7 @@ Every email has a no-login unsubscribe link and one-click `List-Unsubscribe` hea
 Settings > Features (admin). A switched-off feature disappears from the sidebar, pages and forms, its pages return 404, and its reminders stop. Its data is kept, and the JSON API isn't affected.
 
 Features you can switch off:
+- Discord (sign-in, sync, posts and DMs; messages then go by email)
 - Chapters
 - Membership dues
 - Perk levels
@@ -266,6 +278,14 @@ bash scripts/demo/build.sh build/lug_manager /tmp/demo-site /lug-manager
 mkdir -p /tmp/site && ln -s /tmp/demo-site /tmp/site/lug-manager
 python3 -m http.server 8000 --directory /tmp/site      # http://localhost:8000/lug-manager/
 ```
+
+### Adding another chat service (Slack, Matrix, ...)
+
+Discord is one `chat::Provider` (`src/chat/Provider.hpp`, implemented in `src/chat/DiscordProvider.hpp`). `chat::ChatHub` decides what to post and keeps it in step; a provider only knows how to talk to its service. To add one:
+
+1. Implement `chat::Provider`: post/edit/delete messages, threads (or report `caps().threads = false`), scheduled events (or `false`), direct messages, where things go (`place()`, chapter channels), and mention syntax. `inert()` must make member-supplied text unable to ping anyone.
+2. Register it next to Discord in `register_all_routes` (`svc.chat->add(...)`), and add a `Features` entry and a settings page for its channels.
+3. Its posts are recorded in `chat_posts`, its switches are `chat.<id>.<name>` settings, and the message templates are shared. Test it like `tests/test_chat_hub.cpp` does with a recording provider.
 
 ### Layout
 

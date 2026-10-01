@@ -21,6 +21,7 @@ tags:
   - name: role-mappings
   - name: audit-log
   - name: settings
+  - name: maintenance
 
 components:
   securitySchemes:
@@ -404,8 +405,8 @@ paths:
   /events/{id}/publish-report:
     post:
       tags: [events]
-      summary: Build and publish/update the event report in the Discord event-reports forum
-      description: "Requires `write` scope. No-ops (returns an empty discord_thread_id) if no forum channel is configured."
+      summary: Build and publish/update the event report in each chat service's event-reports forum
+      description: "Requires `write` scope. Uses the \"Event report\" message wording. The response says `published` (false when no chat service or forum is set up, with `error`) and the Discord thread id."
       x-required-scope: write
       parameters: [{ name: id, in: path, required: true, schema: { type: integer } }]
       responses:
@@ -481,10 +482,28 @@ paths:
   /meetings/{id}/publish-report:
     post:
       tags: [meetings]
-      summary: Build and publish/update the meeting report in the Discord meeting-reports forum
-      description: "Requires `write` scope. No-ops (returns an empty discord_thread_id) if no forum channel is configured."
+      summary: Build and publish/update the meeting report in each chat service's meeting-reports forum
+      description: "Requires `write` scope. Uses the \"Meeting report\" message wording. The response says `published` (false when no chat service or forum is set up, with `error`) and the Discord thread id."
       x-required-scope: write
       parameters: [{ name: id, in: path, required: true, schema: { type: integer } }]
+      responses:
+        "200": { description: OK }
+
+  /maintenance/discord-times:
+    get:
+      tags: [maintenance]
+      summary: Check Discord copies of meeting/event times (read-only)
+      description: "Requires `admin` scope. Reads each upcoming scheduled event (and meeting announcement) from Discord and reports which are wrong - older versions without time-zone data sent local times as UTC. `?include_past=1` also checks past meetings' announcement text. Changes nothing."
+      x-required-scope: admin
+      parameters: [{ name: include_past, in: query, schema: { type: integer, enum: [0, 1] } }]
+      responses:
+        "200": { description: "items[] with kind, id, title, start, part, status (ok|wrong|past|missing|error), note; counts; summary" }
+    post:
+      tags: [maintenance]
+      summary: Fix the wrong ones on Discord, silently
+      description: "Requires `admin` scope. Edits only the items found wrong, in place (scheduled event start/end; announcement zone label, no mentions). Posts nothing new and notifies no one. Audit-logged. Same response as GET with statuses fixed/error."
+      x-required-scope: admin
+      parameters: [{ name: include_past, in: query, schema: { type: integer, enum: [0, 1] } }]
       responses:
         "200": { description: OK }
 
