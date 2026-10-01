@@ -11,6 +11,8 @@
 CMakeFiles/
 CMakeCache.txt
 *.cmake
+# ...but our own CMake scripts are source
+!cmake/*.cmake
 Makefile
 
 # Environment variables
