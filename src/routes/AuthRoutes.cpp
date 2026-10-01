@@ -52,6 +52,18 @@ static std::string build_url(const crow::request& req, const std::string& path) 
     return proto + "://" + host + path;
 }
 
+// Links that go out by email use LUG_PUBLIC_URL only. Built from the request's
+// Host header, anyone could ask for a reset link to someone else's account
+// with their own host in it ("reset poisoning") and collect the token when
+// the owner clicks. Without LUG_PUBLIC_URL these emails aren't sent.
+static std::string emailed_url(const std::string& path) {
+    if (g_public_url.empty()) {
+        std::cerr << "[auth] LUG_PUBLIC_URL isn't set: sign-in and password-reset emails are off\n";
+        return "";
+    }
+    return g_public_url + path;
+}
+
 // "; Secure" when the client reached us over HTTPS (directly or via the
 // reverse proxy), so session/state cookies never travel over plain HTTP.
 static std::string secure_attr(const crow::request& req) {
@@ -366,13 +378,14 @@ void register_email_auth_routes(LugApp& app, AuthService& auth, SqliteDatabase& 
             rl.bind(1, id); rl.bind(2, utc_in(-3600));
             if (rl.step() && rl.col_int(0) >= 3) return res;   // max 3 links an hour
         }
+        if (emailed_url("").empty()) return res;
         std::string token = SessionStore::generate_token();
         {
             auto ins = db.prepare("INSERT INTO email_login_tokens (token_hash, member_id, expires_at) VALUES (?,?,?)");
             ins.bind(1, sha256_hex(token)); ins.bind(2, id); ins.bind(3, utc_in(15 * 60));
             ins.step();
         }
-        notifier->send_email_template(id, to, name, "email.sign_in_link", {{"link", build_url(req, "/auth/email/" + token)}});
+        notifier->send_email_template(id, to, name, "email.sign_in_link", {{"link", emailed_url("/auth/email/" + token)}});
         return res;
     });
 
@@ -502,10 +515,10 @@ void register_email_auth_routes(LugApp& app, AuthService& auth, SqliteDatabase& 
         g_per_ip.hit("forgot:" + client_ip(req));
         AccountSecurity sec(db);
         auto acct = sec.by_email(email);
-        if (!acct || sec.recent_reset_tokens(acct->id) >= 3) return res;
+        if (!acct || sec.recent_reset_tokens(acct->id) >= 3 || emailed_url("").empty()) return res;
         std::string token = sec.create_reset_token(acct->id, 0, 1);
         notifier->send_email_template(acct->id, acct->email, acct->display_name, "email.password_reset",
-                                      {{"link", build_url(req, "/auth/reset/" + token)}});
+                                      {{"link", emailed_url("/auth/reset/" + token)}});
         audit.log_system("auth.password_reset_sent", "member", acct->id, acct->display_name, "Reset link emailed", client_ip(req));
         return res;
     });

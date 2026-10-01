@@ -101,7 +101,7 @@ Secrets and start-up options are environment variables, read from the environmen
 | `DISCORD_CLIENT_ID`, `DISCORD_CLIENT_SECRET` | With Discord | Discord sign-in (OAuth2 app) |
 | `DISCORD_REDIRECT_URI` | With Discord | `https://your-host/auth/callback` |
 | `DISCORD_BOT_TOKEN` | With Discord | Bot for announcements, roles, DMs and member sync |
-| `LUG_PUBLIC_URL` | Recommended | e.g. `https://lug.example.org`. Used for links in emails and redirects. |
+| `LUG_PUBLIC_URL` | Recommended | e.g. `https://lug.example.org`. Used for links in emails and redirects. Emailed sign-in and password-reset links are only sent when it is set. |
 | `BOOTSTRAP_ADMIN_DISCORD_ID` | Optional | Makes this Discord account admin on first sign-in. The `/setup` link works too. |
 | `DISCORD_PUBLIC_KEY`, `DISCORD_APPLICATION_ID` | Optional | Lets duplicate-member matches be resolved from Discord buttons |
 | `LUG_SMTP_URL`, `LUG_SMTP_USER`, `LUG_SMTP_PASSWORD`, `LUG_SMTP_FROM` | Optional | Email sign-in and email notifications for members without Discord |

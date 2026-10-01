@@ -374,3 +374,19 @@ TEST_F(AccountsTest, EmailChangeVoidsOutstandingLinks) {
     EXPECT_NE(GET("/auth/email/" + link).location.find("error=link"), std::string::npos);
     EXPECT_NE(GET("/auth/reset/" + reset).location.find("error=link"), std::string::npos);
 }
+
+// Emailed links always point at LUG_PUBLIC_URL, never at a Host header the
+// requester chose (that would hand them the victim's token).
+TEST_F(AccountsTest, EmailedLinksIgnoreRequestHost) {
+    member_with_email("host@example.org");
+    http("POST", "/auth/forgot", "email=host%40example.org", "", false, "", false,
+         {"Host: evil.example", "X-Forwarded-Host: evil.example"});
+    http("POST", "/auth/email", "email=host%40example.org", "", false, "", false,
+         {"Host: evil.example", "X-Forwarded-Host: evil.example"});
+    auto out = mailer->outbox();
+    ASSERT_EQ(out.size(), 2u);
+    for (const auto& m : out) {
+        EXPECT_EQ(m.body.find("evil.example"), std::string::npos) << m.body;
+        EXPECT_NE(m.body.find("http://lug.test/auth/"), std::string::npos) << m.body;
+    }
+}

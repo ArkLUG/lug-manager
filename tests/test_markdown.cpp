@@ -93,3 +93,18 @@ TEST(MarkdownRenderer, SafeLinksAreKept) {
     EXPECT_NE(html.find("href=\"mailto:a@b.c\""), std::string::npos);
     EXPECT_NE(html.find("href=\"#top\""), std::string::npos);
 }
+
+// Character references and control characters in the scheme must not sneak a
+// script link past the check (browsers decode &#x61; and drop tabs/newlines).
+TEST(MarkdownRenderer, EncodedJavascriptLinkIsNeutralized) {
+    for (const char* md : {"[x](jav&#x61;script:alert(1))", "[x](&#106;avascript:alert(1))",
+                           "[x](javas&#9;cript:alert(1))", "[x](<java\tscript:alert(1)>)",
+                           "[x](&#x6A;&#x61;vascript:alert(1))", "[x](javascript&colon;alert(1))"}) {
+        auto html = render_markdown(md);
+        std::string lower;
+        for (char c : html) lower += static_cast<char>(std::tolower(static_cast<unsigned char>(c)));
+        EXPECT_EQ(lower.find("script:"), std::string::npos) << md << " -> " << html;
+        EXPECT_EQ(lower.find("script&"), std::string::npos) << md << " -> " << html;
+        EXPECT_EQ(lower.find("&#"), std::string::npos) << md << " -> " << html;
+    }
+}
