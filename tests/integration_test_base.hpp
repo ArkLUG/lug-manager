@@ -265,7 +265,8 @@ protected:
             nullptr, // dues
             nullptr, // backups
             nullptr, // series
-            nullptr  // shifts
+            nullptr, // shifts
+            nullptr  // photos
 
         };
         register_all_routes(*app, svc);
@@ -408,7 +409,8 @@ protected:
     // content is the raw file bytes to upload.
     Response POST_FILE(const std::string& path, const std::string& field_name,
                        const std::string& filename, const std::string& content,
-                       const std::string& token = "") {
+                       const std::string& token = "",
+                       const std::vector<std::pair<std::string, std::string>>& fields = {}) {
         CURL* curl = curl_easy_init();
         Response resp;
         std::string url = "http://127.0.0.1:" + std::to_string(port) + path;
@@ -434,6 +436,11 @@ protected:
         curl_mime_name(part, field_name.c_str());
         curl_mime_filename(part, filename.c_str());
         curl_mime_data(part, content.data(), content.size());
+        for (const auto& [k, v] : fields) {
+            curl_mimepart* fp = curl_mime_addpart(mime);
+            curl_mime_name(fp, k.c_str());
+            curl_mime_data(fp, v.c_str(), CURL_ZERO_TERMINATED);
+        }
         curl_easy_setopt(curl, CURLOPT_MIMEPOST, mime);
 
         curl_easy_perform(curl);

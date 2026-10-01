@@ -1,0 +1,53 @@
+<div id="challenge-{{id}}" class="max-w-5xl space-y-4" data-page-title="{{title}}">
+  <div class="flex flex-wrap items-start justify-between gap-2">
+    <div>
+      <a hx-get="/challenges" hx-target="#main-content" hx-push-url="true" hx-swap="innerHTML" class="text-sm text-gray-500 hover:text-gray-800 cursor-pointer">&larr; Challenges</a>
+      <h2 class="text-xl font-semibold text-gray-800">{{title}}</h2>
+      <p class="text-xs text-gray-500">Entries {{starts_on}} &ndash; {{ends_on}} · voting until {{vote_until}}</p>
+      {{#description}}<p class="text-sm text-gray-700 whitespace-pre-line mt-1">{{description}}</p>{{/description}}
+    </div>
+    {{#is_admin}}{{#results}}{{^announced}}
+    <button hx-post="/challenges/{{id}}/announce" hx-target="#challenge-{{id}}" hx-swap="outerHTML"
+            class="px-3 py-1.5 bg-indigo-600 text-white rounded-lg text-sm hover:bg-indigo-700">Announce winner on Discord</button>
+    {{/announced}}{{/results}}{{/is_admin}}
+  </div>
+  {{#flash}}<div class="text-sm text-gray-700 bg-white border border-gray-200 rounded-lg px-4 py-2">{{flash}}</div>{{/flash}}
+
+  {{#has_entries}}
+  <div class="grid grid-cols-2 md:grid-cols-3 gap-4">
+    {{#entries}}
+    <div class="bg-white rounded-xl border {{#winner}}border-yellow-400 ring-2 ring-yellow-300{{/winner}}{{^winner}}border-gray-200{{/winner}} overflow-hidden">
+      <a href="/uploads/{{file}}" target="_blank" rel="noopener"><img src="/uploads/{{file}}" alt="{{title}}" loading="lazy" class="w-full h-48 object-cover"></a>
+      <div class="p-3 space-y-1">
+        <div class="font-medium text-gray-900">{{#winner}}&#127942; {{/winner}}{{title}}</div>
+        <div class="text-xs text-gray-500">by {{by}}{{#show_votes}} · {{votes}} vote(s){{/show_votes}}</div>
+        <div class="flex items-center gap-2 pt-1">
+          {{#can_vote}}
+          <button hx-post="/challenges/{{challenge_id}}/entries/{{id}}/vote" hx-target="#challenge-{{challenge_id}}" hx-swap="outerHTML"
+                  class="text-xs px-3 py-1 rounded-lg {{#voted}}bg-yellow-400 text-gray-900 font-semibold{{/voted}}{{^voted}}border border-gray-300 text-gray-700 hover:bg-gray-50{{/voted}}">
+            {{#voted}}Your vote{{/voted}}{{^voted}}Vote{{/voted}}
+          </button>
+          {{/can_vote}}
+          {{#can_delete}}
+          <button hx-post="/challenges/{{challenge_id}}/entries/{{id}}/delete" hx-target="#challenge-{{challenge_id}}" hx-swap="outerHTML"
+                  hx-confirm="Remove this entry?" class="text-xs text-red-600 hover:text-red-800">Remove</button>
+          {{/can_delete}}
+        </div>
+      </div>
+    </div>
+    {{/entries}}
+  </div>
+  {{/has_entries}}
+  {{^has_entries}}<p class="text-sm text-gray-400">No entries yet.</p>{{/has_entries}}
+
+  {{#can_submit}}
+  <form hx-post="/challenges/{{id}}/entries" hx-encoding="multipart/form-data" hx-target="#challenge-{{id}}" hx-swap="outerHTML"
+        class="bg-white rounded-xl border border-gray-200 p-5 space-y-3 text-sm">
+    <h3 class="font-semibold text-gray-800">Enter your build</h3>
+    <input name="title" required maxlength="150" placeholder="Name of your build" class="w-full border border-gray-300 rounded-lg px-3 py-2">
+    <input type="file" name="photo" accept="image/jpeg,image/png,image/gif,image/webp" required class="block w-full">
+    <p class="text-xs text-gray-500">One entry per member. Location data is removed from photos.</p>
+    <button class="px-4 py-2 bg-yellow-400 text-gray-900 rounded-lg font-semibold hover:bg-yellow-300">Submit entry</button>
+  </form>
+  {{/can_submit}}
+</div>

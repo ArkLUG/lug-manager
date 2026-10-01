@@ -1,0 +1,31 @@
+<div id="gallery-panel-{{event_id}}" class="space-y-2">
+  {{#flash}}<p class="text-xs text-gray-500">{{flash}}</p>{{/flash}}
+  {{#has_photos}}
+  <div class="grid grid-cols-3 gap-2">
+    {{#photos}}
+    <figure class="relative group">
+      <a href="/uploads/{{file}}" target="_blank" rel="noopener">
+        <img src="/uploads/{{file}}" alt="{{caption}}" loading="lazy" class="w-full h-24 object-cover rounded-lg border border-gray-200">
+      </a>
+      <figcaption class="text-[11px] text-gray-500 truncate">{{caption}}{{^caption}}by {{by}}{{/caption}}</figcaption>
+      {{#can_delete}}
+      <button hx-post="/events/{{event_id}}/photos/{{id}}/delete" hx-target="#gallery-panel-{{event_id}}" hx-swap="outerHTML"
+              hx-confirm="Delete this photo?" aria-label="Delete photo"
+              class="absolute top-1 right-1 hidden group-hover:block bg-white/90 text-red-600 text-xs px-1.5 rounded">&times;</button>
+      {{/can_delete}}
+    </figure>
+    {{/photos}}
+  </div>
+  {{/has_photos}}
+  {{^has_photos}}<p class="text-xs text-gray-400">No photos yet.</p>{{/has_photos}}
+  <details class="border border-gray-200 rounded-lg">
+    <summary class="cursor-pointer px-3 py-1.5 text-xs font-medium text-gray-700">Add a photo</summary>
+    <form hx-post="/events/{{event_id}}/photos" hx-encoding="multipart/form-data"
+          hx-target="#gallery-panel-{{event_id}}" hx-swap="outerHTML" class="px-3 pb-3 space-y-2 text-xs">
+      <input type="file" name="photo" accept="image/jpeg,image/png,image/gif,image/webp" required class="block w-full">
+      <input name="caption" maxlength="200" placeholder="Caption (optional)" class="w-full border border-gray-300 rounded px-2 py-1">
+      <p class="text-gray-500">Location data is removed from uploads. Please don't post photos of members marked &ldquo;no photos&rdquo;.</p>
+      <button class="px-3 py-1.5 bg-yellow-400 text-gray-900 rounded-lg font-semibold hover:bg-yellow-300">Upload</button>
+    </form>
+  </details>
+</div>

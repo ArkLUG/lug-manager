@@ -1,0 +1,33 @@
+<div class="max-w-4xl space-y-4" data-page-title="Build Challenges">
+  <div>
+    <h2 class="text-xl font-semibold text-gray-800">Build Challenges</h2>
+    <p class="text-sm text-gray-500">A theme each round: build something, post a photo, and vote for your favourite (one vote each; counts are revealed when voting closes, a week after entries close).</p>
+  </div>
+  {{#has_challenges}}
+  <div class="bg-white rounded-xl border border-gray-200 divide-y divide-gray-100">
+    {{#challenges}}
+    <a hx-get="/challenges/{{id}}" hx-target="#main-content" hx-push-url="true" hx-swap="innerHTML"
+       class="flex items-center justify-between px-4 py-3 hover:bg-gray-50 cursor-pointer">
+      <div><div class="font-medium text-gray-900">{{title}}</div><div class="text-xs text-gray-500">{{starts_on}} &ndash; {{ends_on}} · {{entries}} entries</div></div>
+      <span class="text-xs px-2 py-0.5 rounded bg-gray-100 text-gray-600">{{status}}</span>
+    </a>
+    {{/challenges}}
+  </div>
+  {{/has_challenges}}
+  {{^has_challenges}}<p class="text-sm text-gray-400">No challenges yet.</p>{{/has_challenges}}
+
+  {{#is_admin}}
+  <form hx-post="/challenges" hx-target="#challenge-create-result" hx-swap="innerHTML"
+        class="bg-white rounded-xl border border-gray-200 p-5 space-y-3 text-sm">
+    <h3 class="font-semibold text-gray-800">New challenge</h3>
+    <input name="title" required maxlength="150" placeholder="e.g. Microscale Castle" class="w-full border border-gray-300 rounded-lg px-3 py-2">
+    <textarea name="description" rows="2" placeholder="Rules, size limits, prizes..." class="w-full border border-gray-300 rounded-lg px-3 py-2"></textarea>
+    <div class="flex flex-wrap items-center gap-3">
+      <label class="flex items-center gap-2">Entries open <input type="date" name="starts_on" value="{{today}}" required class="border border-gray-300 rounded-lg px-2 py-1"></label>
+      <label class="flex items-center gap-2">until <input type="date" name="ends_on" required class="border border-gray-300 rounded-lg px-2 py-1"></label>
+    </div>
+    <button class="px-4 py-2 bg-yellow-400 text-gray-900 rounded-lg font-semibold hover:bg-yellow-300">Create</button>
+    <div id="challenge-create-result"></div>
+  </form>
+  {{/is_admin}}
+</div>

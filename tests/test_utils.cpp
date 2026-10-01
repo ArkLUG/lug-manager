@@ -498,3 +498,35 @@ TEST(Templates, NoInlineEventHandlers) {
         EXPECT_EQ(s.find("js:{"), std::string::npos) << e.path();
     }
 }
+
+// ── Photo uploads: sniffing and metadata stripping ─────────────────────────
+#include "utils/ImageUpload.hpp"
+TEST(ImageUpload, SniffRejectsSvgAndText) {
+    EXPECT_FALSE(sniff_photo("<svg onload=alert(1)>").ok);
+    EXPECT_FALSE(sniff_photo("hello").ok);
+    EXPECT_EQ(sniff_photo(std::string("\xFF\xD8\xFF\xE0", 4)).extension, ".jpg");
+}
+
+TEST(ImageUpload, StripsJpegExif) {
+    // SOI, APP1(EXIF with "GPS"), APP0, SOS + data
+    std::string jpg("\xFF\xD8", 2);
+    std::string exif("Exif\0\0GPSDATA", 13);
+    jpg += std::string("\xFF\xE1", 2); jpg += char(0); jpg += char(exif.size() + 2); jpg += exif;
+    std::string app0 = "JFIF";
+    jpg += std::string("\xFF\xE0", 2); jpg += char(0); jpg += char(app0.size() + 2); jpg += app0;
+    jpg += std::string("\xFF\xDA\x00\x02IMAGEDATA\xFF\xD9", 15);
+    auto info = sniff_photo(jpg);
+    ASSERT_TRUE(info.ok);
+    ASSERT_NE(jpg.find("GPSDATA"), std::string::npos); // present before stripping
+    auto out = strip_photo_metadata(jpg, info);
+    EXPECT_EQ(out.find("GPSDATA"), std::string::npos);
+    EXPECT_NE(out.find("JFIF"), std::string::npos);
+    EXPECT_NE(out.find("IMAGEDATA"), std::string::npos);
+}
+
+TEST(ImageUpload, UploadNames) {
+    auto n = new_upload_name(".png");
+    EXPECT_TRUE(valid_upload_name(n));
+    EXPECT_FALSE(valid_upload_name("../x.png"));
+    EXPECT_FALSE(valid_upload_name("abc.svg"));
+}
