@@ -1,4 +1,5 @@
 #include "services/MemberService.hpp"
+#include "utils/Snowflake.hpp"
 #include <algorithm>
 #include <iostream>
 #include <thread>
@@ -91,6 +92,9 @@ std::vector<Member> MemberService::list_paid() {
 Member MemberService::create(const Member& m) {
     if (m.first_name.empty() && m.discord_user_id.empty()) {
         throw std::invalid_argument("first_name or discord_user_id required");
+    }
+    if (!m.discord_user_id.empty() && !is_safe_discord_id(m.discord_user_id)) {
+        throw std::invalid_argument("discord_user_id contains invalid characters");
     }
     Member to_create = m;
     to_create.phone = normalize_phone(to_create.phone);

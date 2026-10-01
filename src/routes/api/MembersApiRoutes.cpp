@@ -1,4 +1,5 @@
 #include "routes/api/MembersApiRoutes.hpp"
+#include "utils/Snowflake.hpp"
 #include "routes/api/ApiCommon.hpp"
 #include "routes/api/Serialize.hpp"
 #include <crow.h>
@@ -168,6 +169,10 @@ void register_members_api_routes(LugApp& app, MemberService& members,
             return res;
         }
         std::string discord_user_id = body["discord_user_id"].s();
+        if (!is_safe_discord_id(discord_user_id)) {
+            envelope_error(res, 400, "discord_user_id contains invalid characters", "invalid_request");
+            return res;
+        }
         std::string discord_username = body.has("discord_username") ? std::string(body["discord_username"].s()) : "";
 
         bool ok = member_repo.link_discord_id(static_cast<int64_t>(id), discord_user_id, discord_username);

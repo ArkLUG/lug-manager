@@ -122,6 +122,20 @@ std::vector<DiscordChannel> DiscordClient::fetch_voice_channels() const {
 std::string DiscordClient::discord_api_request(const std::string& method,
                                                 const std::string& endpoint,
                                                 const std::string& json_body) const {
+    // Endpoints are built by concatenating ids that can originate from user
+    // input (member discord_user_id via forms/API, channel/role ids from
+    // settings). Refuse anything that could walk the URL path, so e.g. a
+    // discord_user_id of "../../channels/<id>" can't steer a bot-authenticated
+    // DELETE at a different Discord resource.
+    for (size_t i = 0; i < endpoint.size(); ++i) {
+        unsigned char c = static_cast<unsigned char>(endpoint[i]);
+        bool bad = c <= 0x20 || c == 0x7f || c == '\\' || c == '#' ||
+                   endpoint.compare(i, 2, "..") == 0 ||
+                   (c == '%' && (endpoint.compare(i, 3, "%2e") == 0 || endpoint.compare(i, 3, "%2E") == 0 ||
+                                 endpoint.compare(i, 3, "%2f") == 0 || endpoint.compare(i, 3, "%2F") == 0));
+        if (bad) throw std::runtime_error("Discord API: refusing unsafe endpoint path");
+    }
+
     CURL* curl = curl_easy_init();
     if (!curl) throw std::runtime_error("curl_easy_init failed");
 

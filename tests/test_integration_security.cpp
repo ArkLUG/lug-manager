@@ -235,3 +235,13 @@ TEST_F(IntegrationTest, LegacyRawSessionTokenIsMigrated) {
     ASSERT_TRUE(s.has_value());
     EXPECT_EQ(s->member_id, admin_member_id);
 }
+
+// discord_user_id ends up in bot-authenticated Discord API paths; path
+// characters must be rejected so it can't retarget a request.
+TEST_F(IntegrationTest, PathLikeDiscordIdRejected) {
+    std::string key = make_api_key("write");
+    auto r = API_POST("/api/v1/members",
+        R"({"discord_user_id":"../../channels/123","first_name":"Evil","last_name":"Id"})", key);
+    EXPECT_NE(r.code, 201);
+    EXPECT_FALSE(member_repo->find_by_discord_id("../../channels/123").has_value());
+}

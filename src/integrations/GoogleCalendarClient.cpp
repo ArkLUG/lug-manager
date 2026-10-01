@@ -178,6 +178,9 @@ std::string GoogleCalendarClient::ensure_access_token() const {
     curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, write_cb);
     curl_easy_setopt(curl, CURLOPT_WRITEDATA, &response);
 
+    curl_easy_setopt(curl, CURLOPT_SSL_VERIFYPEER, 1L);
+    curl_easy_setopt(curl, CURLOPT_CONNECTTIMEOUT, 5L);
+    curl_easy_setopt(curl, CURLOPT_TIMEOUT, 20L);
     CURLcode res = curl_easy_perform(curl);
     curl_easy_cleanup(curl);
 
@@ -228,6 +231,9 @@ std::string GoogleCalendarClient::gcal_api_request(const std::string& method,
         curl_easy_setopt(curl, CURLOPT_CUSTOMREQUEST, "DELETE");
     }
 
+    curl_easy_setopt(curl, CURLOPT_SSL_VERIFYPEER, 1L);
+    curl_easy_setopt(curl, CURLOPT_CONNECTTIMEOUT, 5L);
+    curl_easy_setopt(curl, CURLOPT_TIMEOUT, 20L);
     CURLcode res = curl_easy_perform(curl);
     long http_code = 0;
     curl_easy_getinfo(curl, CURLINFO_RESPONSE_CODE, &http_code);
