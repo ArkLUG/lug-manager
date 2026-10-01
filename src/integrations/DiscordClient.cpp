@@ -1,4 +1,5 @@
 #include "integrations/DiscordClient.hpp"
+#include "utils/Utf8.hpp"
 #include <curl/curl.h>
 #include <nlohmann/json.hpp>
 #include <algorithm>
@@ -148,11 +149,18 @@ std::string DiscordClient::discord_api_request(const std::string& method,
         try {
             auto j = json::parse(json_body);
             auto guard = [](json& msg) {
-                if (msg.is_object() && msg.contains("content") && !msg.contains("allowed_mentions"))
+                if (!msg.is_object() || !msg.contains("content") || !msg["content"].is_string()) return;
+                if (!msg.contains("allowed_mentions"))
                     msg["allowed_mentions"] = {{"parse", json::array({"roles", "users"})}};
+                // Over-long content (e.g. a big event description) is rejected
+                // outright by Discord - post it truncated instead of not at all.
+                msg["content"] = utf8_truncate(msg["content"].get<std::string>(), 2000);
             };
             guard(j);
             if (j.is_object() && j.contains("message")) guard(j["message"]);
+            // Thread / scheduled-event names: Discord max 100 characters.
+            if (j.is_object() && j.contains("name") && j["name"].is_string())
+                j["name"] = utf8_truncate(j["name"].get<std::string>(), 100);
             body_to_send = j.dump();
         } catch (const json::exception&) {
             // Not JSON we built - send unchanged.
@@ -278,8 +286,8 @@ std::string DiscordClient::iso_to_discord_timestamp(const std::string& iso) cons
 
 std::string DiscordClient::build_meeting_event_json(const Meeting& m) const {
     json j;
-    j["name"]            = m.title;
-    j["description"]     = m.description;
+    j["name"]            = utf8_truncate(m.title, 100);
+    j["description"]     = utf8_truncate(m.description, 1000);
     j["entity_type"]     = 3; // EXTERNAL
     j["entity_metadata"] = {{"location", m.location.empty() ? "TBD" : m.location}};
     j["scheduled_start_time"] = iso_to_discord_timestamp(m.start_time);
@@ -290,8 +298,8 @@ std::string DiscordClient::build_meeting_event_json(const Meeting& m) const {
 
 std::string DiscordClient::build_lug_event_json(const LugEvent& e) const {
     json j;
-    j["name"]            = e.title;
-    j["description"]     = e.description;
+    j["name"]            = utf8_truncate(e.title, 100);
+    j["description"]     = utf8_truncate(e.description, 1000);
     j["entity_type"]     = 3; // EXTERNAL
     j["entity_metadata"] = {{"location", e.location.empty() ? "TBD" : e.location}};
     j["scheduled_start_time"] = iso_to_discord_timestamp(e.start_time);
@@ -349,7 +357,7 @@ static std::string format_lug_event_thread_name(const LugEvent& e) {
     if (!date_part.empty())    name += " | " + date_part;
 
     // Discord thread names max 100 characters
-    if (name.size() > 100) name = name.substr(0, 100);
+    name = utf8_truncate(name, 100);
     return name;
 }
 
@@ -1198,7 +1206,7 @@ std::string DiscordClient::publish_report_to_forum(const std::string& forum_chan
 
     // Create new forum thread
     json body;
-    body["name"]                  = title.substr(0, 100); // Discord max thread name
+    body["name"]                  = utf8_truncate(title, 100); // Discord max thread name
     body["auto_archive_duration"] = 10080; // 7 days
     body["message"]["content"]    = content;
     try {
