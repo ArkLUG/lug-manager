@@ -128,3 +128,19 @@ TEST_F(IntegrationTest, MembersDeleteNonAdminForbidden) {
 // Chapters — additional coverage
 // ═══════════════════════════════════════════════════════════════════════════
 
+
+TEST_F(IntegrationTest, BulkMemberActions) {
+    std::string ids = std::to_string(regular_member_id) + "," + std::to_string(admin_member_id);
+    EXPECT_EQ(POST("/members/bulk", "ids=" + ids + "&action=fol&value=tfol", member_token).code, 403);
+
+    auto r = POST("/members/bulk", "ids=" + ids + "&action=paid&value=2099-01-31", chapter_lead_token);
+    EXPECT_EQ(r.code, 200);
+    expect_contains(r, "2 member(s)");
+    EXPECT_EQ(member_repo->find_by_id(regular_member_id)->paid_until, "2099-01-31");
+
+    POST("/members/bulk", "ids=" + std::to_string(regular_member_id) + "&action=fol&value=kfol", chapter_lead_token);
+    EXPECT_EQ(member_repo->find_by_id(regular_member_id)->fol_status, "kfol");
+
+    EXPECT_EQ(POST("/members/bulk", "ids=" + ids + "&action=paid&value=bogus", chapter_lead_token).code, 400);
+    EXPECT_EQ(POST("/members/bulk", "ids=&action=unpaid", chapter_lead_token).code, 400);
+}

@@ -32,6 +32,34 @@
     </div>
   </div>
 
+  {{#can_see_dues}}
+  <!-- Bulk actions: appears when rows are selected -->
+  <div id="bulk-bar" class="hidden bg-white rounded-xl border border-yellow-300 p-3 flex flex-wrap items-center gap-2 text-sm">
+    <span class="font-medium text-gray-800"><span id="bulk-count">0</span> selected</span>
+    <form id="bulk-form" hx-post="/members/bulk" hx-target="#bulk-result" hx-swap="innerHTML"
+          class="flex flex-wrap items-center gap-2">
+      <input type="hidden" name="ids" id="bulk-ids">
+      <select name="action" id="bulk-action" onchange="bulkActionChanged()"
+              class="border border-gray-300 rounded-lg px-2 py-1 text-sm">
+        <option value="paid">Mark paid until…</option>
+        <option value="unpaid">Mark unpaid</option>
+        <option value="chapter">Set chapter…</option>
+        <option value="fol">Set age range…</option>
+      </select>
+      <input type="date" name="value" id="bulk-value-paid" class="border border-gray-300 rounded-lg px-2 py-1 text-sm">
+      <select name="value" id="bulk-value-chapter" disabled class="hidden border border-gray-300 rounded-lg px-2 py-1 text-sm"
+              hx-get="/api/chapter-options" hx-trigger="load" hx-swap="innerHTML"></select>
+      <select name="value" id="bulk-value-fol" disabled class="hidden border border-gray-300 rounded-lg px-2 py-1 text-sm">
+        <option value="afol">AFOL (Adult)</option><option value="tfol">TFOL (Teen)</option><option value="kfol">KFOL (Kid)</option>
+      </select>
+      <button class="px-3 py-1 bg-yellow-400 text-gray-900 rounded-lg font-semibold hover:bg-yellow-300"
+              hx-confirm="Apply to all selected members?">Apply</button>
+      <button type="button" onclick="bulkClear()" class="px-2 py-1 text-gray-500 hover:text-gray-700">Clear</button>
+    </form>
+    <span id="bulk-result"></span>
+  </div>
+  {{/can_see_dues}}
+
   <!-- Members table (DataTables manages content via AJAX) -->
   <div class="bg-white rounded-xl border border-gray-200 overflow-hidden">
     <div class="overflow-x-auto p-1">
@@ -111,6 +139,37 @@
     if (window.membersTable) window.membersTable.ajax.reload(null, false);
   });
 
+  // ── Bulk selection (kept across pages/searches) ──────────────────────────
+  window.bulkSelected = window.bulkSelected || new Set();
+  function bulkRefresh() {
+    var bar = document.getElementById('bulk-bar');
+    if (!bar) return;
+    document.getElementById('bulk-count').textContent = window.bulkSelected.size;
+    document.getElementById('bulk-ids').value = Array.from(window.bulkSelected).join(',');
+    bar.classList.toggle('hidden', window.bulkSelected.size === 0);
+  }
+  window.bulkClear = function() {
+    window.bulkSelected.clear();
+    document.querySelectorAll('.bulk-sel').forEach(function(cb) { cb.checked = false; });
+    document.getElementById('bulk-result').textContent = '';
+    bulkRefresh();
+  };
+  window.bulkActionChanged = function() {
+    var a = document.getElementById('bulk-action').value;
+    [['paid','bulk-value-paid'],['chapter','bulk-value-chapter'],['fol','bulk-value-fol']].forEach(function(p) {
+      var el = document.getElementById(p[1]);
+      var on = a === p[0];
+      el.classList.toggle('hidden', !on);
+      el.disabled = !on; // only the visible control submits "value"
+    });
+  };
+  document.addEventListener('change', function(e) {
+    if (!e.target.classList || !e.target.classList.contains('bulk-sel')) return;
+    if (e.target.checked) window.bulkSelected.add(e.target.value); else window.bulkSelected.delete(e.target.value);
+    bulkRefresh();
+  });
+  bulkRefresh();
+
   // ── DataTables columns ───────────────────────────────────────────────────
   var canSeePii  = {{#can_see_pii}}true{{/can_see_pii}}{{^can_see_pii}}false{{/can_see_pii}};
   var canSeeDues = {{#can_see_dues}}true{{/can_see_dues}}{{^can_see_dues}}false{{/can_see_dues}};
@@ -122,7 +181,10 @@
       render: function(data, type, row) {
         if (type !== 'display') return data;
         var full = escHtml((row.first_name || '') + ' ' + (row.last_name || '')).trim();
-        var html = '<div class="font-medium text-gray-800">' + escHtml(data) + '</div>';
+        var html = '<div class="font-medium text-gray-800">'
+          + (canSeeDues ? '<input type="checkbox" class="bulk-sel mr-2 align-middle accent-yellow-400" value="' + row.id + '"'
+                          + (window.bulkSelected && window.bulkSelected.has(String(row.id)) ? ' checked' : '') + '>' : '')
+          + escHtml(data) + '</div>';
         if (full && full !== escHtml(data)) {
           html += '<div class="text-xs text-gray-400">' + full + '</div>';
         }
