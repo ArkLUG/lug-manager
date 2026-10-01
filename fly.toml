@@ -1,0 +1,39 @@
+# Fly.io deployment (https://fly.io) - see HOSTING.md.
+#   fly launch --copy-config --no-deploy      # pick an app name and region
+#   fly volumes create lug_data --size 1      # SQLite + uploads + backups live here
+#   fly secrets set DISCORD_CLIENT_ID=... DISCORD_CLIENT_SECRET=... DISCORD_BOT_TOKEN=... \
+#     DISCORD_REDIRECT_URI=https://<app>.fly.dev/auth/callback LUG_PUBLIC_URL=https://<app>.fly.dev
+#   fly deploy
+# Run exactly one machine: the database is a single SQLite file on the volume.
+
+app = "lug-manager"
+primary_region = "dfw"
+
+[build]
+  image = "ghcr.io/arklug/lug-manager:latest"
+
+[env]
+  LUG_PORT = "8080"
+
+[[mounts]]
+  source = "lug_data"
+  destination = "/app/data"
+
+[http_service]
+  internal_port = 8080
+  force_https = true
+  # Background jobs (reminders, backups, Discord sync) need it running.
+  auto_stop_machines = "off"
+  auto_start_machines = true
+  min_machines_running = 1
+
+  [[http_service.checks]]
+    grace_period = "20s"
+    interval = "30s"
+    method = "GET"
+    path = "/login"
+    timeout = "5s"
+
+[[vm]]
+  size = "shared-cpu-1x"
+  memory = "256mb"

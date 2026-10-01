@@ -1,0 +1,32 @@
+# Render Blueprint (https://render.com) - see HOSTING.md.
+# "Deploy to Render" reads this file; secrets marked sync:false are asked for during setup.
+# A persistent disk needs a paid instance type; the database is a single SQLite file on it,
+# so keep exactly one instance.
+services:
+  - type: web
+    name: lug-manager
+    runtime: image
+    image:
+      url: ghcr.io/arklug/lug-manager:latest
+    plan: starter
+    numInstances: 1
+    healthCheckPath: /login
+    disk:
+      name: lug-data
+      mountPath: /app/data
+      sizeGB: 1
+    envVars:
+      - key: LUG_PORT
+        value: "8080"
+      - key: LUG_PUBLIC_URL
+        sync: false
+      - key: DISCORD_CLIENT_ID
+        sync: false
+      - key: DISCORD_CLIENT_SECRET
+        sync: false
+      - key: DISCORD_REDIRECT_URI
+        sync: false
+      - key: DISCORD_BOT_TOKEN
+        sync: false
+      - key: BOOTSTRAP_ADMIN_DISCORD_ID
+        sync: false

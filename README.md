@@ -1,536 +1,291 @@
 # LUG Manager
 
+**Run your LEGO® User Group in one place**: members, meetings, shows, check-ins, dues, volunteers, build challenges, inventory and money, with Discord and Google Calendar built in. Self-hosted, open source, and light enough for a small home server.
+
+**[Try the demo →](https://arklug.github.io/lug-manager/)** It's a fictional "Brickton LUG". Switch between a member, a moderator and an admin from the yellow bar. Nothing you do there is saved.
+
 > **Notice:** This project was built entirely using AI (Claude Code by Anthropic). All code, documentation, templates, and configuration were generated through AI-assisted development.
 
-A modern web application for managing LEGO User Groups (LUGs). Built with **C++ (CrowCPP)**, **SQLite**, **Discord**, **Google Calendar**, and **iCal** integration.
+---
 
-## Demo
+## What it does
 
-A clickable demo of a fictional group ("Brickton LUG") is published to GitHub Pages by `.github/workflows/demo.yml` - switch between Member, Moderator and Admin from the bar at the bottom; nothing is saved. Build it locally with:
+**Members**
+- Member records with age range (KFOL/TFOL/AFOL), contact details and per-field privacy. Each member decides who sees their email, phone, address, birthday and Discord name.
+- Discord sign-in. Anyone in your Discord server can sign in, and Discord roles can map to admin. Members without Discord can sign in with an emailed link.
+- Dues: a payment history, automatic expiry, an "expiring soon" list, renewal reminders and bulk updates.
+- Perk levels: yearly attendance tiers that hand out Discord roles automatically.
+- Young-member consent: guardian contact, signed consent and photo release, flagged at check-in.
+- My Account: notification choices, signed-in devices, download my data, delete my account.
+- Merge duplicate members, for example when someone added by hand later signs in with Discord.
+
+**Meetings and shows**
+- Meetings (in person or Discord voice) and multi-day events, with recurring schedules ("2nd Tuesday at 7 PM").
+- RSVPs with capacity and a waitlist that moves people up automatically.
+- Volunteer shifts, display (MOC) table requests, and a visitor tap counter for public shows.
+- QR self check-in, a venue kiosk screen, and attendance by the people running the event.
+- Event photos, Markdown notes, and reports posted to a Discord forum.
+- A printable per-event report (suited to LEGO Ambassador Network reporting) and an annual report covering growth, retention, venues and a five-year trend.
+
+**Discord, calendars and the public**
+- Announcements, forum threads, scheduled events, reminders, role sync and DMs.
+- Google Calendar sync, a public iCal feed, per-chapter feeds and a private personal feed.
+- A public "upcoming shows" page you can embed on your website, with an "I plan to come" button.
+- Email (optional SMTP) for members who aren't on Discord, with a no-login unsubscribe link in every message.
+- An optional weekly digest: one Monday message per member covering their week.
+
+**Running the LUG**
+- Chapters for groups with sub-groups. Turn them off if you don't have any.
+- Build challenges with entries and voting, then a winner announcement on Discord.
+- Inventory: tables, baseplates and display cases, with check-out and due-date reminders.
+- Treasury: income, expenses, receipts and a yearly balance, with a treasurer role that isn't full admin.
+- Feature toggles: switch off anything your LUG doesn't use. Its data is kept.
+- First-run setup, an audit log of every change, CSV exports, daily backups (photos included) and a JSON API.
+- Dark mode, phone-friendly pages, and installable as an app.
+
+## Install
+
+LUG Manager is a single C++ server with SQLite, shipped as a Docker image (`ghcr.io/arklug/lug-manager`). The one-line version, for any machine with Docker:
 
 ```bash
-bash scripts/demo/build.sh build/lug_manager /tmp/demo-site /lug-manager
-# serve it so it appears under /lug-manager/:
-mkdir -p /tmp/site && ln -s /tmp/demo-site /tmp/site/lug-manager && python3 -m http.server 8000 --directory /tmp/site
+mkdir lug-manager && cd lug-manager
+curl -O https://raw.githubusercontent.com/ArkLUG/lug-manager/main/docker-compose.yml
+curl -o .env https://raw.githubusercontent.com/ArkLUG/lug-manager/main/.env.example
+# edit .env: Discord app/bot credentials and LUG_PUBLIC_URL (see Configuration)
+docker compose up -d
+docker compose logs lug-manager | grep setup
 ```
 
-`scripts/demo/seed.py` creates the fictional data, `export.py` crawls a throwaway offline server once per role and saves pages and panels as static files, and `demo.js` maps htmx/XHR requests onto them and blocks writes. `tests/e2e/demo_check.py` clicks through the result.
-
-## Features
-
-- **Member Management**: Track members with contact info, age range (KFOL/TFOL/AFOL), birthday, dues, and Discord role sync. Members without Discord accounts (e.g. KFOLs) are fully supported. Phone numbers, addresses, and ZIP codes are auto-formatted and validated.
-- **Per-Field Privacy Controls**: Members choose per-field who sees their PII (email, phone, address, birthday, Discord username). Three levels: Don't share, Verified members only, All members. Only the member themselves can change their privacy settings — admins cannot override.
-- **Verified Members**: "Verified" means a member has physically attended at least one meeting/event (virtual attendance doesn't count) or has paid dues. This prevents random Discord joiners from scraping contact info.
-- **Self-Service Profile**: Members can edit their own profile (name, contact info, privacy settings) without admin involvement via "Edit My Profile" on the dashboard and members page.
-- **Role System**: Three global roles (admin, chapter_lead, member) mapped via Discord roles, plus chapter-level roles (lead, event_manager, member). Anyone in the Discord guild can log in. Chapter leads can add/edit members and manage dues. Only admins can delete members or change roles.
-- **Chapter System**: Organize members into chapters with leads, event managers, Discord channels, and role sync. Chapter names shown in meeting/event scope columns.
-- **Meeting & Event Management**: Sortable tables with search, pagination, and responsive mobile layout. Meetings support virtual mode with Discord voice channel selection. Events have tentative/confirmed status. Map links on locations open the user's default map app (Google Maps, Apple Maps, Waze, etc.).
-- **QR Code Check-in**: Managers generate a QR code for any meeting or event. Attendees scan to reach a public check-in page with three methods: Discord OAuth (auto-creates member if new), search existing members, or manual entry for new members. Duplicate detection prevents double check-ins.
-- **Notes & Reports**: Markdown notes on events/meetings with WYSIWYG editor (EasyMDE). Publish reports to Discord forum channels with attendance (virtual/in-person split for meetings, multi-day for events).
-- **Attendance Tracking**: Admin/lead/event-manager managed attendance with virtual support, year-filtered overview with search/sort/pagination, per-member detail view, perk tier display, and hide-inactive toggle. Members cannot self-check-in — only managers can add attendees (or via QR check-in).
-- **Perk Levels**: Admin-defined attendance tiers per year with Discord role rewards, minimum age range requirements, and paid dues prerequisites. Clone tiers between years. Dashboard shows progress with meetings attended, events attended, dues status, and what's needed for the next tier.
-- **Event RSVPs**: Members RSVP from the event page; when an event has a capacity (max attendees) extra RSVPs go on a first-come waitlist and are promoted automatically when a spot opens. RSVPs close at the signup deadline. Event managers see and can remove RSVPs. API: `GET /api/v1/events/{id}/rsvps`.
-- **Display Space Requests**: For public shows, the event lead opens display requests on the event page; members register their MOC with its footprint (inches) and whether it needs power. The lead approves/declines, assigns tables, sees total approved square footage, and can export a CSV.
-- **Discord Reminders** (opt-in, Settings > Discord): posts a reminder a configurable number of hours before each meeting (in its announcement channel) and event (in its thread), once; optionally DMs members who RSVP'd.
-- **Dues Ledger**: Each payment (date, amount, method, covers-until, note, who recorded it) is kept as history on the member; recording one extends paid-until. Lapsed dues are automatically marked unpaid, chapter leads see dues expiring in the next 30 days on the dashboard, and an optional Discord DM reminds members N days before expiry.
-- **CSV Exports**: Members (chapter leads+), attendance overview by year with perk tiers, and the audit log (admins). Exports are audit-logged and protected against spreadsheet formula injection.
-- **Bulk Member Actions**: Chapter leads+ can tick members in the table (selection survives paging and search) and mark them paid until a date, unpaid, move them to a chapter, or set their age range in one go; each change is audit-logged per member.
-- **Backups**: Daily consistent SQLite snapshots in `data/backups` (on by default, keeps the newest 14), plus "Back up now" and download links at Settings > Backups (admin). Uploaded photos/receipts (`data/uploads`) are copied to `data/backups/uploads` with each backup (deleted ones kept for the same retention), and can be downloaded as one .zip.
-- **Signed-in Devices**: The dashboard lists your active sessions (browser and OS) with "Sign out everywhere else"; admins can sign a member out on all devices from their profile.
-- **Check-in Kiosk**: A full-screen page for a tablet or projector at the venue (Kiosk button next to the QR code) showing a large check-in QR code, a live count and the latest arrivals.
-- **More Calendar Feeds**: Per-chapter feeds at `/calendar/chapter/<id>/feed.ics` (add `?lug_wide=0` to drop LUG-wide items), and a personal private feed (dashboard > Subscribe) that includes private meetings/events with full details via a secret, regenerable link.
-- **Installable App**: Add LUG Manager to a phone or desktop home screen (web app manifest + a minimal service worker that only provides an offline page; nothing personal is cached).
-- **Recurring Meetings**: Meetings > Recurring sets up a schedule ("2nd Tuesday of every month, 7 PM", "every 2 weeks on Saturday") and creates the meetings - with their Discord and calendar posts - about 45 days ahead. Each meeting stays individually editable; stopping a series removes its future meetings only.
-- **Visitor Counter**: For public shows, "Visitor counter" on the event opens a phone-friendly tap counter (kids / teens / adults, with undo) that fills the event's public visitor totals used in reports.
-- **Reports**: Annual Report (admin) shows the year in numbers - members, active members, meetings and check-ins, events, public visitors, dues recorded, check-ins per month, most active members and an events table, plus growth and retention: who came back from last year (and who didn't), first-timers, a five-year trend (active members, new members, meetings, average attendance, visitors), new members by month and the busiest venues. Each event has a printable report (visitors, participating members by day, approved displays, social links, feedback) suited to LEGO Ambassador Network event reporting.
-- **Volunteer Shifts**: Event managers add shifts (set-up, booth, tear-down) with a number of volunteers needed; members sign up or leave from the event page, managers see who's on each shift, and volunteers get a reminder DM when Discord reminders + DMs are on.
-- **Weekly Digest** (feature toggle, off by default): Monday from 9:00, one DM (or email for members without Discord) per member with the week's meetings and events, their RSVPs and volunteer shifts, dues running out and LUG items due back. Sent once per week; members can opt out in My Account or from the email.
-- **First-Run Setup**: On a fresh install the server log prints a one-time `/setup?token=...` link to create the first admin (an alternative to `BOOTSTRAP_ADMIN_DISCORD_ID`). Admins then get a dashboard banner and a short checklist at Settings > Setup: LUG name (shown in the sidebar) and time zone, features, Discord server and announcements channel, and Discord role mappings.
-- **Feature Toggles** (admin, Settings > Features): switch off what a LUG doesn't use - chapters, dues, perk levels, RSVPs, display requests, volunteer shifts, event photos, build challenges, inventory, treasury, recurring meetings, reports, kiosk/visitor counter, QR self check-in, calendar feeds, Discord reports, young-member consent tracking and the public shows page (off by default). A switched-off feature disappears from the sidebar, pages and forms, its pages return 404 and its reminders stop; data is kept, and the `/api/v1` API is unaffected. With chapters off, new events/meetings are LUG-wide.
-- **My Account**: Per-member notification choices (event / shift reminders, waitlist promotion, dues reminders), signed-in devices, "Download my data" (JSON of everything stored about the member) and "Delete my account" (type DELETE; the last admin can't delete themselves). Members moved off an event waitlist get a Discord DM.
-- **Inventory**: LUG-owned items (tables, baseplates, display cases, banners) with quantities and where they're kept. Chapter leads and admins check items out to members with an optional due date, mark them returned, and export a CSV; members see what they currently have. Overdue loans are highlighted and the borrower gets one reminder (DM, or email without Discord) on the due date.
-- **Treasury** (admins, plus members an admin marks as Treasurer on their member record): Record other income and expenses (category, optional event link, optional receipt photo/PDF - viewable only by treasurers/admins) and dues payments, next to the dues recorded on member records. Each year shows the opening balance, dues, other income, expenses, net and closing balance, with breakdowns by category, event and month, a ledger and a CSV export. Event reports show that event's income and expenses.
-- **Merge Duplicates** (admin): Members > Merge previews and then merges a duplicate record into the one to keep - check-ins, RSVPs, dues, displays, shifts, photos, challenge entries, chapter roles (higher wins) and loans move over, blank fields are filled in, and the duplicate is deleted. Records linked to two different Discord accounts can't be merged.
-- **Public Shows Page**: Optional (Settings > Public Shows Page) no-login page at `/shows` listing upcoming non-private, non-cancelled events with dates, location, admission and description, an anonymous "I plan to come" button (count shown on the page, the event and its report; capped per IP) and a "volunteer at this show" link for members when the event has shifts; `/shows?embed=1` can be iframed on the LUG website and `/shows.json` (CORS-enabled) lets the site render its own list.
-- **Email for Members Without Discord** <a id="email-for-members-without-discord"></a>: With SMTP configured (`LUG_SMTP_*` + `LUG_PUBLIC_URL`), members who have an email address but no Discord account can sign in with a one-time link ("Email me a link" on the login page; 15 minutes, single use, max 3 an hour, same answer for unknown addresses), and get event/shift/waitlist/dues notifications by email instead of DM. Every email has a no-login unsubscribe link plus `List-Unsubscribe` / one-click headers; members can also turn email off in My Account.
-- **Event Photos**: Members add photos to an event's Photos panel (JPEG/PNG/GIF/WebP, 10 MB, EXIF/location stripped, members-only, served sandboxed). Uploaders and event managers can delete them.
-- **Build Challenges**: Admins set a theme and entry window; members submit one photo entry each and vote for one other entry (votes can be moved). Counts appear when voting closes a week after entries close, and an admin can announce the winner to the LUG Discord channel.
-- **Young Member Consent**: Guardian contact, signed-consent and photo-release tracking on member records (shown to chapter leads and the member). Attendance lists flag KFOL/TFOL attendees with "no photos" or "consent missing" so organisers know at check-in.
-- **Dark Mode**: Follows the system light/dark setting by default; a Light / System / Dark switch in the sidebar overrides it per browser. Applies to the check-in page too.
-- **Audit Log**: Every action is tracked — who did what, when, to which entity, from what IP. Admin-only viewer with search, category filtering, and pagination. 47 distinct audited actions covering members, meetings, events, chapters, attendance, check-ins, perks, settings, syncs, and role mappings.
-- **Discord Integration**: OAuth2 login, scheduled events, forum threads, announcements, role sync, perk role assignment, voice channel selection for virtual meetings, member sync every 6 hours
-- **Google Calendar Integration**: Push events directly to a shared Google Calendar via service account, import existing events
-- **iCal Feed**: RFC 5545 calendar subscription for personal calendar apps (collapsible on dashboard)
-- **Help & Onboarding**: Role-aware help page with getting-started guides for each role (Member, Event Manager, Chapter Lead, Admin). Interactive multi-page tour powered by driver.js auto-navigates through the app, highlighting features the user actually has access to. Permissions quick-reference table.
-- **Responsive UI**: Mobile-friendly tables that progressively hide columns on smaller screens. HTMX + Tailwind CSS interface with proper browser back/forward support. Detail modals for viewing full meeting/event info including attendance panel.
-- **JSON API**: Full CRUD REST API (`/api/v1/*`) covering members, events, meetings, chapters, chapter roles, attendance, perk levels, role mappings, audit log, and settings. Authenticated by admin-issued API keys with `read`/`write`/`admin` scopes, fully independent of session login. Self-service key management at Settings > API Keys, interactive docs at `/static/api-docs.html`.
-
-## Technology Stack
-
-- **Backend**: C++20 with CrowCPP v1.2.0 (header-only HTTP server)
-- **Database**: SQLite with WAL mode and automatic migrations (39 migrations)
-- **Frontend**: HTMX + Tailwind CSS + TomSelect + EasyMDE + QRCode.js + DataTables + Driver.js (CDN, no build step)
-- **External APIs**: Discord OAuth2 + REST, Google Calendar API v3
-- **Dependencies**: asio, nlohmann/json, md4c, libcurl, OpenSSL, Google Test
-- **CI/CD**: GitHub Actions (tests run inside Docker build, single-job pipeline)
-
-## Prerequisites
-
-- CMake 3.20+
-- C++20 compiler (GCC 10+, Clang 12+)
-- libcurl, sqlite3, OpenSSL (development headers)
-- pkg-config
-- Linux, macOS, or Windows (with WSL)
-
-### Ubuntu/Debian:
-```bash
-sudo apt-get install cmake g++ pkg-config libcurl4-openssl-dev sqlite3 libsqlite3-dev libssl-dev
-```
-
-### Arch/Manjaro:
-```bash
-sudo pacman -S cmake gcc pkgconf curl sqlite openssl
-```
-
-### macOS:
-```bash
-brew install cmake curl sqlite openssl pkg-config
-```
-
-## Quick Start
-
-1. **Clone and build**:
-   ```bash
-   git clone https://github.com/ArkLUG/lug-manager.git
-   cd lug-manager
-   cmake -B build -S .
-   cmake --build build -j$(nproc)
-   ```
-
-2. **Run tests**:
-   ```bash
-   cmake -B build -S . -DBUILD_TESTS=ON
-   cmake --build build -j$(nproc)
-   ctest --test-dir build --output-on-failure -j$(nproc)
-   ```
-
-3. **Configure**:
-   ```bash
-   cp .env.example .env
-   # Edit .env with your Discord credentials
-   ```
-
-   Required environment variables:
-   | Variable | Description |
-   |----------|-------------|
-   | `DISCORD_BOT_TOKEN` | Discord bot token (from Developer Portal) |
-   | `DISCORD_CLIENT_ID` | Discord OAuth2 application client ID |
-   | `DISCORD_CLIENT_SECRET` | Discord OAuth2 application client secret |
-   | `DISCORD_REDIRECT_URI` | OAuth2 callback URL (e.g. `http://localhost:8080/auth/callback`) |
-   | `BOOTSTRAP_ADMIN_DISCORD_ID` | Your Discord user ID (creates admin account on first login) |
-
-   Optional defaults (can also be set from the Settings page after first login):
-   | Variable | Description | Default |
-   |----------|-------------|---------|
-   | `ICAL_TIMEZONE` | IANA timezone name | `America/New_York` |
-   | `ICAL_CALENDAR_NAME` | Calendar display name | `LUG Events` |
-   | `DISCORD_GUILD_ID` | Discord server ID | *(set in Settings)* |
-
-   Optional, only needed for [in-Discord match resolution](#discord-member-match-review) (no Settings-page equivalent — startup secrets, not runtime config):
-   | Variable | Description |
-   |----------|-------------|
-   | `DISCORD_PUBLIC_KEY` | Application's Ed25519 public key (Developer Portal > General Information) |
-   | `DISCORD_APPLICATION_ID` | Application ID (Developer Portal > General Information) |
-
-   Optional, for [email](#email-for-members-without-discord) (all four plus `LUG_PUBLIC_URL`):
-   | Variable | Description |
-   |----------|-------------|
-   | `LUG_SMTP_URL` | `smtps://smtp.example.com:465` or `smtp://smtp.example.com:587` (TLS is required either way) |
-   | `LUG_SMTP_USER` / `LUG_SMTP_PASSWORD` | SMTP login |
-   | `LUG_SMTP_FROM` | Sender, e.g. `Arkansas LUG <lug@example.com>` |
-
-4. **Run**:
-   ```bash
-   ./build/lug_manager
-   ```
-   Open `http://localhost:8080` and log in with Discord. The first user matching `BOOTSTRAP_ADMIN_DISCORD_ID` is automatically made admin - or, without that variable, open the one-time `/setup?token=...` link printed in the server log to create the first admin, then follow the setup checklist. All other guild members can log in as regular members.
-
-## Roles & Permissions
-
-### Global Roles
-
-| Role | Access |
-|------|--------|
-| **admin** | Full access to everything |
-| **chapter_lead** | Can see all PII, manage members (add/edit/dues), manage chapter members, assign event managers. Cannot delete members, change roles, or edit system settings. |
-| **moderator** | Same privilege tier as chapter_lead — can see all PII, manage members, manage chapter members, and review Discord member matches. Cannot delete members, change roles, or edit system settings. |
-| **member** | View events, meetings, chapters, own attendance. PII visibility depends on each member's per-field privacy settings. |
-
-`admin` and `member` are assignable via Discord role mapping (Settings > Role Mappings) as well as manually. `chapter_lead` and `moderator` are granted manually only, from a member's edit form — there's no Discord-role-mapping path for either.
-
-Each member's role remembers where it came from. A role that came from a Discord role mapping follows Discord: it is re-checked on every login and every 6-hourly sync, and losing the mapped Discord role drops the member back to `member`. A role an admin set by hand is never lowered by sync (a higher mapped Discord role can still raise it). Only members joining the Discord server can create an account by logging in.
-
-### Chapter Roles (assigned per-chapter by admins/leads)
-
-| Role | Access |
-|------|--------|
-| **lead** | Manage chapter members + assign event_manager + everything event_manager can do |
-| **event_manager** | Create/edit/delete events and meetings in their chapter, manage attendance, generate QR check-in codes |
-| **member** | Basic chapter membership |
-
-### PII Privacy
-
-Each member controls their own privacy settings via "Edit My Profile". Per field (email, phone, address, birthday, Discord username), they choose:
-
-| Setting | Who can see |
-|---------|-------------|
-| **Don't share** | Only admins and chapter leads |
-| **Verified members** | Members who have attended in-person or paid dues |
-| **All members** | Any logged-in member |
-
-Admins and chapter leads always see all PII regardless of settings. Members always see their own info. Virtual-only attendance does not count toward "verified" status.
-
-## QR Code Check-in
-
-Managers (admin, chapter lead, event lead, event manager) can generate a QR code for any meeting or event from the detail modal. When scanned, attendees reach a public check-in page with three options:
-
-1. **Discord**: OAuth login that auto-creates a member account if new, then checks in
-2. **Find Me**: Search existing members by name, select, and check in
-3. **New Member**: Enter first/last name and optional email. If a matching name exists, checks in the existing member instead of creating a duplicate.
-
-The QR token is generated once per entity and reused by all managers.
-
-## Virtual Meetings
-
-Meetings can be marked as "Virtual" in the create/edit form. Virtual meetings:
-- Hide the location field and show a Discord voice channel dropdown instead
-- Display "Virtual (Discord)" as the location in calendar feeds and Discord events
-- Show a camera icon and "Virtual" label in the meetings table
-- Provide a "Join Voice Channel" link in the detail modal
-- Show a virtual attendance toggle on the QR check-in page
-
-## Discord Setup
-
-1. Go to [discord.com/developers/applications](https://discord.com/developers/applications) and create a new application.
-
-2. **OAuth2** tab:
-   - Add redirect URI: `http://your-server:8080/auth/callback`
-   - Copy **Client ID** and **Client Secret** to `.env`
-
-3. **Bot** tab:
-   - Create a bot and copy the **Token** to `.env`
-   - Enable the **Server Members Intent** (required for role sync)
-
-4. **Invite the bot** to your server using OAuth2 URL Generator:
-   - Scopes: `bot`, `identify`, `guilds`
-   - Bot permissions: `Manage Events`, `Create Public Threads`, `Send Messages`, `Manage Roles`, `Manage Channels`
-
-5. **Important**: In your Discord server's role settings, drag the bot's role **above** any roles it needs to manage. Discord requires the bot role to be higher in the hierarchy.
-
-6. After first login, go to **Settings** in the web UI to configure guild ID, channels, roles, and timezone.
-
-## Discord Member Match Review
-
-Every 6 hours (and on manual "Sync Now"), LUG Manager pulls the Discord guild's member list and reconciles it against the roster. An exact `discord_user_id` match updates the existing member; no match at all creates a new one. When a guild member's name is a *plausible but not certain* match for an existing Discord-less member (e.g. a KFOL added by a parent before the kid joined Discord), the match is held in a review queue instead of silently creating a duplicate.
-
-Admins, moderators, and chapter leads can resolve these from **Settings > Member Import > pending Discord match(es)**, or from `/settings/discord-matches` directly — link the Discord identity to the suggested (or any other) existing member, or create a new member from it.
-
-### Resolving matches from Discord
-
-Matches can also be resolved without leaving Discord. If a notification channel is configured (**Settings > Match Notification Channel**), each new pending match posts a message with a **Resolve Match** button to that channel. Clicking it opens a Discord modal with a single field — a member ID to link to, or blank to create a new member — right where the click happened.
-
-Access is restricted to an explicit, admin-configured Discord role allowlist (**Settings > Authorized Roles**) — never a role-name match, since guild roles can be renamed or recreated by anyone with the right Discord permissions. Leave the notification channel unset to disable this entirely; the browser-based review queue always still works regardless.
-
-This requires the app's own Discord Application **Public Key** and **Application ID** (Developer Portal > General Information — distinct from the bot token and OAuth2 client secret) set as `DISCORD_PUBLIC_KEY` / `DISCORD_APPLICATION_ID` in `.env`. Every request to `/discord/interactions` is verified against the Public Key with Ed25519 before anything else happens — requests that don't verify get a bare `401` with no further processing. After deploying with these set, register `https://your-domain/discord/interactions` as the **Interactions Endpoint URL** in the Developer Portal; Discord sends a signed PING and requires a valid response before the field will save, so this step must happen after the app is live, not before.
-
-## Google Calendar Integration
-
-LUG Manager can push meetings and events directly to a shared Google Calendar.
-
-### Setup
-
-1. **Create a Google Cloud project** and enable the **Google Calendar API**
-2. **Create a service account** with a JSON key file
-3. **Share your Google Calendar** with the service account email as an editor
-4. **Configure in Settings**: enter the JSON path and Calendar ID
-
-See the Settings page for detailed instructions. Import existing events with the "Import from Google Calendar" button.
-
-**Private events/meetings**: the create/edit form has a "Private" checkbox alongside "Suppress calendar updates." Unlike suppression (which skips the calendar entirely), a private event or meeting still publishes — to both Google Calendar and the public iCal feed (`calendar.ics`) — but as a generic "Private LUG Event"/"Private LUG Meeting" placeholder with no title, location, or description, so a shared/public calendar shows the LUG is busy without exposing details.
-
-## Chapters
-
-Chapters allow you to organize your LUG into sub-groups. Each chapter can have:
-
-- **Chapter leads** with a mapped Discord role (automatically synced)
-- **Event managers** who can create/edit events and meetings for their chapter
-- **A Discord announcement channel** for chapter-specific announcements
-- **Members** assigned via the chapter management page
-
-Chapter leads can manage members and assign event managers. Only admins can add/remove chapter leads or edit chapter settings.
-
-## Attendance & Perk Levels
-
-### Attendance
-- **Manager-controlled**: Only admins, chapter leads, event leads, and event managers can check in members (via attendance panel or QR code)
-- **Virtual support**: Meetings track in-person vs. virtual attendance (virtual does not count toward "verified" member status, and never counts toward perk-tier eligibility either — see Perk Levels below)
-- **Overview**: Year-filtered, paginated, searchable, sortable table with last-seen date and perk tier
-- **Per-member detail**: Expandable view of attended events/meetings for the selected year
-- **Hide inactive**: Toggle to hide members with no attendance and no dues
-
-### Perk Levels
-- Admin-defined tiers per calendar year (e.g. Bronze, Silver, Gold)
-- Separate meeting and event attendance thresholds
-- Optional paid dues and minimum age range (KFOL/TFOL/AFOL) requirements
-- Discord role auto-assigned when a member qualifies
-- Clone tiers between years for easy setup
-- Dashboard shows progress: meetings attended, events attended, dues status, and remaining requirements for the next tier
-- **Excluding an event/meeting from perk counts**: the create/edit form has a "Doesn't count toward perks" checkbox for get-togethers that shouldn't count toward tier eligibility (e.g. a holiday party or other social that isn't a regular meeting/event). Attendance is still recorded normally — it's just excluded from every perk-eligibility calculation (dashboard progress, Discord role sync, and the Attendance Overview tier column). Independently, virtual meeting attendance is never counted toward perks regardless of this flag, matching the existing "verified member" rule above.
-
-## Event Reports
-
-Events and meetings support markdown notes and structured report fields:
-
-**Meeting reports** (published to Discord forum):
-```
-Chapter: [chapter name]
-Meeting date: [date]
-Members by name: [in-person]; Virtual: [virtual]
-Topics: [notes]
-```
-
-**Event reports** (published to Discord forum):
-```
-Event name: [title]
-Start date / End date
-Entrance fee: [fee]
-Member names day1: [names by check-in date]
-Public kids / teens / adults: [counts]
-Social media links: [links]
-What you liked best: [feedback]
-```
-
-## Settings (Admin)
-
-Runtime configuration is split into separate pages under **Settings** in the sidebar, each with
-its own save button — saving one page never touches another page's settings:
-
-| Page | Route | Setting | Description |
-|------|-------|---------|-------------|
-| Discord | `/settings` | Discord Guild ID | Your Discord server ID |
-| | | Announcements Channel | Channel for LUG-wide announcements |
-| | | Event Forum Channel | Forum channel for event discussion threads |
-| | | Event/Meeting Reports Forum | Forum channels for published reports |
-| | | Announcement/Non-LUG Roles | Roles @mentioned in announcements |
-| | | Suppress Pings/Updates | Disable @mentions or update notifications |
-| iCal Calendar | `/settings/calendar` | Timezone | IANA timezone for Discord/Calendar |
-| | | Calendar Name | Display name in calendar apps |
-| Google Calendar | `/settings/google-calendar` | Service Account JSON Path / Calendar ID | Google Calendar sync configuration |
-| Discord Matches | `/settings/discord-matches` | Match Notification Channel | Discord channel for Resolve Match buttons (Discord member match review); unset disables |
-| | | Authorized Roles | Discord role-ID allowlist permitted to resolve matches via the Discord button/modal |
-| Branding | `/settings/branding` | Logo | Replaces the default sidebar mark and browser tab favicon with an uploaded image (PNG/JPEG/GIF/WebP/SVG, up to 5 MB) |
-
-Also reachable from the Settings accordion in the sidebar: **Roles** (`/settings/roles`, map
-Discord roles to admin/member) and **API Keys** (`/settings/api-keys`). **Perk Levels** (`/perks`)
-and **Audit Log** (`/audit`, searchable history of all actions taken by all users) are their own
-top-level sidebar items.
+Then:
+
+1. **Create the first admin.** On a fresh install the log prints a one-time link, `/setup?token=…`. Open it and enter your name and Discord user ID (or an email address).
+   - Alternative: set `BOOTSTRAP_ADMIN_DISCORD_ID`, and that Discord account becomes admin on its first sign-in.
+2. **Sign in and follow the setup checklist.** A dashboard banner takes you to Settings > Setup, which covers:
+   - your LUG's name and time zone
+   - which features you use
+   - your Discord server and announcements channel
+   - which Discord roles are admins
+3. **Put it behind HTTPS** with a reverse proxy, and set `LUG_PUBLIC_URL`. Cookies are marked secure when that URL is `https://`.
+
+Data lives in the `/app/data` volume: the database, uploads and backups.
+
+**Other ways to host it:** see [HOSTING.md](HOSTING.md) for:
+- **Unraid**, with a template included
+- **Fly.io** (`fly.toml`)
+- **Render** (one-click blueprint)
+- **Railway**
+
+[DOCKER.md](DOCKER.md) covers compose, nginx, Kubernetes and backups.
+
+## Configuration
+
+Secrets and start-up options are environment variables, read from the environment or from `.env`. Real environment variables always take precedence over `.env`. Everything else is configured in the app under **Settings**.
+
+| Variable | Needed | What it's for |
+|---|---|---|
+| `DISCORD_CLIENT_ID`, `DISCORD_CLIENT_SECRET` | Yes | Discord sign-in (OAuth2 app) |
+| `DISCORD_REDIRECT_URI` | Yes | `https://your-host/auth/callback` |
+| `DISCORD_BOT_TOKEN` | Yes | Bot for announcements, roles, DMs and member sync |
+| `LUG_PUBLIC_URL` | Recommended | e.g. `https://lug.example.org`. Used for links in emails and redirects. |
+| `BOOTSTRAP_ADMIN_DISCORD_ID` | Optional | Makes this Discord account admin on first sign-in. The `/setup` link works too. |
+| `DISCORD_PUBLIC_KEY`, `DISCORD_APPLICATION_ID` | Optional | Lets duplicate-member matches be resolved from Discord buttons |
+| `LUG_SMTP_URL`, `LUG_SMTP_USER`, `LUG_SMTP_PASSWORD`, `LUG_SMTP_FROM` | Optional | Email sign-in and email notifications for members without Discord |
+| `LUG_PORT`, `LUG_DB_PATH`, `LUG_TEMPLATES_DIR` | Optional | Defaults `8080`, `./lug.db`, `./src/templates`. The Docker image sets these. |
+| `ICAL_TIMEZONE`, `ICAL_CALENDAR_NAME`, `DISCORD_GUILD_ID` | Optional | Starting values; change them later in Settings |
+| `LUG_OFFLINE` | Never in production | `1` blocks every outbound request (Discord, Google, email). Use it for testing and copies of real data. |
+| `LUG_DOTENV` | Optional | `0` skips reading `.env` |
+
+### Discord
+
+1. Create an application at [discord.com/developers/applications](https://discord.com/developers/applications).
+2. **OAuth2:**
+   - Add the redirect URI `https://your-host/auth/callback`.
+   - Copy the Client ID and Client Secret.
+3. **Bot:**
+   - Create the bot and copy its token.
+   - Turn on the **Server Members Intent**, which member sync needs.
+4. **Invite the bot:**
+   - Scopes: `bot`, `identify`, `guilds`.
+   - Permissions: Manage Events, Create Public Threads, Send Messages, Manage Roles, Manage Channels.
+5. In your server's role list, drag the bot's role **above** every role it should assign.
+6. Optional: to resolve duplicate-member matches from Discord buttons, set `DISCORD_PUBLIC_KEY` and `DISCORD_APPLICATION_ID`. Then register `https://your-host/discord/interactions` as the Interactions Endpoint URL.
+
+Members are synced from Discord every 6 hours. A Discord member who may already have a record (for example, a kid added by a parent) is held for review rather than duplicated.
+
+### Google Calendar (optional)
+
+1. Create a Google Cloud service account and download its JSON key.
+2. Enable the Calendar API.
+3. Share your calendar with the service account's email address as an editor.
+4. Enter the key path and the Calendar ID under Settings > Google Calendar.
+
+Private meetings and events still appear on the calendar, but only as "Private LUG Event", with no title, place or description.
+
+### Email (optional)
+
+Set the four `LUG_SMTP_*` variables and `LUG_PUBLIC_URL`. Members with an email address but no Discord can then:
+- use **Email me a link** on the sign-in page (single use, valid 15 minutes, at most 3 per hour);
+- get reminders, waitlist notices, digests and dues reminders by email.
+
+Every email has a no-login unsubscribe link and one-click `List-Unsubscribe` headers.
+
+## Roles
+
+| Role | Can |
+|---|---|
+| **Member** | See meetings, events and members (contact details follow each member's privacy choices); RSVP, volunteer, enter challenges, add photos, manage their own account. |
+| **Moderator** (and **Chapter Lead**) | Everything a member can, plus: add and edit members, manage dues, see all contact details, run meetings and events, review Discord matches. |
+| **Admin** | Everything, including settings, roles, features, reports, deleting members and merging duplicates. |
+| **Treasurer** (flag, any role) | The Treasury page and recording dues there. |
+
+**How roles are assigned**
+- Admin and Member can come from Discord role mappings. Moderator and Chapter Lead are set by hand.
+- A role that came from Discord follows Discord: losing the Discord role removes it. A role set by hand is never lowered by sync.
+
+**Chapter roles** (only when Chapters is on)
+- A chapter's **leads** manage its members and event managers.
+- **Event managers** run that chapter's meetings and events.
+- **Event leads** manage one specific event.
+- With chapters off, "Chapter Lead" is no longer offered. Moderator gives the same permissions.
+
+**Privacy:** each member chooses, field by field, between *Don't share*, *Verified members* (members who have attended in person or paid dues) and *All members*. Moderators and admins always see everything.
+
+## Features you can switch off
+
+Settings > Features (admin). A switched-off feature disappears from the sidebar, pages and forms, its pages return 404, and its reminders stop. Its data is kept, and the JSON API isn't affected.
+
+Features you can switch off:
+- Chapters
+- Membership dues
+- Perk levels
+- Event RSVPs
+- Display requests
+- Volunteer shifts
+- Event photos
+- Build challenges
+- Inventory
+- Treasury
+- Recurring meetings
+- Reports
+- Kiosk and visitor counter
+- QR self check-in
+- Calendar feeds
+- Discord reports
+- Young-member consent
+
+These two start off and are opt-in:
+- Weekly digest
+- Public shows page
+
+## Backups and your data
+
+- **Daily database snapshots** go to `data/backups`; the newest 14 are kept by default. Settings > Backups has "Back up now" and download links.
+- **Uploads:** photos and receipts are copied to `data/backups/uploads` with each backup. You can also download them all as one `.zip`.
+- **Members' own data:** every member can download it as JSON, or delete their account, from My Account.
+- **Audit log:** records who did what, when, and from which IP address.
 
 ## JSON API
 
-LUG Manager exposes a full CRUD JSON API under `/api/v1/*` for programmatic access — separate from the browser session used by the web UI.
-
-### Authentication
-
-API requests are authenticated with an **API key**, sent as either:
-```
-X-API-Key: <key>
-```
-or
-```
-Authorization: Bearer <key>
-```
-
-Keys are issued by admins from **Settings > API Keys**. The plaintext key is shown once at creation time and is never stored or displayed again — only its SHA-256 hash is kept. Revoking a key takes effect immediately.
-
-### Scopes
-
-Each key has one of three scopes, checked per-request:
-
-| Scope | Grants |
-|-------|--------|
-| `read` | All `GET` endpoints |
-| `write` | `read`, plus create/update/delete for routine content (events, meetings, members, attendance, chapters, perk levels) |
-| `admin` | `write`, plus role/settings changes and destructive operations — required for member role changes, role mappings (all verbs, including reads, since they control privilege), settings (all verbs), and deletes of members/chapters/events/meetings/perk levels |
-
-A key's scope is independent of the issuing admin's own session — API keys never inherit or check the web session at all, and a session cookie alone does not grant API access.
-
-### Coverage
-
-Members, events (+ per-day schedule), meetings, chapters, chapter member roles, attendance (+ per-day event attendance), perk levels, role mappings, audit log, settings, and the Discord member-match review queue all have endpoints. Audit log is read-only; event days are read-only (derived from the event's date range); everything else supports the full verb set its scope allows.
-
-Beyond plain CRUD, most of the browser UI's admin actions have an API equivalent too: generating a QR check-in token, publishing an event/meeting report to its Discord forum, converting an event to a meeting, toggling an attendance record's virtual flag, cloning perk tiers between years, bulk-syncing perk Discord roles, importing events from Google Calendar, resolving a Discord member match (link to an existing member, or create a new one), and linking a Discord identity onto an existing member directly. A chapter-member role change into or out of `lead` also syncs the chapter's Discord lead role, same as the browser. The handful of things that stay browser/session-only are inherently tied to a specific user's session or an in-person scan (self check-in/out, the public QR check-in flow, and viewing your own profile) — an admin API key can already achieve the same end state directly (e.g. checking any member into any event/meeting).
-
-### Docs
-
-Interactive OpenAPI/Swagger documentation is served at `/static/api-docs.html` (self-hosted, no external CDN calls) — the raw spec is at `/static/openapi.yaml`.
-
-### Example
+Full create/read/update/delete under `/api/v1/*`:
+- **Covers:** members, events, meetings, chapters, attendance, perk levels, role mappings, settings, the audit log and Discord match review.
+- **Keys:** admins create API keys under Settings > API Keys, each with a `read`, `write` or `admin` scope. Send the key as `X-API-Key: <key>` or `Authorization: Bearer <key>`. Only a hash of each key is stored.
+- **Docs:** interactive docs at `/static/api-docs.html`, with the spec at `/static/openapi.yaml`.
 
 ```bash
-curl -H "X-API-Key: $LUG_API_KEY" https://your-lug.example.com/api/v1/events
-
-curl -X POST -H "X-API-Key: $LUG_API_KEY" -H "Content-Type: application/json" \
-  -d '{"title":"Build Night","start_time":"2026-09-01T18:00:00","end_time":"2026-09-01T20:00:00"}' \
-  https://your-lug.example.com/api/v1/events
+curl -H "X-API-Key: $LUG_API_KEY" https://lug.example.org/api/v1/events
 ```
 
-## Testing
+## Development
 
-The project has 56 test suites (unit + integration). Tests never contact real services: the fixture sets `LUG_OFFLINE=1`, and Discord / Google Calendar behaviour is tested against local fakes (`tests/fake_discord.hpp`, `tests/fake_google.hpp`, built on `tests/fake_server.hpp`) that record every request. Email uses a capturing mailer.
+**Stack:**
+- Server: C++20 and [CrowCPP](https://crowcpp.org), with SQLite in WAL mode and 64 automatic migrations.
+- Pages: server-rendered Mustache templates with htmx and Tailwind CSS.
+- JavaScript libraries: DataTables, Tom Select, EasyMDE, driver.js and QRCode.js, all bundled in the repo with no CDN.
+- Security: a strict nonce-based Content-Security-Policy.
+- Other libraries: libcurl, OpenSSL, zlib, nlohmann/json and md4c.
 
 ```bash
-# Build with tests
+# Ubuntu/Debian: sudo apt-get install cmake g++ pkg-config libcurl4-openssl-dev libsqlite3-dev libssl-dev zlib1g-dev
+# Arch:          sudo pacman -S cmake gcc pkgconf curl sqlite openssl zlib
+# macOS:         brew install cmake curl sqlite openssl pkg-config
 cmake -B build -S . -DBUILD_TESTS=ON
 cmake --build build -j$(nproc)
+bash scripts/build_css.sh                      # Tailwind -> src/static/tailwind.min.css
+LUG_OFFLINE=1 ./build/lug_manager              # http://localhost:8080
+```
 
-# Run all tests in parallel
+### Tests
+
+```bash
 ctest --test-dir build --output-on-failure -j$(nproc)
 ```
 
-| Suite | Coverage |
-|-------|----------|
-| test_utils | Database operations, migrations, data persistence |
-| test_discord_content | Announcement content generation, ping suppression |
-| test_repositories | CRUD for all repositories, pagination, search |
-| test_services | Service layer logic, calendar generation |
-| test_role_system | Role mappings, age range ranks, perk levels, member fields, per-field PII sharing, moderator role privilege tier |
-| test_suppression | Suppress flags, notes persistence, attendance summaries |
-| test_markdown | Markdown-to-HTML rendering (md4c) |
-| test_discord_signature | Ed25519 signature verification for the Discord Interactions endpoint — valid/tampered/wrong-key/malformed-hex cases |
-| test_integration_auth | Login, logout, session, dashboard, calendar |
-| test_integration_auth2 | Login page states, OAuth callback errors, denied/failed login flows |
-| test_integration_members | Member CRUD, PII visibility |
-| test_integration_chapters | Chapter CRUD, leads, members |
-| test_integration_coverage | Chapter detail/edit pages, member role/removal edge cases, permission boundaries |
-| test_integration_meetings | Meeting CRUD, pagination, detail |
-| test_integration_events | Event CRUD, status, detail |
-| test_integration_attendance | Attendance check-in, virtual toggle, overview |
-| test_integration_attendance2 | Attendance overview filtering/sorting/pagination, per-member detail view |
-| test_integration_settings | Settings save, Discord API, sync, nicknames |
-| test_integration_settings2 | Discord/nickname sync admin gating, regenerate-nicknames permissions |
-| test_integration_permissions | Per-field PII sharing, role-based access, chapter permissions, verified member logic |
-| test_integration_perks2 | Perk level CRUD by year, edit form permissions, deletion |
-| test_integration_audit | Audit log entries for all action types, search, filtering, pagination |
-| test_integration_checkin | QR check-in token generation, public page, search, select, manual entry, duplicates |
-| test_integration_help | Role-aware help page rendering for each role, HTMX partial loads |
-| test_integration_ui | Content validation, calendar output, badge rendering |
-| test_integration_api | JSON API CRUD per entity; auth/scope enforcement, key revocation, and cross-auth isolation between sessions and API keys |
-| test_integration_discord_matches | Discord member match review queue — admin/chapter-lead access, link/create-new resolution |
-| test_integration_discord_interactions | Discord Interactions webhook — PING, signature rejection, role-gated button click, modal submit (link/create-new), idempotency on already-resolved matches |
-| test_integration_discord_fake | Against a fake Discord: member sync (imports, renames, bots, departed members, empty-list skip, chapter-lead roles), OAuth login with guild check and role mapping, no @everyone pings, waitlist DM, reminders once, 429 retry, unsafe ids blocked |
-| test_integration_gcal_fake | Against a fake Google Calendar: create/update/delete, private events redacted, suppressed events skipped, import, offline block |
-| test_integration_features | Feature toggles: every feature's pages, hidden panels/links, background jobs, notification choices, chapters-off scope and Chapter Lead role |
-| (more) | RSVPs, displays, shifts, dues, reports, series, backups, sessions, exports, gallery/challenges, account, inventory, treasury, member merge, shows, email, guardian consent |
+There are 58 test suites, unit and integration. **Tests never contact real services:**
+- The test fixture sets `LUG_OFFLINE=1`.
+- Discord and Google Calendar run against local fakes that record every request. These are `tests/fake_discord.hpp` and `tests/fake_google.hpp`, built on `tests/fake_server.hpp`.
+- Email uses a capturing mailer.
 
-### Running locally without touching real services
+**Browser checks:** these need Firefox and Selenium. Point them at a running server with `LUG_BASE`.
+- `tests/e2e/smoke.py <session-token> <screenshot-dir>` covers every page and pop-up, and fails on any CSP violation or JavaScript error.
+- `tests/e2e/mobile.py` loads the main pages at phone size and fails if any page scrolls sideways.
 
-- `LUG_OFFLINE=1` blocks every outbound request (Discord, Discord login, Google Calendar, SMTP); only `127.0.0.1`/`localhost` is allowed. Use it for development and for any run against a copy of real data.
-- `.env` in the working directory is read for local development, but real environment variables always win, and `LUG_DOTENV=0` skips it. Don't start test servers from a directory whose `.env` holds real credentials.
-- `LUG_DISCORD_BASE` / `LUG_GOOGLE_BASE` point the clients at a fake server; they are only honoured for loopback addresses.
-- Browser checks: `tests/e2e/smoke.py <session-token> <screenshot-dir>` (desktop, every page and modal, fails on CSP violations/JS errors) and `tests/e2e/mobile.py` (390x844, fails on sideways scrolling). Set `LUG_BASE` to the server URL.
+**Safety rules for local runs:**
+- Use `LUG_OFFLINE=1` for development and for any copy of real data.
+- Don't start test servers from a folder whose `.env` holds real credentials. Real environment variables take precedence over `.env`, and `LUG_DOTENV=0` skips it.
+- `LUG_DISCORD_BASE` and `LUG_GOOGLE_BASE` point the clients at a fake server, and are accepted only for loopback addresses.
 
-CI runs all tests inside the Docker build — failing tests block image creation.
+### Demo site
 
-## Docker
+The workflow `.github/workflows/demo.yml` builds the demo and publishes it to GitHub Pages:
+- **When:** on every push to `main`, every Monday so the dates stay current, and on demand.
+- **How:**
+  - `scripts/demo/seed.py` creates the fictional LUG.
+  - `scripts/demo/export.py` crawls a throwaway offline server once per role and saves its pages and panels as static files.
+  - `scripts/demo/demo.js` maps the app's requests onto those files and blocks anything that would save.
+- **Checking it:** `tests/e2e/demo_check.py` clicks through the published site.
 
-Pre-built images are available on GitHub Container Registry:
+To build the demo locally:
 
 ```bash
-docker pull ghcr.io/arklug/lug-manager:latest
+bash scripts/demo/build.sh build/lug_manager /tmp/demo-site /lug-manager
+mkdir -p /tmp/site && ln -s /tmp/demo-site /tmp/site/lug-manager
+python3 -m http.server 8000 --directory /tmp/site      # http://localhost:8000/lug-manager/
 ```
 
-Or run with docker compose:
-```bash
-cp .env.example .env
-# Edit .env with your Discord credentials
-docker compose up -d
-```
-
-See [DOCKER.md](DOCKER.md) for detailed deployment instructions.
-
-## Project Structure
+### Layout
 
 ```
-.
-├── src/
-│   ├── main.cpp                 # Entry point, server setup
-│   ├── config/                  # Configuration (env vars, .env loading)
-│   ├── middleware/               # Auth middleware (Discord session, API key)
-│   ├── routes/                  # HTTP route handlers (15 route files)
-│   │   └── api/                 # JSON API route handlers, one per entity (/api/v1/*)
-│   ├── services/                # Business logic
-│   ├── repositories/            # Database access layer
-│   ├── models/                  # Data structs
-│   ├── integrations/            # Discord, Google Calendar, iCal
-│   ├── auth/                    # OAuth2 + session management
-│   ├── utils/                   # Markdown renderer, crypto helpers (API key hashing)
-│   ├── async/                   # Thread pool
-│   ├── db/                      # SQLite abstraction + migrations
-│   ├── templates/               # Mustache HTML templates
-│   │   ├── checkin/             # Public QR check-in page
-│   │   ├── members/             # Member list, forms, views
-│   │   ├── meetings/            # Meeting list, forms, detail, attendance
-│   │   ├── events/              # Event list, forms, detail
-│   │   ├── chapters/            # Chapter list, detail, members
-│   │   ├── attendance/          # Attendance overview, personal history
-│   │   ├── settings/            # Admin settings, roles, perks, API keys
-│   │   └── dashboard/           # Dashboard with member info, perk progress
-│   └── static/                  # CSS, JS assets, OpenAPI spec + Swagger UI (vendored)
-├── tests/                       # Google Test suites (7 unit + 18 integration)
-│   ├── integration_test_base.hpp # Shared fixture for integration tests
-│   └── test_integration_*.cpp   # Split integration tests by feature
-├── sql/migrations/              # Auto-applied database migrations (39)
-├── .github/workflows/           # CI/CD pipeline (single Docker build job)
-├── CMakeLists.txt
-├── Dockerfile
-├── docker-compose.yml
-└── README.md
+src/
+  main.cpp            start-up, background jobs (sync, reminders, digest, backups)
+  routes/             HTTP handlers (one file per area; api/ = /api/v1)
+  services/           business logic (events, sync, reminders, digest, features, notifier...)
+  repositories/       SQLite access
+  integrations/       Discord, Discord OAuth, Google Calendar, iCal, SMTP mailer
+  middleware/         auth, CSP and security headers, feature gating
+  templates/          Mustache pages and partials
+  static/             CSS/JS (vendored), app.js behaviours, OpenAPI docs
+sql/migrations/       applied automatically at start-up
+tests/                unit + integration suites, fakes, e2e browser checks
+scripts/              Tailwind build, theme CSS generator, demo site
+cmake/                build helpers (Crow template patch)
+unraid/               Unraid Community Applications template
+fly.toml, render.yaml cloud hosting configs (see HOSTING.md)
 ```
 
 ## Troubleshooting
 
-### Template not found
-Ensure `LUG_TEMPLATES_DIR` points to the templates directory and the working directory is the project root.
-
-### Discord OAuth fails
-- Verify `DISCORD_CLIENT_ID` and `DISCORD_CLIENT_SECRET`
-- Ensure redirect URI matches exactly
-- Check that the bot has been added to the server
-
-### Discord "Missing Permissions" (50013)
-The bot's role must be **higher** in the Discord role hierarchy than any roles it manages.
-
-### Google Calendar not creating events
-- Verify the service account JSON file path is correct and readable
-- Ensure the service account email has editor access on the target calendar
-- Check the Calendar ID format (`abc123@group.calendar.google.com`)
-
-### Database locked
-SQLite WAL mode supports concurrent reads but only one writer.
-
-### Duplicate controls on browser back/forward
-HTMX history restoration is handled automatically — DataTables and TomSelect instances are cleaned up before page cache. If you see duplicates, hard-refresh the page.
-
-### API returns 401 with a valid-looking key
-Confirm the key hasn't been revoked (Settings > API Keys shows Active/Revoked status) and that it's sent as `X-API-Key` or `Authorization: Bearer <key>` — session cookies alone do not authenticate `/api/v1/*`.
-
-### API returns 403 on an endpoint that should work
-Check the key's scope against the endpoint's requirement (see [JSON API](#json-api) above) — `role-mappings` and `settings` require `admin` scope even for `GET`.
+- **"Missing Permissions" (50013) from Discord:** move the bot's role above the roles it manages.
+- **Sign-in fails:** check that `DISCORD_REDIRECT_URI` matches the redirect in the Developer Portal exactly, and that the person is in your Discord server.
+- **Nothing shows on Google Calendar:** check that the key file path is readable, that the service account has editor access, and that the Calendar ID looks like `…@group.calendar.google.com`.
+- **Templates not found:** run from the project folder, or set `LUG_TEMPLATES_DIR`.
+- **API returns 401 or 403:** the key may be revoked, or it may lack the right scope. Role mappings and settings need `admin` scope, even to read.
 
 ## License
 
-This project is licensed under the [GNU Affero General Public License v3.0](LICENSE) (AGPL-3.0). You are free to fork, modify, and distribute this software, but any modifications — including those deployed as a network service — must be made available under the same license.
+[GNU Affero General Public License v3.0](LICENSE). You may fork, modify and share LUG Manager, but changes you run as a network service must be shared under the same license.
 
 ## Contributing
 
-Pull requests welcome! Please ensure all tests pass (`ctest --test-dir build -j$(nproc)`) and code compiles cleanly with zero warnings.
+Pull requests are welcome. Please make sure `ctest` passes, the code builds without warnings, and new features come with tests.
+
+*LEGO® is a trademark of the LEGO Group, which does not sponsor, authorize or endorse this project.*
