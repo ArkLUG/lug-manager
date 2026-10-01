@@ -365,7 +365,7 @@ void register_gallery_routes(LugApp& app, SqliteDatabase& db, std::shared_ptr<Ph
 
     // POST /challenges/<id>/announce - admin: post the winner to the LUG channel
     CROW_ROUTE(app, "/challenges/<int>/announce").methods("POST"_method)(
-        [&app, &db, &discord, &audit](const crow::request& req, int id) {
+        [&app, &db, &events, &audit](const crow::request& req, int id) {
         crow::response res;
         if (!require_auth(req, res, app, "admin")) return res;
         auto c = get_challenge(db, id);
@@ -383,12 +383,13 @@ void register_gallery_routes(LugApp& app, SqliteDatabase& db, std::shared_ptr<Ph
         st.bind(1, c->id);
         std::string flash = "No entries to announce.";
         if (st.step() && st.col_int(2) > 0) {
-            std::string msg = "\U0001F3C6 **" + c->title + "** winner: **" + st.col_text(1) + "** with \"" + st.col_text(0) +
-                              "\" (" + std::to_string(st.col_int(2)) + " votes). Congratulations!";
-            bool ok = discord.sync_post_message(discord.get_lug_channel_id(), msg);
+            chat::Values v{{"challenge", c->title}, {"winner", st.col_text(1)}, {"entry", st.col_text(0)},
+                           {"votes", std::to_string(st.col_int(2))}};
+            bool ok = events.chat() && events.chat()->post_to(chat::Place::Announcements, 0, "challenge.winner", v,
+                                                               "challenge", c->id, "challenges") > 0;
             if (ok) { auto u = db.prepare("UPDATE challenges SET announced=1 WHERE id=?"); u.bind(1, c->id); u.step(); }
-            audit.log(req, app, "challenge.announce", "challenge", c->id, c->title, ok ? "Posted to Discord" : "Discord post failed");
-            flash = ok ? "Winner announced on Discord." : "Couldn't post to Discord (check the announcements channel).";
+            audit.log(req, app, "challenge.announce", "challenge", c->id, c->title, ok ? "Posted to chat" : "Chat post failed");
+            flash = ok ? "Winner announced." : "Couldn't post it (check the chat settings and the announcements channel).";
             c->announced = ok;
         }
         res.write(render_challenge(req, app, db, *c, flash));

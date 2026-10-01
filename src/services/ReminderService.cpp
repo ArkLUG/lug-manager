@@ -39,36 +39,24 @@ ReminderService::Result ReminderService::run_once(std::time_t now) {
         return t > now && t - now <= static_cast<std::time_t>(hours) * 3600;
     };
 
+    chat::ChatHub* hub = notifier().chat();
     for (const auto& m : meetings_.find_upcoming()) {
         if (m.status == "cancelled" || m.suppress_discord || !due(m.start_time)) continue;
-        std::string channel;
-        if (m.scope == "chapter" && m.chapter_id > 0) {
-            if (auto ch = chapters_.find_by_id(m.chapter_id)) channel = ch->discord_announcement_channel_id;
-        } else {
-            channel = discord_.get_lug_channel_id();
-        }
-        if (channel.empty() || !claim("meetings", m.id)) continue;
-        std::string msg = "⏰ **Reminder:** " + m.title + " - " +
-                          DiscordClient::friendly_time(m.start_time, tz) +
-                          (m.location.empty() ? "" : " at " + m.location);
-        if (discord_.sync_post_message(channel, msg)) ++r.meetings;
+        if (!hub || !claim("meetings", m.id)) continue;
+        if (hub->remind_meeting(m) > 0) ++r.meetings;
     }
 
     for (const auto& e : events_.find_upcoming()) {
         if (e.status == "cancelled" || e.suppress_discord || !due(e.start_time)) continue;
-        std::string channel = !e.discord_thread_id.empty() ? e.discord_thread_id : discord_.get_lug_channel_id();
-        if (channel.empty() || !claim("lug_events", e.id)) continue;
+        if (!hub || !claim("lug_events", e.id)) continue;
         std::string when = DiscordClient::friendly_time(e.start_time, tz);
-        std::string msg = "⏰ **Reminder:** " + e.title + " starts " + when +
-                          (e.location.empty() ? "" : " at " + e.location);
-        if (discord_.sync_post_message(channel, msg)) ++r.events;
+        if (hub->remind_event(e) > 0) ++r.events;
 
         if (dm_rsvps && Features::on("rsvps")) {
             for (const auto& rs : rsvps_.list(e.id)) {
                 if (rs.status != "going") continue;
-                if (notifier().notify(rs.member_id, "event_reminder", "Reminder: " + e.title + " - " + when,
-                        "⏰ You're going to **" + e.title + "** - " + when +
-                        (e.location.empty() ? "" : " at " + e.location) + ". See you there!"))
+                if (notifier().notify(rs.member_id, "event_reminder", "dm.event_reminder",
+                                      {{"title", e.title}, {"when", when}, {"location", e.location}}))
                     ++r.dms;
             }
         }
@@ -86,9 +74,8 @@ ReminderService::Result ReminderService::run_once(std::time_t now) {
             if (t <= now || t - now > static_cast<std::time_t>(hours) * 3600) continue;
             if (!shifts_.claim_reminder(d.signup_id)) continue;
             std::string at = DiscordClient::friendly_time(d.starts_at, tz);
-            if (notifier().notify(d.member_id, "shift_reminder", "Volunteer shift: " + d.shift_title + " - " + at,
-                                  "\u23F0 Reminder: you're volunteering for **" + d.shift_title +
-                                  "** at " + d.event_title + " - " + at + ". Thank you!"))
+            if (notifier().notify(d.member_id, "shift_reminder", "dm.shift_reminder",
+                                  {{"shift", d.shift_title}, {"event", d.event_title}, {"when", at}}))
                 ++r.dms;
         }
     }

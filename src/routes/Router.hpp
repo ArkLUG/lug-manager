@@ -1,4 +1,6 @@
 #pragma once
+#include "chat/ChatHub.hpp"
+#include "chat/DiscordProvider.hpp"
 #include <string>
 #include "routes/AuthRoutes.hpp"
 #include "routes/ChapterRoutes.hpp"
@@ -120,6 +122,7 @@ struct Services {
     std::shared_ptr<PhotoStore> photos;
     std::shared_ptr<Mailer> mailer;       // from LUG_SMTP_* when null
     std::shared_ptr<Notifier> notifier;
+    std::shared_ptr<chat::ChatHub> chat;  // chat services (Discord, ...); made here when null
 };
 
 void register_all_routes(LugApp& app, Services& svc);

@@ -41,7 +41,7 @@ public:
         for (const auto& [id, name] : recipients()) {
             std::string text = build(id, common, from, to, today);
             if (text.empty()) continue;
-            if (notifier_->notify(id, "digest", "Your LUG week", "Hi " + name + "! Here's your LUG week:\n" + text))
+            if (notifier_->notify(id, "digest", "dm.digest", {{"name", name}, {"items", text}}))
                 ++sent;
         }
         return sent;

@@ -1,4 +1,5 @@
 #pragma once
+#include "chat/ChatHub.hpp"
 #include <iostream>
 #include <functional>
 #include "async/ThreadPool.hpp"
@@ -43,6 +44,8 @@ public:
     SyncResult sync_all_to_google_calendar();
     SyncResult sync_all_to_discord();
 
+    void set_chat(std::shared_ptr<chat::ChatHub> hub) { chat_owner_ = hub; chat_ = hub.get(); }
+    chat::ChatHub* chat() const { return chat_; }
     MeetingRepository& repo() { return repo_; }
 
     static std::string generate_uuid();
@@ -64,10 +67,8 @@ private:
     ChapterRepository*      chapter_repo_;
     GoogleCalendarClient*   gcal_;
 
-    // Creates the Discord scheduled event + announcement(s) and stores their ids.
-    void publish_to_discord(Meeting& m);
-    // Best-effort removal of the scheduled event + announcements (never throws).
-    void remove_from_discord(const Meeting& m);
+    std::shared_ptr<chat::ChatHub> chat_owner_;   // chat services (Discord, ...); nullptr = none
+    chat::ChatHub*          chat_ = nullptr;
     ThreadPool* async_pool_ = nullptr;
     void run_external(std::function<void()> job) {
         if (async_pool_) async_pool_->enqueue([job = std::move(job)] {

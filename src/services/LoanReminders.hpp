@@ -32,9 +32,7 @@ public:
             }
             std::string what = (d.qty > 1 ? std::to_string(d.qty) + " x " : "") + d.item;
             std::string when = d.due == today ? "today" : "on " + d.due;
-            if (notifier_->notify(d.member_id, "loan_reminder", "Please return: " + what,
-                    "\\U0001F4E6 Friendly reminder: **" + what + "** you borrowed from the LUG was due back " + when +
-                    ". Please get it back to a chapter lead or admin - thanks!"))
+            if (notifier_->notify(d.member_id, "loan_reminder", "dm.loan_reminder", {{"item", what}, {"due", when}}))
                 ++sent;
         }
         return sent;

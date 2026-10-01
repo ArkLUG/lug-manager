@@ -41,6 +41,7 @@ struct LugEvent {
     int         public_adults   = 0;
     std::string social_media_links;        // links to social media posts about the event
     std::string event_feedback;            // "what you liked best"
+    std::string chat_skip = "\x01";       // parts not to post to chat (see chat::ChatHub); "\x01" = unchanged, not stored here
     std::string created_at;
     std::string updated_at;
 };

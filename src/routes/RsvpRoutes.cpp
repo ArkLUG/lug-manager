@@ -66,10 +66,8 @@ std::string render_panel(const crow::request& req, LugApp& app, const LugEvent& 
 
 // Tell a member who just moved off the waitlist (unless they opted out).
 void notify_promoted(const LugEvent& ev, int64_t member_id, Notifier& notifier, const std::string& tz) {
-    notifier.notify(member_id, "waitlist", "You're in: " + ev.title,
-        "\U0001F389 A spot opened up for **" + ev.title + "** (" + DiscordClient::friendly_time(ev.start_time, tz) +
-        ") - you're off the waitlist and now going. If you can't make it, please cancel your RSVP so the next person gets the spot.",
-        /*async=*/true);
+    notifier.notify(member_id, "waitlist", "dm.waitlist",
+                    {{"title", ev.title}, {"when", DiscordClient::friendly_time(ev.start_time, tz)}}, /*async=*/true);
 }
 
 } // namespace

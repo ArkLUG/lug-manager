@@ -190,7 +190,7 @@ TEST_F(DiscordFakeTest, RemindersPostOnceToTheLugChannel) {
         u.bind(1, ev.id); u.step();
     }
     ReminderService rs(*db, *meeting_repo, *event_repo, *chapter_repo, *member_repo, *settings_repo, *discord_client);
-    rs.set_notifier(std::make_shared<Notifier>(*db, *discord_client, mailer, "http://lug.test"));
+    rs.set_notifier(notifier_with_chat());
     discord_client->set_timezone("America/Chicago");
     auto r1 = rs.run_once();
     EXPECT_EQ(r1.events, 1);

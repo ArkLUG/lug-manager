@@ -1,5 +1,7 @@
 #include "services/Features.hpp"
 #include "services/MemberSyncService.hpp"
+#include "chat/DiscordProvider.hpp"
+#include "chat/Templates.hpp"
 #include "services/RoleSync.hpp"
 #include "models/Member.hpp"
 #include "models/PendingDiscordMatch.hpp"
@@ -133,10 +135,9 @@ SyncResult MemberSyncService::sync_from_guild() {
                         if (settings_) {
                             std::string channel_id = settings_->get("discord_matches_notification_channel_id", "");
                             if (!channel_id.empty()) {
-                                std::string content =
-                                    "**New Discord member match needs review**\n"
-                                    "Discord user: **" + p.discord_display_name + "** (`" + p.discord_username + "`)\n"
-                                    "Click below to link to an existing member or create a new one.";
+                                chat::DiscordProvider dp(discord_, settings_->db());
+                                std::string content = chat::TemplateStore(settings_->db()).render_body("match.review",
+                                    {{"discord_name", dp.inert(p.discord_display_name)}, {"discord_username", dp.inert(p.discord_username)}});
                                 discord_.post_button_message(channel_id, content, "Resolve Match",
                                     "discord_match_resolve:" + std::to_string(created_row.id));
                             }

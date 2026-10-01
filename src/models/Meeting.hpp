@@ -30,6 +30,7 @@ struct Meeting {
     std::string notes;                        // markdown notes/report
     std::string notes_discord_post_id;        // Discord forum thread ID for published report
     std::string checkin_token;                // UUID for public QR check-in page
+    std::string chat_skip = "\x01";       // parts not to post to chat (see chat::ChatHub); "\x01" = unchanged, not stored here
     std::string created_at;
     std::string updated_at;
 };

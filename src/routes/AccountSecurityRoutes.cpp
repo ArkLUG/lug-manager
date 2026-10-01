@@ -117,8 +117,7 @@ void register_account_security_routes(LugApp& app, SqliteDatabase& db, SettingsR
         int out = auth.sessions().remove_all_for_member(a->id, get_cookie(req, "session"));
         audit.log(req, app, "auth.password_set", "member", a->id, a->display_name, had ? "Changed password" : "Set a password");
         if (had && notifier && notifier->mailer() && notifier->mailer()->enabled())
-            notifier->send_email(a->id, a->email, a->display_name, "", "Your LUG Manager password was changed",
-                "The password for your LUG Manager account was just changed. If that wasn't you, ask a LUG admin to lock your account.");
+            notifier->send_email_template(a->id, a->email, a->display_name, "email.password_changed", {});
         v.flash = std::string(had ? "Password changed." : "Password set: you can now sign in with your email and password.") +
                   (out > 0 ? " Other devices were signed out." : "");
         return reply(req, app, render(db, settings, ctx.member_id, v));
@@ -258,9 +257,7 @@ void register_account_security_routes(LugApp& app, SqliteDatabase& db, SettingsR
         std::string link = base_url(public_url, req) + "/auth/reset/" + sec.create_reset_token(id, me.member_id, 24);
         bool send = req.url_params.get("email") && notifier && notifier->mailer() && notifier->mailer()->enabled();
         if (send)
-            notifier->send_email(a->id, a->email, a->display_name, "", "Set your LUG Manager password",
-                "A LUG admin made you a link to set a password for LUG Manager. It works once, for 24 hours:\n\n" + link +
-                "\n\nThen sign in with " + a->email + " and that password.");
+            notifier->send_email_template(a->id, a->email, a->display_name, "email.password_link", {{"link", link}, {"email", a->email}});
         audit.log(req, app, "auth.password_link", "member", id, a->display_name, send ? "Emailed a set-password link" : "Made a set-password link");
         crow::mustache::context ctx;
         ctx["link"] = link;

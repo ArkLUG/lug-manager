@@ -4,13 +4,13 @@
 #include "integrations/Mailer.hpp"
 #include "repositories/NotificationPrefs.hpp"
 #include "auth/SessionStore.hpp"
+#include "chat/ChatHub.hpp"
 #include <memory>
 #include <string>
 
-// Sends a member a notification of one NotificationPrefs kind: a Discord DM
-// when they have Discord linked, otherwise an email (when SMTP and the public
-// URL are configured and they haven't turned email off). Every email carries
-// a no-login unsubscribe link and List-Unsubscribe headers.
+// Sends members notifications (see notify()): a chat DM where possible, else
+// email. Every email carries a no-login unsubscribe link and List-Unsubscribe
+// headers.
 class Notifier {
 public:
     Notifier(SqliteDatabase& db, DiscordClient& discord, std::shared_ptr<Mailer> mailer, std::string public_url)
@@ -18,26 +18,43 @@ public:
 
     bool email_enabled() const { return mailer_ && mailer_->enabled() && !public_url_.empty(); }
 
-    // async: DM on the Discord worker pool (request handlers). Returns true if
-    // something was sent or queued.
-    bool notify(int64_t member_id, const std::string& kind, const std::string& subject,
-                const std::string& text, bool async = false) {
+    void set_chat(std::shared_ptr<chat::ChatHub> hub) { chat_owner_ = hub; chat_ = hub.get(); }
+    chat::ChatHub* chat() const { return chat_; }
+
+    // Sends message template `key` to a member as a NotificationPrefs `kind`:
+    // a direct message on a chat service where they have an account and DMs
+    // are on, otherwise an email (when SMTP and the public URL are set up and
+    // they haven't turned email off). {name} is filled in. async: on the
+    // integration worker pool (request handlers); returns true once queued.
+    bool notify(int64_t member_id, const std::string& kind, const std::string& key, chat::Values v, bool async = false) {
         NotificationPrefs prefs(db_);
         if (!prefs.wants(member_id, kind)) return false;
-        std::string discord_id, email, name;
+        std::string email, name;
         {
-            auto st = db_.prepare("SELECT COALESCE(discord_user_id,''), COALESCE(email,''), display_name FROM members WHERE id=?");
+            auto st = db_.prepare("SELECT COALESCE(email,''), display_name FROM members WHERE id=?");
             st.bind(1, member_id);
             if (!st.step()) return false;
-            discord_id = st.col_text(0); email = st.col_text(1); name = st.col_text(2);
+            email = st.col_text(0); name = st.col_text(1);
         }
-        if (!discord_id.empty()) {
-            if (async) { discord_.send_dm_async(discord_id, text); return true; }
-            return discord_.send_dm(discord_id, text);
-        }
-        if (email.empty() || !email_enabled() || !prefs.wants(member_id, "email")) return false;
-        send_email(member_id, email, name, kind, subject, text);
-        return true;
+        if (!v.count("name")) v["name"] = name;
+        auto deliver = [this, member_id, kind, key, v, email, name]() {
+            if (chat_ && chat_->direct_message(member_id, key, v)) return true;
+            NotificationPrefs p(db_);
+            if (email.empty() || !email_enabled() || !p.wants(member_id, "email")) return false;
+            chat::TemplateStore t(db_);
+            send_email(member_id, email, name, kind, t.render_subject(key, v), t.render_body(key, v));
+            return true;
+        };
+        if (async && chat_ && chat_->can_dm(member_id)) { discord_.run_async(deliver); return true; }
+        return deliver();
+    }
+
+    // Emails template `key` (sign-in emails) - no preference check.
+    void send_email_template(int64_t member_id, const std::string& email, const std::string& name,
+                             const std::string& key, chat::Values v) {
+        if (!v.count("name")) v["name"] = name;
+        chat::TemplateStore t(db_);
+        send_email(member_id, email, name, "", t.render_subject(key, v), t.render_body(key, v));
     }
 
     // Emails a member directly (sign-in links etc.) - no preference check.
@@ -84,4 +101,6 @@ private:
     DiscordClient& discord_;
     std::shared_ptr<Mailer> mailer_;
     std::string public_url_;
+    std::shared_ptr<chat::ChatHub> chat_owner_;
+    chat::ChatHub* chat_ = nullptr;
 };

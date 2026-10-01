@@ -78,6 +78,13 @@ protected:
     std::unique_ptr<EventDayRepository> event_day_repo;
     std::unique_ptr<EventDayAttendanceRepository> event_day_attendance_repo;
     std::unique_ptr<SettingsRepository> settings_repo;
+    std::shared_ptr<chat::ChatHub> chat_hub;      // the hub the routes use (Discord provider inside)
+    // A Notifier sending through that hub (chat DMs) and the capturing mailer.
+    std::shared_ptr<Notifier> notifier_with_chat(const std::string& public_url = "http://lug.test") {
+        auto n = std::make_shared<Notifier>(*db, *discord_client, mailer, public_url);
+        n->set_chat(chat_hub);
+        return n;
+    }
     std::unique_ptr<RoleMappingRepository> role_mapping_repo;
     std::unique_ptr<ChapterMemberRepository> chapter_member_repo;
     std::unique_ptr<PerkLevelRepository> perk_level_repo;
@@ -277,6 +284,7 @@ protected:
 
         };
         register_all_routes(*app, svc);
+        chat_hub = svc.chat;
 
         // Pick a unique port using PID to avoid collisions between parallel test binaries.
         // Each test within a binary reuses the same port (sequential execution).

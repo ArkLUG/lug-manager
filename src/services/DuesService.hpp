@@ -47,9 +47,8 @@ public:
                 // Mark first: a DM failure (closed DMs) shouldn't retry every 10 minutes.
                 dues_.mark_reminded(m.member_id, m.paid_until);
                 if (!notifier_) notifier_ = std::make_shared<Notifier>(dues_.db(), discord_, nullptr, "");
-                if (notifier_->notify(m.member_id, "dues_reminder", "Your LUG dues run out on " + m.paid_until,
-                        "Hi " + m.display_name + "! Your LUG membership dues are paid through " +
-                        m.paid_until + ". Please renew before then to keep your member perks."))
+                if (notifier_->notify(m.member_id, "dues_reminder", "dm.dues_reminder",
+                                      {{"name", m.display_name}, {"paid_until", m.paid_until}}))
                     ++r.reminded;
             }
         }

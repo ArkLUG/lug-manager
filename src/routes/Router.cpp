@@ -5,6 +5,15 @@ void register_all_routes(LugApp& app, Services& svc) {
     if (!svc.mailer) svc.mailer = std::make_shared<Mailer>(Mailer::from_env());
     if (!svc.notifier)
         svc.notifier = std::make_shared<Notifier>(svc.attendance_repo.db(), svc.discord, svc.mailer, svc.public_url);
+    if (!svc.chat) {
+        svc.chat = std::make_shared<chat::ChatHub>(svc.attendance_repo.db(), svc.public_url);
+        svc.chat->add(std::make_shared<chat::DiscordProvider>(svc.discord, svc.attendance_repo.db()));
+        DiscordClient* d = &svc.discord;
+        svc.chat->set_timezone_source([d] { return d->get_timezone(); });
+    }
+    svc.events.set_chat(svc.chat);
+    svc.meetings.set_chat(svc.chat);
+    svc.notifier->set_chat(svc.chat);
     register_auth_routes(app, svc.auth, svc.oauth, svc.public_url);
     register_email_auth_routes(app, svc.auth, svc.attendance_repo.db(), svc.notifier, svc.audit);
     register_chapter_routes(app, svc.chapters, svc.chapter_members, svc.members, svc.discord, svc.audit);

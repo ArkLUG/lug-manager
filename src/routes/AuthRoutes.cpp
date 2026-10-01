@@ -367,10 +367,7 @@ void register_email_auth_routes(LugApp& app, AuthService& auth, SqliteDatabase& 
             ins.bind(1, sha256_hex(token)); ins.bind(2, id); ins.bind(3, utc_in(15 * 60));
             ins.step();
         }
-        notifier->send_email(id, to, name, "", "Your LUG Manager sign-in link",
-            "Use this link to sign in to LUG Manager. It works once and expires in 15 minutes:\n\n" +
-            build_url(req, "/auth/email/" + token) +
-            "\n\nIf you didn't ask for this, you can ignore this email.");
+        notifier->send_email_template(id, to, name, "email.sign_in_link", {{"link", build_url(req, "/auth/email/" + token)}});
         return res;
     });
 
@@ -502,10 +499,8 @@ void register_email_auth_routes(LugApp& app, AuthService& auth, SqliteDatabase& 
         auto acct = sec.by_email(email);
         if (!acct || sec.recent_reset_tokens(acct->id) >= 3) return res;
         std::string token = sec.create_reset_token(acct->id, 0, 1);
-        notifier->send_email(acct->id, acct->email, acct->display_name, "", "Set a new LUG Manager password",
-            "Someone (hopefully you) asked to set a new password for your LUG Manager account. "
-            "Use this link within an hour; it works once:\n\n" + build_url(req, "/auth/reset/" + token) +
-            "\n\nIf you didn't ask for this, ignore this email: your password stays as it is.");
+        notifier->send_email_template(acct->id, acct->email, acct->display_name, "email.password_reset",
+                                      {{"link", build_url(req, "/auth/reset/" + token)}});
         audit.log_system("auth.password_reset_sent", "member", acct->id, acct->display_name, "Reset link emailed", client_ip(req));
         return res;
     });

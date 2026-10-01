@@ -58,6 +58,7 @@ file(GLOB_RECURSE SOURCES
   src/integrations/*.cpp
   src/async/*.cpp
   src/auth/*.cpp
+  src/chat/*.cpp
   src/routes/*.cpp
   src/utils/*.cpp
   src/main.cpp
@@ -116,6 +117,7 @@ if(BUILD_TESTS)
     src/integrations/*.cpp
     src/async/*.cpp
     src/auth/*.cpp
+    src/chat/*.cpp
     src/routes/*.cpp
     src/utils/*.cpp
   )

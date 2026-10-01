@@ -1,4 +1,5 @@
 #pragma once
+#include "chat/ChatHub.hpp"
 #include <iostream>
 #include <functional>
 #include "async/ThreadPool.hpp"
@@ -60,12 +61,12 @@ private:
     GoogleCalendarClient*   gcal_;
     EventDayRepository*     event_day_repo_;
 
-    // Creates thread/announcements/scheduled event and stores their ids.
-    void publish_to_discord(LugEvent& e);
-    // Removes them (thread only if the app created it). Never throws.
-    void remove_from_discord(const LugEvent& e);
+    std::shared_ptr<chat::ChatHub> chat_owner_;   // chat services (Discord, ...); nullptr = none
+    chat::ChatHub*          chat_ = nullptr;
 
 public:
+    void set_chat(std::shared_ptr<chat::ChatHub> hub) { chat_owner_ = hub; chat_ = hub.get(); }
+    chat::ChatHub* chat() const { return chat_; }
     EventRepository& repo() { return repo_; }
     LugEvent with_calendar_title(const LugEvent& e) const;
     ThreadPool* async_pool_ = nullptr;

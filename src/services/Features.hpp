@@ -26,6 +26,8 @@ public:
 
     static const std::vector<Feature>& all() {
         static const std::vector<Feature> f = {
+            {"discord",    "Discord", "Sign in with Discord, member and role sync from your server, and posting announcements, events, reminders and DMs there. Fine-tune what's posted under Settings > Discord.",
+                           R"(^/(api/discord/.*|discord/.*|settings/(roles|discord-matches|discord-times)(/.*)?)$)"},
             {"chapters",   "Chapters", "Sub-groups with their own leads, Discord channels, calendars and chapter-only events/meetings. Off for a LUG without chapters.",
                            R"(^/(chapters(/.*)?|calendar/chapter/.*)$)"},
             {"dues",       "Membership dues", "Dues status, payment ledger, automatic expiry and renewal reminders.",

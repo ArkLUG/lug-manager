@@ -129,6 +129,29 @@ public:
     // forms used to hit Discord on every view). Call to force a fresh read.
     void clear_cache() const;
 
+    // ── Generic operations used by chat::DiscordProvider (synchronous) ──
+    // Every message states exactly which roles/users it may ping
+    // (allowed_mentions); nothing else in the text can notify anyone.
+    struct Result { bool ok = false; std::string id; std::string error; };
+    struct ScheduledEvent { std::string name, description, location, start_local, end_local; };
+    Result send_message(const std::string& channel, const std::string& content,
+                        const std::vector<std::string>& roles = {}, const std::vector<std::string>& users = {});
+    Result edit_message(const std::string& channel, const std::string& message, const std::string& content,
+                        const std::vector<std::string>& roles = {}, const std::vector<std::string>& users = {});
+    Result remove_message(const std::string& channel, const std::string& message);
+    Result start_forum_thread(const std::string& forum, const std::string& name, const std::string& content,
+                              const std::vector<std::string>& roles = {}, const std::vector<std::string>& users = {});
+    Result start_thread_from_message(const std::string& channel, const std::string& message, const std::string& name);
+    Result rename_thread(const std::string& thread, const std::string& name);
+    Result remove_channel(const std::string& id);
+    Result create_scheduled(const ScheduledEvent& e);
+    Result update_scheduled(const std::string& id, const ScheduledEvent& e);
+    Result remove_scheduled(const std::string& id);
+    Result direct_message(const std::string& user, const std::string& content);
+    static long& last_status_ref();   // HTTP status of this thread's last Discord request
+    // Runs a job on the integration worker pool (request handlers that mustn't wait on chat services).
+    void run_async(std::function<void()> job);
+
     // ── Maintenance (DiscordTimeRepair): synchronous, read or edit only ──
     // Never posts anything new. Edits don't notify members on Discord.
     std::string sync_get(const std::string& endpoint) const;   // read-only GET, uncached
@@ -225,4 +248,6 @@ private:
     std::string build_meeting_event_json(const Meeting& m) const;
     std::string build_lug_event_json(const LugEvent& e) const;
     std::string iso_to_discord_timestamp(const std::string& iso) const;
+    std::string scheduled_json(const ScheduledEvent& e) const;
+    Result call(const std::string& method, const std::string& endpoint, const std::string& body, bool want_id);
 };

@@ -31,7 +31,7 @@ protected:
         Features::set("digest", true);
     }
     void TearDown() override { fake.reset(); IntegrationTest::TearDown(); }
-    DigestService svc() { return DigestService(*db, *settings_repo, std::make_shared<Notifier>(*db, *discord_client, mailer, "http://lug.test")); }
+    DigestService svc() { return DigestService(*db, *settings_repo, notifier_with_chat()); }
 };
 
 TEST_F(DigestTest, SendsOnceAWeekWithPersonalBits) {

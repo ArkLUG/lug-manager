@@ -162,58 +162,16 @@ void register_meetings_api_routes(LugApp& app, MeetingService& meetings,
         auto mtg = meetings.get(static_cast<int64_t>(id));
         if (!mtg) { envelope_error(res, 404, "meeting not found", "not_found"); return res; }
 
-        auto attendees = attendance.find_by_entity("meeting", mtg->id);
-
-        std::string chapter_name;
-        if (mtg->chapter_id > 0) {
-            auto ch = chapters.get(mtg->chapter_id);
-            if (ch) chapter_name = ch->name;
-        }
-
-        std::ostringstream report;
-        report << "**Meeting:** " << mtg->title << "\n";
-        report << "**Chapter:** " << (chapter_name.empty() ? "LUG Wide" : chapter_name) << "\n";
-        report << "**Meeting date:** " << mtg->start_time.substr(0, 10) << "\n";
-        if (mtg->is_virtual)
-            report << "**Format:** Virtual\n";
-        else if (!mtg->location.empty())
-            report << "**Location:** " << mtg->location << "\n";
-
-        std::vector<std::string> in_person, virtual_list;
-        for (const auto& a : attendees) {
-            if (a.is_virtual) virtual_list.push_back(a.member_display_name);
-            else              in_person.push_back(a.member_display_name);
-        }
-        report << "**Members by name:**\n";
-        if (in_person.empty() && virtual_list.empty()) {
-            report << "- (none)\n";
-        } else {
-            for (const auto& name : in_person)
-                report << "- " << name << "\n";
-            for (const auto& name : virtual_list)
-                report << "- " << name << " (virtual)\n";
-        }
-
-        if (!mtg->description.empty())
-            report << "\n## Description\n" << mtg->description << "\n";
-        if (!mtg->notes.empty())
-            report << "\n## Notes\n" << mtg->notes << "\n";
-
-        std::string forum_id = discord.get_meeting_reports_forum_id();
-        if (forum_id.empty()) forum_id = discord.get_events_forum_channel_id();
-
-        std::string thread_id = discord.publish_report_to_forum(
-            forum_id, mtg->notes_discord_post_id, "Report: " + mtg->title, report.str());
-
-        if (!thread_id.empty() && thread_id != mtg->notes_discord_post_id) {
-            meetings.repo().update_notes_discord_post_id(mtg->id, thread_id);
-        }
+        auto out = meetings.chat() ? meetings.chat()->publish_meeting_report(*mtg) : chat::ChatHub::ReportOutcome{0, "chat is off"};
+        std::string thread_id = meetings.get(mtg->id) ? meetings.get(mtg->id)->notes_discord_post_id : "";
 
         audit.log_system("meeting.publish_report", "meeting", mtg->id, mtg->title,
                           "Published via " + actor_label(app.template get_context<ApiKeyMiddleware>(req).api_key));
         crow::json::wvalue body_out;
         body_out["id"]               = mtg->id;
         body_out["discord_thread_id"] = thread_id;
+        body_out["published"] = out.sent > 0;
+        if (out.sent == 0) body_out["error"] = out.error.empty() ? "no chat service set up" : out.error;
         write_json(res, 200, envelope_ok(std::move(body_out)));
         return res;
     });

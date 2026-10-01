@@ -138,12 +138,10 @@ void register_settings_routes(LugApp& app, SettingsRepository& settings,
             return res;
         }
 
-        try {
-            discord.post_message(channel_id, "🧱 **LUG Manager test announcement** — bot is connected and posting correctly!");
-            res.write(R"(<span class="text-green-600 font-medium">✓ Test message sent successfully!</span>)");
-        } catch (const std::exception& e) {
-            res.write("<span class=\"text-red-600\">Error: " + html_escape(e.what()) + "</span>");
-        }
+        chat::Provider* p = events.chat() ? events.chat()->provider("discord") : nullptr;
+        chat::Result r = p ? events.chat()->post_in(*p, channel_id, "test.message", {}) : chat::Result{false, "", "Discord is off"};
+        if (r.ok) res.write(R"(<span class="text-green-600 font-medium">✓ Test message sent successfully!</span>)");
+        else res.write("<span class=\"text-red-600\">Couldn't send it: " + html_escape(r.error) + "</span>");
         res.add_header("Content-Type", "text/html; charset=utf-8");
         return res;
     });

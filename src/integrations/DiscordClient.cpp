@@ -258,6 +258,7 @@ std::string DiscordClient::discord_api_request_uncached(const std::string& metho
             throw std::runtime_error(std::string("Discord API curl error: ") + curl_easy_strerror(res));
         }
 
+        DiscordClient::last_status_ref() = http_code;
         if (http_code == 429 && attempt < 3) {
             double wait = 1.0;
             try {
@@ -1348,4 +1349,143 @@ std::string DiscordClient::sync_edit_message_content(const std::string& channel_
 
 std::string DiscordClient::tz_abbrev(const std::string& local_iso, const std::string& tz_name) {
     return tz_convert(local_iso, tz_name).abbrev;
+}
+
+// ── Generic operations (chat::DiscordProvider) ──
+
+long& DiscordClient::last_status_ref() {
+    static thread_local long status = 0;
+    return status;
+}
+
+namespace {
+json mentions_json(const std::vector<std::string>& roles, const std::vector<std::string>& users) {
+    json am;
+    am["parse"] = json::array();
+    am["roles"] = json::array();
+    am["users"] = json::array();
+    for (const auto& r : roles) if (!r.empty()) am["roles"].push_back(r);
+    for (const auto& u : users) if (!u.empty()) am["users"].push_back(u);
+    return am;
+}
+DiscordClient::Result result_of(const std::string& resp, long status, bool want_id) {
+    DiscordClient::Result r;
+    json j = json::parse(resp, nullptr, false);
+    bool ok_status = status >= 200 && status < 300;
+    if (ok_status && (!want_id || (j.is_object() && j.contains("id") && j["id"].is_string()))) {
+        r.ok = true;
+        if (j.is_object() && j.contains("id") && j["id"].is_string()) r.id = j["id"].get<std::string>();
+        return r;
+    }
+    r.error = "HTTP " + std::to_string(status);
+    if (j.is_object() && j.contains("message") && j["message"].is_string()) r.error += ": " + j["message"].get<std::string>();
+    return r;
+}
+}
+
+DiscordClient::Result DiscordClient::call(const std::string& method, const std::string& endpoint, const std::string& body, bool want_id) {
+    try {
+        std::string resp = discord_api_request_uncached(method, endpoint, body);
+        return result_of(resp, last_status_ref(), want_id);
+    } catch (const std::exception& e) {
+        Result r;
+        r.error = e.what();
+        return r;
+    }
+}
+
+DiscordClient::Result DiscordClient::send_message(const std::string& channel, const std::string& content,
+                                                  const std::vector<std::string>& roles, const std::vector<std::string>& users) {
+    if (channel.empty()) return Result{false, "", "no channel"};
+    json body;
+    body["content"] = content;
+    body["allowed_mentions"] = mentions_json(roles, users);
+    return call("POST", "/channels/" + channel + "/messages", body.dump(), true);
+}
+
+DiscordClient::Result DiscordClient::edit_message(const std::string& channel, const std::string& message, const std::string& content,
+                                                  const std::vector<std::string>& roles, const std::vector<std::string>& users) {
+    if (channel.empty() || message.empty()) return Result{false, "", "nothing to edit"};
+    json body;
+    body["content"] = content;
+    body["allowed_mentions"] = mentions_json(roles, users);
+    return call("PATCH", "/channels/" + channel + "/messages/" + message, body.dump(), false);
+}
+
+DiscordClient::Result DiscordClient::remove_message(const std::string& channel, const std::string& message) {
+    if (channel.empty() || message.empty()) return Result{false, "", "nothing to delete"};
+    return call("DELETE", "/channels/" + channel + "/messages/" + message, "", false);
+}
+
+DiscordClient::Result DiscordClient::start_forum_thread(const std::string& forum, const std::string& name, const std::string& content,
+                                                        const std::vector<std::string>& roles, const std::vector<std::string>& users) {
+    if (forum.empty()) return Result{false, "", "no forum channel"};
+    json body;
+    body["name"] = utf8_truncate(name, 100);
+    body["auto_archive_duration"] = 10080;   // 7 days
+    body["message"]["content"] = content;
+    body["message"]["allowed_mentions"] = mentions_json(roles, users);
+    return call("POST", "/channels/" + forum + "/threads", body.dump(), true);
+}
+
+DiscordClient::Result DiscordClient::start_thread_from_message(const std::string& channel, const std::string& message, const std::string& name) {
+    if (channel.empty() || message.empty()) return Result{false, "", "no message"};
+    json body;
+    body["name"] = utf8_truncate(name, 100);
+    body["auto_archive_duration"] = 10080;
+    return call("POST", "/channels/" + channel + "/messages/" + message + "/threads", body.dump(), true);
+}
+
+DiscordClient::Result DiscordClient::rename_thread(const std::string& thread, const std::string& name) {
+    if (thread.empty()) return Result{false, "", "no thread"};
+    json body;
+    body["name"] = utf8_truncate(name, 100);
+    return call("PATCH", "/channels/" + thread, body.dump(), false);
+}
+
+DiscordClient::Result DiscordClient::remove_channel(const std::string& id) {
+    if (id.empty()) return Result{false, "", "no channel"};
+    return call("DELETE", "/channels/" + id, "", false);
+}
+
+std::string DiscordClient::scheduled_json(const ScheduledEvent& e) const {
+    json j;
+    j["name"]            = utf8_truncate(e.name, 100);
+    j["description"]     = utf8_truncate(e.description, 1000);
+    j["entity_type"]     = 3; // EXTERNAL
+    j["entity_metadata"] = {{"location", e.location.empty() ? "TBD" : utf8_truncate(e.location, 100)}};
+    j["scheduled_start_time"] = iso_to_discord_timestamp(e.start_local);
+    j["scheduled_end_time"]   = iso_to_discord_timestamp(e.end_local.empty() ? e.start_local : e.end_local);
+    j["privacy_level"]   = 2; // GUILD_ONLY
+    return j.dump();
+}
+
+DiscordClient::Result DiscordClient::create_scheduled(const ScheduledEvent& e) {
+    if (get_guild_id().empty()) return Result{false, "", "no server"};
+    return call("POST", "/guilds/" + get_guild_id() + "/scheduled-events", scheduled_json(e), true);
+}
+
+DiscordClient::Result DiscordClient::update_scheduled(const std::string& id, const ScheduledEvent& e) {
+    if (get_guild_id().empty() || id.empty()) return Result{false, "", "nothing to update"};
+    return call("PATCH", "/guilds/" + get_guild_id() + "/scheduled-events/" + id, scheduled_json(e), false);
+}
+
+DiscordClient::Result DiscordClient::remove_scheduled(const std::string& id) {
+    if (get_guild_id().empty() || id.empty()) return Result{false, "", "nothing to delete"};
+    return call("DELETE", "/guilds/" + get_guild_id() + "/scheduled-events/" + id, "", false);
+}
+
+DiscordClient::Result DiscordClient::direct_message(const std::string& user, const std::string& content) {
+    if (user.empty()) return Result{false, "", "no Discord account"};
+    json open;
+    open["recipient_id"] = user;
+    Result ch = call("POST", "/users/@me/channels", open.dump(), true);
+    if (!ch.ok) return ch;
+    return send_message(ch.id, content, {}, {});
+}
+
+void DiscordClient::run_async(std::function<void()> job) {
+    pool_.enqueue([job = std::move(job)]() {
+        try { job(); } catch (const std::exception& e) { std::cerr << "[async] " << e.what() << "\n"; } catch (...) {}
+    });
 }
