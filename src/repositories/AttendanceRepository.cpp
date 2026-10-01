@@ -192,10 +192,11 @@ AttendanceRepository::get_all_member_summaries_by_year(int year) {
         "  (SELECT COUNT(*) FROM attendance a "
         "     JOIN meetings mt ON mt.id = a.entity_id "
         "     WHERE a.member_id=m.id AND a.entity_type='meeting' AND mt.excludes_perks=0 "
-        "       AND a.checked_in_at >= ? AND a.checked_in_at < ?), "
+        "       AND mt.start_time >= ? AND mt.start_time < ?), "
         "  (SELECT COUNT(*) FROM attendance a "
+        "     JOIN meetings mt ON mt.id = a.entity_id "
         "     WHERE a.member_id=m.id AND a.entity_type='meeting' AND a.is_virtual=1 "
-        "       AND a.checked_in_at >= ? AND a.checked_in_at < ?), "
+        "       AND mt.start_time >= ? AND mt.start_time < ?), "
         "  (SELECT COUNT(DISTINCT ed.event_id) FROM event_day_attendance eda "
         "     JOIN event_days ed ON ed.id = eda.event_day_id "
         "     JOIN lug_events ev ON ev.id = ed.event_id "
@@ -224,7 +225,8 @@ AttendanceRepository::get_all_member_summaries_by_year(int year) {
 std::vector<int> AttendanceRepository::get_attendance_years() {
     auto stmt = db_.prepare(
         "SELECT DISTINCT yr FROM ( "
-        "  SELECT CAST(strftime('%Y', checked_in_at) AS INTEGER) AS yr FROM attendance "
+        "  SELECT CAST(SUBSTR(mt.start_time,1,4) AS INTEGER) AS yr FROM attendance a "
+        "    JOIN meetings mt ON mt.id = a.entity_id WHERE a.entity_type='meeting' "
         "  UNION "
         "  SELECT CAST(strftime('%Y', day_date) AS INTEGER) AS yr FROM event_days ed "
         "    WHERE EXISTS (SELECT 1 FROM event_day_attendance WHERE event_day_id=ed.id) "
@@ -260,14 +262,14 @@ static std::string build_overview_sql(const AttendanceRepository::OverviewParams
         "         (SELECT COUNT(*) FROM attendance a "
         "            JOIN meetings mt ON mt.id = a.entity_id "
         "            WHERE a.member_id=m.id AND a.entity_type='meeting' AND mt.excludes_perks=0 "
-        "              AND a.checked_in_at >= '" + year_start + "' AND a.checked_in_at < '" + year_end + "') AS meeting_count, "
+        "              AND mt.start_time >= '" + year_start + "' AND mt.start_time < '" + year_end + "') AS meeting_count, "
         // Joined against meetings/excludes_perks too, purely so
         // meeting_count - meeting_virtual_count (the in-person figure used
         // for perk eligibility) stays consistent and never goes negative.
         "         (SELECT COUNT(*) FROM attendance a "
         "            JOIN meetings mt ON mt.id = a.entity_id "
         "            WHERE a.member_id=m.id AND a.entity_type='meeting' AND a.is_virtual=1 AND mt.excludes_perks=0 "
-        "              AND a.checked_in_at >= '" + year_start + "' AND a.checked_in_at < '" + year_end + "') AS meeting_virtual_count, "
+        "              AND mt.start_time >= '" + year_start + "' AND mt.start_time < '" + year_end + "') AS meeting_virtual_count, "
         "         (SELECT COUNT(DISTINCT ed.event_id) FROM event_day_attendance eda "
         "            JOIN event_days ed ON ed.id = eda.event_day_id "
         "            JOIN lug_events ev ON ev.id = ed.event_id "
@@ -277,7 +279,7 @@ static std::string build_overview_sql(const AttendanceRepository::OverviewParams
         "            SELECT SUBSTR(mt.start_time,1,10) AS d FROM attendance a "
         "              JOIN meetings mt ON mt.id = a.entity_id "
         "              WHERE a.member_id=m.id AND a.entity_type='meeting' "
-        "                AND a.checked_in_at >= '" + year_start + "' AND a.checked_in_at < '" + year_end + "' "
+        "                AND mt.start_time >= '" + year_start + "' AND mt.start_time < '" + year_end + "' "
         "            UNION ALL "
         "            SELECT ed.day_date AS d FROM event_day_attendance eda "
         "              JOIN event_days ed ON ed.id = eda.event_day_id "
@@ -381,7 +383,7 @@ int AttendanceRepository::count_member_by_year(int64_t member_id, int year,
         "SELECT COUNT(*) FROM attendance a "
         "JOIN meetings mt ON mt.id = a.entity_id "
         "WHERE a.member_id=? AND a.entity_type=? AND mt.excludes_perks=0 AND a.is_virtual=0 "
-        "  AND a.checked_in_at >= ? AND a.checked_in_at < ?");
+        "  AND mt.start_time >= ? AND mt.start_time < ?");
     stmt.bind(1, member_id);
     stmt.bind(2, entity_type);
     stmt.bind(3, year_start);
@@ -408,7 +410,7 @@ AttendanceRepository::get_member_attendance_detail(int64_t member_id, int year,
         "  FROM attendance a "
         "  LEFT JOIN meetings mt ON mt.id = a.entity_id "
         "  WHERE a.entity_type='meeting' AND a.member_id=? "
-        "    AND a.checked_in_at >= ? AND a.checked_in_at < ? "
+        "    AND mt.start_time >= ? AND mt.start_time < ? "
         "  UNION ALL "
         "  SELECT 'event' AS entity_type, ed.event_id AS entity_id, "
         "         COALESCE(ev.title,'') AS title, "
@@ -451,8 +453,9 @@ int AttendanceRepository::count_member_attendance_detail(int64_t member_id, int 
     auto stmt = db_.prepare(
         "SELECT "
         "  (SELECT COUNT(*) FROM attendance a "
+        "     JOIN meetings mt ON mt.id = a.entity_id "
         "     WHERE a.member_id=? AND a.entity_type='meeting' "
-        "       AND a.checked_in_at >= ? AND a.checked_in_at < ?) "
+        "       AND mt.start_time >= ? AND mt.start_time < ?) "
         "  + "
         "  (SELECT COUNT(DISTINCT ed.event_id) FROM event_day_attendance eda "
         "     JOIN event_days ed ON ed.id = eda.event_day_id "

@@ -1,4 +1,5 @@
 // Regression tests for access-control and injection fixes.
+#include <algorithm>
 #include "integration_test_base.hpp"
 
 // A chapter lead (or moderator) must not be able to change LUG roles via the
@@ -368,4 +369,21 @@ TEST_F(IntegrationTest, UserPickedEventThreadIsNotOwned) {
     plain.discord_thread_id.clear();
     auto p = event_svc->create(plain);
     EXPECT_TRUE(event_repo->is_thread_owned(p.id));
+}
+
+// Attendance counts toward the year the meeting happened, not the year it was
+// recorded - backfilled check-ins (e.g. last December's meeting entered in
+// January) used to land in the wrong perk year.
+TEST_F(IntegrationTest, BackfilledMeetingAttendanceCountsInMeetingYear) {
+    Meeting m;
+    m.title = "Backfilled 2024 Meeting";
+    m.start_time = "2024-12-31T19:00:00";
+    m.end_time = "2024-12-31T21:00:00";
+    m.scope = "lug_wide";
+    auto mtg = meeting_svc->create(m);
+    attendance_repo->check_in(regular_member_id, "meeting", mtg.id, "", false); // recorded "now"
+    EXPECT_EQ(attendance_repo->count_member_by_year(regular_member_id, 2024, "meeting"), 1);
+    EXPECT_EQ(attendance_repo->count_member_attendance_detail(regular_member_id, 2024), 1);
+    auto years = attendance_repo->get_attendance_years();
+    EXPECT_NE(std::find(years.begin(), years.end(), 2024), years.end());
 }
