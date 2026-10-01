@@ -60,6 +60,8 @@ public:
                            R"(^/(events|meetings)/\d+/publish-report$)"},
             {"guardians",  "Young member consent", "Guardian contact, signed consent and photo-release tracking for KFOL/TFOL members.",
                            ""},
+            {"digest",     "Weekly digest", "Monday-morning message to each member with the week's meetings and events, their RSVPs and shifts, and dues or borrowed items coming due. Members can opt out.",
+                           "", false},
             {"public_shows", "Public shows page", "A no-login page (/shows) listing upcoming public events, with an embed and JSON feed. Set its title and intro under Settings > Discord.",
                            R"(^/shows(\.json|/.*)?$)", false, "public_shows_enabled"},
         };

@@ -41,6 +41,7 @@
 #include "services/ReminderService.hpp"
 #include "services/DuesService.hpp"
 #include "services/LoanReminders.hpp"
+#include "services/DigestService.hpp"
 #include "services/BackupService.hpp"
 #include "services/SeriesService.hpp"
 #include "utils/TemplateCache.hpp"
@@ -274,8 +275,9 @@ int main() {
         BackupService  backup_service(db, data_dir);
         SeriesService  series_service(db, meeting_service);
         LoanReminders  loan_reminders(db, svc.notifier);
+        DigestService  digest_service(db, settings_repo, svc.notifier);
         std::thread reminder_thread([&reminder_service, &dues_service, &backup_service, &settings_repo, &series_service,
-                                     &loan_reminders] {
+                                     &loan_reminders, &digest_service] {
             std::this_thread::sleep_for(std::chrono::seconds(60));
             while (true) {
                 try {
@@ -293,6 +295,8 @@ int main() {
                         std::cout << "[dues] " << d.expired << " lapsed, " << d.reminded << " reminded\n";
                     if (int n = loan_reminders.run_once(AttendanceService::today_ymd()))
                         std::cout << "[inventory] Reminded " << n << " borrower(s)\n";
+                    if (int n = digest_service.run_once())
+                        std::cout << "[digest] Sent " << n << " weekly digest(s)\n";
                     auto r = reminder_service.run_once();
                     if (r.meetings || r.events || r.dms)
                         std::cout << "[reminders] Sent " << r.meetings << " meeting, " << r.events

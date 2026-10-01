@@ -17,6 +17,7 @@ public:
             {"waitlist",       "Waitlist spot opened", "When you move off an event waitlist.", "rsvps"},
             {"dues_reminder",  "Dues renewal reminders", "Shortly before your dues run out.", "dues"},
             {"loan_reminder",  "LUG items due back", "When something you borrowed from the LUG inventory is due.", "inventory"},
+            {"digest",         "Weekly digest", "A Monday-morning summary of your LUG week.", "digest"},
             {"email",          "Email when I'm not on Discord", "If your account has no Discord linked, send the notifications above to your email instead."},
         };
         return k;

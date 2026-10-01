@@ -1,6 +1,7 @@
 // My Account: notification preferences, data export, self-delete.
 #include "integration_test_base.hpp"
 #include "repositories/NotificationPrefs.hpp"
+#include "services/Features.hpp"
 #include "repositories/DuesRepository.hpp"
 #include "repositories/ShiftRepository.hpp"
 #include "repositories/RsvpRepository.hpp"
@@ -100,7 +101,9 @@ TEST_F(IntegrationTest, AccountExportHasOwnDataOnly) {
     EXPECT_FALSE(j["profile"][0].has("calendar_token_hash"));
     ASSERT_GE(j["sessions"].size(), 1u);
     EXPECT_FALSE(j["sessions"][0].has("token"));
-    EXPECT_EQ(j["notification_optouts"].size(), NotificationPrefs::kinds().size() - 1);
+    size_t visible = 0;   // kinds of switched-off features (e.g. the digest) aren't on the form
+    for (const auto& k : NotificationPrefs::kinds()) if (!*k.feature || Features::on(k.feature)) ++visible;
+    EXPECT_EQ(j["notification_optouts"].size(), visible - 1);
     expect_not_contains(r, "Admin U.");
     expect_not_contains(r, member_token);
 }
