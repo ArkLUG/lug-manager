@@ -2,6 +2,7 @@
 #include "routes/EventAccess.hpp"
 #include "routes/RsvpRoutes.hpp"
 #include "utils/ParseId.hpp"
+#include "utils/Csv.hpp"
 #include <crow/mustache.h>
 #include <sstream>
 
@@ -66,14 +67,6 @@ std::string render_panel(const crow::request& req, LugApp& app, const LugEvent& 
     return crow::mustache::load("events/_displays.html").render(ctx).dump();
 }
 
-std::string csv_field(const std::string& s) {
-    std::string out = "\"";
-    for (char c : s) { if (c == '"') out += "\"\""; else out += c; }
-    // Neutralize spreadsheet formula injection (=, +, -, @ at the start).
-    if (!s.empty() && (s[0] == '=' || s[0] == '+' || s[0] == '-' || s[0] == '@'))
-        out.insert(1, "'");
-    return out + "\"";
-}
 
 } // namespace
 

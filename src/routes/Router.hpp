@@ -54,6 +54,7 @@
 #include "routes/RsvpRoutes.hpp"
 #include "routes/DisplayRoutes.hpp"
 #include "routes/DuesRoutes.hpp"
+#include "routes/ExportRoutes.hpp"
 #include <memory>
 
 struct Services {
