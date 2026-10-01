@@ -8,9 +8,9 @@
   <script src="/static/app.js?v={{asset_v}}" defer></script>
   <style>@media print { .no-print { display: none } body { background: #fff } }</style>
 </head>
-<body class="bg-white text-gray-900 p-8">
+<body class="bg-white text-gray-900 p-4 sm:p-8">
   <div class="max-w-3xl mx-auto space-y-5 text-sm">
-    <div class="flex items-start justify-between gap-4">
+    <div class="flex flex-wrap items-start justify-between gap-4">
       <div>
         <h1 class="text-2xl font-bold">{{lug_name}}: {{year}} activity summary</h1>
         {{#recognized}}<p class="text-gray-600">A Recognized LEGO® Fan Community (LEGO Fan CoLab)</p>{{/recognized}}
@@ -29,12 +29,14 @@
     <div>
       <h2 class="text-lg font-semibold mb-2">Public shows and events</h2>
       {{#has_shows}}
+      <div class="overflow-x-auto">
       <table class="w-full border border-gray-300">
         <thead class="bg-gray-50"><tr class="text-left"><th class="p-2">Date</th><th class="p-2">Event</th><th class="p-2 text-right">Days</th><th class="p-2 text-right">Visitors</th><th class="p-2 text-right">Members</th><th class="p-2 text-right">Displays</th></tr></thead>
         <tbody class="divide-y divide-gray-200">
           {{#shows}}<tr><td class="p-2 whitespace-nowrap">{{date}}{{#multi_day}} – {{end_date}}{{/multi_day}}</td><td class="p-2">{{title}}{{#location}}<div class="text-gray-500">{{location}}</div>{{/location}}</td><td class="p-2 text-right">{{days}}</td><td class="p-2 text-right">{{visitors}}</td><td class="p-2 text-right">{{members}}</td><td class="p-2 text-right">{{mocs}}</td></tr>{{/shows}}
         </tbody>
       </table>
+      </div>
       {{/has_shows}}
       {{^has_shows}}<p class="text-gray-500">No public shows or events in {{year}}.</p>{{/has_shows}}
     </div>
