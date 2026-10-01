@@ -260,3 +260,18 @@ TEST_F(IntegrationTest, IcalEscapesBareCarriageReturn) {
     EXPECT_EQ(r.body.find("\rX-INJECTED"), std::string::npos);
     EXPECT_NE(r.body.find("X-INJECTED"), std::string::npos); // still present, escaped
 }
+
+// Demoting a chapter lead via the API needs admin scope, same as appointing one.
+TEST_F(IntegrationTest, WriteScopeCannotDemoteChapterLead) {
+    std::string key = make_api_key("write");
+    auto r = API_PUT("/api/v1/chapter-members/" + std::to_string(chapter_lead_member_id) + "/" +
+                     std::to_string(test_chapter_id), R"({"chapter_role":"member"})", key);
+    EXPECT_EQ(r.code, 403);
+    auto p = API_POST("/api/v1/chapter-members",
+        R"({"member_id":)" + std::to_string(chapter_lead_member_id) + R"(,"chapter_id":)" +
+        std::to_string(test_chapter_id) + R"(,"chapter_role":"event_manager"})", key);
+    EXPECT_EQ(p.code, 403);
+    auto role = chapter_member_repo->get_chapter_role(chapter_lead_member_id, test_chapter_id);
+    ASSERT_TRUE(role);
+    EXPECT_EQ(*role, "lead");
+}

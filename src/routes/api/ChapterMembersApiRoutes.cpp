@@ -37,35 +37,25 @@ void register_chapter_members_api_routes(LugApp& app, ChapterMemberRepository& c
         return res;
     });
 
-    // POST /api/v1/chapter-members - upsert (create or update a member's chapter role).
-    // Requires admin scope if chapter_role == "lead".
-    CROW_ROUTE(app, "/api/v1/chapter-members").methods("POST"_method)(
-        [&](const crow::request& req) {
-        crow::response res;
-        if (!require_api_scope(req, res, app, "write")) return res;
-
-        auto body = crow::json::load(req.body);
-        if (!body || !body.has("member_id") || !body.has("chapter_id") || !body.has("chapter_role")) {
-            envelope_error(res, 400, "member_id, chapter_id, and chapter_role are required", "invalid_request");
-            return res;
+    // Shared by POST and PUT. Lead changes in either direction need admin
+    // scope (appointing *or* demoting a lead - write scope could previously
+    // strip a lead by setting any other role), and the chapter's Discord lead
+    // role is mirrored on every lead <-> non-lead transition (PUT used to skip it).
+    // Copied into each route handler (which outlive this function), not
+    // referenced - it's a local.
+    auto upsert_role = [&](const crow::request& req, crow::response& res,
+                           int64_t member_id, int64_t chapter_id,
+                           const std::string& chapter_role, int ok_code) {
+        if (chapter_role != "lead" && chapter_role != "event_manager" && chapter_role != "member") {
+            envelope_error(res, 400, "chapter_role must be lead, event_manager or member", "invalid_request");
+            return;
         }
-
-        std::string chapter_role = body["chapter_role"].s();
-        if (chapter_role == "lead") {
-            if (!require_api_scope(req, res, app, "admin")) return res;
-        }
-
-        int64_t member_id  = body["member_id"].i();
-        int64_t chapter_id = body["chapter_id"].i();
         auto& ctx = app.template get_context<ApiKeyMiddleware>(req);
-
         try {
-            // Read the prior role before upserting so a lead <-> non-lead
-            // transition can be detected and mirrored to Discord, same as
-            // the browser's /chapters/<id>/lead and .../demote routes.
             auto prior_role = chapter_members.get_chapter_role(member_id, chapter_id);
             bool was_lead = prior_role && *prior_role == "lead";
             bool now_lead = chapter_role == "lead";
+            if ((was_lead || now_lead) && !require_api_scope(req, res, app, "admin")) return;
 
             chapter_members.upsert(member_id, chapter_id, chapter_role, /*granted_by=*/0);
             audit.log_system("chapter_member.upsert", "chapter_member", member_id,
@@ -89,11 +79,28 @@ void register_chapter_members_api_routes(LugApp& app, ChapterMemberRepository& c
             body_out["member_id"]    = member_id;
             body_out["chapter_id"]   = chapter_id;
             body_out["chapter_role"] = chapter_role;
-            write_json(res, 201, envelope_ok(std::move(body_out)));
+            write_json(res, ok_code, envelope_ok(std::move(body_out)));
         } catch (const std::exception& ex) {
-            std::cerr << "[ChapterMembersApiRoutes] POST /api/v1/chapter-members error: " << ex.what() << "\n";
+            std::cerr << "[ChapterMembersApiRoutes] upsert error: " << ex.what() << "\n";
             envelope_error(res, 400, "could not set chapter membership", "validation_error");
         }
+    };
+
+    // POST /api/v1/chapter-members - upsert (create or update a member's chapter role).
+    // Requires admin scope when appointing or demoting a lead.
+    CROW_ROUTE(app, "/api/v1/chapter-members").methods("POST"_method)(
+        [&, upsert_role](const crow::request& req) {
+        crow::response res;
+        if (!require_api_scope(req, res, app, "write")) return res;
+
+        auto body = crow::json::load(req.body);
+        if (!body || !body.has("member_id") || !body.has("chapter_id") || !body.has("chapter_role")) {
+            envelope_error(res, 400, "member_id, chapter_id, and chapter_role are required", "invalid_request");
+            return res;
+        }
+
+        upsert_role(req, res, body["member_id"].i(), body["chapter_id"].i(),
+                    std::string(body["chapter_role"].s()), 201);
         return res;
     });
 
@@ -101,7 +108,7 @@ void register_chapter_members_api_routes(LugApp& app, ChapterMemberRepository& c
     // for REST-shape consistency with other entities (no separate create/update semantics
     // exist in the repository - upsert covers both).
     CROW_ROUTE(app, "/api/v1/chapter-members/<int>/<int>").methods("PUT"_method)(
-        [&](const crow::request& req, int member_id, int chapter_id) {
+        [&, upsert_role](const crow::request& req, int member_id, int chapter_id) {
         crow::response res;
         if (!require_api_scope(req, res, app, "write")) return res;
 
@@ -111,26 +118,7 @@ void register_chapter_members_api_routes(LugApp& app, ChapterMemberRepository& c
             return res;
         }
 
-        std::string chapter_role = body["chapter_role"].s();
-        if (chapter_role == "lead") {
-            if (!require_api_scope(req, res, app, "admin")) return res;
-        }
-
-        auto& ctx = app.template get_context<ApiKeyMiddleware>(req);
-        try {
-            chapter_members.upsert(member_id, chapter_id, chapter_role, /*granted_by=*/0);
-            audit.log_system("chapter_member.upsert", "chapter_member", member_id,
-                              "member " + std::to_string(member_id) + " in chapter " + std::to_string(chapter_id),
-                              "Set role=" + chapter_role + " via " + actor_label(ctx.api_key));
-            crow::json::wvalue body_out;
-            body_out["member_id"]    = member_id;
-            body_out["chapter_id"]   = chapter_id;
-            body_out["chapter_role"] = chapter_role;
-            write_json(res, 200, envelope_ok(std::move(body_out)));
-        } catch (const std::exception& ex) {
-            std::cerr << "[ChapterMembersApiRoutes] PUT chapter-members error: " << ex.what() << "\n";
-            envelope_error(res, 400, "could not set chapter membership", "validation_error");
-        }
+        upsert_role(req, res, member_id, chapter_id, std::string(body["chapter_role"].s()), 200);
         return res;
     });
 
