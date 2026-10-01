@@ -11,51 +11,6 @@
 #include <algorithm>
 
 // ═══════════════════════════════════════════════════════════════════════════
-// Announcement Content Builder Tests (suppress_pings)
-// ═══════════════════════════════════════════════════════════════════════════
-
-TEST(AnnouncementSuppression, EventPingsPresent) {
-    LugEvent e;
-    e.title = "Test Event";
-    e.start_time = "2026-06-15";
-    e.end_time = "2026-06-17";
-    e.location = "Convention Center";
-
-    auto content = DiscordClient::build_event_announcement_content(e, "123456", "", false);
-    EXPECT_NE(content.find("<@&123456>"), std::string::npos);
-}
-
-TEST(AnnouncementSuppression, EventPingsSuppressed) {
-    LugEvent e;
-    e.title = "Test Event";
-    e.start_time = "2026-06-15";
-    e.end_time = "2026-06-17";
-
-    auto content = DiscordClient::build_event_announcement_content(e, "123456", "", true);
-    EXPECT_EQ(content.find("<@&"), std::string::npos);
-}
-
-TEST(AnnouncementSuppression, MeetingPingsPresent) {
-    Meeting m;
-    m.title = "Test Meeting";
-    m.start_time = "2026-04-15T19:00:00";
-    m.end_time = "2026-04-15T21:00:00";
-
-    auto content = DiscordClient::build_meeting_announcement_content(m, "789012", "UTC", false);
-    EXPECT_NE(content.find("<@&789012>"), std::string::npos);
-}
-
-TEST(AnnouncementSuppression, MeetingPingsSuppressed) {
-    Meeting m;
-    m.title = "Test Meeting";
-    m.start_time = "2026-04-15T19:00:00";
-    m.end_time = "2026-04-15T21:00:00";
-
-    auto content = DiscordClient::build_meeting_announcement_content(m, "789012", "UTC", true);
-    EXPECT_EQ(content.find("<@&"), std::string::npos);
-}
-
-// ═══════════════════════════════════════════════════════════════════════════
 // Per-Entity Suppress Flag Tests (database persistence)
 // ═══════════════════════════════════════════════════════════════════════════
 

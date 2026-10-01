@@ -89,45 +89,12 @@ public:
     // Fetch all guild members with pagination (skips bots)
     std::vector<DiscordGuildMember> fetch_guild_members() const;
 
-    // Creates/updates/cancels/deletes Discord scheduled event for a meeting
-    void create_scheduled_event(const Meeting& m);
-    void update_scheduled_event(const Meeting& m);
-    void cancel_scheduled_event(const std::string& discord_event_id);
-    void delete_scheduled_event(const std::string& discord_event_id);
-    void delete_channel(const std::string& channel_or_thread_id); // also deletes threads
 
-    // For LugEvents: creates announcement thread + scheduled event
-    void create_event_thread(LugEvent& e);          // Posts message + creates thread, fills e.discord_thread_id
-    void create_event_scheduled_event(LugEvent& e); // Creates Discord scheduled event, fills e.discord_event_id
-    void update_event(const LugEvent& e);
 
-    // Creates forum thread for a LugEvent, picking the right role based on scope
-    std::string sync_create_forum_thread_for_event(const std::string& title, const LugEvent& e);
-    // Creates text channel thread for a LugEvent, picking the right role based on scope
-    std::string sync_create_text_thread_for_event(const std::string& title, const LugEvent& e);
-    // Posts an event announcement message to a channel; returns the message ID (sync)
-    std::string sync_post_event_announcement(const std::string& channel_id, const LugEvent& e,
-                                              const std::string& role_id,
-                                              const std::string& thread_url = "");
-    // Creates a public thread from an existing message; returns thread ID (sync)
-    std::string sync_create_thread_from_message(const std::string& channel_id,
-                                                 const std::string& message_id,
-                                                 const std::string& thread_name);
-    // Edits an existing message in a channel (async)
-    void update_channel_message(const std::string& channel_id, const std::string& message_id,
-                                 const std::string& content);
-    // Deletes a message in a channel (sync, errors logged not thrown)
-    void delete_channel_message(const std::string& channel_id, const std::string& message_id);
 
-    // Post a plain message to a channel
-    void post_message(const std::string& channel_id, const std::string& content);
-    // Synchronous post; returns false if Discord didn't return a message.
-    bool sync_post_message(const std::string& channel_id, const std::string& content);
     // Direct message a user (opens the DM channel first). Fails quietly
     // (returns false) if they don't share a server or have DMs closed.
     bool send_dm(const std::string& discord_user_id, const std::string& content);
-    // Fire-and-forget send_dm on the client's worker pool (request handlers).
-    void send_dm_async(const std::string& discord_user_id, const std::string& content);
     // Guild channel/role/thread lists are cached for 2 minutes (settings and
     // forms used to hit Discord on every view). Call to force a fresh read.
     void clear_cache() const;
@@ -189,37 +156,9 @@ public:
     // Fetch active threads in the configured forum channel
     std::vector<DiscordThread> fetch_forum_threads() const;
 
-    // Sync variants for when we need the discord_event_id back
-    std::string sync_create_scheduled_event_meeting(const Meeting& m);
-    std::string sync_create_scheduled_event_event(const LugEvent& e);
-    std::string sync_create_event_thread(const std::string& channel_id, const std::string& title, const std::string& description);
-    // Creates a thread post in a forum channel (type 15) and returns the thread id
-    std::string sync_create_forum_thread(const std::string& title, const std::string& description);
 
-    // Brief announcement: title, dates, location, thread link + role pings
-    static std::string build_event_announcement_content(const LugEvent& e,
-                                                         const std::string& role_id,
-                                                         const std::string& thread_url = "",
-                                                         bool suppress_pings = false);
-    // Full thread starter: all details + pings the event lead by Discord mention
-    static std::string build_thread_starter_content(const LugEvent& e,
-                                                     bool suppress_pings = false);
 
-    // Meeting announcement: title, date/time, location + role ping
-    static std::string build_meeting_announcement_content(const Meeting& m,
-                                                           const std::string& role_id,
-                                                           const std::string& tz_name = "UTC",
-                                                           bool suppress_pings = false);
-    // Posts a meeting announcement to a channel; returns the message ID (sync)
-    std::string sync_post_meeting_announcement(const std::string& channel_id, const Meeting& m,
-                                               const std::string& role_id);
 
-    // Publish a report to a forum channel. Creates new thread or edits existing.
-    // Returns the thread ID (for storing as notes_discord_post_id).
-    std::string publish_report_to_forum(const std::string& forum_channel_id,
-                                         const std::string& existing_thread_id,
-                                         const std::string& title,
-                                         const std::string& content);
 
 private:
     const Config& config_;
@@ -248,8 +187,6 @@ private:
                                     const std::string& json_body = "") const;
     std::string discord_api_request_uncached(const std::string& method, const std::string& endpoint,
                                              const std::string& json_body) const;
-    std::string build_meeting_event_json(const Meeting& m) const;
-    std::string build_lug_event_json(const LugEvent& e) const;
     std::string iso_to_discord_timestamp(const std::string& iso) const;
     std::string scheduled_json(const ScheduledEvent& e) const;
     Result call(const std::string& method, const std::string& endpoint, const std::string& body, bool want_id);

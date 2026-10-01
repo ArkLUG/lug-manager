@@ -47,6 +47,10 @@ public:
     // deleting the row - removal may run after the row is gone).
     void event_removed(const LugEvent& e, bool thread_owned = true);
 
+    // A new discussion thread for an event (the edit form's "start a new
+    // thread"), on the first provider with a forum. Returns its id, or "".
+    std::string start_event_thread(const LugEvent& e);
+
     // ── Meetings ──
     void meeting_published(const Meeting& m);
     void meeting_changed(const Meeting& before, const Meeting& after);
@@ -113,6 +117,7 @@ private:
     void update_meeting(Provider& p, const Meeting& before, const Meeting& after);
     void remove_meeting(Provider& p, const Meeting& m, const Refs& r);
 
+    std::string lead_account(const Provider& p, const LugEvent& e) const;
     std::vector<std::string> event_ping_roles(const Provider& p, const LugEvent& e, const std::string& main_role) const;
 
     std::string setting(const std::string& key, const std::string& def = "") const;

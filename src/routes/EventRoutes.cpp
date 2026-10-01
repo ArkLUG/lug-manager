@@ -713,8 +713,7 @@ void register_event_routes(LugApp& app, EventService& events, AttendanceService&
                       if (!updates.location.empty()) merged.location = updates.location;
                       if (!updates.start_time.empty()) merged.start_time = updates.start_time;
                       if (!updates.end_time.empty()) merged.end_time = updates.end_time;
-                      std::string thread_name = merged.title;
-                      std::string new_tid = discord.sync_create_forum_thread_for_event(thread_name, merged);
+                      std::string new_tid = events.chat() ? events.chat()->start_event_thread(merged) : "";
                       if (!new_tid.empty()) {
                           updates.discord_thread_id = new_tid;
                           route_created_thread = true; // app-owned, see below

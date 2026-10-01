@@ -184,6 +184,13 @@ bool ChatHub::may_create(const Provider& p, const std::string& what, const std::
 
 // ── Placeholder values ──
 
+// The event lead's account on this service ("" if none).
+std::string ChatHub::lead_account(const Provider& p, const LugEvent& e) const {
+    std::string a = e.event_lead_id > 0 ? p.member_account(e.event_lead_id) : "";
+    if (a.empty() && p.id() == "discord") a = e.event_lead_discord_id;
+    return a;
+}
+
 std::vector<std::string> ChatHub::event_ping_roles(const Provider& p, const LugEvent& e, const std::string& main_role) const {
     std::vector<std::string> roles;
     if (!switch_on(p, "pings")) return roles;
@@ -205,8 +212,8 @@ Values ChatHub::event_values(const LugEvent& e, const Provider& p) const {
     v["link"] = public_url_.empty() || e.id <= 0 ? "" : public_url_ + "/events/" + std::to_string(e.id);
     v["signup_deadline"] = e.signup_deadline.empty() ? "" : fmt::md(e.signup_deadline);
     v["capacity"] = e.max_attendees > 0 ? std::to_string(e.max_attendees) : "";
-    bool pings = switch_on(p, "pings");
-    if (pings && !e.event_lead_discord_id.empty() && p.id() == "discord") v["lead"] = p.user_mention(e.event_lead_discord_id);
+    std::string lead = lead_account(p, e);
+    if (switch_on(p, "pings") && !lead.empty()) v["lead"] = p.user_mention(lead);
     else v["lead"] = p.inert(e.event_lead_name);
     v["when"] = DiscordClient::friendly_time(e.start_time, timezone());
     return v;
@@ -273,7 +280,7 @@ void ChatHub::publish_event(Provider& p, const LugEvent& e) {
             w["pings"] = pings;
             return w;
         }(), switch_on(p, "pings") ? fmt::csv(pings_csv(e.discord_ping_role_ids)) : std::vector<std::string>{},
-           (switch_on(p, "pings") && !e.event_lead_discord_id.empty()) ? std::vector<std::string>{e.event_lead_discord_id} : std::vector<std::string>{});
+           (switch_on(p, "pings") && !lead_account(p, e).empty()) ? std::vector<std::string>{lead_account(p, e)} : std::vector<std::string>{});
         Result t = p.start_forum_thread(forum, title, first);
         log(p, "thread", "event.thread_starter", "event", e.id, t, forum);
         if (t.ok) {
@@ -357,8 +364,8 @@ void ChatHub::update_event(Provider& p, const LugEvent& before, const LugEvent& 
         for (const auto& x : extra) pings += p.role_mention(x) + " ";
         w["pings"] = pings;
         Result st = p.edit_thread_starter(r.thread, message(p, "event.thread_starter", w, extra,
-            (switch_on(p, "pings") && !after.event_lead_discord_id.empty()) ? std::vector<std::string>{after.event_lead_discord_id}
-                                                                            : std::vector<std::string>{}));
+            (switch_on(p, "pings") && !lead_account(p, after).empty()) ? std::vector<std::string>{lead_account(p, after)}
+                                                                         : std::vector<std::string>{}));
         log(p, "edit", "event.thread_starter", "event", after.id, st, r.thread);
     }
 
@@ -438,6 +445,24 @@ void ChatHub::remove_event(Provider& p, const LugEvent& e, const Refs& r) {
         if (!ch.empty()) log(p, "delete", "event.announcement", "event", e.id, p.remove(ch, r.chapter_announce), ch);
     }
     for (const char* k : {"scheduled", "thread", "announce", "chapter_announce"}) save_ref(p, "event", e.id, k, "");
+}
+
+std::string ChatHub::start_event_thread(const LugEvent& e) {
+    for (auto& p : providers_) {
+        if (!p->ready() || !p->caps().forums) continue;
+        std::string forum = p->place(Place::EventsForum);
+        if (forum.empty() || !may_create(*p, "event.thread_starter", "event", e.id)) continue;
+        Values v = event_values(e, *p);
+        std::vector<std::string> extra = switch_on(*p, "pings") ? fmt::csv(pings_csv(e.discord_ping_role_ids)) : std::vector<std::string>{};
+        std::string pings;
+        for (const auto& x : extra) pings += p->role_mention(x) + " ";
+        v["pings"] = pings;
+        std::string title = utf8_truncate(templates().render_body("event.thread_title", v), 100);
+        Result t = p->start_forum_thread(forum, title, message(*p, "event.thread_starter", v, extra));
+        log(*p, "thread", "event.thread_starter", "event", e.id, t, forum);
+        if (t.ok) return t.id;
+    }
+    return "";
 }
 
 // ── Meetings ──
