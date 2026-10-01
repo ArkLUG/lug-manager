@@ -1,4 +1,5 @@
 #include "routes/MeetingRoutes.hpp"
+#include "utils/UrlEncode.hpp"
 #include "utils/MarkdownRenderer.hpp"
 #include "utils/AuditDiff.hpp"
 #include "utils/HtmlEscape.hpp"
@@ -173,6 +174,8 @@ static std::string render_meeting_page(const crow::request& req,
     auto ctx = build_meeting_list_ctx(meeting_list, attendance, chapter_members, chapters, is_admin, can_create, member_id);
 
     ctx["search"]      = search;
+
+    ctx["search_q"]      = url_encode_component(search); // for links: search is HTML-escaped by mustache but must also be URL-encoded
     ctx["page"]        = page;
     ctx["total_pages"] = total_pages;
     ctx["total_count"] = total;

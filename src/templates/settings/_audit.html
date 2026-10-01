@@ -95,7 +95,7 @@
     <span>Page {{page}} of {{total_pages}}</span>
     <div class="flex items-center gap-2">
       {{#has_prev}}
-      <button hx-get="/audit?page={{prev_page}}&search={{search}}&action_filter={{action_filter}}"
+      <button hx-get="/audit?page={{prev_page}}&search={{search_q}}&action_filter={{action_filter}}"
               hx-target="#main-content" hx-swap="innerHTML" hx-push-url="true"
               class="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50">Previous</button>
       {{/has_prev}}
@@ -103,7 +103,7 @@
       <span class="px-4 py-2 border border-gray-200 rounded-lg text-gray-300 cursor-not-allowed">Previous</span>
       {{/has_prev}}
       {{#has_next}}
-      <button hx-get="/audit?page={{next_page}}&search={{search}}&action_filter={{action_filter}}"
+      <button hx-get="/audit?page={{next_page}}&search={{search_q}}&action_filter={{action_filter}}"
               hx-target="#main-content" hx-swap="innerHTML" hx-push-url="true"
               class="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50">Next</button>
       {{/has_next}}

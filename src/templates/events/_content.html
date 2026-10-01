@@ -57,7 +57,7 @@
         <thead class="bg-gray-50 border-b border-gray-200">
           <tr>
             <th class="px-4 py-3 text-left">
-              <a hx-get="{{#show_all}}/events/all{{/show_all}}{{^show_all}}/events{{/show_all}}?sort=start_time&dir={{#sort_is_date}}{{next_dir}}{{/sort_is_date}}{{^sort_is_date}}ASC{{/sort_is_date}}&search={{search}}"
+              <a hx-get="{{#show_all}}/events/all{{/show_all}}{{^show_all}}/events{{/show_all}}?sort=start_time&dir={{#sort_is_date}}{{next_dir}}{{/sort_is_date}}{{^sort_is_date}}ASC{{/sort_is_date}}&search={{search_q}}"
                  hx-target="#main-content" hx-swap="innerHTML" hx-push-url="true"
                  class="font-medium text-gray-600 hover:text-gray-900 cursor-pointer inline-flex items-center gap-1">
                 Date
@@ -67,7 +67,7 @@
               </a>
             </th>
             <th class="px-4 py-3 text-left">
-              <a hx-get="{{#show_all}}/events/all{{/show_all}}{{^show_all}}/events{{/show_all}}?sort=title&dir={{#sort_is_title}}{{next_dir}}{{/sort_is_title}}{{^sort_is_title}}ASC{{/sort_is_title}}&search={{search}}"
+              <a hx-get="{{#show_all}}/events/all{{/show_all}}{{^show_all}}/events{{/show_all}}?sort=title&dir={{#sort_is_title}}{{next_dir}}{{/sort_is_title}}{{^sort_is_title}}ASC{{/sort_is_title}}&search={{search_q}}"
                  hx-target="#main-content" hx-swap="innerHTML" hx-push-url="true"
                  class="font-medium text-gray-600 hover:text-gray-900 cursor-pointer inline-flex items-center gap-1">
                 Title
@@ -79,7 +79,7 @@
             <th class="px-4 py-3 text-left font-medium text-gray-600 hidden lg:table-cell">Status</th>
             <th class="px-4 py-3 text-left font-medium text-gray-600 hidden lg:table-cell">Scope</th>
             <th class="px-4 py-3 text-left hidden md:table-cell">
-              <a hx-get="{{#show_all}}/events/all{{/show_all}}{{^show_all}}/events{{/show_all}}?sort=location&dir={{#sort_is_location}}{{next_dir}}{{/sort_is_location}}{{^sort_is_location}}ASC{{/sort_is_location}}&search={{search}}"
+              <a hx-get="{{#show_all}}/events/all{{/show_all}}{{^show_all}}/events{{/show_all}}?sort=location&dir={{#sort_is_location}}{{next_dir}}{{/sort_is_location}}{{^sort_is_location}}ASC{{/sort_is_location}}&search={{search_q}}"
                  hx-target="#main-content" hx-swap="innerHTML" hx-push-url="true"
                  class="font-medium text-gray-600 hover:text-gray-900 cursor-pointer inline-flex items-center gap-1">
                 Location
@@ -167,7 +167,7 @@
     <span>Page {{page}} of {{total_pages}}</span>
     <div class="flex items-center gap-2">
       {{#has_prev}}
-      <button hx-get="{{#show_all}}/events/all{{/show_all}}{{^show_all}}/events{{/show_all}}?page={{prev_page}}&search={{search}}&sort={{sort}}&dir={{dir}}" hx-target="#main-content" hx-swap="innerHTML" hx-push-url="true"
+      <button hx-get="{{#show_all}}/events/all{{/show_all}}{{^show_all}}/events{{/show_all}}?page={{prev_page}}&search={{search_q}}&sort={{sort}}&dir={{dir}}" hx-target="#main-content" hx-swap="innerHTML" hx-push-url="true"
               class="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors">
         Previous
       </button>
@@ -176,7 +176,7 @@
       <span class="px-4 py-2 border border-gray-200 rounded-lg text-gray-300 cursor-not-allowed">Previous</span>
       {{/has_prev}}
       {{#has_next}}
-      <button hx-get="{{#show_all}}/events/all{{/show_all}}{{^show_all}}/events{{/show_all}}?page={{next_page}}&search={{search}}&sort={{sort}}&dir={{dir}}" hx-target="#main-content" hx-swap="innerHTML" hx-push-url="true"
+      <button hx-get="{{#show_all}}/events/all{{/show_all}}{{^show_all}}/events{{/show_all}}?page={{next_page}}&search={{search_q}}&sort={{sort}}&dir={{dir}}" hx-target="#main-content" hx-swap="innerHTML" hx-push-url="true"
               class="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors">
         Next
       </button>

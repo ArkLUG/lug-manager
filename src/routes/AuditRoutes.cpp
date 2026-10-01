@@ -1,4 +1,5 @@
 #include "routes/AuditRoutes.hpp"
+#include "utils/UrlEncode.hpp"
 #include <crow.h>
 #include <crow/mustache.h>
 
@@ -31,6 +32,7 @@ void register_audit_routes(LugApp& app, AuditService& audit) {
 
         crow::mustache::context ctx;
         ctx["search"]         = search;
+        ctx["search_q"]      = url_encode_component(search); // for links: search is HTML-escaped by mustache but must also be URL-encoded
         ctx["action_filter"]  = action_filter;
         ctx["page"]           = page;
         ctx["total_pages"]    = total_pages;

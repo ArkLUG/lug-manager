@@ -1,4 +1,5 @@
 #include "routes/EventRoutes.hpp"
+#include "utils/UrlEncode.hpp"
 #include "utils/JsonEscape.hpp"
 #include "services/EventConversion.hpp"
 #include "utils/MarkdownRenderer.hpp"
@@ -185,6 +186,7 @@ static std::string render_event_page(const crow::request& req,
 
     ctx["show_all"]    = all_events;
     ctx["search"]      = search;
+    ctx["search_q"]      = url_encode_component(search); // for links: search is HTML-escaped by mustache but must also be URL-encoded
     ctx["page"]        = page;
     ctx["total_pages"] = total_pages;
     ctx["total_count"] = total;
