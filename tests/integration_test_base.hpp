@@ -174,7 +174,10 @@ protected:
         gcal_client = std::make_unique<GoogleCalendarClient>();
 
         // Services
-        auth_service = std::make_unique<AuthService>(*session_store, *member_repo, *discord_oauth);
+        // As in production: guild membership is checked through the Discord
+        // client (unreachable unless a test starts the FakeDiscord server).
+        auth_service = std::make_unique<AuthService>(*session_store, *member_repo, *discord_oauth, "",
+                                                     discord_client.get(), role_mapping_repo.get());
         member_svc = std::make_unique<MemberService>(*member_repo, discord_client.get());
         meeting_svc = std::make_unique<MeetingService>(*meeting_repo, *discord_client, *calendar, chapter_repo.get(), gcal_client.get());
         event_svc = std::make_unique<EventService>(*event_repo, *discord_client, *calendar, chapter_repo.get(), gcal_client.get(), event_day_repo.get());

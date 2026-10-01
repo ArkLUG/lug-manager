@@ -214,7 +214,7 @@ std::string GoogleCalendarClient::gcal_api_request(const std::string& method,
     CURL* curl = curl_easy_init();
     if (!curl) throw std::runtime_error("curl_easy_init failed");
 
-    std::string url = "https://www.googleapis.com/calendar/v3" + endpoint;
+    std::string url = google_base() + "/calendar/v3" + endpoint;
     std::string response;
 
     struct curl_slist* headers = nullptr;

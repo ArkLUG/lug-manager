@@ -206,7 +206,7 @@ std::string DiscordClient::discord_api_request_uncached(const std::string& metho
         CURL* curl = curl_easy_init();
         if (!curl) throw std::runtime_error("curl_easy_init failed");
 
-        std::string url = "https://discord.com/api/v10" + endpoint;
+        std::string url = discord_base() + "/api/v10" + endpoint;
         std::string response;
 
         struct curl_slist* headers = nullptr;

@@ -31,7 +31,7 @@ std::string DiscordOAuth::url_encode(const std::string& str) {
 std::string DiscordOAuth::get_auth_url(const std::string& state, const std::string& redirect_uri,
                                        bool skip_prompt) const {
     const std::string& uri = redirect_uri.empty() ? config_.discord_redirect_uri : redirect_uri;
-    std::string url = "https://discord.com/oauth2/authorize"
+    std::string url = discord_base() + "/oauth2/authorize"
            "?client_id=" + url_encode(config_.discord_client_id) +
            "&redirect_uri=" + url_encode(uri) +
            "&response_type=code"
@@ -89,7 +89,7 @@ std::string DiscordOAuth::exchange_code(const std::string& code, const std::stri
         "&grant_type=authorization_code" +
         "&code=" + url_encode(code) +
         "&redirect_uri=" + url_encode(uri);
-    std::string resp = http_post_form("https://discord.com/api/oauth2/token", body);
+    std::string resp = http_post_form(discord_base() + "/api/oauth2/token", body);
     try {
         auto j = json::parse(resp);
         if (j.contains("error")) {
@@ -102,7 +102,7 @@ std::string DiscordOAuth::exchange_code(const std::string& code, const std::stri
 }
 
 DiscordUserInfo DiscordOAuth::get_user_info(const std::string& access_token) const {
-    std::string resp = http_get("https://discord.com/api/users/@me",
+    std::string resp = http_get(discord_base() + "/api/users/@me",
                                 "Authorization: Bearer " + access_token);
     try {
         auto j = json::parse(resp);
