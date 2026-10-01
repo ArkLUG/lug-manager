@@ -155,6 +155,33 @@ SyncResult MemberSyncService::sync_from_guild() {
         }
     }
 
+    // --- Phase 1b: members who left the Discord server ---
+    // Discord-sourced roles follow the server (services/RoleSync.hpp); someone
+    // who left no longer holds the mapped Discord role, so an elevated
+    // Discord-sourced role drops back to "member". Manually granted roles are
+    // untouched. Skipped if the member list came back empty, so an API hiccup
+    // can never demote everyone.
+    if (!guild_members.empty()) {
+        std::unordered_set<std::string> in_guild;
+        for (const auto& gm : guild_members) in_guild.insert(gm.discord_user_id);
+        for (const auto& m : member_repo_.find_all()) {
+            if (m.discord_user_id.empty() || in_guild.count(m.discord_user_id)) continue;
+            if (m.role == "member" || m.role.empty()) continue;
+            if (member_repo_.get_role_source(m.id) != "discord") continue;
+            try {
+                Member updated = m;
+                updated.role = "member";
+                member_repo_.update(updated);
+                result.changes.push_back({m.id, m.display_name, "updated", "role", m.role, "member"});
+                ++result.updated;
+            } catch (const std::exception& e) {
+                std::cerr << "[MemberSyncService] Failed to demote departed member " << m.id
+                          << ": " << e.what() << "\n";
+                ++result.errors;
+            }
+        }
+    }
+
     // --- Phase 2: sync chapter lead roles (bidirectional) ---
     // Web leads without Discord role → assign Discord role
     // Discord role holders not yet web leads → promote in web
