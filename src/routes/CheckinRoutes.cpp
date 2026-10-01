@@ -194,7 +194,10 @@ void register_checkin_routes(LugApp& app,
         auto& auth_ctx = app.get_context<AuthMiddleware>(req);
         std::string checkin_msg;
 
-        if (discord_flag && auth_ctx.auth.authenticated) {
+        bool own_login = get_cookie(req, "checkin_ok") == token;
+        if (own_login)
+            res.add_header("Set-Cookie", "checkin_ok=; HttpOnly; Path=/checkin; Max-Age=0; SameSite=Lax");
+        if (discord_flag && own_login && auth_ctx.auth.authenticated) {
             // Auto check-in the Discord-authenticated user
             int64_t mbr_id = auth_ctx.auth.member_id;
             if (attendance.is_checked_in(mbr_id, entity_type, entity_id)) {

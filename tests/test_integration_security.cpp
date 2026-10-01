@@ -387,3 +387,18 @@ TEST_F(IntegrationTest, BackfilledMeetingAttendanceCountsInMeetingYear) {
     auto years = attendance_repo->get_attendance_years();
     EXPECT_NE(std::find(years.begin(), years.end(), 2024), years.end());
 }
+
+// A bare link to /checkin/<token>?discord=1 must not check in whoever is
+// logged in - only the redirect at the end of their own Discord login may.
+TEST_F(IntegrationTest, DiscordCheckinLinkNeedsOwnLogin) {
+    Meeting m;
+    m.title = "Link Checkin";
+    m.start_time = today_at("19:00:00");
+    m.end_time = today_at("21:00:00");
+    m.scope = "lug_wide";
+    auto mtg = meeting_svc->create(m);
+    meeting_repo->update_checkin_token(mtg.id, "22222222-3333-4444-8555-666666666666");
+    auto r = GET("/checkin/22222222-3333-4444-8555-666666666666?discord=1", member_token);
+    EXPECT_EQ(r.code, 200);
+    EXPECT_FALSE(attendance_repo->is_checked_in(regular_member_id, "meeting", mtg.id));
+}

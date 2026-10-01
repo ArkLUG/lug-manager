@@ -164,7 +164,12 @@ void register_auth_routes(LugApp& app, AuthService& auth, DiscordOAuth& oauth,
                 "session=" + session_token + "; HttpOnly; Path=/; Max-Age=86400; SameSite=Lax" + secure_attr(req));
             res.add_header("Set-Cookie", "oauth_state=; HttpOnly; Path=/auth; Max-Age=0; SameSite=Lax");
             if (is_checkin) {
-                // Redirect back to checkin page — the session cookie will identify the user
+                // Redirect back to checkin page — the session cookie will identify the user.
+                // The one-shot checkin_ok cookie proves this visit is the tail of
+                // the user's own login, so a bare link to ?discord=1 can't check
+                // a logged-in member in without their action.
+                res.add_header("Set-Cookie", "checkin_ok=" + st.checkin_token +
+                    "; HttpOnly; Path=/checkin; Max-Age=300; SameSite=Lax" + secure_attr(req));
                 res.redirect(build_url(req, checkin_path + "?discord=1"));
             } else {
                 res.redirect(build_url(req, "/dashboard"));
