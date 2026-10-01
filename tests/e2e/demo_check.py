@@ -90,8 +90,20 @@ if view:
 errs("members")
 d.save_screenshot(f"{SHOTS}/demo_members.png")
 
-d.get(f"{BASE}/shows/"); time.sleep(0.5)
+d.get(f"{BASE}/shows/"); d.execute_script(HOOK); time.sleep(0.8)
 if "Brickton" not in d.page_source: problems.append("public shows page")
+if "lug-demo-banner" not in d.page_source: problems.append("shows page: no demo banner")
+plan = d.find_elements(By.XPATH, "//button[contains(., 'I plan to come')]")
+if plan:
+    url_before = d.current_url
+    d.execute_script("arguments[0].click()", plan[0]); time.sleep(0.6)
+    if d.current_url != url_before: problems.append("I plan to come navigated away")
+    if "You're coming" not in d.page_source: problems.append("I plan to come didn't toggle")
+    if "planning to come" not in d.page_source: problems.append("I plan to come: no count")
+else:
+    problems.append("no 'I plan to come' button")
+errs("shows")
+d.save_screenshot(f"{SHOTS}/demo_shows.png")
 
 d.quit()
 for p in problems: print(p)

@@ -93,8 +93,32 @@
     if (p && p.indexOf('/_frag/') >= 0) history.replaceState(history.state, '', p.replace('/_frag/', '/'));
   });
   document.addEventListener('htmx:responseError', function () { notice("That part isn't included in the demo."); });
+  // Public shows page: "I plan to come" toggles in this browser only, like the real thing.
+  function planToCome(f) {
+    var btn = f.querySelector('button');
+    var row = f.parentNode;
+    var count = row && Array.prototype.filter.call(row.querySelectorAll('span'), function (s) {
+      return /planning to come/.test(s.textContent); })[0];
+    var n = count ? parseInt(count.textContent, 10) || 0 : 0;
+    var going = f.getAttribute('data-demo-going') === '1';
+    going = !going;
+    f.setAttribute('data-demo-going', going ? '1' : '0');
+    n += going ? 1 : -1;
+    if (btn) {
+      btn.textContent = going ? "\u2713 You're coming" : 'I plan to come';
+      btn.className = going ? 'px-3 py-1.5 rounded-lg bg-yellow-400 text-gray-900 font-semibold'
+                            : 'px-3 py-1.5 rounded-lg border border-gray-300 text-gray-700 hover:bg-gray-50';
+    }
+    if (!count && row) { count = document.createElement('span'); count.className = 'text-gray-500'; row.insertBefore(count, f.nextSibling); }
+    if (count) count.textContent = n > 0 ? n + ' planning to come' : '';
+    notice(going ? 'Counted - in this demo it only lives in your browser.' : 'Removed.');
+  }
+
   document.addEventListener('submit', function (e) {
     var f = e.target;
+    if (f && /\/shows\/\d+\/interest/.test(f.getAttribute('action') || '')) {
+      e.preventDefault(); planToCome(f); return;
+    }
     if (f && (f.getAttribute('method') || 'get').toLowerCase() !== 'get' && !f.hasAttribute('hx-post')) {
       e.preventDefault(); notice();
     }
@@ -110,6 +134,14 @@
       'font:13px system-ui,sans-serif;padding:8px 12px;display:flex;flex-wrap:wrap;gap:8px 14px;align-items:center;' +
       'justify-content:center;box-shadow:0 -2px 10px rgba(0,0,0,.15)';
     var roles = [['member', 'Member'], ['moderator', 'Moderator'], ['admin', 'Admin']];
+    if (ROLE === 'public') {
+      b.innerHTML = '<strong>LUG Manager demo</strong><span>This is the public page a LUG can put on its website (no login).</span>' +
+        '<a href="' + BASE + '/" style="color:#111827;font-weight:600">Back to the demo</a>' +
+        '<a href="' + BASE + '/member/dashboard/" style="color:#111827">See the members\' side</a>';
+      document.body.appendChild(b);
+      document.body.style.paddingBottom = '48px';
+      return;
+    }
     var html = '<strong>LUG Manager demo</strong><span>Brickton LUG is fictional - nothing you do is saved.</span>' +
       '<span>View as:</span>';
     roles.forEach(function (r) {

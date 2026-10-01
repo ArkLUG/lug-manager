@@ -251,6 +251,10 @@ q("UPDATE lug_events SET chapter_id=? WHERE id=?", (north, up_lib))
 up_train = event("Holiday Train Show", 52, 1, "Brickton Rail Museum", status="tentative", fee="$3",
                  desc="Date to be confirmed with the museum.")
 
+# Visitors who tapped "I plan to come" on the public shows page
+q("UPDATE lug_events SET public_interest=37 WHERE id=?", (up_fest,))
+q("UPDATE lug_events SET public_interest=8 WHERE id=?", (up_lib,))
+
 # RSVPs (the fest is full, two on the waitlist)
 for i, m in enumerate(members[:14]):
     q("INSERT INTO event_rsvps (event_id, member_id, status, created_at) VALUES (?,?,?,?)",

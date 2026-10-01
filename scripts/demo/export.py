@@ -99,7 +99,8 @@ def links(text):
     return found
 
 
-def rewrite(text, role, full_page):
+def rewrite(text, role, full_page, page_role=None):
+    """role: whose pages links lead to; page_role: what demo.js treats this page as."""
     def sub(m):
         attr, quote, url = m.group(1), m.group(2), html.unescape(m.group(3))
         if attr in ("hx-get", "data-url"):
@@ -111,7 +112,7 @@ def rewrite(text, role, full_page):
         return f'{attr}={quote}{html.escape(site_url(role, url))}{quote}'
     text = ATTR.sub(sub, text)
     if full_page:
-        cfg = html.escape(json.dumps({"base": BASE, "role": role}), quote=True)
+        cfg = html.escape(json.dumps({"base": BASE, "role": page_role or role}), quote=True)
         inject = (f'<meta name="lug-demo" content="{cfg}">'
                   f'<script src="{BASE}/demo.js"></script>')
         text = re.sub(r"<head>", "<head>" + inject, text, count=1)
@@ -201,7 +202,8 @@ def main():
     # Public pages (no login): the shows page
     status, _, body = fetch("/shows", "", False)
     if status == 200:
-        save("shows", rewrite(body.decode("utf-8", "replace"), "public", False).encode())
+        # A visitor's page: demo.js on, links into the member view.
+        save("shows", rewrite(body.decode("utf-8", "replace"), "member", True, page_role="public").encode())
     shutil.copy(os.path.join(HERE, "demo.js"), os.path.join(OUT, "demo.js"))
     with open(os.path.join(HERE, "index.html"), encoding="utf-8") as f:
         landing = f.read().replace("{{BASE}}", BASE)
