@@ -9,7 +9,8 @@
 // lug-YYYYMMDD-HHMMSS.db, keeping the newest `keep` files.
 class BackupService {
 public:
-    BackupService(SqliteDatabase& db, std::string data_dir) : db_(db), dir_(std::move(data_dir) + "/backups") {}
+    BackupService(SqliteDatabase& db, std::string data_dir)
+        : db_(db), dir_(data_dir + "/backups"), uploads_(data_dir + "/uploads") {}
 
     struct Entry { std::string name; std::uintmax_t bytes = 0; std::string when; };
 
@@ -22,7 +23,19 @@ public:
     std::string path_of(const std::string& name) const;
     static bool valid_name(const std::string& name);
 
+    // Uploaded photos/receipts aren't in the DB snapshot. Each backup copies
+    // new uploads into <data_dir>/backups/uploads; a copy whose original was
+    // deleted is kept for `keep_days` (so a mistaken delete can be undone),
+    // then removed. Returns the number of files copied.
+    int mirror_uploads(int keep_days);
+    // Writes <data_dir>/backups/photos.zip with every uploaded file (for an
+    // off-server copy) and returns its path; "" if there are no uploads.
+    std::string build_upload_archive();
+    struct UploadStats { int files = 0; std::uintmax_t bytes = 0; };
+    UploadStats upload_stats() const;
+
 private:
     SqliteDatabase& db_;
     std::string     dir_;
+    std::string     uploads_;
 };

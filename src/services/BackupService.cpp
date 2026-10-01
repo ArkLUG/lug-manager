@@ -1,6 +1,9 @@
 #include "services/BackupService.hpp"
+#include "utils/ZipWriter.hpp"
 #include <algorithm>
 #include <filesystem>
+#include <fstream>
+#include <map>
 #include <regex>
 
 namespace fs = std::filesystem;
@@ -76,7 +79,83 @@ bool BackupService::create_if_due(int hours, int keep) {
     }
     create();
     prune(keep);
+    mirror_uploads(keep);
     return true;
+}
+
+namespace {
+// Regular files under `root`, as '/'-separated paths relative to it.
+std::vector<std::string> files_under(const std::string& root) {
+    std::vector<std::string> out;
+    std::error_code ec;
+    if (!fs::exists(root, ec)) return out;
+    for (auto it = fs::recursive_directory_iterator(root, ec); it != fs::recursive_directory_iterator(); it.increment(ec)) {
+        if (ec) break;
+        if (!it->is_regular_file()) continue;
+        std::string rel = fs::relative(it->path(), root, ec).generic_string();
+        if (!ec && !rel.empty() && rel[0] != '.') out.push_back(rel);
+    }
+    std::sort(out.begin(), out.end());
+    return out;
+}
+}
+
+int BackupService::mirror_uploads(int keep_days) {
+    std::string mirror = dir_ + "/uploads";
+    std::error_code ec;
+    int copied = 0;
+    for (const auto& rel : files_under(uploads_)) {
+        fs::path dst = fs::path(mirror) / rel;
+        if (fs::exists(dst, ec)) continue;
+        fs::create_directories(dst.parent_path(), ec);
+        if (fs::copy_file(fs::path(uploads_) / rel, dst, fs::copy_options::skip_existing, ec)) ++copied;
+    }
+    // Track copies whose original is gone; remove them after keep_days.
+    std::string ledger = mirror + "/.deleted";
+    std::map<std::string, long long> seen;
+    {
+        std::ifstream in(ledger);
+        std::string name; long long t;
+        while (in >> name >> t) seen[name] = t;
+    }
+    long long now = static_cast<long long>(std::time(nullptr));
+    std::map<std::string, long long> keep;
+    for (const auto& rel : files_under(mirror)) {
+        if (fs::exists(fs::path(uploads_) / rel, ec)) continue;
+        auto it = seen.find(rel);
+        long long since = it == seen.end() ? now : it->second;
+        if (now - since > static_cast<long long>(keep_days) * 86400) fs::remove(fs::path(mirror) / rel, ec);
+        else keep[rel] = since;
+    }
+    if (fs::exists(mirror, ec)) {
+        std::ofstream out(ledger, std::ios::trunc);
+        for (const auto& [n, t] : keep) out << n << ' ' << t << '\n';
+    }
+    return copied;
+}
+
+std::string BackupService::build_upload_archive() {
+    auto files = files_under(uploads_);
+    if (files.empty()) return "";
+    fs::create_directories(dir_);
+    std::string tmp = dir_ + "/photos.zip.part", path = dir_ + "/photos.zip";
+    {
+        ZipWriter zip(tmp);
+        for (const auto& rel : files) zip.add_file("uploads/" + rel, uploads_ + "/" + rel);
+        zip.finish();
+    }
+    fs::rename(tmp, path);
+    return path;
+}
+
+BackupService::UploadStats BackupService::upload_stats() const {
+    UploadStats s;
+    std::error_code ec;
+    for (const auto& rel : files_under(uploads_)) {
+        ++s.files;
+        s.bytes += fs::file_size(fs::path(uploads_) / rel, ec);
+    }
+    return s;
 }
 
 std::string BackupService::path_of(const std::string& name) const {

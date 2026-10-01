@@ -26,7 +26,11 @@ std::string render_page(BackupService& backups, SettingsRepository& settings, co
     ctx["has_backups"] = !list.empty();
     ctx["keep"]        = settings.get("backup_keep", "14");
     ctx["enabled"]     = settings.get("backup_enabled", "1") == "1";
-    ctx["flash"]       = flash;
+    if (!flash.empty()) ctx["flash"] = flash;
+    auto up = backups.upload_stats();
+    ctx["upload_files"] = up.files;
+    ctx["upload_size"]  = human_size(up.bytes);
+    ctx["has_uploads"]  = up.files > 0;
     return crow::mustache::load("settings/_backups.html").render(ctx).dump();
 }
 
@@ -54,7 +58,9 @@ void register_backup_routes(LugApp& app, std::shared_ptr<BackupService> backups,
         std::string flash;
         try {
             std::string name = backups->create();
-            backups->prune(static_cast<int>(parse_id(settings.get("backup_keep", "14"))));
+            int keep = static_cast<int>(parse_id(settings.get("backup_keep", "14")));
+            backups->prune(keep);
+            backups->mirror_uploads(keep);
             audit.log(req, app, "settings.backup", "settings", 0, "", "Created backup " + name);
             flash = "Backup " + name + " created.";
         } catch (const std::exception& e) {
@@ -83,22 +89,35 @@ void register_backup_routes(LugApp& app, std::shared_ptr<BackupService> backups,
         return res;
     });
 
+    // GET /settings/backups/photos.zip - every uploaded photo/receipt, built
+    // fresh and streamed from disk (can be large).
+    CROW_ROUTE(app, "/settings/backups/photos.zip")([&app, backups, &audit](const crow::request& req, crow::response& res) {
+        if (!require_auth(req, res, app, "admin")) { res.end(); return; }
+        std::string path;
+        try { path = backups->build_upload_archive(); } catch (const std::exception& e) {
+            res.code = 500; res.write(std::string("Couldn't build the archive: ") + e.what()); res.end(); return;
+        }
+        if (path.empty()) { res.code = 404; res.write("No uploaded files yet."); res.end(); return; }
+        audit.log(req, app, "settings.backup_download", "settings", 0, "", "Downloaded photos archive");
+        res.set_static_file_info_unsafe(path);
+        res.set_header("Content-Type", "application/zip");
+        res.add_header("Content-Disposition", "attachment; filename=\"lug-photos.zip\"");
+        res.add_header("Cache-Control", "no-store");
+        res.end();
+    });
+
     // GET /settings/backups/<name> - download (admin). Name is validated
     // against the exact backup filename pattern, so no path tricks.
     CROW_ROUTE(app, "/settings/backups/<string>")([&app, backups, &audit](const crow::request& req,
-                                                                          const std::string& name) {
-        crow::response res;
-        if (!require_auth(req, res, app, "admin")) return res;
+                                                                          crow::response& res, const std::string& name) {
+        if (!require_auth(req, res, app, "admin")) { res.end(); return; }
         std::string path = backups->path_of(name);
-        if (path.empty()) { res.code = 404; return res; }
-        std::ifstream in(path, std::ios::binary);
-        std::ostringstream buf;
-        buf << in.rdbuf();
+        if (path.empty()) { res.code = 404; res.end(); return; }
         audit.log(req, app, "settings.backup_download", "settings", 0, "", "Downloaded backup " + name);
-        res.add_header("Content-Type", "application/octet-stream");
+        res.set_static_file_info_unsafe(path);   // streamed from disk
+        res.set_header("Content-Type", "application/octet-stream");
         res.add_header("Content-Disposition", "attachment; filename=\"" + name + "\"");
         res.add_header("Cache-Control", "no-store");
-        res.write(buf.str());
-        return res;
+        res.end();
     });
 }

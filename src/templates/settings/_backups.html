@@ -36,4 +36,16 @@
     {{/has_backups}}
     {{^has_backups}}<p class="text-sm text-gray-400">No backups yet.</p>{{/has_backups}}
   </div>
+
+  <div class="bg-white rounded-xl border border-gray-200 p-6 space-y-3">
+    <h2 class="text-lg font-semibold text-gray-900">Photos &amp; Receipts</h2>
+    <p class="text-sm text-gray-500">Uploaded files aren't inside the database snapshots. Each backup copies new ones to <code>data/backups/uploads</code>, and a copy of a deleted file is kept as long as the backups above. For an off-server copy, download them as one archive.</p>
+    {{#has_uploads}}
+    <div class="flex flex-wrap items-center gap-3 text-sm">
+      <span class="text-gray-700">{{upload_files}} file(s), {{upload_size}}</span>
+      <a href="/settings/backups/photos.zip" download class="px-3 py-1.5 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50">Download all (.zip)</a>
+    </div>
+    {{/has_uploads}}
+    {{^has_uploads}}<p class="text-sm text-gray-400">No uploads yet.</p>{{/has_uploads}}
+  </div>
 </div>
