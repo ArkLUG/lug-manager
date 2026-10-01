@@ -372,7 +372,7 @@ curl -X POST -H "X-API-Key: $LUG_API_KEY" -H "Content-Type: application/json" \
 
 ## Testing
 
-The project includes comprehensive tests across 28 test suites (8 unit + 20 integration):
+The project has 56 test suites (unit + integration). Tests never contact real services: the fixture sets `LUG_OFFLINE=1`, and Discord / Google Calendar behaviour is tested against local fakes (`tests/fake_discord.hpp`, `tests/fake_google.hpp`, built on `tests/fake_server.hpp`) that record every request. Email uses a capturing mailer.
 
 ```bash
 # Build with tests
@@ -413,6 +413,17 @@ ctest --test-dir build --output-on-failure -j$(nproc)
 | test_integration_api | JSON API CRUD per entity; auth/scope enforcement, key revocation, and cross-auth isolation between sessions and API keys |
 | test_integration_discord_matches | Discord member match review queue — admin/chapter-lead access, link/create-new resolution |
 | test_integration_discord_interactions | Discord Interactions webhook — PING, signature rejection, role-gated button click, modal submit (link/create-new), idempotency on already-resolved matches |
+| test_integration_discord_fake | Against a fake Discord: member sync (imports, renames, bots, departed members, empty-list skip, chapter-lead roles), OAuth login with guild check and role mapping, no @everyone pings, waitlist DM, reminders once, 429 retry, unsafe ids blocked |
+| test_integration_gcal_fake | Against a fake Google Calendar: create/update/delete, private events redacted, suppressed events skipped, import, offline block |
+| test_integration_features | Feature toggles: every feature's pages, hidden panels/links, background jobs, notification choices, chapters-off scope and Chapter Lead role |
+| (more) | RSVPs, displays, shifts, dues, reports, series, backups, sessions, exports, gallery/challenges, account, inventory, treasury, member merge, shows, email, guardian consent |
+
+### Running locally without touching real services
+
+- `LUG_OFFLINE=1` blocks every outbound request (Discord, Discord login, Google Calendar, SMTP); only `127.0.0.1`/`localhost` is allowed. Use it for development and for any run against a copy of real data.
+- `.env` in the working directory is read for local development, but real environment variables always win, and `LUG_DOTENV=0` skips it. Don't start test servers from a directory whose `.env` holds real credentials.
+- `LUG_DISCORD_BASE` / `LUG_GOOGLE_BASE` point the clients at a fake server; they are only honoured for loopback addresses.
+- Browser checks: `tests/e2e/smoke.py <session-token> <screenshot-dir>` (desktop, every page and modal, fails on CSP violations/JS errors) and `tests/e2e/mobile.py` (390x844, fails on sideways scrolling). Set `LUG_BASE` to the server URL.
 
 CI runs all tests inside the Docker build — failing tests block image creation.
 

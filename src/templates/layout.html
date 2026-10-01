@@ -59,6 +59,8 @@
     [data-features-off~="kiosk"] .f-kiosk, [data-features-off~="qr_checkin"] .f-qr_checkin,
     [data-features-off~="calendar"] .f-calendar, [data-features-off~="discord_reports"] .f-discord_reports,
     [data-features-off~="guardians"] .f-guardians { display: none !important; }
+    /* Help permission table: the Event Manager column is a chapter role */
+    [data-features-off~="chapters"] .help-perm td:nth-child(4) { display: none; }
     /* HTMX loading indicator */
     .htmx-indicator          { opacity: 0; transition: opacity 200ms ease-in; }
     .htmx-request .htmx-indicator { opacity: 1; }

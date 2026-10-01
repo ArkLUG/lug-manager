@@ -105,10 +105,10 @@
     }
 
     // --- Auto-navigate to Chapters ---
-    steps.push(
+    {{#f_chapters}}steps.push(
       navStep('/chapters', 'Going to Chapters...'),
       { element: '#main-content', popover: { title: 'Chapters Page', description: 'Each chapter has its own leads, event managers, and announcement channel. Meetings and events are scoped to chapters or the whole LUG.' }}
-    );
+    );{{/f_chapters}}
 
     // Admin: auto-navigate to each admin page
     if (isAdmin) {
@@ -126,7 +126,7 @@
 
     if (isChapterLead && !isAdmin) {
       steps.push(
-        { popover: { title: 'Chapter Lead Powers', description: 'As a chapter lead, you can add/edit members, manage dues, and see all contact info regardless of privacy settings. You also have all event manager capabilities.' }}
+        { popover: { title: '{{lead_power_title}}', description: 'You can add/edit members, manage dues, and see all contact info regardless of privacy settings. You also have all event manager capabilities.' }}
       );
     }
 
@@ -208,7 +208,7 @@
       </div>
       <div class="flex gap-3">
         <span class="flex-shrink-0 w-6 h-6 bg-yellow-400 text-gray-900 rounded-full flex items-center justify-center text-xs font-bold">13</span>
-        <div><strong>Inventory</strong> — The Inventory page lists the LUG's own gear and shows anything checked out to you. Chapter leads and admins add items, check them out to members and mark them returned.</div>
+        <div><strong>Inventory</strong> — The Inventory page lists the LUG's own gear and shows anything checked out to you. {{leads_and_mods}} and admins add items, check them out to members and mark them returned.</div>
       </div>
     </div>
     </div>
@@ -230,7 +230,7 @@
       </div>
       <div class="flex gap-3">
         <span class="flex-shrink-0 w-6 h-6 bg-green-500 text-white rounded-full flex items-center justify-center text-xs font-bold">3</span>
-        <div><strong>How you're assigned</strong> — An admin, chapter lead, or event manager selects you from the "Event Lead" dropdown when creating or editing an event. You'll see the Edit/Attendance/QR buttons on events where you're the lead.</div>
+        <div><strong>How you're assigned</strong> — An admin{{#f_chapters}}, chapter lead, or event manager{{/f_chapters}}{{^f_chapters}} or moderator{{/f_chapters}} selects you from the "Event Lead" dropdown when creating or editing an event. You'll see the Edit/Attendance/QR buttons on events where you're the lead.</div>
       </div>
       <p class="text-xs text-gray-400 mt-2 italic">Note: Event lead permissions apply only to the specific event(s) you're assigned to, not to all events.</p>
     </div>
@@ -245,11 +245,11 @@
     <div class="px-6 pb-5 space-y-3 text-sm text-gray-600">
       <div class="flex gap-3">
         <span class="flex-shrink-0 w-6 h-6 bg-blue-500 text-white rounded-full flex items-center justify-center text-xs font-bold">1</span>
-        <div><strong>Create meetings</strong> — Go to Meetings and click "New Meeting". Fill in the title, location, date/time, and select your chapter. Virtual meetings hide the location and show a Discord voice channel picker instead.</div>
+        <div><strong>Create meetings</strong> — Go to Meetings and click "New Meeting". Fill in the title, location and date/time{{#f_chapters}}, and select your chapter{{/f_chapters}}. Virtual meetings hide the location and show a Discord voice channel picker instead.</div>
       </div>
       <div class="flex gap-3">
         <span class="flex-shrink-0 w-6 h-6 bg-blue-500 text-white rounded-full flex items-center justify-center text-xs font-bold">2</span>
-        <div><strong>Create events</strong> — Go to Events and click "New Event". Events are date-based (no times). Choose scope: Chapter, LUG Wide, or Non-LUG. Non-LUG events don't have status tracking. You can assign an event lead to delegate management of the event.</div>
+        <div><strong>Create events</strong> — Go to Events and click "New Event". Events are date-based (no times). Choose scope: {{#f_chapters}}Chapter, {{/f_chapters}}LUG Wide, or Non-LUG. Non-LUG events don't have status tracking. You can assign an event lead to delegate management of the event.</div>
       </div>
       <div class="flex gap-3">
         <span class="flex-shrink-0 w-6 h-6 bg-blue-500 text-white rounded-full flex items-center justify-center text-xs font-bold">3</span>
@@ -279,7 +279,7 @@
         <div><strong>Manage RSVPs and displays</strong> — As a manager you see everyone's RSVPs and display requests on the event page. Open or close display requests, approve or decline them, assign tables and export a CSV.</div>
       </div>
     </div>
-      <p class="text-xs text-gray-400 mt-2 italic">Note: You can only manage meetings/events for chapters where you have the event_manager or lead role.</p>
+      {{#f_chapters}}<p class="text-xs text-gray-400 mt-2 italic">Note: You can only manage meetings/events for chapters where you have the event_manager or lead role.</p>{{/f_chapters}}
     </div>
   </details>
   {{/is_event_manager}}
@@ -297,7 +297,7 @@
       </div>
       <div class="flex gap-3">
         <span class="flex-shrink-0 w-6 h-6 bg-purple-500 text-white rounded-full flex items-center justify-center text-xs font-bold">2</span>
-        <div><strong>View all PII</strong> — You can see all member contact info regardless of their privacy settings. This is for chapter management purposes.</div>
+        <div><strong>View all PII</strong> — You can see all member contact info regardless of their privacy settings. This is for running the LUG.</div>
       </div>
       <div class="flex gap-3">
         <span class="flex-shrink-0 w-6 h-6 bg-purple-500 text-white rounded-full flex items-center justify-center text-xs font-bold">3</span>
@@ -309,9 +309,9 @@
       </div>
       <div class="flex gap-3">
         <span class="flex-shrink-0 w-6 h-6 bg-purple-500 text-white rounded-full flex items-center justify-center text-xs font-bold">5</span>
-        <div><strong>Bulk changes</strong> — Tick members in the Members table to mark them paid/unpaid, move them to a chapter, or set their age range in one go. Use CSV to export the list.</div>
+        <div><strong>Bulk changes</strong> — Tick members in the Members table to mark them paid/unpaid, {{#f_chapters}}move them to a chapter, {{/f_chapters}}or set their age range in one go. Use CSV to export the list.</div>
       </div>
-      <p class="text-xs text-gray-400 mt-2 italic">Note: Only admins can change member roles, delete members, or edit chapter settings.</p>
+      <p class="text-xs text-gray-400 mt-2 italic">Note: Only admins can change member roles, delete members, or change {{#f_chapters}}chapter {{/f_chapters}}settings.</p>
     </div>
   </details>
   {{/is_chapter_lead_role}}
@@ -333,7 +333,8 @@
       </div>
       <div class="flex gap-3">
         <span class="flex-shrink-0 w-6 h-6 bg-yellow-500 text-white rounded-full flex items-center justify-center text-xs font-bold">3</span>
-        <div><strong>Set up chapters</strong> — Go to Chapters to create sub-groups. Assign leads (who get synced Discord roles) and event managers. Each chapter gets its own announcement channel.</div>
+        {{#f_chapters}}<div><strong>Set up chapters</strong> — Go to Chapters to create sub-groups. Assign leads (who get synced Discord roles) and event managers. Each chapter gets its own announcement channel.</div>{{/f_chapters}}
+        {{^f_chapters}}<div><strong>Pick your organisers</strong> — Make trusted members Moderators (Members &gt; Edit &gt; Role). They can add and edit members, manage dues, and run meetings and events.</div>{{/f_chapters}}
       </div>
       <div class="flex gap-3">
         <span class="flex-shrink-0 w-6 h-6 bg-yellow-500 text-white rounded-full flex items-center justify-center text-xs font-bold">4</span>
@@ -389,13 +390,13 @@
       Quick Reference
     </summary>
     <div class="px-6 pb-5 text-sm text-gray-600 overflow-x-auto">
-      <table class="w-full text-sm">
+      <table class="help-perm w-full text-sm">
         <thead><tr class="border-b border-gray-200">
           <th class="py-2 pr-4 text-left font-medium text-gray-500">Feature</th>
           <th class="py-2 px-2 text-center font-medium text-gray-500">Member</th>
           <th class="py-2 px-2 text-center font-medium text-gray-500">Evt Lead</th>
-          <th class="py-2 px-2 text-center font-medium text-gray-500">Evt Mgr</th>
-          <th class="py-2 px-2 text-center font-medium text-gray-500">Ch. Lead</th>
+          {{#f_chapters}}<th class="py-2 px-2 text-center font-medium text-gray-500">Evt Mgr</th>{{/f_chapters}}
+          <th class="py-2 px-2 text-center font-medium text-gray-500">{{#f_chapters}}Ch. Lead / Mod{{/f_chapters}}{{^f_chapters}}Moderator{{/f_chapters}}</th>
           <th class="py-2 px-2 text-center font-medium text-gray-500">Admin</th>
         </tr></thead>
         <tbody class="divide-y divide-gray-100">
@@ -404,13 +405,13 @@
           <tr><td class="py-2 pr-4">Edit/manage assigned event</td><td class="text-center text-gray-300">&mdash;</td><td class="text-center text-green-600">&#10003;</td><td class="text-center text-green-600">&#10003;</td><td class="text-center text-green-600">&#10003;</td><td class="text-center text-green-600">&#10003;</td></tr>
           <tr><td class="py-2 pr-4">Attendance/QR (assigned event)</td><td class="text-center text-gray-300">&mdash;</td><td class="text-center text-green-600">&#10003;</td><td class="text-center text-green-600">&#10003;</td><td class="text-center text-green-600">&#10003;</td><td class="text-center text-green-600">&#10003;</td></tr>
           <tr><td class="py-2 pr-4">Create meetings/events</td><td class="text-center text-gray-300">&mdash;</td><td class="text-center text-gray-300">&mdash;</td><td class="text-center text-green-600">&#10003;</td><td class="text-center text-green-600">&#10003;</td><td class="text-center text-green-600">&#10003;</td></tr>
-          <tr><td class="py-2 pr-4">Manage all chapter events</td><td class="text-center text-gray-300">&mdash;</td><td class="text-center text-gray-300">&mdash;</td><td class="text-center text-green-600">&#10003;</td><td class="text-center text-green-600">&#10003;</td><td class="text-center text-green-600">&#10003;</td></tr>
+          {{#f_chapters}}<tr><td class="py-2 pr-4">Manage all chapter events</td><td class="text-center text-gray-300">&mdash;</td><td class="text-center text-gray-300">&mdash;</td><td class="text-center text-green-600">&#10003;</td><td class="text-center text-green-600">&#10003;</td><td class="text-center text-green-600">&#10003;</td></tr>{{/f_chapters}}
           <tr><td class="py-2 pr-4">Assign event leads</td><td class="text-center text-gray-300">&mdash;</td><td class="text-center text-gray-300">&mdash;</td><td class="text-center text-green-600">&#10003;</td><td class="text-center text-green-600">&#10003;</td><td class="text-center text-green-600">&#10003;</td></tr>
           <tr><td class="py-2 pr-4">Add/edit members</td><td class="text-center text-gray-300">&mdash;</td><td class="text-center text-gray-300">&mdash;</td><td class="text-center text-gray-300">&mdash;</td><td class="text-center text-green-600">&#10003;</td><td class="text-center text-green-600">&#10003;</td></tr>
           <tr><td class="py-2 pr-4">Manage dues</td><td class="text-center text-gray-300">&mdash;</td><td class="text-center text-gray-300">&mdash;</td><td class="text-center text-gray-300">&mdash;</td><td class="text-center text-green-600">&#10003;</td><td class="text-center text-green-600">&#10003;</td></tr>
           <tr><td class="py-2 pr-4">See all PII</td><td class="text-center text-gray-300">&mdash;</td><td class="text-center text-gray-300">&mdash;</td><td class="text-center text-gray-300">&mdash;</td><td class="text-center text-green-600">&#10003;</td><td class="text-center text-green-600">&#10003;</td></tr>
           <tr><td class="py-2 pr-4">Delete members</td><td class="text-center text-gray-300">&mdash;</td><td class="text-center text-gray-300">&mdash;</td><td class="text-center text-gray-300">&mdash;</td><td class="text-center text-gray-300">&mdash;</td><td class="text-center text-green-600">&#10003;</td></tr>
-          <tr><td class="py-2 pr-4">Manage chapters</td><td class="text-center text-gray-300">&mdash;</td><td class="text-center text-gray-300">&mdash;</td><td class="text-center text-gray-300">&mdash;</td><td class="text-center text-gray-300">&mdash;</td><td class="text-center text-green-600">&#10003;</td></tr>
+          {{#f_chapters}}<tr><td class="py-2 pr-4">Manage chapters</td><td class="text-center text-gray-300">&mdash;</td><td class="text-center text-gray-300">&mdash;</td><td class="text-center text-gray-300">&mdash;</td><td class="text-center text-gray-300">&mdash;</td><td class="text-center text-green-600">&#10003;</td></tr>{{/f_chapters}}
           <tr><td class="py-2 pr-4">System settings</td><td class="text-center text-gray-300">&mdash;</td><td class="text-center text-gray-300">&mdash;</td><td class="text-center text-gray-300">&mdash;</td><td class="text-center text-gray-300">&mdash;</td><td class="text-center text-green-600">&#10003;</td></tr>
           <tr><td class="py-2 pr-4">Audit log</td><td class="text-center text-gray-300">&mdash;</td><td class="text-center text-gray-300">&mdash;</td><td class="text-center text-gray-300">&mdash;</td><td class="text-center text-gray-300">&mdash;</td><td class="text-center text-green-600">&#10003;</td></tr>
         </tbody>

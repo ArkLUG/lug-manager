@@ -147,3 +147,20 @@ TEST_F(IntegrationTest, SettingsPageGuideButton) {
     EXPECT_EQ(r.code, 200);
     expect_contains(r, "pageTour");
 }
+
+#include "services/Features.hpp"
+TEST_F(IntegrationTest, HelpFollowsTheChaptersToggle) {
+    auto on = GET("/help", admin_token);
+    expect_contains(on, "Set up chapters");
+    expect_contains(on, "Manage chapters");
+    expect_contains(on, "navStep('/chapters'");
+    Features::set("chapters", false);
+    auto off = GET("/help", admin_token);
+    expect_not_contains(off, "Set up chapters");
+    expect_contains(off, "Pick your organisers");
+    expect_not_contains(off, "Manage chapters");
+    expect_not_contains(off, "navStep('/chapters'");
+    expect_not_contains(off, "select your chapter");
+    expect_contains(off, "Choose scope: LUG Wide, or Non-LUG.");
+    expect_contains(GET("/help", chapter_lead_token), "Moderator Powers");
+}

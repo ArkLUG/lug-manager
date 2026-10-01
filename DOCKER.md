@@ -85,6 +85,8 @@ Only secrets need to be in `.env` — everything else is configured from the Set
 | `LUG_SMTP_URL` | Optional | SMTP server for email sign-in links and email notifications to members without Discord, e.g. `smtps://smtp.example.com:465` (needs `LUG_PUBLIC_URL`) |
 | `LUG_SMTP_USER` / `LUG_SMTP_PASSWORD` | Optional | SMTP login |
 | `LUG_SMTP_FROM` | Optional | Sender address, e.g. `Arkansas LUG <lug@example.com>` |
+| `LUG_OFFLINE` | Never in production | `1` blocks all outbound requests (Discord, Google, SMTP). For test/staging copies of real data. |
+| `LUG_DOTENV` | Optional | `0` = don't read a `.env` file. Real environment variables always take precedence over `.env`. |
 | `LUG_PORT` | No | Server port (default: `8080`) |
 | `LUG_DB_PATH` | No | Database path (default: `/app/data/lug.db`) |
 | `LUG_TEMPLATES_DIR` | No | Templates path (default: `/app/src/templates`) |
