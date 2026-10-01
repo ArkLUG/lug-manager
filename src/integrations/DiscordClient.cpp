@@ -1322,3 +1322,30 @@ std::string DiscordClient::friendly_time(const std::string& iso, const std::stri
     if (!abbrev.empty()) out += " " + abbrev;
     return out;
 }
+
+// ── Maintenance helpers (DiscordTimeRepair) ──
+
+std::string DiscordClient::sync_get(const std::string& endpoint) const {
+    return discord_api_request_uncached("GET", endpoint, "");
+}
+
+std::string DiscordClient::sync_patch_scheduled_event_times(const std::string& discord_event_id,
+                                                            const std::string& start_utc, const std::string& end_utc) {
+    json body;
+    body["scheduled_start_time"] = start_utc;
+    if (!end_utc.empty()) body["scheduled_end_time"] = end_utc;
+    return discord_api_request_uncached("PATCH", "/guilds/" + get_guild_id() + "/scheduled-events/" + discord_event_id,
+                                        body.dump());
+}
+
+std::string DiscordClient::sync_edit_message_content(const std::string& channel_id, const std::string& message_id,
+                                                     const std::string& content) {
+    json body;
+    body["content"] = content;
+    body["allowed_mentions"] = {{"parse", json::array()}};
+    return discord_api_request_uncached("PATCH", "/channels/" + channel_id + "/messages/" + message_id, body.dump());
+}
+
+std::string DiscordClient::tz_abbrev(const std::string& local_iso, const std::string& tz_name) {
+    return tz_convert(local_iso, tz_name).abbrev;
+}

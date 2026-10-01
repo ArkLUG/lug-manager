@@ -220,7 +220,7 @@
 
   <div class="bg-white rounded-xl border border-gray-200 p-6">
     <h2 class="text-xl font-bold text-gray-900 mb-1">Bulk Sync</h2>
-    <p class="text-sm text-gray-500 mb-4">Force-push all events and meetings to Discord and/or Google Calendar. Useful after initial setup or bulk edits.</p>
+    <p class="text-sm text-gray-500 mb-4">Force-push all events and meetings to Discord and/or Google Calendar. Useful after initial setup or bulk edits. To correct times sent by older versions without notifying anyone, use <a hx-get="/settings/discord-times" hx-target="#main-content" hx-push-url="true" hx-swap="innerHTML" class="underline cursor-pointer">Repair times on Discord</a> instead.</p>
     <div class="flex flex-wrap items-center gap-3">
       <button hx-post="/api/discord/sync-all"
               hx-target="#bulk-sync-result"

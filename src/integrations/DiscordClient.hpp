@@ -128,6 +128,16 @@ public:
     // Guild channel/role/thread lists are cached for 2 minutes (settings and
     // forms used to hit Discord on every view). Call to force a fresh read.
     void clear_cache() const;
+
+    // ── Maintenance (DiscordTimeRepair): synchronous, read or edit only ──
+    // Never posts anything new. Edits don't notify members on Discord.
+    std::string sync_get(const std::string& endpoint) const;   // read-only GET, uncached
+    std::string sync_patch_scheduled_event_times(const std::string& discord_event_id,
+                                                 const std::string& start_utc, const std::string& end_utc);
+    std::string sync_edit_message_content(const std::string& channel_id, const std::string& message_id,
+                                          const std::string& content);   // pings nobody
+    std::string utc_iso(const std::string& local_iso) const { return iso_to_discord_timestamp(local_iso); }
+    static std::string tz_abbrev(const std::string& local_iso, const std::string& tz_name);   // "CDT"
     // Interprets an ISO "YYYY-MM-DDTHH:MM[:SS]" in IANA zone tz_name and
     // returns the UTC epoch, or -1 if unparseable.
     static std::time_t local_to_epoch(const std::string& iso, const std::string& tz_name);

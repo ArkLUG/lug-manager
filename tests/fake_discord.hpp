@@ -19,9 +19,14 @@ public:
     std::vector<json> channels;
     // OAuth: the user /api/users/@me returns
     std::string oauth_user_id = "", oauth_username = "oauthuser";
+    // Scheduled events and channel messages the fake remembers (GET returns
+    // them, PATCH updates them). Keyed by event id / "channel/message".
+    std::map<std::string, json> scheduled_events;
+    std::map<std::string, json> messages;
     // Failure knobs
     bool members_empty = false;      // members list comes back []
     int  rate_limit_next = 0;        // answer the next N requests with 429
+    bool refuse_edits = false;       // PATCH of scheduled events / messages -> 400
 
     FakeDiscord() {
         start();
@@ -103,6 +108,36 @@ protected:
         if (method == "GET" && path == g + "/channels") return reply(200, channels.empty() ? json::array() : json(channels));
         if (method == "GET" && path == g + "/threads/active") return reply(200, {{"threads", json::array()}});
         if (method == "POST" && path == g + "/scheduled-events") return reply(200, {{"id", next_id()}});
+        if (std::regex_match(path, m, std::regex(g + "/scheduled-events/([^/?]+)"))) {
+            auto it = scheduled_events.find(m[1]);
+            if (method == "PATCH" && refuse_edits) return reply(400, {{"message", "Invalid Form Body"}, {"code", 50035}});
+            if (method == "GET" || method == "PATCH") {
+                if (it == scheduled_events.end()) {
+                    if (method == "PATCH") return reply(200, {{"id", m[1].str()}});
+                    return reply(404, {{"message", "Unknown Guild Scheduled Event"}, {"code", 10070}});
+                }
+                if (method == "PATCH") {
+                    auto b = json::parse(req.body, nullptr, false);
+                    if (b.is_object()) for (auto& [k, v] : b.items()) it->second[k] = v;
+                }
+                return reply(200, it->second);
+            }
+        }
+        if (std::regex_match(path, m, std::regex("/api/v10/channels/([^/]+)/messages/([^/?]+)"))) {
+            auto it = messages.find(m[1].str() + "/" + m[2].str());
+            if (method == "PATCH" && refuse_edits) return reply(400, {{"message", "Invalid Form Body"}, {"code", 50035}});
+            if (method == "GET" || method == "PATCH") {
+                if (it == messages.end()) {
+                    if (method == "PATCH") return reply(200, {{"id", m[2].str()}});
+                    return reply(404, {{"message", "Unknown Message"}, {"code", 10008}});
+                }
+                if (method == "PATCH") {
+                    auto b = json::parse(req.body, nullptr, false);
+                    if (b.is_object() && b.contains("content")) it->second["content"] = b["content"];
+                }
+                return reply(200, it->second);
+            }
+        }
 
         // DMs, messages, threads
         if (method == "POST" && path == "/api/v10/users/@me/channels") {

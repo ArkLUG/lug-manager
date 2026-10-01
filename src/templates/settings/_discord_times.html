@@ -1,0 +1,16 @@
+<div class="max-w-4xl space-y-4" data-page-title="Discord times">
+  <div>
+    <h2 class="text-xl font-semibold text-gray-800">Repair times on Discord</h2>
+    <p class="text-sm text-gray-600 mt-1">Before October 2026, LUG Manager's Docker image had no time-zone data, so it sent meeting and event times to Discord as if they were UTC ({{timezone}} was ignored). Discord's scheduled events show those as hours early, and meeting announcements say "7:00 PM America" instead of "7:00 PM CDT". Google Calendar and the calendar feed were never affected.</p>
+    <p class="text-sm text-gray-600 mt-2"><strong>Check</strong> only reads from Discord. <strong>Fix</strong> edits the wrong ones in place: the scheduled event's start and end, and the announcement's text. It doesn't post anything new, ping anyone, rename threads or touch Google Calendar, so members aren't notified. Events that have already started can't be moved on Discord, so they're left as they are.</p>
+  </div>
+  {{^configured}}<p class="text-sm text-amber-700 bg-amber-50 rounded-lg px-4 py-2">Discord isn't set up, so there's nothing to check.</p>{{/configured}}
+  {{#configured}}
+  <form hx-post="/settings/discord-times/check" hx-target="#discord-times-result" hx-swap="innerHTML" class="bg-white rounded-xl border border-gray-200 p-5 space-y-3 text-sm">
+    <label class="flex items-center gap-2"><input type="checkbox" name="include_past" value="1" class="accent-yellow-400"> Also check the announcements of past meetings (their text only)</label>
+    <button class="px-4 py-2 bg-gray-800 text-white rounded-lg font-medium hover:bg-gray-700">Check Discord</button>
+    <span class="htmx-indicator text-gray-500">Checking… this reads each item from Discord and can take a minute.</span>
+  </form>
+  <div id="discord-times-result"></div>
+  {{/configured}}
+</div>
