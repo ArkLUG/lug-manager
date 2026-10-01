@@ -3,21 +3,6 @@
 // non-image/oversized uploads, and removal reverting to default branding.
 #include "integration_test_base.hpp"
 
-namespace {
-// Smallest valid PNG: a 1x1 transparent pixel. Real magic bytes (89 50 4E 47
-// 0D 0A 1A 0A) followed by a minimal IHDR/IDAT/IEND chain - this is the
-// well-known "smallest possible PNG" byte sequence, not a crafted fake.
-const std::string kTinyPng = std::string(
-    "\x89\x50\x4e\x47\x0d\x0a\x1a\x0a"
-    "\x00\x00\x00\x0d\x49\x48\x44\x52"
-    "\x00\x00\x00\x01\x00\x00\x00\x01"
-    "\x08\x06\x00\x00\x00\x1f\x15\xc4"
-    "\x89\x00\x00\x00\x0a\x49\x44\x41"
-    "\x54\x78\x9c\x63\x00\x01\x00\x00"
-    "\x05\x00\x01\x0d\x0a\x2d\xb4\x00"
-    "\x00\x00\x00\x49\x45\x4e\x44\xae"
-    "\x42\x60\x82", 67);
-}
 
 TEST_F(IntegrationTest, BrandingPageRequiresAdmin) {
     auto r = GET("/settings/branding", member_token);

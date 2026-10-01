@@ -22,9 +22,6 @@ void exec(SqliteDatabase& db, const std::string& sql) {
     st.step();
 }
 
-const std::string kAboutPng(
-    "\x89PNG\r\n\x1a\n\0\0\0\rIHDR\0\0\0\x01\0\0\0\x01\x08\x06\0\0\0\x1f\x15\xc4\x89"
-    "\0\0\0\rIDATx\x9cc\xf8\x0f\0\0\x01\x01\0\x05\x18\xd8N\0\0\0\0IEND\xae\x42\x60\x82", 67);
 
 } // namespace
 
@@ -216,9 +213,9 @@ TEST_F(IntegrationTest, AboutPageEditorAndPublicPage) {
     EXPECT_EQ(POST("/settings/about", "enabled=1&markdown=hi", member_token).code, 403);
 
     // Photo for the page: admins only, JSON url back, public once placed
-    EXPECT_EQ(POST_FILE("/settings/about/photo", "photo", "a.png", kAboutPng, member_token).code, 403);
+    EXPECT_EQ(POST_FILE("/settings/about/photo", "photo", "a.png", kTinyPng, member_token).code, 403);
     EXPECT_EQ(POST_FILE("/settings/about/photo", "photo", "a.txt", "not an image", admin_token).code, 400);
-    auto up = POST_FILE("/settings/about/photo", "photo", "a.png", kAboutPng, admin_token);
+    auto up = POST_FILE("/settings/about/photo", "photo", "a.png", kTinyPng, admin_token);
     ASSERT_EQ(up.code, 200);
     auto j = crow::json::load(up.body);
     ASSERT_TRUE(j);

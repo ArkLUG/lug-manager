@@ -149,7 +149,7 @@ inline void add_needs_attention(crow::mustache::context& ctx, SqliteDatabase& db
     if (Features::on("fancolab")) {
         auto st = db.prepare("SELECT value FROM lug_settings WHERE key='fan_colab_recognized'");
         if (st.step() && st.col_text(0) == "1") {
-            auto [done, total] = fan_colab_todo(db, local_tm(std::time(nullptr)).tm_year + 1900);
+            auto [done, total] = fan_colab_todo(db, local_year());
             add(total - done, "thing(s) left on this year's LEGO Fan CoLab to-do list", "/fancolab");
         }
     }

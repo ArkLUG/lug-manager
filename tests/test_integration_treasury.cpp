@@ -68,11 +68,6 @@ TEST_F(IntegrationTest, TreasuryTotalsAndLedger) {
     expect_contains(GET("/treasury?year=2030", admin_token), "-$1,015.50");
 }
 
-namespace {
-const std::string kPng(
-    "\x89PNG\r\n\x1a\n\0\0\0\rIHDR\0\0\0\x01\0\0\0\x01\x08\x06\0\0\0\x1f\x15\xc4\x89"
-    "\0\0\0\rIDATx\x9cc\xf8\x0f\0\0\x01\x01\0\x05\x18\xd8N\0\0\0\0IEND\xae\x42\x60\x82", 67);
-}
 
 TEST_F(IntegrationTest, TreasurerRole) {
     EXPECT_EQ(GET("/treasury", member_token).code, 403);
@@ -120,7 +115,7 @@ TEST_F(IntegrationTest, TreasuryReceipts) {
     ASSERT_TRUE(q.step());
     std::string id = std::to_string(q.col_int(0));
     q.reset();
-    auto at = POST_FILE("/treasury/" + id + "/receipt", "receipt", "p.png", kPng, admin_token);
+    auto at = POST_FILE("/treasury/" + id + "/receipt", "receipt", "p.png", kTinyPng, admin_token);
     EXPECT_EQ(at.code, 200);
     expect_contains(at, "Receipt attached.");
     auto f = db->prepare("SELECT receipt_file FROM treasury_entries WHERE id=?");

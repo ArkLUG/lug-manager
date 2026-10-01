@@ -174,10 +174,7 @@ void register_attendance_routes(LugApp& app, AttendanceService& attendance,
         if (!require_auth(req, res, app, "admin")) return res;
 
         // Parse query params
-        std::time_t now = std::time(nullptr);
-        std::tm tm_now_buf{};
-        std::tm* tm_now = localtime_r(&now, &tm_now_buf);
-        int current_year = tm_now->tm_year + 1900;
+        const int current_year = local_year();
 
         auto qs = crow::query_string(req.url_params);
         auto gp = [&](const char* k) -> std::string { const char* v = qs.get(k); return v ? v : ""; };
@@ -313,7 +310,7 @@ void register_attendance_routes(LugApp& app, AttendanceService& attendance,
         ctx["member_id"] = ctx_auth.auth.member_id;
 
         crow::json::wvalue arr;
-        const std::string this_year = std::to_string(local_tm(std::time(nullptr)).tm_year + 1900);
+        const std::string this_year = std::to_string(local_year());
         int year_meetings = 0, year_events = 0;
         for (size_t i = 0; i < history.size(); ++i) {
             arr[i]["entity_type"]  = history[i].entity_type;
@@ -539,10 +536,7 @@ void register_attendance_routes(LugApp& app, AttendanceService& attendance,
         auto qs = crow::query_string(req.url_params);
         auto gp = [&](const char* k) -> std::string { const char* v = qs.get(k); return v ? v : ""; };
 
-        std::time_t now_t = std::time(nullptr);
-        std::tm tm_now_buf{};
-        std::tm* tm_now = localtime_r(&now_t, &tm_now_buf);
-        int year = tm_now->tm_year + 1900;
+        int year = local_year();
         { std::string y = gp("year"); if (!y.empty()) try { year = std::stoi(y); } catch (...) {} }
 
         int page = 1;

@@ -9,6 +9,9 @@ inline std::tm local_tm(std::time_t t) {
     return out;
 }
 
+// The current year on the server's local clock.
+inline int local_year() { return local_tm(std::time(nullptr)).tm_year + 1900; }
+
 #include <string>
 
 // Local wall-clock time as "YYYY-MM-DDTHH:MM:SS" - the form meeting/event

@@ -20,11 +20,7 @@ void register_perk_routes(LugApp& app, PerkLevelRepository& perks,
         crow::response res;
         if (!require_auth(req, res, app, "admin")) return res;
 
-        // Determine selected year
-        std::time_t now_t = std::time(nullptr);
-        std::tm tm_now_buf = local_tm(now_t);
-        std::tm* tm_now = &tm_now_buf;
-        int current_year = tm_now->tm_year + 1900;
+        const int current_year = local_year();
         int selected_year = current_year;
         {
             auto qs = crow::query_string(req.url_params);
@@ -106,10 +102,7 @@ void register_perk_routes(LugApp& app, PerkLevelRepository& perks,
         p.requires_paid_dues = (gp("requires_paid_dues") == "on" || gp("requires_paid_dues") == "1");
         { std::string fol = gp("min_fol_status"); p.min_fol_status = fol.empty() ? "afol" : fol; }
         try { p.sort_order = std::stoi(gp("sort_order")); } catch (...) {}
-        try { p.year = std::stoi(gp("year")); } catch (...) {
-            std::time_t now_t = std::time(nullptr);
-            p.year = local_tm(now_t).tm_year + 1900;
-        }
+        try { p.year = std::stoi(gp("year")); } catch (...) { p.year = local_year(); }
 
         perks.create(p);
         audit.log(req, app, "perk.create", "perk", 0, p.name, "Created perk level");
@@ -280,8 +273,7 @@ void register_perk_routes(LugApp& app, PerkLevelRepository& perks,
         if (!require_auth(req, res, app, "admin")) return res;
 
         // Sync uses current year's tiers
-        std::time_t now_sync = std::time(nullptr);
-        int sync_year = local_tm(now_sync).tm_year + 1900;
+        const int sync_year = local_year();
         auto levels = perks.find_by_year(sync_year);
         if (levels.empty()) {
             res.add_header("Content-Type", "text/html; charset=utf-8");

@@ -80,63 +80,6 @@ LugEvent EventService::with_calendar_title(const LugEvent& e) const {
     return copy;
 }
 
-// Extract city/state from a full address for thread titles.
-// "123 Main St, Springfield, IL 62701" → "Springfield, IL"
-// "123 Main St, Springfield, IL, United States" → "Springfield, IL"
-static std::string shorten_location(const std::string& loc) {
-    std::vector<std::string> parts;
-    std::istringstream ss(loc);
-    std::string part;
-    while (std::getline(ss, part, ',')) {
-        size_t s = part.find_first_not_of(" \t");
-        size_t e = part.find_last_not_of(" \t");
-        if (s != std::string::npos) parts.push_back(part.substr(s, e - s + 1));
-    }
-    if (parts.size() < 3) return loc;
-
-    // Check if the last part looks like a country (all letters, no digits, > 2 chars)
-    auto is_country = [](const std::string& s) {
-        if (s.size() <= 2) return false; // "IL" is a state, not a country
-        for (char c : s) if (std::isdigit(static_cast<unsigned char>(c))) return false;
-        return true;
-    };
-
-    size_t last = parts.size() - 1;
-    if (is_country(parts[last]) && parts.size() >= 4) last--; // skip country
-
-    std::string state = parts[last];
-    std::string city  = parts[last - 1];
-    // Strip zip code: "IL 62701" → "IL"
-    size_t sp = state.find(' ');
-    if (sp != std::string::npos) state = state.substr(0, sp);
-    return city + ", " + state;
-}
-
-// Format: "{title} | {location} | {dates}"
-static std::string format_thread_name(const LugEvent& e) {
-    auto fmt_date = [](const std::string& iso) -> std::string {
-        if (iso.size() < 10) return iso;
-        try {
-            int month = std::stoi(iso.substr(5, 2));
-            int day   = std::stoi(iso.substr(8, 2));
-            std::string year = iso.substr(2, 2); // "2026" → "26"
-            if (month >= 1 && month <= 12)
-                return std::to_string(month) + "/" + std::to_string(day) + "/" + year;
-        } catch (...) {}
-        return iso.substr(0, 10);
-    };
-
-    std::string d0 = fmt_date(e.start_time);
-    std::string d1 = fmt_date(e.end_time);
-    std::string date_part = (d0 == d1 || d1.empty()) ? d0 : d0 + "-" + d1;
-
-    std::string name = e.title;
-    if (!e.location.empty()) name += " | " + shorten_location(e.location);
-    if (!date_part.empty())  name += " | " + date_part;
-    if (name.size() > 100)   name = name.substr(0, 100);
-    return name;
-}
-
 bool EventService::exists_by_google_calendar_id(const std::string& gcal_event_id) {
     return repo_.exists_by_google_calendar_id(gcal_event_id);
 }

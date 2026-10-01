@@ -211,7 +211,8 @@ int main() {
             nullptr, // shifts: ditto
             nullptr, // photos: ditto
             nullptr, // mailer: ditto (LUG_SMTP_*)
-            nullptr  // notifier: ditto
+            nullptr, // notifier: ditto
+            nullptr  // chat: ditto
         };
         register_all_routes(app, svc);
 

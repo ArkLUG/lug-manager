@@ -37,7 +37,7 @@ void register_all_routes(LugApp& app, Services& svc) {
     register_shift_routes(app, svc.events, svc.shifts, svc.chapter_members, svc.audit);
     if (!svc.photos) svc.photos = std::make_shared<PhotoStore>(svc.data_dir);
     register_gallery_routes(app, svc.attendance_repo.db(), svc.photos, svc.events, svc.chapter_members,
-                            svc.discord, svc.audit);
+                            svc.audit);
     register_account_routes(app, svc.attendance_repo.db(), svc.members, svc.photos, svc.audit);
     register_inventory_routes(app, svc.attendance_repo.db(), svc.audit, svc.photos, svc.events, svc.chapter_members);
     register_treasury_routes(app, svc.attendance_repo.db(), svc.audit,
@@ -73,9 +73,8 @@ void register_all_routes(LugApp& app, Services& svc) {
                                           svc.member_repo, svc.settings, svc.audit);
     register_members_api_routes(app, svc.members, svc.member_repo, svc.audit);
     register_events_api_routes(app, svc.events, svc.meetings, svc.event_day_repo,
-                                svc.event_day_attendance_repo, svc.attendance_repo,
-                                svc.chapters, svc.discord, svc.audit);
-    register_meetings_api_routes(app, svc.meetings, svc.attendance_repo, svc.chapters, svc.discord, svc.audit);
+                                svc.event_day_attendance_repo, svc.attendance_repo, svc.audit);
+    register_meetings_api_routes(app, svc.meetings, svc.audit);
     register_chapters_api_routes(app, svc.chapters, svc.audit);
     register_chapter_members_api_routes(app, svc.chapter_members, svc.chapters, svc.member_repo, svc.discord, svc.audit);
     register_attendance_api_routes(app, svc.attendance_repo, svc.event_day_attendance_repo, svc.audit);

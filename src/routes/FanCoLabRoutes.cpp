@@ -30,10 +30,9 @@ struct Form {
     }
 };
 
-int this_year() { return local_tm(std::time(nullptr)).tm_year + 1900; }
 
 int year_param(const char* v) {
-    int y = this_year();
+    int y = local_year();
     if (v) { try { y = std::stoi(v); } catch (...) {} }
     return std::clamp(y, 1990, 2200);
 }

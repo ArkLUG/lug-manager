@@ -125,7 +125,7 @@ crow::response page(const crow::request& req, LugApp& app, const std::string& bo
 
 void register_gallery_routes(LugApp& app, SqliteDatabase& db, std::shared_ptr<PhotoStore> photos,
                              EventService& events, ChapterMemberRepository& chapter_members,
-                             DiscordClient& discord, AuditService& audit) {
+                             AuditService& audit) {
 
     // GET /uploads/<name> - members only (photos may show members, incl. minors)
     CROW_ROUTE(app, "/uploads/<string>")([&app, photos](const crow::request& req, const std::string& name) {

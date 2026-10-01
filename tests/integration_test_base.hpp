@@ -47,6 +47,11 @@
 #include "routes/Router.hpp"
 #include "utils/Crypto.hpp"
 
+// A valid 1x1 PNG, for upload tests.
+inline const std::string kTinyPng(
+    "\x89PNG\r\n\x1a\n\0\0\0\rIHDR\0\0\0\x01\0\0\0\x01\x08\x06\0\0\0\x1f\x15\xc4\x89"
+    "\0\0\0\rIDATx\x9c" "c\xf8\x0f\0\0\x01\x01\0\x05\x18\xd8N\0\0\0\0IEND\xae\x42\x60\x82", 67);
+
 // ═══════════════════════════════════════════════════════════════════════════
 // Integration test fixture — boots a full Crow app on a random port
 // ═══════════════════════════════════════════════════════════════════════════

@@ -118,10 +118,7 @@ void register_calendar_routes(LugApp& app, CalendarGenerator& cal,
 
         // Perk progress for current user
         {
-            std::time_t now = std::time(nullptr);
-            std::tm tm_buf = local_tm(now);
-        std::tm* tm = &tm_buf;
-            int year = tm->tm_year + 1900;
+            const int year = local_year();
 
             int meeting_count = attendance_repo.count_member_by_year(auth_ctx.auth.member_id, year, "meeting");
             int event_count   = attendance_repo.count_member_by_year(auth_ctx.auth.member_id, year, "event");

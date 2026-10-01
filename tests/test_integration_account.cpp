@@ -6,11 +6,6 @@
 #include "repositories/ShiftRepository.hpp"
 #include "repositories/RsvpRepository.hpp"
 
-namespace {
-const std::string kPng(
-    "\x89PNG\r\n\x1a\n\0\0\0\rIHDR\0\0\0\x01\0\0\0\x01\x08\x06\0\0\0\x1f\x15\xc4\x89"
-    "\0\0\0\rIDATx\x9cc\xf8\x0f\0\0\x01\x01\0\x05\x18\xd8N\0\0\0\0IEND\xae\x42\x60\x82", 67);
-}
 
 TEST_F(IntegrationTest, AccountPageRequiresLogin) {
     EXPECT_NE(GET("/account").code, 200);
@@ -118,7 +113,7 @@ TEST_F(IntegrationTest, AccountDelete) {
     e.title = "Bye Show"; e.start_time = "2099-07-01T09:00:00"; e.end_time = "2099-07-01T17:00:00";
     e.scope = "lug_wide"; e.status = "confirmed"; e.suppress_discord = true; e.suppress_calendar = true;
     auto ev = event_svc->create(e);
-    auto up = POST_FILE("/events/" + std::to_string(ev.id) + "/photos", "photo", "a.png", kPng, member_token);
+    auto up = POST_FILE("/events/" + std::to_string(ev.id) + "/photos", "photo", "a.png", kTinyPng, member_token);
     ASSERT_EQ(up.code, 200);
     auto p = up.body.find("/uploads/");
     ASSERT_NE(p, std::string::npos);

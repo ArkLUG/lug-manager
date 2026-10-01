@@ -3,9 +3,6 @@
 
 namespace {
 // Valid 1x1 PNG
-const std::string kPng(
-    "\x89PNG\r\n\x1a\n\0\0\0\rIHDR\0\0\0\x01\0\0\0\x01\x08\x06\0\0\0\x1f\x15\xc4\x89"
-    "\0\0\0\rIDATx\x9cc\xf8\x0f\0\0\x01\x01\0\x05\x18\xd8N\0\0\0\0IEND\xae\x42\x60\x82", 67);
 
 LugEvent gallery_event() {
     LugEvent e;
@@ -41,12 +38,12 @@ TEST_F(IntegrationTest, GalleryUploadServeDelete) {
     std::string base = "/events/" + std::to_string(ev.id) + "/photos";
 
     // Not logged in
-    EXPECT_EQ(POST_FILE(base, "photo", "a.png", kPng).code == 200, false);
+    EXPECT_EQ(POST_FILE(base, "photo", "a.png", kTinyPng).code == 200, false);
     // SVG / junk rejected
     auto bad = POST_FILE(base, "photo", "x.svg", "<svg xmlns=\"http://www.w3.org/2000/svg\"></svg>", member_token);
     EXPECT_EQ(bad.code, 400);
 
-    auto ok = POST_FILE(base, "photo", "a.png", kPng, member_token, {{"caption", "My <b>MOC</b>"}});
+    auto ok = POST_FILE(base, "photo", "a.png", kTinyPng, member_token, {{"caption", "My <b>MOC</b>"}});
     EXPECT_EQ(ok.code, 200);
     expect_contains(ok, "Photo added.");
     expect_contains(ok, "My &lt;b&gt;MOC");
@@ -77,7 +74,7 @@ TEST_F(IntegrationTest, GalleryUploadServeDelete) {
 TEST_F(IntegrationTest, GalleryAdminDeletesAnyPhoto) {
     auto ev = event_svc->create(gallery_event());
     std::string base = "/events/" + std::to_string(ev.id) + "/photos";
-    ASSERT_EQ(POST_FILE(base, "photo", "a.png", kPng, member_token).code, 200);
+    ASSERT_EQ(POST_FILE(base, "photo", "a.png", kTinyPng, member_token).code, 200);
     auto q = db->prepare("SELECT id FROM event_photos WHERE event_id=?");
     q.bind(1, ev.id);
     ASSERT_TRUE(q.step());
@@ -98,12 +95,12 @@ TEST_F(IntegrationTest, ChallengeLifecycle) {
     expect_contains(GET("/challenges", member_token), "Open for entries");
 
     // Enter: needs a title, one entry per member
-    EXPECT_EQ(POST_FILE(base + "/entries", "photo", "a.png", kPng, member_token).code, 400);
-    auto e1 = POST_FILE(base + "/entries", "photo", "a.png", kPng, member_token, {{"title", "Tiny Castle"}});
+    EXPECT_EQ(POST_FILE(base + "/entries", "photo", "a.png", kTinyPng, member_token).code, 400);
+    auto e1 = POST_FILE(base + "/entries", "photo", "a.png", kTinyPng, member_token, {{"title", "Tiny Castle"}});
     EXPECT_EQ(e1.code, 200);
     expect_contains(e1, "Tiny Castle");
-    EXPECT_EQ(POST_FILE(base + "/entries", "photo", "b.png", kPng, member_token, {{"title", "Again"}}).code, 409);
-    ASSERT_EQ(POST_FILE(base + "/entries", "photo", "c.png", kPng, chapter_lead_token, {{"title", "Tiny Ship"}}).code, 200);
+    EXPECT_EQ(POST_FILE(base + "/entries", "photo", "b.png", kTinyPng, member_token, {{"title", "Again"}}).code, 409);
+    ASSERT_EQ(POST_FILE(base + "/entries", "photo", "c.png", kTinyPng, chapter_lead_token, {{"title", "Tiny Ship"}}).code, 200);
 
     auto eq = db->prepare("SELECT id, member_id FROM challenge_entries WHERE challenge_id=? ORDER BY id");
     eq.bind(1, q.col_int(0));
@@ -151,7 +148,7 @@ TEST_F(IntegrationTest, ChallengeClosedPhases) {
     v.step();
 
     std::string base = "/challenges/" + std::to_string(cid);
-    EXPECT_EQ(POST_FILE(base + "/entries", "photo", "a.png", kPng, chapter_lead_token, {{"title", "Late"}}).code, 409);
+    EXPECT_EQ(POST_FILE(base + "/entries", "photo", "a.png", kTinyPng, chapter_lead_token, {{"title", "Late"}}).code, 409);
     EXPECT_EQ(POST(base + "/entries/" + std::to_string(eid) + "/vote", "", chapter_lead_token).code, 409);
     auto page = GET(base, member_token);
     expect_contains(page, "1 vote(s)");

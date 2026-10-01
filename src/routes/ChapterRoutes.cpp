@@ -72,7 +72,7 @@ std::string short_when(const std::string& iso) {
 void add_chapter_overview(crow::mustache::context& ctx, SqliteDatabase& db, const Chapter& ch,
                           const std::vector<ChapterMember>& people, bool can_manage) {
     const std::string now = local_iso_now(), today = now.substr(0, 10);
-    const int year = local_tm(std::time(nullptr)).tm_year + 1900;
+    const int year = local_year();
     const std::string lo = std::to_string(year) + "-01-01";
     auto num = [&](const std::string& sql, std::vector<std::string> args) -> int64_t {
         auto st = db.prepare(sql);

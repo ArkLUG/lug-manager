@@ -18,7 +18,6 @@ void register_events_api_routes(LugApp& app, EventService& events, MeetingServic
                                  EventDayRepository& event_days,
                                  EventDayAttendanceRepository& event_day_attendance,
                                  AttendanceRepository& attendance_flat,
-                                 ChapterService& chapters, DiscordClient& discord,
                                  AuditService& audit) {
 
     // GET /api/v1/events - paginated list

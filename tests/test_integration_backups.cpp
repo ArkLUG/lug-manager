@@ -26,9 +26,6 @@ TEST_F(IntegrationTest, BackupDownloadRejectsOtherFiles) {
 #include <sstream>
 
 namespace {
-const std::string kPng(
-    "\x89PNG\r\n\x1a\n\0\0\0\rIHDR\0\0\0\x01\0\0\0\x01\x08\x06\0\0\0\x1f\x15\xc4\x89"
-    "\0\0\0\rIDATx\x9cc\xf8\x0f\0\0\x01\x01\0\x05\x18\xd8N\0\0\0\0IEND\xae\x42\x60\x82", 67);
 std::string slurp(const std::string& p) {
     std::ifstream in(p, std::ios::binary);
     std::ostringstream b;
@@ -68,7 +65,7 @@ TEST_F(IntegrationTest, BackupMirrorsUploadsAndOffersArchive) {
     e.scope = "lug_wide"; e.status = "confirmed"; e.suppress_discord = true; e.suppress_calendar = true;
     auto ev = event_svc->create(e);
     EXPECT_EQ(GET("/settings/backups/photos.zip", admin_token).code, 404);   // nothing yet
-    auto up = POST_FILE("/events/" + std::to_string(ev.id) + "/photos", "photo", "a.png", kPng, member_token);
+    auto up = POST_FILE("/events/" + std::to_string(ev.id) + "/photos", "photo", "a.png", kTinyPng, member_token);
     ASSERT_EQ(up.code, 200);
     auto p = up.body.find("/uploads/");
     std::string name = up.body.substr(p + 9, up.body.find('"', p) - p - 9);

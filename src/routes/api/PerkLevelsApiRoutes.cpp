@@ -178,8 +178,7 @@ void register_perk_levels_api_routes(LugApp& app, PerkLevelRepository& perks,
         crow::response res;
         if (!require_api_scope(req, res, app, "admin")) return res;
 
-        std::time_t now = std::time(nullptr);
-        int year = local_tm(now).tm_year + 1900;
+        const int year = local_year();
         auto levels = perks.find_by_year(year);
         if (levels.empty()) {
             crow::json::wvalue body_out;

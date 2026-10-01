@@ -238,18 +238,13 @@ TEST_F(IntegrationTest, InventoryKeeperFollowsMemberMerge) {
     EXPECT_EQ(st.col_int(0), regular_member_id);
 }
 
-namespace {
-const std::string kInvPng(
-    "\x89PNG\r\n\x1a\n\0\0\0\rIHDR\0\0\0\x01\0\0\0\x01\x08\x06\0\0\0\x1f\x15\xc4\x89"
-    "\0\0\0\rIDATx\x9cc\xf8\x0f\0\0\x01\x01\0\x05\x18\xd8N\0\0\0\0IEND\xae\x42\x60\x82", 67);
-}
 
 TEST_F(IntegrationTest, InventoryPhotoAndCondition) {
     ASSERT_EQ(POST("/inventory", "name=Display+case&quantity=2", admin_token).code, 200);
     std::string id = std::to_string(item_id(*db, "Display case"));
-    EXPECT_EQ(POST_FILE("/inventory/" + id + "/photo", "photo", "c.png", kInvPng, member_token).code, 403);
+    EXPECT_EQ(POST_FILE("/inventory/" + id + "/photo", "photo", "c.png", kTinyPng, member_token).code, 403);
     EXPECT_EQ(POST_FILE("/inventory/" + id + "/photo", "photo", "c.svg", "<svg/>", admin_token).code, 400);
-    auto up = POST_FILE("/inventory/" + id + "/photo", "photo", "c.png", kInvPng, admin_token);
+    auto up = POST_FILE("/inventory/" + id + "/photo", "photo", "c.png", kTinyPng, admin_token);
     EXPECT_EQ(up.code, 200);
     auto f = db->prepare("SELECT photo_file FROM inventory_items WHERE id=?");
     f.bind(1, static_cast<int64_t>(std::stoll(id)));

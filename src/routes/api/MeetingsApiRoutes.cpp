@@ -10,10 +10,7 @@ static std::string api_mt_normalize_datetime(const std::string& dt) {
     return dt;
 }
 
-void register_meetings_api_routes(LugApp& app, MeetingService& meetings,
-                                   AttendanceRepository& attendance,
-                                   ChapterService& chapters, DiscordClient& discord,
-                                   AuditService& audit) {
+void register_meetings_api_routes(LugApp& app, MeetingService& meetings, AuditService& audit) {
 
     // GET /api/v1/meetings - paginated list
     CROW_ROUTE(app, "/api/v1/meetings").methods("GET"_method)(

@@ -17,7 +17,7 @@ void register_report_routes(LugApp& app, SqliteDatabase& db, EventService& event
     CROW_ROUTE(app, "/reports/annual")([&app, &db](const crow::request& req) {
         crow::response res;
         if (!require_auth(req, res, app, "admin")) return res;
-        int year = local_tm(std::time(nullptr)).tm_year + 1900;
+        int year = local_year();
         if (const char* y = req.url_params.get("year")) { try { year = std::stoi(y); } catch (...) {} }
         std::string ys = std::to_string(year), lo = ys + "-01-01", hi = std::to_string(year + 1) + "-01-01";
         const std::vector<std::string> range{lo, hi};

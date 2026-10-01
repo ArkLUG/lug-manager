@@ -15,7 +15,6 @@ crow::response csv_response(const std::string& filename, const std::string& body
     return res;
 }
 
-int current_year() { return local_tm(std::time(nullptr)).tm_year + 1900; }
 
 } // namespace
 
@@ -47,7 +46,7 @@ void register_export_routes(LugApp& app, MemberRepository& members, AttendanceRe
     CROW_ROUTE(app, "/attendance/overview.csv")([&](const crow::request& req) {
         crow::response res;
         if (!require_auth(req, res, app, "admin")) return res;
-        int year = current_year();
+        int year = local_year();
         if (const char* y = req.url_params.get("year")) { try { year = std::stoi(y); } catch (...) {} }
         AttendanceRepository::OverviewParams p;
         p.year = year;
