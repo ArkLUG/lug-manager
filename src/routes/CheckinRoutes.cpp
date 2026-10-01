@@ -1,5 +1,7 @@
 #include "routes/CheckinRoutes.hpp"
 #include "utils/HtmlEscape.hpp"
+#include "routes/EventAccess.hpp"
+#include <algorithm>
 #include <crow.h>
 #include <crow/mustache.h>
 #include <sstream>
@@ -410,4 +412,79 @@ void register_checkin_routes(LugApp& app,
     // Actually, the OAuth callback URL is fixed (/auth/callback). We encode the token
     // in the state parameter. The existing AuthRoutes callback needs to detect "checkin:TOKEN"
     // state and redirect to complete check-in. Let me add that logic separately.
+
+    // ── Kiosk mode ────────────────────────────────────────────────────────
+    // Full-screen page for a tablet/projector at the venue: big QR code for
+    // the check-in link plus a live count and the latest arrivals. Managers
+    // only (it mints the check-in token if needed).
+    auto render_kiosk = [&](const crow::request& req, const std::string& type, int64_t id,
+                            const std::string& title, const std::string& when, const std::string& token) {
+        crow::mustache::context ctx;
+        ctx["entity_type"] = type;
+        ctx["entity_id"]   = id;
+        ctx["title"]       = title;
+        ctx["when"]        = when;
+        ctx["token"]       = token;
+        (void)req;
+        crow::response res;
+        res.add_header("Content-Type", "text/html; charset=utf-8");
+        res.write(crow::mustache::load("checkin/_kiosk.html").render(ctx).dump());
+        return res;
+    };
+
+    CROW_ROUTE(app, "/meetings/<int>/kiosk")([&, render_kiosk](const crow::request& req, int id) {
+        crow::response res;
+        if (!require_auth(req, res, app)) return res;
+        auto mtg = meetings.get(id);
+        if (!mtg) { res.code = 404; return res; }
+        if (!can_manage_chapter_content(req, res, app, mtg->chapter_id, chapter_members)) return res;
+        std::string token = mtg->checkin_token;
+        if (token.empty()) {
+            token = MeetingService::generate_uuid();
+            meeting_repo.update_checkin_token(mtg->id, token);
+        }
+        return render_kiosk(req, "meeting", mtg->id, mtg->title, mtg->start_time, token);
+    });
+
+    CROW_ROUTE(app, "/events/<int>/kiosk")([&, render_kiosk](const crow::request& req, int id) {
+        crow::response res;
+        if (!require_auth(req, res, app)) return res;
+        auto ev = events.get(id);
+        if (!ev) { res.code = 404; return res; }
+        if (!can_manage_event(req, app, *ev, chapter_members)) { res.code = 403; return res; }
+        std::string token = ev->checkin_token;
+        if (token.empty()) {
+            token = EventService::generate_uuid();
+            event_repo.update_checkin_token(ev->id, token);
+        }
+        return render_kiosk(req, "event", ev->id, ev->title, ev->start_time, token);
+    });
+
+    // GET /kiosk/<type>/<id>/recent - latest arrivals for the kiosk (polled)
+    CROW_ROUTE(app, "/kiosk/<str>/<int>/recent")([&](const crow::request& req, std::string type, int id) {
+        crow::response res;
+        if (!require_auth(req, res, app)) return res;
+        if (type != "meeting" && type != "event") { res.code = 404; return res; }
+        if (type == "event") {
+            auto ev = events.get(id);
+            if (!ev || !can_manage_event(req, app, *ev, chapter_members)) { res.code = 403; return res; }
+        } else {
+            auto mtg = meetings.get(id);
+            if (!mtg) { res.code = 404; return res; }
+            if (!can_manage_chapter_content(req, res, app, mtg->chapter_id, chapter_members)) return res;
+        }
+        auto rows = attendance.get_attendees(type, id);
+        std::sort(rows.begin(), rows.end(), [](const Attendance& a, const Attendance& b) {
+            return a.checked_in_at > b.checked_in_at;
+        });
+        std::ostringstream html;
+        html << "<div class=\"text-6xl font-bold text-gray-900\">" << attendance.get_count(type, id)
+             << "</div><div class=\"text-gray-500 mb-6\">checked in</div><ul class=\"space-y-2 text-2xl\">";
+        for (size_t i = 0; i < rows.size() && i < 6; ++i)
+            html << "<li class=\"text-gray-800\">\u2705 " << html_escape(rows[i].member_display_name) << "</li>";
+        html << "</ul>";
+        res.add_header("Content-Type", "text/html; charset=utf-8");
+        res.write(html.str());
+        return res;
+    });
 }

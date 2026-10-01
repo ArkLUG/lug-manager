@@ -282,3 +282,21 @@ TEST_F(IntegrationTest, CheckinTokenForPastMeetingIsRejected) {
     expect_contains(sel, "not active");
     EXPECT_FALSE(attendance_repo->is_checked_in(regular_member_id, "meeting", created.id));
 }
+
+TEST_F(IntegrationTest, KioskForManagersOnly) {
+    Meeting m;
+    m.title = "Kiosk Meeting";
+    m.start_time = today_at("19:00:00");
+    m.end_time = today_at("21:00:00");
+    m.scope = "lug_wide";
+    auto mtg = meeting_svc->create(m);
+    EXPECT_EQ(GET("/meetings/" + std::to_string(mtg.id) + "/kiosk", member_token).code, 403);
+    auto k = GET("/meetings/" + std::to_string(mtg.id) + "/kiosk", admin_token);
+    EXPECT_EQ(k.code, 200);
+    expect_contains(k, "Scan to check in");
+    EXPECT_FALSE(meeting_repo->find_by_id(mtg.id)->checkin_token.empty());
+    auto recent = GET("/kiosk/meeting/" + std::to_string(mtg.id) + "/recent", admin_token);
+    EXPECT_EQ(recent.code, 200);
+    expect_contains(recent, "checked in");
+    EXPECT_EQ(GET("/kiosk/bogus/1/recent", admin_token).code, 404);
+}
