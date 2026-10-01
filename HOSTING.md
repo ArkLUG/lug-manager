@@ -22,6 +22,7 @@ Whichever host you pick, the steps afterwards are the same:
 | [Fly.io](#flyio) | A small, always-on cloud box | A few dollars a month | `fly.toml` included, volume for data |
 | [Render](#render) | Click-through setup | Paid instance plus disk | `render.yaml` blueprint, "Deploy to Render" |
 | [Railway](#railway) | Click-through setup | Usage-based | Deploy the image and add a volume |
+| [DigitalOcean, AWS, Google Cloud, Azure, Linode, Hetzner](#digitalocean-aws-google-cloud-azure-and-others-one-paste-setup) | A server you control | About $4-6/month; Google has a free tier | One-paste setup file with automatic HTTPS |
 
 Free tiers that put idle apps to sleep, or that have no persistent disk, won't work. The app runs reminders, backups and Discord sync in the background, and keeps its data on disk.
 
@@ -92,24 +93,53 @@ Persistent disks need a paid instance type. HTTPS is included at `https://<name>
 4. Under **Settings > Networking**, generate a domain on port 8080, then use that domain for `LUG_PUBLIC_URL` and `DISCORD_REDIRECT_URI`.
 5. Check the deploy logs for the `/setup` link.
 
-## DigitalOcean, AWS, Google Cloud, Azure and others
+## DigitalOcean, AWS, Google Cloud, Azure and others (one-paste setup)
 
-**Use a small virtual server (VPS) running Docker**, then follow [Docker / docker compose](#docker--docker-compose) and put a reverse proxy with HTTPS in front. For example, [Caddy](https://caddyserver.com) gets a certificate for your domain automatically.
+On any of these, **use a small Ubuntu 24.04 virtual server with the one-paste setup file** [`deploy/cloud-init.yaml`](deploy/cloud-init.yaml).
 
-These products fit:
-- DigitalOcean Droplet
-- AWS Lightsail or EC2
-- Google Compute Engine (an e2-micro is in Google's always-free tier in some US regions)
-- Azure virtual machine
-- Linode, Hetzner, Vultr or Oracle Cloud
+When the server first starts, the file:
+- installs Docker;
+- starts LUG Manager behind [Caddy](https://caddyserver.com), which gets a free HTTPS certificate for your domain automatically;
+- keeps your data in `/opt/lug-manager/data`;
+- opens only ports 22, 80 and 443;
+- checks for a new LUG Manager version every Sunday night.
 
-These don't fit, because they have no disk that survives restarts, or they stop the app when it's idle:
+**Steps:**
+
+1. **Prepare the file.** Copy `deploy/cloud-init.yaml` and fill in the values under the `<-- CHANGE` notes:
+   - your domain;
+   - an email address for certificate notices;
+   - your Discord client ID, client secret and bot token.
+   - In the Discord Developer Portal, set the OAuth2 redirect to `https://<your domain>/auth/callback`.
+2. **Create the server.** Choose Ubuntu 24.04 and the smallest size with at least 1 GB of memory. Paste the file where your provider asks for start-up settings (see the table).
+3. **Point your domain at the server.** Add a DNS **A record** for your domain with the server's IP address.
+4. **Create the first admin.** After a few minutes, open `https://<your domain>`. For the one-time setup link, connect to the server and run:
+   ```bash
+   sudo cloud-init status --wait          # finished?
+   sudo docker compose -f /opt/lug-manager/docker-compose.yml logs lug-manager | grep setup
+   ```
+
+| Provider | Where to paste the file | Firewall |
+|---|---|---|
+| **DigitalOcean** Droplet | Create > Droplets > *Advanced options* > **Add initialization scripts** | Nothing extra |
+| **AWS Lightsail** | Create instance > *OS only* > Ubuntu > **+ Add launch script** | Networking tab: add a rule for **HTTPS (443)** |
+| **AWS EC2** | Launch instance > *Advanced details* > **User data** | Security group: allow HTTP and HTTPS |
+| **Google Compute Engine** | Create instance > Advanced > *Management* > **Metadata**: key `user-data`, value = the file | Tick **Allow HTTP/HTTPS traffic** |
+| **Microsoft Azure** VM | Create > *Advanced* > **Custom data** | Network settings: allow HTTP (80) and HTTPS (443) |
+| **Linode / Akamai** | Create Linode > **Add User Data** (in regions that support it) | Nothing extra |
+| **Hetzner Cloud** | Add server > **Cloud config** | Nothing extra |
+
+**Free option:** Google Cloud's always-free tier includes one e2-micro server in some US regions (us-west1, us-central1 or us-east1, at the time of writing). It's small but runs LUG Manager for a typical LUG.
+
+Providers rename their menus from time to time. Look for "user data", "cloud-init", "startup/launch script" or "custom data".
+
+**These don't fit:**
 - Heroku
 - DigitalOcean App Platform
 - Google Cloud Run
 - AWS App Runner
 
-LUG Manager keeps its database on disk and runs reminders and Discord sync in the background, so it would lose data or miss jobs on these.
+They have no disk that survives restarts, or they stop the app when it's idle. LUG Manager keeps its database on disk and runs reminders and Discord sync in the background.
 
 ## Updating
 

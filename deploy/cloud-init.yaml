@@ -1,0 +1,98 @@
+#cloud-config
+# LUG Manager - one-paste server setup (cloud-init "user data").
+#
+# Works on a fresh Ubuntu 24.04 server at DigitalOcean, AWS (Lightsail/EC2),
+# Google Compute Engine, Azure, Linode, Hetzner, Vultr and others.
+#
+# BEFORE PASTING: fill in the values under the "<-- CHANGE" notes below
+# (your domain, an email for HTTPS certificates, and your Discord app).
+# Point your domain's DNS A record at the server's IP address, ideally before
+# it finishes booting - the HTTPS certificate needs it.
+#
+# What it does: installs Docker, starts LUG Manager with Caddy in front
+# (automatic HTTPS for your domain), keeps data in /opt/lug-manager/data,
+# and opens only ports 22, 80 and 443. Then open https://<your domain> and
+# follow the one-time /setup link:
+#   sudo docker compose -f /opt/lug-manager/docker-compose.yml logs lug-manager | grep setup
+
+write_files:
+  - path: /opt/lug-manager/.env
+    permissions: "0600"
+    content: |
+      # <-- CHANGE: your domain (its DNS A record must point at this server)
+      LUG_DOMAIN=lug.example.org
+      # <-- CHANGE: email for Let's Encrypt certificate notices
+      ACME_EMAIL=you@example.org
+      # <-- CHANGE: Discord Developer Portal > your app > OAuth2
+      DISCORD_CLIENT_ID=
+      DISCORD_CLIENT_SECRET=
+      # <-- CHANGE: Discord Developer Portal > your app > Bot
+      DISCORD_BOT_TOKEN=
+      # <-- CHANGE (optional): your Discord user id - or use the one-time /setup link instead
+      BOOTSTRAP_ADMIN_DISCORD_ID=
+      # Optional email for members without Discord:
+      LUG_SMTP_URL=
+      LUG_SMTP_USER=
+      LUG_SMTP_PASSWORD=
+      LUG_SMTP_FROM=
+
+  - path: /opt/lug-manager/docker-compose.yml
+    content: |
+      services:
+        lug-manager:
+          image: ghcr.io/arklug/lug-manager:latest
+          restart: unless-stopped
+          env_file: .env
+          environment:
+            LUG_PUBLIC_URL: https://${LUG_DOMAIN}
+            DISCORD_REDIRECT_URI: https://${LUG_DOMAIN}/auth/callback
+          volumes:
+            - ./data:/app/data
+        caddy:
+          image: caddy:2
+          restart: unless-stopped
+          ports:
+            - "80:80"
+            - "443:443"
+          environment:
+            LUG_DOMAIN: ${LUG_DOMAIN}
+            ACME_EMAIL: ${ACME_EMAIL}
+          volumes:
+            - ./Caddyfile:/etc/caddy/Caddyfile:ro
+            - caddy-data:/data
+            - caddy-config:/config
+          depends_on:
+            - lug-manager
+      volumes:
+        caddy-data:
+        caddy-config:
+
+  - path: /opt/lug-manager/Caddyfile
+    content: |
+      {
+        email {$ACME_EMAIL}
+      }
+      {$LUG_DOMAIN} {
+        encode gzip
+        reverse_proxy lug-manager:8080
+      }
+
+  - path: /etc/cron.d/lug-manager-update
+    content: |
+      # Weekly: pull a newer LUG Manager image and restart if there is one (Sunday 04:30).
+      30 4 * * 0 root cd /opt/lug-manager && docker compose pull -q && docker compose up -d >/dev/null 2>&1
+
+package_update: true
+packages:
+  - docker.io
+  - docker-compose-v2
+  - ufw
+
+runcmd:
+  - [systemctl, enable, --now, docker]
+  - [ufw, allow, "22/tcp"]
+  - [ufw, allow, "80/tcp"]
+  - [ufw, allow, "443/tcp"]
+  - [ufw, --force, enable]
+  - [mkdir, -p, /opt/lug-manager/data]
+  - [sh, -c, "cd /opt/lug-manager && docker compose up -d"]

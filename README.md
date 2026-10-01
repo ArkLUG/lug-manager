@@ -78,6 +78,7 @@ Then:
 Data lives in the `/app/data` volume: the database, uploads and backups.
 
 **Other ways to host it:** see [HOSTING.md](HOSTING.md) for:
+- **DigitalOcean, AWS, Google Cloud, Azure, Linode or Hetzner**, with a one-paste setup file that includes automatic HTTPS
 - **Unraid**, with a template included
 - **Fly.io** (`fly.toml`)
 - **Render** (one-click blueprint)
@@ -277,6 +278,7 @@ tests/                unit + integration suites, fakes, e2e browser checks
 scripts/              Tailwind build, theme CSS generator, demo site
 cmake/                build helpers (Crow template patch)
 unraid/               Unraid Community Applications template
+deploy/               one-paste cloud-init setup for VPS providers
 fly.toml, render.yaml cloud hosting configs (see HOSTING.md)
 ```
 
