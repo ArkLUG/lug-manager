@@ -530,3 +530,14 @@ TEST(ImageUpload, UploadNames) {
     EXPECT_FALSE(valid_upload_name("../x.png"));
     EXPECT_FALSE(valid_upload_name("abc.svg"));
 }
+
+// Crow is patched (cmake/patch_crow_mustache.cmake) so empty strings are
+// falsy in sections - templates rely on {{#location}}...{{/location}}.
+#include <crow/mustache.h>
+TEST(Mustache, EmptyStringIsFalsy) {
+    crow::mustache::context c;
+    c["a"] = std::string("");
+    c["b"] = std::string("x");
+    auto out = crow::mustache::compile("[{{#a}}A{{/a}}{{^a}}noA{{/a}}][{{#b}}B={{b}}{{/b}}{{^b}}noB{{/b}}]").render_string(c);
+    EXPECT_EQ(out, "[noA][B=x]");
+}

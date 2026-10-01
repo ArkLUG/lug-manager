@@ -19,6 +19,7 @@ FetchContent_Declare(Crow
   GIT_REPOSITORY https://github.com/CrowCpp/Crow.git
   GIT_TAG        v1.2.0
   GIT_SHALLOW    TRUE
+  PATCH_COMMAND  ${CMAKE_COMMAND} -P ${CMAKE_CURRENT_SOURCE_DIR}/cmake/patch_crow_mustache.cmake
 )
 FetchContent_MakeAvailable(Crow)
 
