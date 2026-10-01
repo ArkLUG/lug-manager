@@ -264,7 +264,8 @@ protected:
             nullptr, // displays
             nullptr, // dues
             nullptr, // backups
-            nullptr  // series
+            nullptr, // series
+            nullptr  // shifts
 
         };
         register_all_routes(*app, svc);

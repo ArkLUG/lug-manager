@@ -91,6 +91,12 @@
 
   {{^scope_non_lug}}
   <div class="mt-4 pt-4 border-t border-gray-200">
+    <h4 class="text-sm font-medium text-gray-500 mb-2">Volunteer shifts</h4>
+    <div hx-get="/events/{{id}}/shifts" hx-trigger="load" hx-swap="outerHTML">
+      <p class="text-xs text-gray-400">Loading...</p>
+    </div>
+  </div>
+  <div class="mt-4 pt-4 border-t border-gray-200">
     <h4 class="text-sm font-medium text-gray-500 mb-2">Displays</h4>
     <div hx-get="/events/{{id}}/displays" hx-trigger="load" hx-swap="outerHTML">
       <p class="text-xs text-gray-400">Loading...</p>

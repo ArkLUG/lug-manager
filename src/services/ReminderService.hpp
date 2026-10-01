@@ -5,6 +5,7 @@
 #include "repositories/MeetingRepository.hpp"
 #include "repositories/MemberRepository.hpp"
 #include "repositories/RsvpRepository.hpp"
+#include "repositories/ShiftRepository.hpp"
 #include "repositories/SettingsRepository.hpp"
 
 // Posts a Discord reminder ahead of each meeting/event, once.
@@ -36,6 +37,7 @@ private:
     SettingsRepository& settings_;
     DiscordClient&      discord_;
     RsvpRepository      rsvps_;
+    ShiftRepository     shifts_;
 
     bool claim(const char* table, int64_t id); // marks sent; false if already sent
 };

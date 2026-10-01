@@ -204,7 +204,8 @@ int main() {
             nullptr, // displays: ditto
             nullptr, // dues: ditto
             nullptr, // backups: ditto
-            nullptr  // series: ditto
+            nullptr, // series: ditto
+            nullptr  // shifts: ditto
         };
         register_all_routes(app, svc);
 

@@ -1,0 +1,40 @@
+<div id="shifts-panel-{{event_id}}" class="space-y-2">
+  {{#flash}}<p class="text-xs text-gray-500">{{flash}}</p>{{/flash}}
+  {{#has_shifts}}
+  <ul class="divide-y divide-gray-100 border border-gray-200 rounded-lg text-sm">
+    {{#shifts}}
+    <li class="px-3 py-2 flex flex-wrap items-center justify-between gap-2">
+      <div>
+        <div class="font-medium text-gray-900">{{title}} <span class="text-xs text-gray-500">{{when}}</span></div>
+        <div class="text-xs {{#full}}text-red-700{{/full}}{{^full}}text-gray-500{{/full}}">{{taken}} / {{slots}} volunteers{{#can_manage}}{{#names}} · {{names}}{{/names}}{{/can_manage}}</div>
+        {{#notes}}<div class="text-xs text-gray-500 italic">{{notes}}</div>{{/notes}}
+      </div>
+      <div class="flex items-center gap-2">
+        {{#mine}}<button hx-post="/events/{{event_id}}/shifts/{{id}}/signup" hx-target="#shifts-panel-{{event_id}}" hx-swap="outerHTML"
+                class="text-xs px-3 py-1 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50">Leave</button>{{/mine}}
+        {{#can_join}}<button hx-post="/events/{{event_id}}/shifts/{{id}}/signup" hx-target="#shifts-panel-{{event_id}}" hx-swap="outerHTML"
+                class="text-xs px-3 py-1 bg-yellow-400 text-gray-900 rounded-lg font-semibold hover:bg-yellow-300">Volunteer</button>{{/can_join}}
+        {{#can_manage}}<button hx-post="/events/{{event_id}}/shifts/{{id}}/delete" hx-target="#shifts-panel-{{event_id}}" hx-swap="outerHTML"
+                hx-confirm="Delete this shift and its sign-ups?" class="text-xs text-red-600 hover:text-red-800">Delete</button>{{/can_manage}}
+      </div>
+    </li>
+    {{/shifts}}
+  </ul>
+  {{/has_shifts}}
+  {{^has_shifts}}<p class="text-xs text-gray-400">No volunteer shifts.</p>{{/has_shifts}}
+  {{#can_manage}}
+  <details class="border border-gray-200 rounded-lg">
+    <summary class="cursor-pointer px-3 py-1.5 text-xs font-medium text-gray-700">Add a shift</summary>
+    <form hx-post="/events/{{event_id}}/shifts" hx-target="#shifts-panel-{{event_id}}" hx-swap="outerHTML"
+          class="px-3 pb-3 grid grid-cols-2 gap-2 text-xs">
+      <input name="title" required maxlength="100" placeholder="Set-up crew" class="col-span-2 border border-gray-300 rounded px-2 py-1">
+      <input type="date" name="day" value="{{default_day}}" required class="border border-gray-300 rounded px-2 py-1">
+      <input type="number" name="slots" min="1" max="100" value="2" required class="border border-gray-300 rounded px-2 py-1" aria-label="Volunteers needed">
+      <input type="time" name="from" value="08:00" required class="border border-gray-300 rounded px-2 py-1" aria-label="Start">
+      <input type="time" name="to" value="10:00" required class="border border-gray-300 rounded px-2 py-1" aria-label="End">
+      <input name="notes" maxlength="500" placeholder="Notes (optional)" class="col-span-2 border border-gray-300 rounded px-2 py-1">
+      <button class="col-span-2 py-1.5 bg-yellow-400 text-gray-900 rounded-lg font-semibold hover:bg-yellow-300">Add shift</button>
+    </form>
+  </details>
+  {{/can_manage}}
+</div>

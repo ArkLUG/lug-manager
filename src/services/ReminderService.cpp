@@ -6,7 +6,7 @@ ReminderService::ReminderService(SqliteDatabase& db, MeetingRepository& meetings
                                  MemberRepository& members, SettingsRepository& settings,
                                  DiscordClient& discord)
     : db_(db), meetings_(meetings), events_(events), chapters_(chapters), members_(members),
-      settings_(settings), discord_(discord), rsvps_(db) {}
+      settings_(settings), discord_(discord), rsvps_(db), shifts_(db) {}
 
 bool ReminderService::claim(const char* table, int64_t id) {
     // Compare-and-set so two runs (or instances) can never both send.
@@ -66,6 +66,23 @@ ReminderService::Result ReminderService::run_once(std::time_t now) {
                         (e.location.empty() ? "" : " at " + e.location) + ". See you there!"))
                     ++r.dms;
             }
+        }
+    }
+    // Volunteers get a DM before their shift (same lead time, same opt-in).
+    if (dm_rsvps) {
+        auto fmt = [&](std::time_t t) {
+            std::tm tm{}; localtime_r(&t, &tm);
+            char b[32]; std::strftime(b, sizeof(b), "%Y-%m-%dT%H:%M", &tm); return std::string(b);
+        };
+        // Window is in LUG-local time; the server clock may differ, so allow a day either side
+        // and filter precisely with local_to_epoch.
+        for (const auto& d : shifts_.due_reminders(fmt(now - 86400), fmt(now + (hours + 24) * 3600L))) {
+            std::time_t t = DiscordClient::local_to_epoch(d.starts_at, tz);
+            if (t <= now || t - now > static_cast<std::time_t>(hours) * 3600) continue;
+            if (d.discord_user_id.empty() || !shifts_.claim_reminder(d.signup_id)) continue;
+            if (discord_.send_dm(d.discord_user_id, "\u23F0 Reminder: you're volunteering for **" + d.shift_title +
+                                 "** at " + d.event_title + " - " + DiscordClient::friendly_time(d.starts_at, tz) + ". Thank you!"))
+                ++r.dms;
         }
     }
     return r;

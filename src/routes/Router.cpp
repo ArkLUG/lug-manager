@@ -19,6 +19,8 @@ void register_all_routes(LugApp& app, Services& svc) {
     if (!svc.series) svc.series = std::make_shared<SeriesService>(svc.attendance_repo.db(), svc.meetings);
     register_report_routes(app, svc.attendance_repo.db(), svc.events, svc.event_day_repo,
                            svc.event_day_attendance_repo, svc.displays, svc.chapter_members, svc.audit);
+    if (!svc.shifts) svc.shifts = std::make_shared<ShiftRepository>(svc.attendance_repo.db());
+    register_shift_routes(app, svc.events, svc.shifts, svc.chapter_members, svc.audit);
     register_series_routes(app, svc.series, svc.chapters, svc.chapter_members, svc.audit);
     if (!svc.backups) svc.backups = std::make_shared<BackupService>(svc.attendance_repo.db(), svc.data_dir);
     register_backup_routes(app, svc.backups, svc.settings, svc.audit);

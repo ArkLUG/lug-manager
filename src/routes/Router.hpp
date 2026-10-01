@@ -62,6 +62,7 @@
 #include "routes/StaticRoutes.hpp"
 #include "routes/SeriesRoutes.hpp"
 #include "routes/ReportRoutes.hpp"
+#include "routes/ShiftRoutes.hpp"
 #include <memory>
 
 struct Services {
@@ -103,6 +104,7 @@ struct Services {
     std::shared_ptr<DuesRepository> dues;
     std::shared_ptr<BackupService> backups;
     std::shared_ptr<SeriesService> series;
+    std::shared_ptr<ShiftRepository> shifts;
 };
 
 void register_all_routes(LugApp& app, Services& svc);
