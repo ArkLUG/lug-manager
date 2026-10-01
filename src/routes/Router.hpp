@@ -52,6 +52,7 @@
 #include "repositories/EventRepository.hpp"
 #include "services/AuditService.hpp"
 #include "routes/RsvpRoutes.hpp"
+#include "routes/DisplayRoutes.hpp"
 #include <memory>
 
 struct Services {
@@ -89,6 +90,7 @@ struct Services {
     // Created by register_all_routes() when null; shared_ptr because route
     // handlers hold it by value (Services itself may be a short-lived local).
     std::shared_ptr<RsvpRepository> rsvps;
+    std::shared_ptr<DisplayRequestRepository> displays;
 };
 
 void register_all_routes(LugApp& app, Services& svc);

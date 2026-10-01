@@ -258,7 +258,8 @@ protected:
             config.discord_public_key,
             data_dir,
             "",      // public_url
-            nullptr  // rsvps
+            nullptr, // rsvps
+            nullptr  // displays
 
         };
         register_all_routes(*app, svc);

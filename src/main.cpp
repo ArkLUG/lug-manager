@@ -191,7 +191,8 @@ int main() {
             config.discord_public_key,
             data_dir,
             config.public_url,
-            nullptr // rsvps: created by register_all_routes
+            nullptr, // rsvps: created by register_all_routes
+            nullptr  // displays: ditto
         };
         register_all_routes(app, svc);
 
