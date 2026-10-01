@@ -293,19 +293,30 @@ for m in members:
         q("INSERT INTO dues_payments (member_id, paid_on, amount_cents, method, covers_until, recorded_by) "
           "VALUES (?,?,?,?,?,?)", (m, d(-rng.randint(20, 300)), 2500, rng.choice(["cash", "card", "PayPal"]), paid[1], MOD))
 
-# ── Inventory ──
+# ── Inventory: locations (who looks after them), items spread across them, loans ──
+unit = ins("INSERT INTO storage_locations (name, kind, address, notes, keeper_id) VALUES (?,?,?,?,?)",
+           "Storage unit 14", "storage", "Brickton Self Storage, 400 Mill Rd", "Gate code is in the LUG Discord pins.", ADMIN)
+trailer = ins("INSERT INTO storage_locations (name, kind, address, notes, keeper_id) VALUES (?,?,?,?,?)",
+              "Show trailer", "trailer", "Parked at Sam's", "Hitch lock key on the LUG keyring.", MOD)
+garage = ins("INSERT INTO storage_locations (name, kind, address, keeper_id) VALUES (?,?,?,?)",
+             "Maya's garage", "home", "Maya T.'s house", ADMIN)
 items = {}
-for name, cat, qty, loc in [("6ft folding table", "Furniture", 8, "Storage unit 14"),
-                            ("48x48 grey baseplate", "Display", 40, "Storage unit 14"),
-                            ("Acrylic display case", "Display", 4, "Maya's garage"),
-                            ("Brickton LUG banner", "Signage", 2, "Storage unit 14"),
-                            ("Extension cord (25ft)", "Electrical", 6, "Storage unit 14")]:
-    items[name] = ins("INSERT INTO inventory_items (name, category, quantity, location) VALUES (?,?,?,?)",
-                      name, cat, qty, loc)
-q("INSERT INTO inventory_loans (item_id, member_id, quantity, due_on, notes, checked_out_by) VALUES (?,?,?,?,?,?)",
-  (items["48x48 grey baseplate"], JORDAN, 12, d(20), "For Brick Fest layout", ADMIN))
-q("INSERT INTO inventory_loans (item_id, member_id, quantity, due_on, notes, checked_out_by) VALUES (?,?,?,?,?,?)",
-  (items["Acrylic display case"], PRIYA, 1, d(-3), "Library display", ADMIN))
+for name, cat, placements in [("6ft folding table", "Furniture", [(unit, 4), (trailer, 4)]),
+                              ("48x48 grey baseplate", "Display", [(unit, 16), (trailer, 12)]),
+                              ("Acrylic display case", "Display", [(garage, 3)]),
+                              ("Brickton LUG banner", "Signage", [(trailer, 2)]),
+                              ("Extension cord (25ft)", "Electrical", [(trailer, 6)])]:
+    total = sum(n for _, n in placements)
+    items[name] = ins("INSERT INTO inventory_items (name, category, quantity) VALUES (?,?,?)", name, cat, total)
+    for loc, n in placements:
+        q("INSERT INTO inventory_stock (item_id, location_id, quantity) VALUES (?,?,?)", (items[name], loc, n))
+# Two loans: taken from a location (so stock there is lower), one overdue
+q("UPDATE inventory_items SET quantity = quantity + 12 WHERE id=?", (items["48x48 grey baseplate"],))
+q("INSERT INTO inventory_loans (item_id, member_id, quantity, due_on, notes, checked_out_by, from_location_id) VALUES (?,?,?,?,?,?,?)",
+  (items["48x48 grey baseplate"], JORDAN, 12, d(20), "For Brick Fest layout", ADMIN, unit))
+q("UPDATE inventory_items SET quantity = quantity + 1 WHERE id=?", (items["Acrylic display case"],))
+q("INSERT INTO inventory_loans (item_id, member_id, quantity, due_on, notes, checked_out_by, from_location_id) VALUES (?,?,?,?,?,?,?)",
+  (items["Acrylic display case"], PRIYA, 1, d(-3), "Library display", ADMIN, garage))
 
 # ── Treasury ──
 for days, kind, cat, cents, desc, eid in [(-300, "income", "Opening balance", 84000, "Carried over", None),

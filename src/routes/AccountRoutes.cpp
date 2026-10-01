@@ -104,6 +104,7 @@ void register_account_routes(LugApp& app, SqliteDatabase& db, MemberService& mem
             "JOIN event_shifts s ON s.id=u.shift_id WHERE u.member_id=?", me);
         out["inventory_loans"] = rows_json(db,
             "SELECT i.name AS item, l.* FROM inventory_loans l JOIN inventory_items i ON i.id=l.item_id WHERE l.member_id=?", me);
+        out["storage_locations_kept"] = rows_json(db, "SELECT name, kind, address FROM storage_locations WHERE keeper_id=? AND archived=0", me);
         out["dues_payments"] = rows_json(db, "SELECT * FROM dues_payments WHERE member_id=?", me);
         out["event_photos"] = rows_json(db, "SELECT * FROM event_photos WHERE member_id=?", me);
         out["challenge_entries"] = rows_json(db, "SELECT * FROM challenge_entries WHERE member_id=?", me);

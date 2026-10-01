@@ -102,3 +102,137 @@ TEST_F(IntegrationTest, InventoryOverdueReminderOncePerLoan) {
     lr.run_once("2030-06-01");
     EXPECT_TRUE(mailer->outbox().empty());
 }
+
+#include "db/Migrations.hpp"
+#include <filesystem>
+
+namespace {
+int64_t loc_id(SqliteDatabase& db, const std::string& name) {
+    auto st = db.prepare("SELECT id FROM storage_locations WHERE name=?");
+    st.bind(1, name);
+    return st.step() ? st.col_int(0) : 0;
+}
+int64_t stock(SqliteDatabase& db, int64_t item, int64_t loc) {
+    auto st = db.prepare("SELECT COALESCE(SUM(quantity),0) FROM inventory_stock WHERE item_id=? AND location_id=?");
+    st.bind(1, item); st.bind(2, loc);
+    return st.step() ? st.col_int(0) : 0;
+}
+}
+
+TEST(InventoryMigration, KeptAtTextBecomesLocations) {
+    namespace fs = std::filesystem;
+    auto dir = fs::temp_directory_path() / ("mig065-" + std::to_string(getpid()));
+    fs::create_directories(dir);
+    for (const auto& e : fs::directory_iterator("sql/migrations"))
+        if (e.path().filename().string() < "065") fs::copy(e.path(), dir / e.path().filename());
+    SqliteDatabase db(":memory:");
+    Migrations m(db);
+    m.run(dir.string());                                   // up to 064
+    db.execute("INSERT INTO members (id, display_name, role) VALUES (1, 'A', 'member')");
+    db.execute("INSERT INTO inventory_items (id, name, quantity, location) VALUES (1, 'Table', 8, 'Storage unit 14'), "
+               "(2, 'Banner', 2, ' Storage unit 14 '), (3, 'Case', 1, ''), (4, 'Cord', 3, 'Trailer')");
+    db.execute("INSERT INTO inventory_loans (item_id, member_id, quantity) VALUES (1, 1, 3)");
+    m.run("sql/migrations");                               // applies 065
+    auto st = db.prepare("SELECT COUNT(*) FROM storage_locations");
+    ASSERT_TRUE(st.step());
+    EXPECT_EQ(st.col_int(0), 2);                           // "Storage unit 14" and "Trailer", trimmed and de-duplicated
+    st.reset();
+    int64_t unit = loc_id(db, "Storage unit 14"), trailer = loc_id(db, "Trailer");
+    EXPECT_EQ(stock(db, 1, unit), 5);                       // 8 owned - 3 on loan
+    EXPECT_EQ(stock(db, 2, unit), 2);
+    EXPECT_EQ(stock(db, 4, trailer), 3);
+    auto none = db.prepare("SELECT COUNT(*) FROM inventory_stock WHERE item_id=3");
+    ASSERT_TRUE(none.step());
+    EXPECT_EQ(none.col_int(0), 0);                          // no "kept at" -> not placed
+    none.reset();
+    auto from = db.prepare("SELECT from_location_id FROM inventory_loans WHERE item_id=1");
+    ASSERT_TRUE(from.step());
+    EXPECT_EQ(from.col_int(0), unit);                      // open loan returns to where it was kept
+    fs::remove_all(dir);
+}
+
+TEST_F(IntegrationTest, InventoryLocationsKeepersAndMoves) {
+    // Locations: managers only, keeper must exist
+    EXPECT_EQ(POST("/inventory/locations", "name=Trailer&kind=trailer", member_token).code, 403);
+    EXPECT_EQ(POST("/inventory/locations", "name=&kind=trailer", admin_token).code, 400);
+    EXPECT_EQ(POST("/inventory/locations", "name=X&kind=castle", admin_token).code, 400);
+    EXPECT_EQ(POST("/inventory/locations", "name=X&kind=trailer&keeper_id=999999", admin_token).code, 404);
+    EXPECT_EQ(POST("/inventory/locations", "name=Storage+unit&kind=storage&address=12+Main+St", admin_token).code, 200);
+    auto t = POST("/inventory/locations", "name=Show+trailer&kind=trailer&keeper_id=" + std::to_string(regular_member_id), admin_token);
+    EXPECT_EQ(t.code, 200);
+    expect_contains(t, "looked after by Regular U.");
+    int64_t unit = loc_id(*db, "Storage unit"), trailer = loc_id(*db, "Show trailer");
+
+    // Add 40 baseplates at the unit, move 15 to the trailer
+    ASSERT_EQ(POST("/inventory", "name=Baseplate&quantity=40&location_id=" + std::to_string(unit), admin_token).code, 200);
+    int64_t item = item_id(*db, "Baseplate");
+    EXPECT_EQ(stock(*db, item, unit), 40);
+    std::string mv = "/inventory/" + std::to_string(item) + "/move";
+    EXPECT_EQ(POST(mv, "quantity=15&from_location_id=" + std::to_string(unit) + "&to_location_id=" + std::to_string(trailer), member_token).code, 403);
+    EXPECT_EQ(POST(mv, "quantity=50&from_location_id=" + std::to_string(unit) + "&to_location_id=" + std::to_string(trailer), admin_token).code, 409);
+    EXPECT_EQ(POST(mv, "quantity=5&from_location_id=" + std::to_string(unit) + "&to_location_id=" + std::to_string(unit), admin_token).code, 400);
+    auto moved = POST(mv, "quantity=15&from_location_id=" + std::to_string(unit) + "&to_location_id=" + std::to_string(trailer), admin_token);
+    EXPECT_EQ(moved.code, 200);
+    expect_contains(moved, "Moved 15 × Baseplate to Show trailer.");
+    EXPECT_EQ(stock(*db, item, unit), 25);
+    EXPECT_EQ(stock(*db, item, trailer), 15);
+
+    // The keeper sees what they look after; filtering by location
+    expect_contains(GET("/inventory", member_token), "You look after:");
+    auto at = GET("/inventory?location=" + std::to_string(trailer), admin_token);
+    expect_contains(at, "Items at Show trailer");
+    expect_contains(at, "15 · Show trailer");
+
+    // Check-out takes from a location; return goes back there by default, or elsewhere
+    std::string co = "item_id=" + std::to_string(item) + "&member_id=" + std::to_string(regular_member_id);
+    EXPECT_EQ(POST("/inventory/checkout", co + "&quantity=20&from_location_id=" + std::to_string(trailer), admin_token).code, 409);
+    ASSERT_EQ(POST("/inventory/checkout", co + "&quantity=10&from_location_id=" + std::to_string(trailer), admin_token).code, 200);
+    EXPECT_EQ(stock(*db, item, trailer), 5);
+    ASSERT_EQ(POST("/inventory/checkout", co + "&quantity=20", admin_token).code, 200);   // "wherever": the unit has 25
+    EXPECT_EQ(stock(*db, item, unit), 5);
+    auto lq = db->prepare("SELECT id FROM inventory_loans WHERE returned_at IS NULL ORDER BY id");
+    ASSERT_TRUE(lq.step());
+    std::string first = std::to_string(lq.col_int(0));
+    ASSERT_TRUE(lq.step());
+    std::string second = std::to_string(lq.col_int(0));
+    lq.reset();
+    auto back = POST("/inventory/loans/" + first + "/return", "", admin_token);
+    expect_contains(back, "returned to Show trailer");
+    EXPECT_EQ(stock(*db, item, trailer), 15);
+    POST("/inventory/loans/" + second + "/return", "to_location_id=" + std::to_string(trailer), admin_token);
+    EXPECT_EQ(stock(*db, item, trailer), 35);
+    EXPECT_EQ(stock(*db, item, unit), 5);
+
+    // Total can't drop below what's placed + on loan; unplaced items can be placed
+    EXPECT_EQ(POST("/inventory/" + std::to_string(item), "name=Baseplate&quantity=30", admin_token).code, 400);
+    ASSERT_EQ(POST("/inventory/" + std::to_string(item), "name=Baseplate&quantity=45", admin_token).code, 200);
+    expect_contains(GET("/inventory", admin_token), "5 not placed");
+    EXPECT_EQ(POST(mv, "quantity=5&from_location_id=0&to_location_id=" + std::to_string(unit), admin_token).code, 200);
+    EXPECT_EQ(stock(*db, item, unit), 10);
+
+    // CSV lists each place; a location with things in it can't be removed
+    auto csv = GET("/inventory.csv", admin_token);
+    expect_contains(csv, "\"Show trailer\",\"35\",\"Regular U.\"");
+    EXPECT_EQ(POST("/inventory/locations/" + std::to_string(trailer) + "/archive", "", admin_token).code, 409);
+    POST(mv, "quantity=35&from_location_id=" + std::to_string(trailer) + "&to_location_id=" + std::to_string(unit), admin_token);
+    EXPECT_EQ(POST("/inventory/locations/" + std::to_string(trailer) + "/archive", "", admin_token).code, 200);
+    expect_not_contains(GET("/inventory", admin_token), ">Show trailer<");
+
+    // Editing a location (keeper change) is audited
+    EXPECT_EQ(POST("/inventory/locations/" + std::to_string(unit), "name=Storage+unit+14&kind=storage&keeper_id=" +
+                   std::to_string(admin_member_id), admin_token).code, 200);
+    auto a = db->prepare("SELECT COUNT(*) FROM audit_log WHERE action LIKE 'inventory.location_%' OR action='inventory.move'");
+    ASSERT_TRUE(a.step());
+    EXPECT_GE(a.col_int(0), 5);
+}
+
+#include "services/MemberMerge.hpp"
+TEST_F(IntegrationTest, InventoryKeeperFollowsMemberMerge) {
+    Member d; d.first_name = "Dup"; d.last_name = "Keeper"; d.display_name = "Dup K."; d.role = "member";
+    int64_t dup = member_repo->create(d).id;
+    ASSERT_EQ(POST("/inventory/locations", "name=Garage&kind=home&keeper_id=" + std::to_string(dup), admin_token).code, 200);
+    MemberMerge(*db).merge(regular_member_id, dup);
+    auto st = db->prepare("SELECT keeper_id FROM storage_locations WHERE name='Garage'");
+    ASSERT_TRUE(st.step());
+    EXPECT_EQ(st.col_int(0), regular_member_id);
+}

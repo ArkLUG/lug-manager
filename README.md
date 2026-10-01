@@ -42,7 +42,9 @@
 **Running the LUG**
 - Chapters for groups with sub-groups. Turn them off if you don't have any.
 - Build challenges with entries and voting, then a winner announcement on Discord.
-- Inventory: tables, baseplates and display cases, with check-out and due-date reminders.
+- Inventory: tables, baseplates and display cases.
+  - Storage locations (the storage unit, the show trailer, someone's garage), each with a person who looks after it. Items can be split across several locations.
+  - Check-outs come from a location and are returned to it, with due-date reminders.
 - Treasury: income, expenses, receipts and a yearly balance, with a treasurer role that isn't full admin.
 - Feature toggles: switch off anything your LUG doesn't use. Its data is kept.
 - First-run setup, an audit log of every change, CSV exports, daily backups (photos included) and a JSON API.

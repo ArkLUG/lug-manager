@@ -54,7 +54,7 @@ public:
             {"chapters", "created_by"}, {"dues_payments", "recorded_by"}, {"inventory_loans", "checked_out_by"},
             {"lug_events", "event_lead_id"}, {"meeting_series", "created_by"},
             {"pending_discord_matches", "suggested_member_id"}, {"pending_discord_matches", "resolved_member_id"},
-            {"treasury_entries", "recorded_by"},
+            {"treasury_entries", "recorded_by"}, {"storage_locations", "keeper_id"},
         };
         for (const auto& r : refs)
             exec(std::string("UPDATE ") + r[0] + " SET " + r[1] + "=?1 WHERE " + r[1] + "=?2", keep_id, drop_id);
