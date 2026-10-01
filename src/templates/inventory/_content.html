@@ -11,7 +11,7 @@
   {{#has_my_locations}}
   <div class="rounded-xl border border-yellow-300 bg-yellow-50 px-4 py-3 text-sm text-gray-800">
     You look after:
-    {{#my_locations}}<a hx-get="/inventory?location={{id}}" hx-target="#main-content" hx-push-url="true" class="font-medium underline cursor-pointer mr-2">{{name}}</a> ({{units}} items){{/my_locations}}
+    {{#my_locations}}<span class="mr-3 whitespace-nowrap"><a hx-get="/inventory?location={{id}}" hx-target="#main-content" hx-push-url="true" class="font-medium underline cursor-pointer">{{name}}</a> ({{units}} items)</span>{{/my_locations}}
   </div>
   {{/has_my_locations}}
 

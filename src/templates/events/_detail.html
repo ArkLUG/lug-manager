@@ -162,12 +162,12 @@
   {{#can_manage}}{{^scope_non_lug}}
   <div class="f-discord_reports f-discord mt-4 pt-4 border-t border-gray-200" id="ev-publish-{{id}}">
     <div class="flex items-center justify-between">
-      <h4 class="text-sm font-medium text-gray-500">Discord Report</h4>
+      <h4 class="text-sm font-medium text-gray-500">Discord report</h4>
       <button hx-post="/events/{{id}}/publish-report"
               hx-target="#ev-publish-status-{{id}}" hx-swap="innerHTML"
               hx-confirm="Publish this event's report to Discord?"
-              class="text-xs px-3 py-1.5 bg-indigo-600 text-white rounded-lg font-medium hover:bg-indigo-700 transition-colors">
-        Publish Report
+              class="text-xs px-3 py-1.5 border border-gray-300 rounded-lg font-medium hover:bg-gray-50 transition-colors">
+        Post report to Discord
       </button>
     </div>
     <div id="ev-publish-status-{{id}}" class="mt-2 text-right"></div>
@@ -178,7 +178,7 @@
   {{#can_manage}}{{^scope_non_lug}}
   <div class="mt-4 pt-4 border-t border-gray-200">
     <div class="flex flex-wrap items-center justify-between gap-2 mb-2">
-      <h4 class="text-sm font-medium text-gray-500">QR Check-in <span hx-get="/events/{{id}}/public-interest" hx-trigger="load" hx-swap="outerHTML"></span></h4>
+      <h4 class="text-sm font-medium text-gray-500">Check-in &amp; reports <span hx-get="/events/{{id}}/public-interest" hx-trigger="load" hx-swap="outerHTML"></span></h4>
       <div class="flex flex-wrap items-center gap-2">{{#f_reports}}<a href="/events/{{id}}/report" target="_blank" class="text-xs px-3 py-1.5 border border-gray-300 text-gray-700 rounded-lg font-medium hover:bg-gray-50">Report</a>{{/f_reports}}{{#f_kiosk}}<a href="/events/{{id}}/counter" target="_blank" class="text-xs px-3 py-1.5 border border-gray-300 text-gray-700 rounded-lg font-medium hover:bg-gray-50">Visitor counter</a><a href="/events/{{id}}/kiosk" target="_blank" class="text-xs px-3 py-1.5 border border-gray-300 text-gray-700 rounded-lg font-medium hover:bg-gray-50">Kiosk</a>{{/f_kiosk}}
       <button hx-post="/events/{{id}}/generate-checkin" hx-target="#ev-qr-{{id}}" hx-swap="innerHTML"
               class="f-qr_checkin text-xs px-3 py-1.5 bg-gray-800 text-white rounded-lg font-medium hover:bg-gray-700 transition-colors inline-flex items-center gap-1">

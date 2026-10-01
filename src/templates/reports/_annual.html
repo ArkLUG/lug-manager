@@ -81,7 +81,7 @@
       <h3 class="font-semibold text-gray-800 mb-2">Events</h3>
       {{#has_events}}
       <table class="w-full text-sm"><thead><tr class="text-left text-xs text-gray-500"><th>Date</th><th>Event</th><th class="text-right">Members</th><th class="text-right">Visitors</th></tr></thead>
-        <tbody class="divide-y divide-gray-100">{{#events}}<tr><td class="py-1 text-gray-500">{{date}}</td><td class="text-gray-800"><a href="/events/{{id}}/report" target="_blank" class="hover:underline">{{title}}</a></td><td class="text-right">{{members}}</td><td class="text-right">{{visitors}}</td></tr>{{/events}}</tbody></table>
+        <tbody class="divide-y divide-gray-100">{{#events}}<tr><td class="py-1 text-gray-500 whitespace-nowrap">{{date}}</td><td class="text-gray-800"><a href="/events/{{id}}/report" target="_blank" class="hover:underline">{{title}}</a></td>{{#upcoming}}<td colspan="2" class="text-right text-xs text-gray-400">upcoming</td>{{/upcoming}}{{^upcoming}}<td class="text-right">{{members}}</td><td class="text-right">{{visitors}}</td>{{/upcoming}}</tr>{{/events}}</tbody></table>
       {{/has_events}}
       {{^has_events}}<p class="text-sm text-gray-400">No events this year.</p>{{/has_events}}
     </div>

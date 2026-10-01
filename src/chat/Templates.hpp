@@ -107,7 +107,7 @@ inline const std::vector<TemplateDef>& all_templates() {
          "Title of the report thread posted to the event reports forum.",
          "", "Report: {title}", {{"title", "Event name", "Brick Fest"}}, {}, 100},
         {"report.event", kGroupChannel, "Event report",
-         "Posted to the event reports forum with \"Publish report\" (edited if published again).",
+         "Posted to the event reports forum with \"Post report to Discord\" (edited if posted again).",
          "", "**Event name:** {title}\n**Chapter:** {chapter}\n**Start date:** {start_date}\n**End date:** {end_date}\n"
              "**Location:** {location}\n**Lead:** {lead}\n**Entrance fee:** {fee}\n{attendance}\n**Public kids:** {public_kids}\n"
              "**Public teens:** {public_teens}\n**Public adults:** {public_adults}"
@@ -125,7 +125,7 @@ inline const std::vector<TemplateDef>& all_templates() {
          "Title of the report thread posted to the meeting reports forum.",
          "", "Report: {title}", {{"title", "Meeting name", "October meeting"}}, {}, 100},
         {"report.meeting", kGroupChannel, "Meeting report",
-         "Posted to the meeting reports forum with \"Publish report\" (edited if published again).",
+         "Posted to the meeting reports forum with \"Post report to Discord\" (edited if posted again).",
          "", "**Meeting:** {title}\n**Chapter:** {chapter}\n**Meeting date:** {date}\n**Format:** {format}\n**Location:** {location}\n"
              "**Members by name:**\n{attendance}[[\n\n## Description\n{description}]][[\n\n## Notes\n{notes}]]",
          {{"title", "Meeting name", "October meeting"}, {"chapter", "Chapter, or LUG Wide", "LUG Wide"},

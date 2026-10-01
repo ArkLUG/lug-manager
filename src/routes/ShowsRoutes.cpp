@@ -136,6 +136,7 @@ void register_shows_routes(LugApp& app, SqliteDatabase& db, SettingsRepository& 
         ctx["has_logo"] = !settings.get("branding_logo_extension", "").empty();
         ctx["logo_v"] = settings.get("branding_logo_updated_at", "0");
         ctx["embed"] = embed;
+        ctx["about_on"] = Features::on("about_page");
         add_fan_colab(ctx, db);
         ctx["asset_v"] = asset_version();
         res.add_header("Content-Type", "text/html; charset=utf-8");

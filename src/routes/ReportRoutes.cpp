@@ -1,13 +1,13 @@
-#include "services/FanCoLab.hpp"
-#include <set>
-#include "utils/Money.hpp"
 #include "routes/ReportRoutes.hpp"
 #include "routes/EventAccess.hpp"
-#include "utils/LocalTime.hpp"
+#include "services/FanCoLab.hpp"
 #include "utils/AssetVersion.hpp"
+#include "utils/LocalTime.hpp"
+#include "utils/Money.hpp"
 #include <crow/mustache.h>
 #include <algorithm>
 #include <cstdio>
+#include <set>
 
 namespace {
 
@@ -112,8 +112,10 @@ void register_report_routes(LugApp& app, SqliteDatabase& db, EventService& event
             st.bind(1, lo); st.bind(2, hi);
             crow::json::wvalue evs = crow::json::wvalue::list();
             int i = 0;
+            const std::string today = local_iso_now().substr(0, 10);
             while (st.step()) {
-                evs[i]["id"] = st.col_int(0); evs[i]["title"] = st.col_text(1); evs[i]["date"] = st.col_text(2);
+                evs[i]["id"] = st.col_int(0); evs[i]["title"] = st.col_text(1); evs[i]["date"] = friendly_date(st.col_text(2));
+                evs[i]["upcoming"] = st.col_text(2) > today;
                 evs[i]["visitors"] = st.col_int(3); evs[i]["members"] = st.col_int(4); ++i;
             }
             ctx["events"] = std::move(evs);
@@ -146,6 +148,7 @@ void register_report_routes(LugApp& app, SqliteDatabase& db, EventService& event
         {
             crow::json::wvalue rows = crow::json::wvalue::list();
             int i = 0;
+            bool started = false;  // skip the empty years before the LUG's records begin
             for (int y = year - 4; y <= year; ++y) {
                 std::vector<std::string> r{std::to_string(y) + "-01-01", std::to_string(y + 1) + "-01-01"};
                 int64_t held = scalar(db, "SELECT COUNT(*) FROM meetings WHERE status <> 'cancelled' AND start_time >= ? AND start_time < ?", r);
@@ -153,9 +156,13 @@ void register_report_routes(LugApp& app, SqliteDatabase& db, EventService& event
                                               "WHERE a.entity_type='meeting' AND mt.start_time >= ? AND mt.start_time < ?", r);
                 int64_t visitors = scalar(db, "SELECT COALESCE(SUM(public_kids+public_teens+public_adults),0) FROM lug_events "
                                               "WHERE start_time >= ? AND start_time < ?", r);
+                const int active = static_cast<int>(active_ids(y).size());
+                const int64_t new_members = scalar(db, "SELECT COUNT(*) FROM members WHERE created_at >= ? AND created_at < ?", r);
+                started = started || y == year || held || active || new_members || visitors;
+                if (!started) continue;
                 rows[i]["year"] = y;
-                rows[i]["active"] = static_cast<int>(active_ids(y).size());
-                rows[i]["new_members"] = scalar(db, "SELECT COUNT(*) FROM members WHERE created_at >= ? AND created_at < ?", r);
+                rows[i]["active"] = active;
+                rows[i]["new_members"] = new_members;
                 rows[i]["meetings"] = held;
                 char avg[16];
                 std::snprintf(avg, sizeof(avg), "%.1f", held ? static_cast<double>(checkins) / held : 0.0);

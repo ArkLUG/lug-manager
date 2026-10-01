@@ -1,4 +1,5 @@
 #include "routes/GalleryRoutes.hpp"
+#include "utils/LocalTime.hpp"
 #include "routes/EventAccess.hpp"
 #include "services/AttendanceService.hpp"
 #include "utils/ParseId.hpp"
@@ -76,7 +77,7 @@ std::string render_challenge(const crow::request& req, LugApp& app, SqliteDataba
     Phase ph = phase_of(c);
     crow::mustache::context ctx;
     ctx["id"] = c.id; ctx["title"] = c.title; ctx["description"] = c.description;
-    ctx["starts_on"] = c.starts_on; ctx["ends_on"] = c.ends_on; ctx["vote_until"] = ph.vote_until;
+    ctx["starts_on"] = friendly_date(c.starts_on); ctx["ends_on"] = friendly_date(c.ends_on); ctx["vote_until"] = friendly_date(ph.vote_until);
     ctx["submit_open"] = ph.submit; ctx["vote_open"] = ph.vote; ctx["results"] = ph.results;
     ctx["is_admin"] = a.is_admin(); ctx["announced"] = c.announced; ctx["flash"] = flash;
 
@@ -223,7 +224,7 @@ void register_gallery_routes(LugApp& app, SqliteDatabase& db, std::shared_ptr<Ph
         while (st.step()) {
             Challenge c{st.col_int(0), st.col_text(1), "", st.col_text(2), st.col_text(3)};
             Phase ph = phase_of(c);
-            arr[i]["id"] = c.id; arr[i]["title"] = c.title; arr[i]["starts_on"] = c.starts_on; arr[i]["ends_on"] = c.ends_on;
+            arr[i]["id"] = c.id; arr[i]["title"] = c.title; arr[i]["starts_on"] = friendly_date(c.starts_on); arr[i]["ends_on"] = friendly_date(c.ends_on);
             arr[i]["entries"] = st.col_int(4);
             arr[i]["status"] = ph.submit ? "Open for entries" : ph.vote ? "Voting" : ph.results ? "Finished" : "Upcoming";
             ++i;

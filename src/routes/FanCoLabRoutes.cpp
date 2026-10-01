@@ -617,7 +617,7 @@ void register_fan_colab_routes(LugApp& app, SqliteDatabase& db, SettingsReposito
     CROW_ROUTE(app, "/settings/about")([&app, &settings](const crow::request& req) {
         crow::response res;
         if (!require_auth(req, res, app, "admin")) return res;
-        return page(req, app, render_about_editor(settings), "About page", "active_about");
+        return page(req, app, render_about_editor(settings), "Public pages", "active_about");
     });
 
     // POST /settings/about - title, text (Markdown from the editor), options
@@ -628,7 +628,7 @@ void register_fan_colab_routes(LugApp& app, SqliteDatabase& db, SettingsReposito
         std::string md = f.get("markdown", kAboutMaxChars + 1);
         if (md.size() > kAboutMaxChars)
             return page(req, app, render_about_editor(settings, "That's too long: keep it under " +
-                        std::to_string(kAboutMaxChars) + " characters.", true), "About page", "active_about", 400);
+                        std::to_string(kAboutMaxChars) + " characters.", true), "Public pages", "active_about", 400);
         std::string title = f.get("about_title", 120);
         bool enabled = f.get("enabled", 2) == "1";
         settings.set("about_title", title);
@@ -652,7 +652,7 @@ void register_fan_colab_routes(LugApp& app, SqliteDatabase& db, SettingsReposito
                   std::string(enabled ? "Public" : "Hidden") + ", " + std::to_string(md.size()) + " characters");
         return page(req, app, render_about_editor(settings, enabled ? "Saved. Your About page is public at /about."
                                                                     : "Saved. The page is hidden until you tick \"Show the page\"."),
-                    "About page", "active_about");
+                    "Public pages", "active_about");
     });
 
     // POST /settings/about/photo - multipart "photo"; JSON {url} for the editor

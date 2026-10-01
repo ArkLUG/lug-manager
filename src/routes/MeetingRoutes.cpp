@@ -372,6 +372,7 @@ void register_meeting_routes(LugApp& app, MeetingService& meetings, AttendanceSe
         Features::add_flags(ctx);
         ctx["location"]     = m->location;
         ctx["start_time"]   = m->start_time;
+        ctx["start_date"]   = friendly_date(m->start_time);
         ctx["end_time"]     = m->end_time;
         ctx["status"]       = m->status;
         ctx["status_color"] = meeting_status_color(m->status);

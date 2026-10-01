@@ -80,7 +80,7 @@ static std::string render_attendance_list(AttendanceService& attendance,
             const auto& d = days[i];
             days_arr[i]["day_id"]     = d.id;
             days_arr[i]["day_number"] = d.day_number;
-            days_arr[i]["day_date"]   = d.day_date;
+            days_arr[i]["day_date"]   = friendly_date(d.day_date);
             days_arr[i]["is_today"]   = (d.day_date == today);
             days_arr[i]["entity_id"]  = static_cast<int>(entity_id);
             days_arr[i]["is_admin"]   = can_manage;

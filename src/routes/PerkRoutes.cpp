@@ -5,6 +5,7 @@
 #include "utils/HtmlEscape.hpp"
 #include <crow.h>
 #include <crow/mustache.h>
+#include <algorithm>
 #include <sstream>
 #include <ctime>
 
@@ -37,6 +38,9 @@ void register_perk_routes(LugApp& app, PerkLevelRepository& perks,
         auto perk_years = perks.get_perk_years();
         if (std::find(perk_years.begin(), perk_years.end(), current_year) == perk_years.end())
             perk_years.insert(perk_years.begin(), current_year);
+        if (std::find(perk_years.begin(), perk_years.end(), selected_year) == perk_years.end())
+            perk_years.push_back(selected_year);
+        std::sort(perk_years.rbegin(), perk_years.rend());
 
         // Build role ID -> name lookup for display
         std::map<std::string, std::string> role_names;
@@ -72,6 +76,7 @@ void register_perk_routes(LugApp& app, PerkLevelRepository& perks,
             year_arr[i]["selected"] = (perk_years[i] == selected_year);
         }
         ctx["years"] = std::move(year_arr);
+        ctx["has_other_years"] = perk_years.size() > 1;
 
         bool is_htmx = req.get_header_value("HX-Request") == "true";
         auto tmpl = crow::mustache::load("settings/_perks.html");

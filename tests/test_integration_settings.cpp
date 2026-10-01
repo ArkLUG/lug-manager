@@ -8,7 +8,7 @@ TEST_F(IntegrationTest, SettingsPageLoads) {
     auto r = GET("/settings", admin_token);
     EXPECT_EQ(r.code, 200);
     expect_contains(r, "Discord Settings");
-    expect_contains(r, "Bulk Sync");
+    expect_contains(r, "Bulk sync");
     expect_contains(r, "What to post");
     expect_contains(r, "Quiet mode");
 }

@@ -116,7 +116,7 @@
         navStep('/settings', 'Going to Settings...'),
         { element: '#main-content', popover: { title: 'Settings', description: 'Configure your Discord Guild ID, announcement channels, forum channels, timezone, and role mappings. Use "Sync Now" to pull Discord members into the system.' }},
         navStep('/perks', 'Going to Perk Levels...'),
-        { element: '#main-content', popover: { title: 'Perk Levels', description: 'Define attendance tiers (e.g. Bronze, Silver, Gold) with meeting/event requirements, dues prerequisites, and Discord role rewards.' }},
+        { element: '#main-content', popover: { title: 'Perk Levels', description: 'Define attendance tiers (e.g. Bronze, Silver, Gold) with meeting/event requirements, dues prerequisites, and an optional Discord role.' }},
         navStep('/audit', 'Going to Audit Log...'),
         { element: '#main-content', popover: { title: 'Audit Log', description: 'Track all admin and manager actions: member changes, meeting/event CRUD, attendance, and more. Search and filter by action type.' }},
         navStep('/attendance/overview', 'Going to Attendance Overview...'),
@@ -265,7 +265,7 @@
       </div>
       <div class="flex gap-3">
         <span class="flex-shrink-0 w-6 h-6 bg-blue-500 text-white rounded-full flex items-center justify-center text-xs font-bold">6</span>
-        <div><strong>Publish reports</strong> — After a meeting or event, click "Publish Report" to post an attendance summary to the Discord forum channel.</div>
+        <div><strong>Publish reports</strong> — After a meeting or event, click "Post report to Discord" to post an attendance summary to the Discord forum channel.</div>
         <div class="flex gap-3">
         <span class="flex-shrink-0 w-6 h-6 bg-blue-500 text-white rounded-full flex items-center justify-center text-xs font-bold">7</span>
         <div><strong>Check-in kiosk</strong> — Next to "Show QR Code", "Kiosk" opens a full-screen page for a tablet or projector at the venue with a big QR code, a live count and the latest arrivals.</div>
@@ -338,7 +338,7 @@
       </div>
       <div class="flex gap-3">
         <span class="flex-shrink-0 w-6 h-6 bg-yellow-500 text-white rounded-full flex items-center justify-center text-xs font-bold">4</span>
-        <div><strong>Configure perk levels</strong> — Go to Perk Levels to define attendance tiers (e.g. Bronze, Silver, Gold) with meeting/event requirements, dues prerequisites, and Discord role rewards.</div>
+        <div><strong>Configure perk levels</strong> — Go to Perk Levels to define attendance tiers (e.g. Bronze, Silver, Gold) with meeting/event requirements, dues prerequisites, and an optional Discord role.</div>
       </div>
       <div class="flex gap-3">
         <span class="flex-shrink-0 w-6 h-6 bg-yellow-500 text-white rounded-full flex items-center justify-center text-xs font-bold">5</span>
@@ -373,7 +373,7 @@
       </div>
       <div class="flex gap-3">
         <span class="flex-shrink-0 w-6 h-6 bg-yellow-500 text-white rounded-full flex items-center justify-center text-xs font-bold">13</span>
-        <div><strong>Public shows page</strong> — Turn on Settings > Public Shows Page to publish upcoming events at /shows for anyone (private and cancelled events are left out). Copy the embed snippet to put the list on your website. Visitors can tap "I plan to come"; the count shows on the event page and report to help plan.</div>
+        <div><strong>Public shows page</strong> — Turn on the public shows page under Settings &gt; Public pages to publish upcoming events at /shows for anyone (private and cancelled events are left out). Copy the embed snippet to put the list on your website. Visitors can tap "I plan to come"; the count shows on the event page and report to help plan.</div>
       </div>
       <div class="flex gap-3">
         <span class="flex-shrink-0 w-6 h-6 bg-yellow-500 text-white rounded-full flex items-center justify-center text-xs font-bold">14</span>
@@ -385,7 +385,7 @@
       </div>
       <div class="flex gap-3">
         <span class="flex-shrink-0 w-6 h-6 bg-yellow-500 text-white rounded-full flex items-center justify-center text-xs font-bold">16</span>
-        <div><strong>About page</strong> — Settings &gt; About page lets admins write a public page about the group at /about: who you are, when you meet, how to join. The editor works like a word processor (headings, bold, lists, quotes, links and photos), and pasting from a document keeps that formatting. Tick "Show the page to everyone" to publish it. It can also show the past twelve months in numbers. Photos removed from the text are deleted when you save.</div>
+        <div><strong>About page</strong> — Settings &gt; Public pages lets admins write a public page about the group at /about: who you are, when you meet, how to join. The editor works like a word processor (headings, bold, lists, quotes, links and photos), and pasting from a document keeps that formatting. Tick "Show the page to everyone" to publish it. It can also show the past twelve months in numbers. Photos removed from the text are deleted when you save.</div>
       </div>
       <div class="flex gap-3">
         <span class="flex-shrink-0 w-6 h-6 bg-yellow-500 text-white rounded-full flex items-center justify-center text-xs font-bold">11</span>

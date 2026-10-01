@@ -32,7 +32,7 @@ public:
                            R"(^/(chapters(/.*)?|calendar/chapter/.*)$)"},
             {"dues",       "Membership dues", "Dues status, payment ledger, automatic expiry and renewal reminders.",
                            R"(^/(members/\d+/dues(/.*)?|treasury/dues)$)"},
-            {"perks",      "Perk levels", "Attendance tiers with Discord role rewards and the 'Almost there' list.",
+            {"perks",      "Perk levels", "Attendance tiers (optionally with a Discord role) and the 'Almost there' list.",
                            R"(^/(perks(/.*)?|api/perks/.*)$)"},
             {"rsvps",      "Event RSVPs", "RSVPs with capacity, waitlist and reminder messages.",
                            R"(^/events/\d+/rsvp(/.*)?$)"},
@@ -66,9 +66,9 @@ public:
                            ""},
             {"digest",     "Weekly digest", "Monday-morning message to each member with the week's meetings and events, their RSVPs and shifts, and dues or borrowed items coming due. Members can opt out.",
                            "", false},
-            {"public_shows", "Public shows page", "A no-login page (/shows) listing upcoming public events, with an embed and JSON feed. Set its title and intro under Settings > Discord.",
+            {"public_shows", "Public shows page", "A no-login page (/shows) listing upcoming public events, with an embed and JSON feed. Set its title and intro under Settings > Public pages.",
                            R"(^/shows(\.json|/.*)?$)", false, "public_shows_enabled"},
-            {"about_page", "Public About page", "A no-login page (/about) about your group: your own text and photos, written in the app, plus the year's highlights. Edit it under Settings > About page.",
+            {"about_page", "Public About page", "A no-login page (/about) about your group: your own text and photos, written in the app, plus the year's highlights. Edit it under Settings > Public pages.",
                            R"(^/about$)", false},
         };
         return f;

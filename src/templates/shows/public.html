@@ -46,7 +46,7 @@
     </ul>
     {{/has_shows}}
     {{^has_shows}}<p class="text-gray-500">No upcoming shows right now - check back soon!</p>{{/has_shows}}
-    {{^embed}}<p class="text-xs text-gray-400 mt-8"><a href="/calendar.ics" class="underline">Subscribe to the calendar</a></p>{{/embed}}
+    {{^embed}}<p class="text-xs text-gray-400 mt-8">{{#about_on}}<a href="/about" class="underline">About us</a> &middot; {{/about_on}}<a href="/calendar.ics" class="underline">Subscribe to the calendar</a></p>{{/embed}}
   </main>
 </body>
 </html>

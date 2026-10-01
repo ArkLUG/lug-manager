@@ -1,4 +1,4 @@
-<div id="about-editor" class="max-w-4xl space-y-4" data-page-title="About page">
+<div id="about-editor" class="max-w-4xl space-y-4" data-page-title="Public pages">
   <div class="flex flex-wrap items-center justify-between gap-2">
     <div>
       <h2 class="text-xl font-semibold text-gray-800">About page</h2>
@@ -50,4 +50,5 @@
       <span class="text-xs text-gray-500">Ideas: who you are, where and when you meet, what happens at a meeting, upcoming shows, and how to join. Pasting from a document keeps headings, lists, links, bold and italic.</span>
     </div>
   </form>
+  <div hx-get="/settings/public-shows" hx-trigger="load" hx-swap="outerHTML"></div>
 </div>

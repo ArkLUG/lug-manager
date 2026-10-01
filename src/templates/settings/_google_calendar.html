@@ -44,8 +44,15 @@
                 hx-post="/api/google-calendar/import"
                 hx-target="#gcal-import-result"
                 hx-swap="innerHTML"
-                class="px-3 py-1.5 text-sm font-medium text-indigo-700 bg-indigo-50 border border-indigo-200 rounded-lg hover:bg-indigo-100 transition-colors">
+                class="px-3 py-1.5 text-sm font-medium border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors">
           Import from Google Calendar
+        </button>
+        <button type="button"
+                hx-post="/api/google-calendar/sync-all"
+                hx-target="#gcal-import-result"
+                hx-swap="innerHTML"
+                class="px-3 py-1.5 text-sm font-medium border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors">
+          Send everything to Google Calendar
         </button>
         <span id="gcal-import-result" class="text-sm"></span>
       </div>
