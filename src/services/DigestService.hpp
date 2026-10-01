@@ -56,12 +56,7 @@ public:
 private:
     struct Item { std::string kind, title, when, where; int64_t event_id = 0; };
 
-    static std::string iso(std::time_t t) {
-        std::tm tm = local_tm(t);
-        char b[24];
-        std::strftime(b, sizeof(b), "%Y-%m-%dT%H:%M:%S", &tm);
-        return b;
-    }
+    static std::string iso(std::time_t t) { return local_iso(t); }
 
     std::string when(const std::string& start) {
         std::string tz = settings_.get("lug_timezone", "America/Chicago");

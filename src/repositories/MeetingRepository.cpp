@@ -109,9 +109,22 @@ std::vector<Meeting> MeetingRepository::find_upcoming_by_chapter(int64_t chapter
     return result;
 }
 
+// `when`: "upcoming" (ends at/after `now`), "past" (started before `now`), else all.
+// `now` is the LUG's local "YYYY-MM-DDTHH:MM:SS", the same form start/end times use.
+static std::string meeting_where(const std::string& search, const std::string& when) {
+    std::vector<std::string> parts;
+    if (!search.empty()) parts.push_back("(title LIKE ?1 OR description LIKE ?1 OR location LIKE ?1)");
+    if (when == "upcoming") parts.push_back("COALESCE(NULLIF(end_time,''), start_time) >= ?2");
+    else if (when == "past") parts.push_back("start_time < ?2");
+    std::string w;
+    for (size_t i = 0; i < parts.size(); ++i) w += (i ? " AND " : " WHERE ") + parts[i];
+    return w;
+}
+
 std::vector<Meeting> MeetingRepository::find_paginated(const std::string& search, int limit, int offset,
                                                        const std::string& sort_col,
-                                                       const std::string& sort_dir) {
+                                                       const std::string& sort_dir,
+                                                       const std::string& when, const std::string& now) {
     std::vector<Meeting> result;
     std::string dir = (sort_dir == "ASC") ? "ASC" : "DESC";
     std::string order = "start_time";
@@ -119,39 +132,21 @@ std::vector<Meeting> MeetingRepository::find_paginated(const std::string& search
     else if (sort_col == "status") order = "status";
     else if (sort_col == "location") order = "location";
     else if (sort_col == "scope") order = "scope";
-    std::string order_clause = " ORDER BY " + order + " " + dir + " LIMIT ? OFFSET ?";
-
-    if (search.empty()) {
-        auto stmt = db_.prepare(std::string(kSelectAllCols) + order_clause);
-        stmt.bind(1, static_cast<int64_t>(limit));
-        stmt.bind(2, static_cast<int64_t>(offset));
-        while (stmt.step()) result.push_back(row_to_meeting(stmt));
-    } else {
-        std::string pat = "%" + search + "%";
-        auto stmt = db_.prepare(
-            std::string(kSelectAllCols) +
-            " WHERE title LIKE ? OR description LIKE ? OR location LIKE ?"
-            + order_clause);
-        stmt.bind(1, pat); stmt.bind(2, pat); stmt.bind(3, pat);
-        stmt.bind(4, static_cast<int64_t>(limit));
-        stmt.bind(5, static_cast<int64_t>(offset));
-        while (stmt.step()) result.push_back(row_to_meeting(stmt));
-    }
+    auto stmt = db_.prepare(std::string(kSelectAllCols) + meeting_where(search, when) +
+                            " ORDER BY " + order + " " + dir + " LIMIT ?3 OFFSET ?4");
+    stmt.bind(1, "%" + search + "%");
+    stmt.bind(2, now);
+    stmt.bind(3, static_cast<int64_t>(limit));
+    stmt.bind(4, static_cast<int64_t>(offset));
+    while (stmt.step()) result.push_back(row_to_meeting(stmt));
     return result;
 }
 
-int MeetingRepository::count_filtered(const std::string& search) {
-    if (search.empty()) {
-        auto stmt = db_.prepare("SELECT COUNT(*) FROM meetings");
-        if (stmt.step()) return static_cast<int>(stmt.col_int(0));
-        return 0;
-    }
-    std::string pat = "%" + search + "%";
-    auto stmt = db_.prepare(
-        "SELECT COUNT(*) FROM meetings WHERE title LIKE ? OR description LIKE ? OR location LIKE ?");
-    stmt.bind(1, pat); stmt.bind(2, pat); stmt.bind(3, pat);
-    if (stmt.step()) return static_cast<int>(stmt.col_int(0));
-    return 0;
+int MeetingRepository::count_filtered(const std::string& search, const std::string& when, const std::string& now) {
+    auto stmt = db_.prepare("SELECT COUNT(*) FROM meetings" + meeting_where(search, when));
+    stmt.bind(1, "%" + search + "%");
+    stmt.bind(2, now);
+    return stmt.step() ? static_cast<int>(stmt.col_int(0)) : 0;
 }
 
 int MeetingRepository::count_all() {

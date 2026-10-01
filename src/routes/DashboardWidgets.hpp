@@ -17,16 +17,9 @@
 
 namespace dashboard {
 
-inline std::string iso_local(std::time_t t) {
-    std::tm tm = local_tm(t);
-    char b[24];
-    std::strftime(b, sizeof(b), "%Y-%m-%dT%H:%M:%S", &tm);
-    return b;
-}
-
 inline void add_coming_up(crow::mustache::context& ctx, SqliteDatabase& db, int64_t member_id, const std::string& tz) {
     const std::time_t now = std::time(nullptr);
-    const std::string from = iso_local(now), to = iso_local(now + 30 * 86400), today = from.substr(0, 10);
+    const std::string from = local_iso(now), to = local_iso(now + 30 * 86400), today = from.substr(0, 10);
     struct Item { std::string start, when, title, place, url, kind, note; bool going = false, waitlist = false, tentative = false; };
     std::vector<Item> items;
     const std::string in_my_chapters =
@@ -114,7 +107,7 @@ inline void add_coming_up(crow::mustache::context& ctx, SqliteDatabase& db, int6
 }
 
 inline void add_needs_attention(crow::mustache::context& ctx, SqliteDatabase& db) {
-    const std::string today = iso_local(std::time(nullptr)).substr(0, 10);
+    const std::string today = local_iso(std::time(nullptr)).substr(0, 10);
     auto count = [&](const std::string& sql) {
         auto st = db.prepare(sql);
         st.bind(1, today);

@@ -9,7 +9,7 @@ TEST_F(IntegrationTest, MeetingCardShowsDateAndTime) {
     m.scope = "lug_wide";
     meeting_svc->create(m);
 
-    auto r = GET_HTMX("/meetings", admin_token);
+    auto r = GET_HTMX("/meetings?when=all", admin_token);
     EXPECT_EQ(r.code, 200);
     expect_contains(r, "Card Test Meeting");
     expect_contains(r, "May");
@@ -181,7 +181,7 @@ TEST_F(IntegrationTest, MeetingCardShowsEditButtonForAdmin) {
     m.scope = "lug_wide";
     meeting_svc->create(m);
 
-    auto r = GET_HTMX("/meetings", admin_token);
+    auto r = GET_HTMX("/meetings?when=all", admin_token);
     EXPECT_EQ(r.code, 200);
     expect_contains(r, "Admin Card Meeting");
     expect_contains(r, "edit");

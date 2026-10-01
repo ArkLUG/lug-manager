@@ -14,13 +14,6 @@ bool can_manage_series(const AuthContext& a, ChapterMemberRepository& cm, const 
     return r && chapter_role_rank(*r) >= chapter_role_rank("event_manager");
 }
 
-std::string now_local_iso() {
-    std::tm t = local_tm(std::time(nullptr));
-    char b[32];
-    std::strftime(b, sizeof(b), "%Y-%m-%dT%H:%M:%S", &t);
-    return b;
-}
-
 std::string render(const crow::request& req, LugApp& app, SeriesService& series, ChapterService& chapters,
                    ChapterMemberRepository& cm, const std::string& flash) {
     auto& a = app.get_context<AuthMiddleware>(req).auth;
@@ -135,7 +128,7 @@ void register_series_routes(LugApp& app, std::shared_ptr<SeriesService> series,
             res.code = 403;
             return res;
         }
-        int removed = series->stop(id, now_local_iso());
+        int removed = series->stop(id, local_iso_now());
         audit.log(req, app, "meeting.series_stop", "meeting_series", id, s->title,
                   "Stopped; removed " + std::to_string(removed) + " future meeting(s)");
         res.add_header("Content-Type", "text/html; charset=utf-8");

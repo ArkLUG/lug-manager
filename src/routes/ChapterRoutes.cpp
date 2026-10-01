@@ -47,13 +47,6 @@ static std::string build_channel_options(DiscordClient& discord, const std::stri
 
 namespace {
 
-std::string iso_now_local() {
-    std::tm t = local_tm(std::time(nullptr));
-    char b[24];
-    std::strftime(b, sizeof(b), "%Y-%m-%dT%H:%M:%S", &t);
-    return b;
-}
-
 // "Sat 10/14 7:00 PM"
 std::string short_when(const std::string& iso) {
     if (iso.size() < 10) return iso;
@@ -78,7 +71,7 @@ std::string short_when(const std::string& iso) {
 // year, what's coming up, recent meetings, people and Discord set-up.
 void add_chapter_overview(crow::mustache::context& ctx, SqliteDatabase& db, const Chapter& ch,
                           const std::vector<ChapterMember>& people, bool can_manage) {
-    const std::string now = iso_now_local(), today = now.substr(0, 10);
+    const std::string now = local_iso_now(), today = now.substr(0, 10);
     const int year = local_tm(std::time(nullptr)).tm_year + 1900;
     const std::string lo = std::to_string(year) + "-01-01";
     auto num = [&](const std::string& sql, std::vector<std::string> args) -> int64_t {

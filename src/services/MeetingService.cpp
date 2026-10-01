@@ -38,10 +38,13 @@ std::vector<Meeting> MeetingService::list_by_chapter(int64_t chapter_id) {
 
 std::vector<Meeting> MeetingService::list_paginated(const std::string& search, int limit, int offset,
                                                     const std::string& sort_col,
-                                                    const std::string& sort_dir) {
-    return repo_.find_paginated(search, limit, offset, sort_col, sort_dir);
+                                                    const std::string& sort_dir,
+                                                    const std::string& when, const std::string& now) {
+    return repo_.find_paginated(search, limit, offset, sort_col, sort_dir, when, now);
 }
-int MeetingService::count_filtered(const std::string& search) { return repo_.count_filtered(search); }
+int MeetingService::count_filtered(const std::string& search, const std::string& when, const std::string& now) {
+    return repo_.count_filtered(search, when, now);
+}
 int MeetingService::count_all() { return repo_.count_all(); }
 
 bool MeetingService::exists_by_google_calendar_id(const std::string& gcal_event_id) {

@@ -23,9 +23,9 @@ public:
     std::vector<Meeting>   list_all();
     std::vector<Meeting>   list_by_chapter(int64_t chapter_id);
     std::vector<Meeting>   list_paginated(const std::string& search, int limit, int offset,
-                                           const std::string& sort_col = "start_time",
-                                           const std::string& sort_dir = "DESC");
-    int                    count_filtered(const std::string& search);
+                                          const std::string& sort_col = "start_time", const std::string& sort_dir = "DESC",
+                                          const std::string& when = "", const std::string& now = "");
+    int                    count_filtered(const std::string& search, const std::string& when = "", const std::string& now = "");
     int                    count_all();
     bool                   exists_by_google_calendar_id(const std::string& gcal_event_id);
     std::optional<Meeting> get(int64_t id);

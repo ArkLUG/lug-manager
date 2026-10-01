@@ -6,6 +6,7 @@
 #include "utils/Csv.hpp"
 #include "utils/LocalTime.hpp"
 #include "utils/MarkdownRenderer.hpp"
+#include "utils/HtmlText.hpp"
 #include "utils/Utf8.hpp"
 #include <crow/mustache.h>
 #include <algorithm>
@@ -228,36 +229,6 @@ crow::response page(const crow::request& req, LugApp& app, const std::string& ht
 }
 
 // ── About page ──
-
-// Text of rendered HTML, for the meta description. Block tags become spaces.
-std::string plain_text(const std::string& html) {
-    static const std::set<std::string> blocks{"p", "h1", "h2", "h3", "h4", "h5", "h6", "li", "ul", "ol",
-                                              "blockquote", "br", "hr", "img", "table", "tr", "td", "th", "pre"};
-    std::string out, tag;
-    bool in_tag = false, space = false;
-    for (char c : html) {
-        if (c == '<') { in_tag = true; tag.clear(); continue; }
-        if (in_tag) {
-            if (c == '>') {
-                in_tag = false;
-                std::string name = tag.substr(tag[0] == '/' ? 1 : 0);
-                name = name.substr(0, name.find_first_of(" /"));
-                if (blocks.count(name)) space = true;
-            } else {
-                tag += c;
-            }
-            continue;
-        }
-        if (c == '\n' || c == '\t' || c == ' ') { space = true; continue; }
-        if (space && !out.empty()) out += ' ';
-        space = false;
-        out += c;
-    }
-    for (auto [from, to] : {std::pair<const char*, const char*>{"&lt;", "<"}, {"&gt;", ">"}, {"&quot;", "\""},
-                            {"&#39;", "'"}, {"&amp;", "&"}})
-        for (size_t p = 0; (p = out.find(from, p)) != std::string::npos; ++p) out.replace(p, std::strlen(from), to);
-    return out;
-}
 
 // Upload names referenced by the About text ("/about/photos/<name>").
 std::set<std::string> referenced_photos(const std::string& markdown) {
@@ -561,7 +532,7 @@ void register_fan_colab_routes(LugApp& app, SqliteDatabase& db, SettingsReposito
         std::string title = settings.get("about_title", "");
         if (title.empty()) title = "About " + name;
         std::string html = render_markdown(settings.get("about_markdown", ""));
-        std::string desc = utf8_truncate(plain_text(html), 160);
+        std::string desc = utf8_truncate(html_to_text(html), 160);
         ctx["title"] = title;
         ctx["lug_name"] = name;
         ctx["body_html"] = html;

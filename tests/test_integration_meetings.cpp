@@ -60,7 +60,7 @@ TEST_F(IntegrationTest, MeetingsPagination) {
         m.scope = "lug_wide";
         meeting_svc->create(m);
     }
-    auto r = GET("/meetings?page=2", admin_token);
+    auto r = GET("/meetings?when=all&page=2", admin_token);
     EXPECT_EQ(r.code, 200);
     expect_contains(r, "Page 2");
 }
@@ -243,7 +243,28 @@ TEST_F(IntegrationTest, MeetingListShowsCountsInline) {
     auto counts = attendance_svc->counts_for("meeting", {mtg.id, 999999});
     EXPECT_EQ(counts[mtg.id], 2);
     EXPECT_EQ(counts.count(999999), 0u);
-    auto r = GET("/meetings?search=Counted", admin_token);
+    auto r = GET("/meetings?when=all&search=Counted", admin_token);
     expect_contains(r, "<span class=\"font-semibold\">2</span> checked in");
     EXPECT_EQ(r.body.find("hx-trigger=\"load, attendanceUpdated"), std::string::npos);
+}
+
+TEST_F(IntegrationTest, MeetingListUpcomingPastAll) {
+    auto mk = [&](const std::string& title, const std::string& start) {
+        auto st = db->prepare("INSERT INTO meetings (title, start_time, end_time, ical_uid, scope) VALUES (?,?,?,?, 'lug_wide')");
+        st.bind(1, title); st.bind(2, start); st.bind(3, start); st.bind(4, "w-" + title);
+        st.step();
+    };
+    mk("Long ago", "2001-01-01T19:00:00");
+    mk("Far ahead", "2099-01-01T19:00:00");
+    auto up = GET("/meetings", admin_token);
+    expect_contains(up, "Far ahead");
+    expect_not_contains(up, "Long ago");
+    expect_contains(up, "aria-selected=\"true\"");
+    auto past = GET("/meetings?when=past", admin_token);
+    expect_contains(past, "Long ago");
+    expect_not_contains(past, "Far ahead");
+    auto all = GET("/meetings?when=all", admin_token);
+    expect_contains(all, "Long ago");
+    expect_contains(all, "Far ahead");
+    expect_contains(all, "&when=all");                        // sort/page links keep the tab
 }

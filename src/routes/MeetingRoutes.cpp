@@ -1,5 +1,7 @@
 #include "routes/MeetingRoutes.hpp"
 #include "routes/ChatFormHelpers.hpp"
+#include "utils/HtmlText.hpp"
+#include "utils/LocalTime.hpp"
 #include "utils/UrlEncode.hpp"
 #include "utils/MarkdownRenderer.hpp"
 #include "utils/AuditDiff.hpp"
@@ -83,7 +85,7 @@ static crow::mustache::context build_meeting_list_ctx(
         const auto& m = meeting_list[i];
         arr[i]["id"]           = m.id;
         arr[i]["title"]        = m.title;
-        arr[i]["description"]  = m.description;
+        arr[i]["description"]  = markdown_excerpt(m.description, 120);
         arr[i]["location"]     = m.location;
         arr[i]["start_time"]   = m.start_time;
         arr[i]["end_time"]     = m.end_time;
@@ -124,7 +126,12 @@ static crow::mustache::context build_meeting_list_ctx(
                 mtg_can_manage = chapter_role_rank(it->second) >= chapter_role_rank("event_manager");
         }
         arr[i]["can_manage"] = mtg_can_manage;
-        { auto c = counts.find(m.id); arr[i]["attendance_count"] = c == counts.end() ? 0 : c->second; }
+        {
+            auto c = counts.find(m.id);
+            int n = c == counts.end() ? 0 : c->second;
+            arr[i]["attendance_count"] = n;
+            arr[i]["not_started"] = n == 0 && m.start_time > local_iso_now();   // "—" rather than "0 checked in"
+        }
     }
     ctx["meetings"] = std::move(arr);
     return ctx;
@@ -160,19 +167,24 @@ static std::string render_meeting_page(const crow::request& req,
     // Sort params
     const char* sc = qs.get("sort");
     const char* sd = qs.get("dir");
+    // Which meetings: upcoming (default, soonest first), past (latest first) or all.
+    const char* wh = qs.get("when");
+    std::string when = wh ? wh : "upcoming";
+    if (when != "past" && when != "all") when = "upcoming";
+    std::string now = local_iso_now();
     std::string sort_col = sc ? sc : "start_time";
-    std::string sort_dir = sd ? sd : "DESC";
+    std::string sort_dir = sd ? sd : (when == "upcoming" ? "ASC" : "DESC");
     static const std::set<std::string> kMtgSortCols = {"start_time","title","status","location","scope"};
     if (!kMtgSortCols.count(sort_col)) sort_col = "start_time";
     if (sort_dir != "ASC" && sort_dir != "DESC") sort_dir = "DESC";
 
-    int total = meetings.count_filtered(search);
+    int total = meetings.count_filtered(search, when, now);
     int total_pages = (total + kPerPage - 1) / kPerPage;
     if (total_pages < 1) total_pages = 1;
     if (page > total_pages) page = total_pages;
     int offset = (page - 1) * kPerPage;
 
-    auto meeting_list = meetings.list_paginated(search, kPerPage, offset, sort_col, sort_dir);
+    auto meeting_list = meetings.list_paginated(search, kPerPage, offset, sort_col, sort_dir, when, now);
     auto ctx = build_meeting_list_ctx(meeting_list, attendance, chapter_members, chapters, is_admin, can_create, member_id);
 
     ctx["search"]      = search;
@@ -192,6 +204,10 @@ static std::string render_meeting_page(const crow::request& req,
     ctx["sort_is_title"]    = (sort_col == "title");
     ctx["sort_is_location"] = (sort_col == "location");
     ctx["dir_is_asc"]       = (sort_dir == "ASC");
+    ctx["when"]             = when;
+    ctx["when_upcoming"]    = when == "upcoming";
+    ctx["when_past"]        = when == "past";
+    ctx["when_all"]         = when == "all";
 
     bool is_htmx = req.get_header_value("HX-Request") == "true";
     if (is_htmx) {

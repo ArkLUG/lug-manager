@@ -1,5 +1,8 @@
 #include "routes/EventRoutes.hpp"
 #include "routes/ChatFormHelpers.hpp"
+#include "utils/HtmlText.hpp"
+#include "utils/LocalTime.hpp"
+
 #include "utils/UrlEncode.hpp"
 #include "utils/JsonEscape.hpp"
 #include "services/EventConversion.hpp"
@@ -74,7 +77,7 @@ static crow::mustache::context build_event_list_ctx(
         const auto& e = event_list[i];
         arr[i]["id"]               = e.id;
         arr[i]["title"]            = e.title;
-        arr[i]["description"]      = e.description;
+        arr[i]["description"]      = markdown_excerpt(e.description, 120);
         arr[i]["location"]         = e.location;
         arr[i]["start_time"]       = e.start_time;
         arr[i]["end_time"]         = e.end_time;
@@ -121,7 +124,12 @@ static crow::mustache::context build_event_list_ctx(
                 event_can_manage = chapter_role_rank(it->second) >= chapter_role_rank("event_manager");
         }
         arr[i]["can_manage"] = event_can_manage;
-        { auto c = counts.find(e.id); arr[i]["attendance_count"] = c == counts.end() ? 0 : c->second; }
+        {
+            auto c = counts.find(e.id);
+            int n = c == counts.end() ? 0 : c->second;
+            arr[i]["attendance_count"] = n;
+            arr[i]["not_started"] = n == 0 && e.start_time > local_iso_now();   // "—" rather than "0 checked in"
+        }
 
     }
     ctx["events"] = std::move(arr);
