@@ -137,6 +137,7 @@ protected:
     }
 
     void SetUp() override {
+        setenv("LUG_OFFLINE", "1", 1);   // tests never reach Discord/Google/SMTP
         data_dir = (std::filesystem::temp_directory_path() /
                     ("lug-test-" + std::to_string(getpid()) + "-" +
                      std::to_string(reinterpret_cast<uintptr_t>(this)))).string();

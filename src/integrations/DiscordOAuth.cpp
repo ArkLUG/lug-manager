@@ -1,3 +1,4 @@
+#include "utils/Offline.hpp"
 #include "integrations/DiscordOAuth.hpp"
 #include <curl/curl.h>
 #include <nlohmann/json.hpp>
@@ -54,7 +55,7 @@ std::string DiscordOAuth::http_post_form(const std::string& url, const std::stri
     curl_easy_setopt(curl, CURLOPT_SSL_VERIFYPEER, 1L);
     curl_easy_setopt(curl, CURLOPT_CONNECTTIMEOUT, 5L); // a hung Discord must not
     curl_easy_setopt(curl, CURLOPT_TIMEOUT, 15L);       // pin a request thread forever
-    CURLcode res = curl_easy_perform(curl);
+    CURLcode res = guarded_perform(curl);
     curl_easy_cleanup(curl);
     if (res != CURLE_OK) throw std::runtime_error(std::string("curl error: ") + curl_easy_strerror(res));
     return response;
@@ -73,7 +74,7 @@ std::string DiscordOAuth::http_get(const std::string& url, const std::string& au
     curl_easy_setopt(curl, CURLOPT_SSL_VERIFYPEER, 1L);
     curl_easy_setopt(curl, CURLOPT_CONNECTTIMEOUT, 5L); // a hung Discord must not
     curl_easy_setopt(curl, CURLOPT_TIMEOUT, 15L);       // pin a request thread forever
-    CURLcode res = curl_easy_perform(curl);
+    CURLcode res = guarded_perform(curl);
     if (headers) curl_slist_free_all(headers);
     curl_easy_cleanup(curl);
     if (res != CURLE_OK) throw std::runtime_error(std::string("curl error: ") + curl_easy_strerror(res));

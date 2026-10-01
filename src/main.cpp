@@ -1,3 +1,4 @@
+#include "utils/Offline.hpp"
 #include <crow.h>
 #include <crow/mustache.h>
 #include <filesystem>
@@ -266,6 +267,8 @@ int main() {
         DuesService    dues_service(dues_repo, settings_repo, discord_client, audit_service);
         reminder_service.set_notifier(svc.notifier);
         dues_service.set_notifier(svc.notifier);
+        if (offline_mode())
+            std::cout << "[offline] LUG_OFFLINE=1: Discord, Google Calendar and email are disabled\n";
         std::cout << "[email] " << (svc.notifier->email_enabled() ? "enabled" :
                      svc.mailer->enabled() ? "SMTP set but LUG_PUBLIC_URL missing - email off" : "off (LUG_SMTP_* not set)") << "\n";
         BackupService  backup_service(db, data_dir);

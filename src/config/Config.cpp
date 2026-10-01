@@ -9,9 +9,15 @@ static std::string getenv_or(const char* key, const std::string& def) {
     return val ? std::string(val) : def;
 }
 
+// Fills in settings from ./.env for local development. Variables already set
+// in the environment win (so a test/CI/rehearsal run can't silently pick up
+// real credentials from a developer's .env), and LUG_DOTENV=0 skips the file.
 static void load_dotenv(const std::string& path = ".env") {
+    const char* off = std::getenv("LUG_DOTENV");
+    if (off && std::string(off) == "0") return;
     std::ifstream f(path);
     if (!f.is_open()) return;
+    std::cerr << "[config] Loading " << path << " from the working directory (LUG_DOTENV=0 to skip)\n";
     std::string line;
     while (std::getline(f, line)) {
         if (line.empty() || line[0] == '#') continue;
@@ -22,7 +28,7 @@ static void load_dotenv(const std::string& path = ".env") {
         // Remove surrounding quotes if present
         if (val.size() >= 2 && val.front() == '"' && val.back() == '"')
             val = val.substr(1, val.size() - 2);
-        setenv(key.c_str(), val.c_str(), 1); // .env overrides shell env
+        setenv(key.c_str(), val.c_str(), 0); // real environment wins over .env
     }
 }
 

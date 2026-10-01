@@ -1,3 +1,4 @@
+#include "utils/Offline.hpp"
 #include "integrations/Mailer.hpp"
 #include "auth/SessionStore.hpp"
 #include <curl/curl.h>
@@ -144,7 +145,7 @@ bool Mailer::send_now(const Message& m) {
     curl_easy_setopt(curl, CURLOPT_UPLOAD, 1L);
     curl_easy_setopt(curl, CURLOPT_CONNECTTIMEOUT, 15L);
     curl_easy_setopt(curl, CURLOPT_TIMEOUT, 60L);
-    CURLcode rc = curl_easy_perform(curl);
+    CURLcode rc = guarded_perform(curl);
     curl_slist_free_all(rcpt);
     curl_easy_cleanup(curl);
     if (rc != CURLE_OK) {

@@ -31,6 +31,15 @@ SyncResult MemberSyncService::sync_from_guild() {
         result.error_message = std::string("Failed to fetch guild members: ") + e.what();
         return result;
     }
+    // An empty list means Discord isn't configured or didn't answer properly
+    // (the bot itself is always a member). Don't sync against nothing: the
+    // chapter-lead phase would otherwise treat every lead as missing their
+    // Discord role and push role changes for all of them.
+    if (guild_members.empty()) {
+        result.errors = 1;
+        result.error_message = "Discord returned no server members (not configured, offline or no access) - sync skipped";
+        return result;
+    }
 
     // Track discord_user_id → member_id for chapter lead sync later
     std::unordered_map<std::string, int64_t> discord_to_member_id;

@@ -297,3 +297,20 @@ TEST_F(IntegrationTest, RolesPageNonAdminForbidden) {
 // Access control — member permissions
 // ═══════════════════════════════════════════════════════════════════════════
 
+
+TEST_F(IntegrationTest, DiscordSyncSkipsWhenDiscordReturnsNobody) {
+    // A chapter with a lead role and a web lead: before the fix, an empty member
+    // list made the sync push the lead role to every lead on Discord.
+    {
+        auto u = db->prepare("UPDATE chapters SET discord_lead_role_id='999000111' WHERE id=?");
+        u.bind(1, test_chapter_id); u.step();
+    }
+    auto r = member_sync_svc->sync_from_guild();
+    EXPECT_EQ(r.updated, 0);
+    EXPECT_EQ(r.imported, 0);
+    EXPECT_EQ(r.errors, 1);
+    EXPECT_NE(r.error_message.find("sync skipped"), std::string::npos);
+    auto role = chapter_member_repo->get_chapter_role(chapter_lead_member_id, test_chapter_id);
+    ASSERT_TRUE(role.has_value());
+    EXPECT_EQ(*role, "lead");
+}

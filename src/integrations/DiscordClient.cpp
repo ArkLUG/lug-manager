@@ -1,3 +1,4 @@
+#include "utils/Offline.hpp"
 #include "integrations/DiscordClient.hpp"
 #include "utils/Utf8.hpp"
 #include <regex>
@@ -247,7 +248,7 @@ std::string DiscordClient::discord_api_request_uncached(const std::string& metho
         }
         // GET is default
 
-        CURLcode res = curl_easy_perform(curl);
+        CURLcode res = guarded_perform(curl);
         curl_slist_free_all(headers);
         long http_code = 0;
         curl_easy_getinfo(curl, CURLINFO_RESPONSE_CODE, &http_code);

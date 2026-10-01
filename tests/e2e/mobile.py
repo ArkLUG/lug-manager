@@ -6,11 +6,11 @@ and CSP violations. Saves a full-page screenshot of each page.
 
     python tests/e2e/mobile.py <session-token> <screenshot-dir> [extra paths...]
 """
-import sys, time
+import os, sys, time
 from selenium import webdriver
 from selenium.webdriver.firefox.options import Options
 
-BASE = "http://127.0.0.1:18089"
+BASE = os.environ.get("LUG_BASE", "http://127.0.0.1:18089")
 TOKEN = sys.argv[1] if len(sys.argv) > 1 else "devtoken123"
 SHOTS = sys.argv[2] if len(sys.argv) > 2 else "/tmp"
 PAGES = ["/dashboard", "/account", "/inventory", "/treasury", "/challenges", "/members", "/events",

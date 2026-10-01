@@ -3,14 +3,15 @@
 Logs in by planting the session cookie, then visits pages and exercises the
 interactive bits, collecting JS errors and CSP violations along the way.
 """
-import sys, time, json
+import os, sys, time, json
+import re as _re
 from selenium import webdriver
 from selenium.webdriver.common.by import By
 from selenium.webdriver.firefox.options import Options
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 
-BASE = "http://127.0.0.1:18089"
+BASE = os.environ.get("LUG_BASE", "http://127.0.0.1:18089")
 TOKEN = sys.argv[1] if len(sys.argv) > 1 else "devtoken123"
 SHOTS = sys.argv[2] if len(sys.argv) > 2 else "/tmp"
 
@@ -158,23 +159,31 @@ if ta:
     check(tgt.get_attribute("innerHTML").strip() != "", "attendance detail loads")
 errs("/attendance/overview expand")
 
-# Event page: RSVP + displays panels load (full-page render of event 1)
-visit("/events/1", "#main-content")
+# Event page: RSVP + displays panels load (full-page render of the first
+# event listed, or LUG_EVENT_ID). Real data doesn't start at id 1.
+def first_id(list_path, prefix, env):
+    if os.environ.get(env): return os.environ[env]
+    visit(list_path, "#main-content")
+    ids = _re.findall(prefix + r"(\d+)", d.page_source)
+    return ids[0] if ids else "1"
+EVENT_ID = first_id("/events", r'/events/', "LUG_EVENT_ID")
+MEETING_ID = first_id("/meetings", r'/meetings/', "LUG_MEETING_ID")
+visit(f"/events/{EVENT_ID}", "#main-content")
 time.sleep(1.0)
 check(len(d.find_elements(By.CSS_SELECTOR, '[id^="rsvp-panel-"]')) > 0, "rsvp panel loads")
 check(len(d.find_elements(By.CSS_SELECTOR, '[id^="displays-panel-"]')) > 0, "displays panel loads")
-errs("/events/1")
+errs(f"/events/{EVENT_ID}")
 
 # Public check-in page and kiosk
-visit("/meetings/1/kiosk", "#kiosk-qr")
+visit(f"/meetings/{MEETING_ID}/kiosk", "#kiosk-qr")
 time.sleep(1)
 check(len(d.find_elements(By.CSS_SELECTOR, "#kiosk-qr canvas, #kiosk-qr img")) > 0, "kiosk QR rendered")
 errs("kiosk")
 shot("kiosk")
 
 # Public check-in page (htmx 2): tabs switch via data-action
-html = d.execute_script("""
-  var x = new XMLHttpRequest(); x.open('POST', '/meetings/1/generate-checkin', false); x.send(); return x.responseText;""")
+html = d.execute_script(f"""
+  var x = new XMLHttpRequest(); x.open('POST', '/meetings/{MEETING_ID}/generate-checkin', false); x.send(); return x.responseText;""")
 import re as _re
 m = _re.search(r"/checkin/([0-9a-f-]{36})", html or "")
 if m:

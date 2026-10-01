@@ -556,3 +556,38 @@ TEST(Money, ParseAndFormat) {
     EXPECT_EQ(money(123456789), "$1,234,567.89");
     EXPECT_EQ(money(-500), "-$5.00");
 }
+
+#include "utils/Offline.hpp"
+TEST(Offline, BlocksOutboundRequests) {
+    setenv("LUG_OFFLINE", "1", 1);
+    EXPECT_TRUE(offline_mode());
+    CURL* c = curl_easy_init();
+    curl_easy_setopt(c, CURLOPT_URL, "https://discord.com/api/v10/gateway");
+    EXPECT_EQ(guarded_perform(c), CURLE_COULDNT_CONNECT);   // never leaves the machine
+    curl_easy_cleanup(c);
+    unsetenv("LUG_OFFLINE");
+    EXPECT_FALSE(offline_mode());
+}
+
+#include "config/Config.hpp"
+TEST(Config, EnvironmentWinsOverDotenvAndDotenvCanBeSkipped) {
+    auto dir = std::filesystem::temp_directory_path() / ("dotenv-" + std::to_string(getpid()));
+    std::filesystem::create_directories(dir);
+    auto old = std::filesystem::current_path();
+    std::filesystem::current_path(dir);
+    { std::ofstream(".env") << "LUG_PORT=1111\nDISCORD_BOT_TOKEN=from-dotenv\n"; }
+    unsetenv("DISCORD_BOT_TOKEN");
+    setenv("LUG_PORT", "2222", 1);
+    setenv("LUG_DOTENV", "0", 1);
+    auto skipped = load_config();
+    EXPECT_EQ(skipped.port, 2222);
+    EXPECT_EQ(skipped.discord_bot_token, "");                 // .env not read at all
+    unsetenv("LUG_DOTENV");
+    auto loaded = load_config();
+    EXPECT_EQ(loaded.port, 2222);                              // real environment wins
+    EXPECT_EQ(loaded.discord_bot_token, "from-dotenv");        // .env fills the gaps
+    unsetenv("DISCORD_BOT_TOKEN");
+    unsetenv("LUG_PORT");
+    std::filesystem::current_path(old);
+    std::filesystem::remove_all(dir);
+}
