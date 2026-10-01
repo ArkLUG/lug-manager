@@ -4,6 +4,18 @@
 
 A modern web application for managing LEGO User Groups (LUGs). Built with **C++ (CrowCPP)**, **SQLite**, **Discord**, **Google Calendar**, and **iCal** integration.
 
+## Demo
+
+A clickable demo of a fictional group ("Brickton LUG") is published to GitHub Pages by `.github/workflows/demo.yml` - switch between Member, Moderator and Admin from the bar at the bottom; nothing is saved. Build it locally with:
+
+```bash
+bash scripts/demo/build.sh build/lug_manager /tmp/demo-site /lug-manager
+# serve it so it appears under /lug-manager/:
+mkdir -p /tmp/site && ln -s /tmp/demo-site /tmp/site/lug-manager && python3 -m http.server 8000 --directory /tmp/site
+```
+
+`scripts/demo/seed.py` creates the fictional data, `export.py` crawls a throwaway offline server once per role and saves pages and panels as static files, and `demo.js` maps htmx/XHR requests onto them and blocks writes. `tests/e2e/demo_check.py` clicks through the result.
+
 ## Features
 
 - **Member Management**: Track members with contact info, age range (KFOL/TFOL/AFOL), birthday, dues, and Discord role sync. Members without Discord accounts (e.g. KFOLs) are fully supported. Phone numbers, addresses, and ZIP codes are auto-formatted and validated.

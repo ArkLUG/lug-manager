@@ -1,0 +1,62 @@
+name: Demo site (GitHub Pages)
+
+# Builds the static demo of a fictional LUG ("Brickton LUG") and publishes it
+# to GitHub Pages. The app runs only inside this job, with LUG_OFFLINE=1 and
+# no credentials, so nothing is ever sent to Discord, Google or email.
+# Weekly rebuilds keep the demo's dates current.
+
+on:
+  push:
+    branches: [main]
+  schedule:
+    - cron: "17 6 * * 1"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            cmake g++ make pkg-config libcurl4-openssl-dev libsqlite3-dev libssl-dev zlib1g-dev python3
+
+      - name: Build the server
+        run: |
+          cmake -B build -S . -DCMAKE_BUILD_TYPE=Release -DBUILD_TESTS=OFF
+          cmake --build build -j"$(nproc)" --target lug_manager
+
+      - name: Build CSS
+        run: bash scripts/build_css.sh
+
+      - name: Seed and export the demo
+        run: bash scripts/demo/build.sh build/lug_manager _site "/${{ github.event.repository.name }}"
+
+      - name: Upload Pages artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: _site
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
