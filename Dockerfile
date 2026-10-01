@@ -1,6 +1,10 @@
 FROM ubuntu:24.04 AS builder
 
+# tzdata: IANA time zones (America/Chicago ...) for Discord/calendar times;
+# without it every zone silently falls back to UTC.
+ARG DEBIAN_FRONTEND=noninteractive
 RUN apt-get update && apt-get install -y --no-install-recommends \
+    tzdata \
     cmake \
     g++ \
     make \
@@ -37,10 +41,12 @@ RUN ctest --test-dir build --output-on-failure
 # --- Runtime stage ---
 FROM ubuntu:24.04
 
+ARG DEBIAN_FRONTEND=noninteractive
 RUN apt-get update && \
     apt-get upgrade -y && \
     apt-get install -y --no-install-recommends \
     libcurl4t64 \
+    tzdata \
     sqlite3 \
     libssl3t64 \
     ca-certificates \
