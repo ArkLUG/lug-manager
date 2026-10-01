@@ -60,7 +60,7 @@
         <select name="role" class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-yellow-400"
                 {{^is_admin}}{{#is_edit}}disabled{{/is_edit}}{{/is_admin}}>
           <option value="member" {{#role_member}}selected{{/role_member}}>Member</option>
-          <option value="chapter_lead" {{#role_chapter_lead}}selected{{/role_chapter_lead}}>Chapter Lead</option>
+          {{#show_chapter_lead}}<option value="chapter_lead" {{#role_chapter_lead}}selected{{/role_chapter_lead}}>Chapter Lead{{#chapters_off}} (chapters are off - use Moderator){{/chapters_off}}</option>{{/show_chapter_lead}}
           <option value="moderator" {{#role_moderator}}selected{{/role_moderator}}>Moderator</option>
           {{#is_admin}}<option value="admin" {{#role_admin}}selected{{/role_admin}}>Admin</option>{{/is_admin}}
         </select>

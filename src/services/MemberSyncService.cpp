@@ -1,3 +1,4 @@
+#include "services/Features.hpp"
 #include "services/MemberSyncService.hpp"
 #include "services/RoleSync.hpp"
 #include "models/Member.hpp"
@@ -189,7 +190,8 @@ SyncResult MemberSyncService::sync_from_guild() {
     // Web leads without Discord role → assign Discord role
     // Discord role holders not yet web leads → promote in web
     // No demotions: removing a lead must be done explicitly in the web UI
-    auto chapters = chapter_repo_.find_all();
+    // Skipped while chapters are switched off (Settings > Features).
+    auto chapters = Features::on("chapters") ? chapter_repo_.find_all() : decltype(chapter_repo_.find_all()){};
     for (const auto& ch : chapters) {
         if (ch.discord_lead_role_id.empty()) continue;
 

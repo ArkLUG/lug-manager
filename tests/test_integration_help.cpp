@@ -20,7 +20,7 @@ TEST_F(IntegrationTest, HelpPageMember) {
     expect_contains(r, "Member");
     // Member should NOT see admin or chapter lead guides
     expect_not_contains(r, "Admin Guide");
-    expect_not_contains(r, "Chapter Lead Guide");
+    expect_not_contains(r, "Chapter Lead &amp; Moderator Guide");
 }
 
 TEST_F(IntegrationTest, HelpPageAdmin) {
@@ -36,7 +36,7 @@ TEST_F(IntegrationTest, HelpPageAdmin) {
 TEST_F(IntegrationTest, HelpPageChapterLead) {
     auto r = GET("/help", chapter_lead_token);
     EXPECT_EQ(r.code, 200);
-    expect_contains(r, "Chapter Lead Guide");
+    expect_contains(r, "Chapter Lead &amp; Moderator Guide");
     expect_contains(r, "Event Manager Guide");
     expect_contains(r, "Chapter Lead");
 }
@@ -47,7 +47,7 @@ TEST_F(IntegrationTest, HelpPageEventManager) {
     expect_contains(r, "Event Manager Guide");
     expect_contains(r, "Event Manager");
     // Event manager should NOT see chapter lead or admin guides
-    expect_not_contains(r, "Chapter Lead Guide");
+    expect_not_contains(r, "Chapter Lead &amp; Moderator Guide");
     expect_not_contains(r, "Admin Guide");
 }
 

@@ -139,6 +139,20 @@ public:
         ctx["show_chapter_scope"] = chapters || s == "chapter";
     }
 
+    // The "Chapter Lead" LUG role only makes sense with chapters. While they're
+    // off it isn't offered (Moderator is the same tier); someone who already
+    // has it keeps it until an admin changes it.
+    static std::string normalize_role(const std::string& requested, const std::string& current = "") {
+        if (requested == "chapter_lead" && current != "chapter_lead" && !on("chapters")) return "moderator";
+        return requested;
+    }
+    static std::string role_label(const std::string& role) {
+        if (role == "admin") return "Admin";
+        if (role == "chapter_lead") return "Chapter Lead";
+        if (role == "moderator") return "Moderator";
+        return "Member";
+    }
+
     // Chapter-scoped items can't be created while chapters are off.
     static std::string normalize_scope(const std::string& scope) {
         return scope == "chapter" && !on("chapters") ? "lug_wide" : scope;

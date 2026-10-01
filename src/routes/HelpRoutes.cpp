@@ -29,10 +29,10 @@ void register_help_routes(LugApp& app, ChapterMemberRepository& chapter_members)
         ctx["is_admin"] = is_admin;
         ctx["is_chapter_lead_role"] = is_chapter_lead;
         ctx["is_event_manager"] = is_event_manager;
-        ctx["role_label"] = is_admin ? "Admin"
-                          : is_chapter_lead ? "Chapter Lead"
+        ctx["role_label"] = (is_admin || is_chapter_lead) ? Features::role_label(auth.role)
                           : is_event_manager ? "Event Manager"
                           : "Member";
+        ctx["lead_guide_title"] = Features::on("chapters") ? "Chapter Lead & Moderator Guide" : "Moderator Guide";
 
         res.add_header("Content-Type", "text/html; charset=utf-8");
         bool is_htmx = req.get_header_value("HX-Request") == "true";

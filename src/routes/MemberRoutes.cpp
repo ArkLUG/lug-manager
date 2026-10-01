@@ -28,6 +28,8 @@ static crow::mustache::context member_to_ctx(const Member& m) {
     ctx["role"]             = m.role;
     ctx["role_admin"]        = m.role == "admin";
     ctx["role_chapter_lead"] = m.role == "chapter_lead";
+    ctx["show_chapter_lead"] = Features::on("chapters") || m.role == "chapter_lead";
+    ctx["chapters_off"] = !Features::on("chapters");
     ctx["role_moderator"]    = m.role == "moderator";
     ctx["role_member"]       = m.role == "member" || m.role.empty();
     ctx["birthday"]          = m.birthday;
@@ -361,6 +363,7 @@ void register_member_routes(LugApp& app, MemberService& members, AttendanceRepos
         ctx["action"] = "/members";
         ctx["title"]  = "Add Member";
         ctx["is_new"] = true;
+        ctx["show_chapter_lead"] = Features::on("chapters");
         ctx["is_admin"] = app.get_context<AuthMiddleware>(req).auth.is_admin();
         res.write(tmpl.render(ctx).dump());
         return res;
@@ -425,7 +428,7 @@ void register_member_routes(LugApp& app, MemberService& members, AttendanceRepos
         std::string req_role = get_param("role");
         // Non-admins cannot assign admin role
         if (!caller_is_admin && req_role == "admin") req_role = "member";
-        m.role             = req_role.empty() ? "member" : req_role;
+        m.role             = Features::normalize_role(req_role.empty() ? "member" : req_role);
         m.birthday         = get_param("birthday");
         m.fol_status       = get_param("fol_status").empty() ? "afol" : get_param("fol_status");
         m.phone            = get_param("phone");
@@ -475,6 +478,10 @@ void register_member_routes(LugApp& app, MemberService& members, AttendanceRepos
         // Only admins may change an existing member's LUG role - otherwise a
         // chapter lead could demote an admin or promote a peer. Empty = unchanged.
         updates.role             = caller_is_admin ? get_param("role") : "";
+        if (!updates.role.empty()) {
+            auto cur = members.get(static_cast<int64_t>(id));
+            updates.role = Features::normalize_role(updates.role, cur ? cur->role : "");
+        }
         updates.birthday         = get_param("birthday");
         updates.fol_status       = get_param("fol_status").empty() ? "afol" : get_param("fol_status");
         updates.phone            = get_param("phone");

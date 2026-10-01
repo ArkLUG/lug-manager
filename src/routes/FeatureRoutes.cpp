@@ -3,8 +3,17 @@
 #include <crow/mustache.h>
 
 namespace {
-std::string render(SettingsRepository&, const std::string& flash = "") {
+int chapter_lead_count(SettingsRepository& settings) {
+    auto st = settings.db().prepare("SELECT COUNT(*) FROM members WHERE role='chapter_lead'");
+    return st.step() ? static_cast<int>(st.col_int(0)) : 0;
+}
+
+std::string render(SettingsRepository& settings, const std::string& flash = "") {
     crow::mustache::context ctx;
+    if (!Features::on("chapters")) {
+        int n = chapter_lead_count(settings);
+        if (n > 0) ctx["stray_leads"] = n;
+    }
     crow::json::wvalue arr = crow::json::wvalue::list();
     int i = 0;
     for (const auto& f : Features::all()) {
@@ -26,6 +35,28 @@ void register_feature_routes(LugApp& app, SettingsRepository& settings, AuditSer
         res.add_header("Content-Type", "text/html; charset=utf-8");
         res.write(req.get_header_value("HX-Request") == "true" ? body
                   : render_in_layout(req, app, body, "Features", "active_features"));
+        return res;
+    });
+
+    // POST /settings/features/leads-to-moderators - with chapters off, turn
+    // remaining Chapter Leads into Moderators (same permissions).
+    CROW_ROUTE(app, "/settings/features/leads-to-moderators").methods("POST"_method)(
+        [&app, &settings, &audit](const crow::request& req) {
+        crow::response res;
+        if (!require_auth(req, res, app, "admin")) return res;
+        int n = 0;
+        if (!Features::on("chapters")) {
+            auto st = settings.db().prepare("UPDATE members SET role='moderator', role_source='manual' "
+                                            "WHERE role='chapter_lead' RETURNING id, display_name");
+            std::vector<std::pair<int64_t, std::string>> changed;
+            while (st.step()) changed.emplace_back(st.col_int(0), st.col_text(1));
+            st.reset();
+            for (const auto& [id, name] : changed)
+                audit.log(req, app, "member.update", "member", id, name, "role: chapter_lead -> moderator (chapters off)");
+            n = static_cast<int>(changed.size());
+        }
+        res.add_header("Content-Type", "text/html; charset=utf-8");
+        res.write(render(settings, std::to_string(n) + " Chapter Lead(s) are now Moderators."));
         return res;
     });
 

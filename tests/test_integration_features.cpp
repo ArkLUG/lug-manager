@@ -140,3 +140,74 @@ TEST_F(IntegrationTest, FeaturesStopBackgroundWorkAndHideNotifications) {
     POST("/account/notifications", "event_reminder=1", member_token);
     EXPECT_TRUE(NotificationPrefs(*db).wants(regular_member_id, "loan_reminder"));
 }
+
+TEST_F(IntegrationTest, FeaturesChapterLeadRoleWithChaptersOff) {
+    // On: the role is offered
+    expect_contains(GET_HTMX("/members/new", admin_token), ">Chapter Lead</option>");
+    expect_contains(GET("/help", chapter_lead_token), "Chapter Lead &amp; Moderator Guide");
+    expect_contains(GET("/dashboard", chapter_lead_token), "Chapter Tools");
+
+    Features::set("chapters", false);
+    // Not offered for new members; asking for it gives the same-tier Moderator role
+    expect_not_contains(GET_HTMX("/members/new", admin_token), "value=\"chapter_lead\"");
+    POST("/members", "first_name=New&last_name=Lead&role=chapter_lead", admin_token);
+    auto q = db->prepare("SELECT role FROM members WHERE first_name='New' AND last_name='Lead'");
+    ASSERT_TRUE(q.step());
+    EXPECT_EQ(q.col_text(0), "moderator");
+    q.reset();
+    // Promoting an existing member doesn't hand it out either
+    POST("/members/" + std::to_string(regular_member_id), "first_name=Regular&last_name=User&role=chapter_lead", admin_token);
+    EXPECT_EQ(member_repo->find_by_id(regular_member_id)->role, "moderator");
+    // Someone who already has it keeps it (and the form says why it's odd)
+    auto edit = GET_HTMX("/members/" + std::to_string(chapter_lead_member_id), admin_token);
+    expect_contains(edit, "chapters are off - use Moderator");
+    POST("/members/" + std::to_string(chapter_lead_member_id), "first_name=Lead&last_name=User&role=chapter_lead", admin_token);
+    EXPECT_EQ(member_repo->find_by_id(chapter_lead_member_id)->role, "chapter_lead");
+    // Wording follows
+    expect_contains(GET("/help", chapter_lead_token), "Moderator Guide");
+    expect_not_contains(GET("/help", chapter_lead_token), "Chapter Lead &amp; Moderator Guide");
+    expect_contains(GET("/dashboard", chapter_lead_token), "Moderator Tools");
+
+    // Features page offers to convert the remaining Chapter Leads
+    auto page = GET("/settings/features", admin_token);
+    expect_contains(page, "still have the Chapter Lead role");
+    EXPECT_EQ(POST("/settings/features/leads-to-moderators", "", chapter_lead_token).code, 403);
+    auto conv = POST("/settings/features/leads-to-moderators", "", admin_token);
+    EXPECT_EQ(conv.code, 200);
+    expect_contains(conv, "are now Moderators");
+    expect_not_contains(conv, "still have the Chapter Lead role");
+    auto m = member_repo->find_by_id(chapter_lead_member_id);
+    EXPECT_EQ(m->role, "moderator");
+    auto a = db->prepare("SELECT COUNT(*) FROM audit_log WHERE details LIKE 'role: chapter_lead -> moderator%'");
+    ASSERT_TRUE(a.step());
+    EXPECT_GE(a.col_int(0), 1);
+    // Moderators keep the same powers (e.g. adding members)
+    EXPECT_EQ(GET_HTMX("/members/new", chapter_lead_token).code, 200);
+
+    // With chapters on again, conversion is a no-op and the role is offered again
+    Features::set("chapters", true);
+    expect_contains(POST("/settings/features/leads-to-moderators", "", admin_token), "0 Chapter Lead(s)");
+    expect_contains(GET_HTMX("/members/new", admin_token), ">Chapter Lead</option>");
+}
+
+TEST_F(IntegrationTest, FeaturesChaptersOffMeetingsAndSeriesAreLugWide) {
+    Features::set("chapters", false);
+    expect_not_contains(GET_HTMX("/meetings/new", admin_token), "Chapter Meeting");
+    POST("/meetings", "title=Flat+Meeting&location=Library&start_time=2099-03-03T19:00&end_time=2099-03-03T21:00&scope=chapter"
+                      "&suppress_discord=1&suppress_calendar=1", admin_token);
+    auto m = db->prepare("SELECT scope FROM meetings WHERE title='Flat Meeting'");
+    ASSERT_TRUE(m.step());
+    EXPECT_EQ(m.col_text(0), "lug_wide");
+    m.reset();
+
+    expect_not_contains(GET_HTMX("/meetings/series", admin_token), "<option value=\"chapter\">");
+    std::string body = "title=Flat+Night&rule=weekly&interval_weeks=1&weekday=2&start_hm=19:00&end_hm=21:00"
+                       "&scope=chapter&chapter_id=" + std::to_string(test_chapter_id) + "&suppress_discord=1&suppress_calendar=1";
+    EXPECT_EQ(POST("/meetings/series", body, admin_token).code, 200);
+    auto s = db->prepare("SELECT scope FROM meeting_series WHERE title='Flat Night'");
+    ASSERT_TRUE(s.step());
+    EXPECT_EQ(s.col_text(0), "lug_wide");
+    s.reset();
+    // Chapter event managers can't schedule LUG-wide series
+    EXPECT_EQ(POST("/meetings/series", body, event_manager_token).code, 403);
+}
