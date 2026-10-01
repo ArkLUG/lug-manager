@@ -137,6 +137,28 @@ std::string DiscordClient::discord_api_request(const std::string& method,
         if (bad) throw std::runtime_error("Discord API: refusing unsafe endpoint path");
     }
 
+    // Message text is built from member-supplied fields (event titles,
+    // descriptions, display names). Without allowed_mentions Discord honors
+    // any "@everyone"/"@here" in that text, letting anyone who can name an
+    // event mass-ping the server. Role and user mentions (the app's own
+    // announcement-role pings) are still allowed. Applies to every message
+    // body we send (top-level content, or a forum thread's starter message).
+    std::string body_to_send = json_body;
+    if (!json_body.empty() && (method == "POST" || method == "PATCH")) {
+        try {
+            auto j = json::parse(json_body);
+            auto guard = [](json& msg) {
+                if (msg.is_object() && msg.contains("content") && !msg.contains("allowed_mentions"))
+                    msg["allowed_mentions"] = {{"parse", json::array({"roles", "users"})}};
+            };
+            guard(j);
+            if (j.is_object() && j.contains("message")) guard(j["message"]);
+            body_to_send = j.dump();
+        } catch (const json::exception&) {
+            // Not JSON we built - send unchanged.
+        }
+    }
+
     CURL* curl = curl_easy_init();
     if (!curl) throw std::runtime_error("curl_easy_init failed");
 
@@ -159,8 +181,8 @@ std::string DiscordClient::discord_api_request(const std::string& method,
     if (method == "POST") {
         curl_easy_setopt(curl, CURLOPT_POST, 1L);
         if (!json_body.empty()) {
-            curl_easy_setopt(curl, CURLOPT_POSTFIELDS, json_body.c_str());
-            curl_easy_setopt(curl, CURLOPT_POSTFIELDSIZE, static_cast<long>(json_body.size()));
+            curl_easy_setopt(curl, CURLOPT_POSTFIELDS, body_to_send.c_str());
+            curl_easy_setopt(curl, CURLOPT_POSTFIELDSIZE, static_cast<long>(body_to_send.size()));
         } else {
             curl_easy_setopt(curl, CURLOPT_POSTFIELDS, "");
             curl_easy_setopt(curl, CURLOPT_POSTFIELDSIZE, 0L);
@@ -168,14 +190,14 @@ std::string DiscordClient::discord_api_request(const std::string& method,
     } else if (method == "PATCH") {
         curl_easy_setopt(curl, CURLOPT_CUSTOMREQUEST, "PATCH");
         if (!json_body.empty()) {
-            curl_easy_setopt(curl, CURLOPT_POSTFIELDS, json_body.c_str());
-            curl_easy_setopt(curl, CURLOPT_POSTFIELDSIZE, static_cast<long>(json_body.size()));
+            curl_easy_setopt(curl, CURLOPT_POSTFIELDS, body_to_send.c_str());
+            curl_easy_setopt(curl, CURLOPT_POSTFIELDSIZE, static_cast<long>(body_to_send.size()));
         }
     } else if (method == "PUT") {
         curl_easy_setopt(curl, CURLOPT_CUSTOMREQUEST, "PUT");
         if (!json_body.empty()) {
-            curl_easy_setopt(curl, CURLOPT_POSTFIELDS, json_body.c_str());
-            curl_easy_setopt(curl, CURLOPT_POSTFIELDSIZE, static_cast<long>(json_body.size()));
+            curl_easy_setopt(curl, CURLOPT_POSTFIELDS, body_to_send.c_str());
+            curl_easy_setopt(curl, CURLOPT_POSTFIELDSIZE, static_cast<long>(body_to_send.size()));
         }
     } else if (method == "DELETE") {
         curl_easy_setopt(curl, CURLOPT_CUSTOMREQUEST, "DELETE");
@@ -882,14 +904,18 @@ std::vector<DiscordGuildMember> DiscordClient::fetch_guild_members() const {
         std::string endpoint = "/guilds/" + get_guild_id() + "/members?limit=1000&after=" + after;
         std::string resp = discord_api_request("GET", endpoint);
 
+        // A failed page (rate limit, permissions, outage) must fail the whole
+        // fetch rather than silently return a partial list: the member sync
+        // treats anyone missing from this list as having left the server.
         json j;
         try {
             j = json::parse(resp);
         } catch (const json::exception& e) {
-            std::cerr << "[DiscordClient] fetch_guild_members parse error: " << e.what() << "\n";
-            break;
+            throw std::runtime_error(std::string("fetch_guild_members: unparseable response: ") + e.what());
         }
-        if (!j.is_array() || j.empty()) break;
+        if (!j.is_array())
+            throw std::runtime_error("fetch_guild_members: Discord error: " + resp.substr(0, 200));
+        if (j.empty()) break;
 
         std::string last_id;
         for (auto& gm : j) {
