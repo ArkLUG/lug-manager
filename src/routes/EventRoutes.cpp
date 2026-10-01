@@ -220,8 +220,7 @@ void register_event_routes(LugApp& app, EventService& events, AttendanceService&
     CROW_ROUTE(app, "/api/discord/forum-threads")(
         [&](const crow::request& req) {
         crow::response res;
-        auto& ctx = app.get_context<AuthMiddleware>(req);
-        if (ctx.auth.role != "admin") { res.code = 403; return res; }
+        if (!require_auth(req, res, app, "admin")) return res;
 
         auto threads = discord.fetch_forum_threads();
         std::ostringstream html;

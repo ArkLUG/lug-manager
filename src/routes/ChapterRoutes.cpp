@@ -116,11 +116,7 @@ void register_chapter_routes(LugApp& app, ChapterService& chapters,
         [&](const crow::request& req) {
         crow::response res;
         auto& ctx = app.get_context<AuthMiddleware>(req);
-        if (ctx.auth.role != "admin") {
-            res.code = 403;
-            res.write("Forbidden: admin only");
-            return res;
-        }
+        if (!require_auth(req, res, app, "admin")) return res;
 
         auto params = crow::query_string("?" + req.body);
         auto get_param = [&](const char* k) -> std::string {
@@ -304,13 +300,7 @@ void register_chapter_routes(LugApp& app, ChapterService& chapters,
     CROW_ROUTE(app, "/chapters/<int>").methods("PUT"_method)(
         [&](const crow::request& req, int id) {
         crow::response res;
-        auto& ctx = app.get_context<AuthMiddleware>(req);
-        if (ctx.auth.role != "admin") {
-            res.code = 403;
-            res.write("{\"error\":\"Forbidden\"}");
-            res.add_header("Content-Type", "application/json");
-            return res;
-        }
+        if (!require_auth(req, res, app, "admin")) return res;
 
         auto ch_before = chapters.get(static_cast<int64_t>(id));
 
@@ -376,13 +366,7 @@ void register_chapter_routes(LugApp& app, ChapterService& chapters,
     CROW_ROUTE(app, "/chapters/<int>").methods("DELETE"_method)(
         [&](const crow::request& req, int id) {
         crow::response res;
-        auto& ctx = app.get_context<AuthMiddleware>(req);
-        if (ctx.auth.role != "admin") {
-            res.code = 403;
-            res.write("{\"error\":\"Forbidden\"}");
-            res.add_header("Content-Type", "application/json");
-            return res;
-        }
+        if (!require_auth(req, res, app, "admin")) return res;
 
         try {
             auto ch_del = chapters.get(static_cast<int64_t>(id));
@@ -402,12 +386,7 @@ void register_chapter_routes(LugApp& app, ChapterService& chapters,
     // GET /chapters/new - create form modal (admin only)
     CROW_ROUTE(app, "/chapters/new")([&](const crow::request& req) {
         crow::response res;
-        auto& ctx = app.get_context<AuthMiddleware>(req);
-        if (ctx.auth.role != "admin") {
-            res.code = 403;
-            res.write("Forbidden");
-            return res;
-        }
+        if (!require_auth(req, res, app, "admin")) return res;
 
         crow::mustache::context mctx;
         mctx["channel_options"]      = build_channel_options(discord, "");
@@ -625,12 +604,7 @@ void register_chapter_routes(LugApp& app, ChapterService& chapters,
     // GET /chapters/<id>/edit - edit form modal (admin only)
     CROW_ROUTE(app, "/chapters/<int>/edit")([&](const crow::request& req, int id) {
         crow::response res;
-        auto& ctx = app.get_context<AuthMiddleware>(req);
-        if (ctx.auth.role != "admin") {
-            res.code = 403;
-            res.write("Forbidden");
-            return res;
-        }
+        if (!require_auth(req, res, app, "admin")) return res;
 
         auto ch = chapters.get(static_cast<int64_t>(id));
         if (!ch) {

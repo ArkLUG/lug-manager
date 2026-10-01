@@ -104,12 +104,7 @@ void register_branding_routes(LugApp& app, SettingsRepository& settings,
         [&](const crow::request& req) {
         crow::response res;
         res.add_header("Content-Type", "text/html; charset=utf-8");
-        auto& ctx = app.get_context<AuthMiddleware>(req);
-        if (ctx.auth.role != "admin") {
-            res.code = 403;
-            res.write(R"(<span class="text-red-600">Forbidden</span>)");
-            return res;
-        }
+        if (!require_auth(req, res, app, "admin")) return res;
 
         crow::multipart::message msg(req);
         auto part = msg.get_part_by_name("logo");
@@ -169,13 +164,7 @@ void register_branding_routes(LugApp& app, SettingsRepository& settings,
     CROW_ROUTE(app, "/settings/branding/remove").methods("POST"_method)(
         [&](const crow::request& req) {
         crow::response res;
-        auto& ctx = app.get_context<AuthMiddleware>(req);
-        if (ctx.auth.role != "admin") {
-            res.code = 403;
-            res.write(R"(<span class="text-red-600">Forbidden</span>)");
-            res.add_header("Content-Type", "text/html; charset=utf-8");
-            return res;
-        }
+        if (!require_auth(req, res, app, "admin")) return res;
 
         std::string ext = settings.get("branding_logo_extension", "");
         if (!ext.empty()) {

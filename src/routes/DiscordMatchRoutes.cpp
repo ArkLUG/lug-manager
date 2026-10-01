@@ -221,12 +221,7 @@ void register_discord_match_routes(LugApp& app,
     CROW_ROUTE(app, "/settings/discord-matches").methods("POST"_method)(
         [&](const crow::request& req) {
         crow::response res;
-        auto& ctx = app.get_context<AuthMiddleware>(req);
-        if (ctx.auth.role != "admin") {
-            res.code = 403;
-            res.write("Forbidden");
-            return res;
-        }
+        if (!require_auth(req, res, app, "admin")) return res;
 
         auto params = crow::query_string("?" + req.body);
         auto get_param = [&](const char* k) -> std::string {

@@ -15,8 +15,7 @@ void register_role_routes(LugApp& app,
     // Returns JSON array of Discord guild roles (for role mapping UI).
     CROW_ROUTE(app, "/api/discord/roles")([&](const crow::request& req) {
         crow::response res;
-        auto& ctx = app.get_context<AuthMiddleware>(req);
-        if (ctx.auth.role != "admin") { res.code = 403; return res; }
+        if (!require_auth(req, res, app, "admin")) return res;
 
         auto guild_roles  = discord.fetch_guild_roles();
         auto existing     = role_mappings.find_all();
@@ -117,8 +116,7 @@ void register_role_routes(LugApp& app,
     CROW_ROUTE(app, "/settings/roles").methods("POST"_method)(
         [&](const crow::request& req) {
         crow::response res;
-        auto& ctx = app.get_context<AuthMiddleware>(req);
-        if (ctx.auth.role != "admin") { res.code = 403; res.write("Forbidden"); return res; }
+        if (!require_auth(req, res, app, "admin")) return res;
 
         auto params = crow::query_string("?" + req.body);
 

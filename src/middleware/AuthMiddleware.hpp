@@ -147,14 +147,18 @@ inline bool require_auth(const crow::request& req, crow::response& res, App& app
         }
         return false;
     }
-    if (min_role == "admin" && !ctx.auth.is_admin()) {
+    bool allowed = (min_role == "admin")        ? ctx.auth.is_admin()
+                 : (min_role == "chapter_lead") ? ctx.auth.is_chapter_lead()
+                 : true;
+    if (!allowed) {
         res.code = 403;
-        res.write(R"({"error":"forbidden"})");
-        return false;
-    }
-    if (min_role == "chapter_lead" && !ctx.auth.is_chapter_lead()) {
-        res.code = 403;
-        res.write(R"({"error":"forbidden"})");
+        if (req.get_header_value("HX-Request") == "true") {
+            res.add_header("Content-Type", "text/html; charset=utf-8");
+            res.write(R"(<div class="text-red-500 text-sm p-2">You don't have permission to do that.</div>)");
+        } else {
+            res.add_header("Content-Type", "application/json");
+            res.write(R"({"error":"forbidden"})");
+        }
         return false;
     }
     return true;

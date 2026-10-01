@@ -20,11 +20,7 @@ void register_settings_routes(LugApp& app, SettingsRepository& settings,
     CROW_ROUTE(app, "/api/discord/channel-options")(
         [&](const crow::request& req) {
         crow::response res;
-        auto& ctx = app.get_context<AuthMiddleware>(req);
-        if (ctx.auth.role != "admin") {
-            res.code = 403;
-            return res;
-        }
+        if (!require_auth(req, res, app, "admin")) return res;
 
         std::string selected;
         std::string override_guild;
@@ -72,8 +68,7 @@ void register_settings_routes(LugApp& app, SettingsRepository& settings,
     CROW_ROUTE(app, "/api/discord/forum-options")(
         [&](const crow::request& req) {
         crow::response res;
-        auto& ctx = app.get_context<AuthMiddleware>(req);
-        if (ctx.auth.role != "admin") { res.code = 403; return res; }
+        if (!require_auth(req, res, app, "admin")) return res;
 
         std::string selected;
         {
@@ -138,12 +133,7 @@ void register_settings_routes(LugApp& app, SettingsRepository& settings,
     CROW_ROUTE(app, "/api/discord/test-announcement").methods("POST"_method)(
         [&](const crow::request& req) {
         crow::response res;
-        auto& ctx = app.get_context<AuthMiddleware>(req);
-        if (ctx.auth.role != "admin") {
-            res.code = 403;
-            res.write(R"(<span class="text-red-600">Forbidden</span>)");
-            return res;
-        }
+        if (!require_auth(req, res, app, "admin")) return res;
 
         std::string channel_id = discord.get_lug_channel_id();
         if (channel_id.empty()) {
@@ -165,8 +155,7 @@ void register_settings_routes(LugApp& app, SettingsRepository& settings,
     CROW_ROUTE(app, "/api/discord/role-options")(
         [&](const crow::request& req) {
         crow::response res;
-        auto& ctx = app.get_context<AuthMiddleware>(req);
-        if (ctx.auth.role != "admin") { res.code = 403; return res; }
+        if (!require_auth(req, res, app, "admin")) return res;
 
         std::string selected;
         {
@@ -192,12 +181,7 @@ void register_settings_routes(LugApp& app, SettingsRepository& settings,
     CROW_ROUTE(app, "/api/discord/sync-members").methods("POST"_method)(
         [&](const crow::request& req) {
         crow::response res;
-        auto& ctx = app.get_context<AuthMiddleware>(req);
-        if (ctx.auth.role != "admin") {
-            res.code = 403;
-            res.write(R"(<span class="text-red-600">Forbidden</span>)");
-            return res;
-        }
+        if (!require_auth(req, res, app, "admin")) return res;
 
         SyncResult r = member_sync.sync_from_guild();
         audit.log(req, app, "sync.members", "settings", 0, "",
@@ -302,13 +286,7 @@ void register_settings_routes(LugApp& app, SettingsRepository& settings,
     CROW_ROUTE(app, "/api/discord/revert-sync-change").methods("POST"_method)(
         [&](const crow::request& req) {
         crow::response res;
-        auto& ctx = app.get_context<AuthMiddleware>(req);
-        if (ctx.auth.role != "admin") {
-            res.code = 403;
-            res.write(R"(<span class="text-red-600">Forbidden</span>)");
-            res.add_header("Content-Type", "text/html; charset=utf-8");
-            return res;
-        }
+        if (!require_auth(req, res, app, "admin")) return res;
 
         auto body = crow::query_string("?" + req.body);
         int64_t member_id = 0;
@@ -567,16 +545,6 @@ void register_settings_routes(LugApp& app, SettingsRepository& settings,
     // about its own section's fields, so there is no "other form's fields are
     // absent" case left to guard against, and no risk of a future new field
     // needing the same guard and it being missed again.
-    auto is_admin_or_403 = [](const crow::request& req, LugApp& app, crow::response& res) -> bool {
-        auto& ctx = app.template get_context<AuthMiddleware>(req);
-        if (ctx.auth.role != "admin") {
-            res.code = 403;
-            res.write("Forbidden");
-            return false;
-        }
-        return true;
-    };
-
     auto redirect_to_settings = [](const crow::request& req, crow::response& res) {
         bool is_htmx = req.get_header_value("HX-Request") == "true";
         if (is_htmx) {
@@ -595,7 +563,7 @@ void register_settings_routes(LugApp& app, SettingsRepository& settings,
     CROW_ROUTE(app, "/settings/discord").methods("POST"_method)(
         [&](const crow::request& req) {
         crow::response res;
-        if (!is_admin_or_403(req, app, res)) return res;
+        if (!require_auth(req, res, app, "admin")) return res;
 
         auto params = crow::query_string("?" + req.body);
         auto get_param = [&](const char* k) -> std::string {
@@ -640,7 +608,7 @@ void register_settings_routes(LugApp& app, SettingsRepository& settings,
     CROW_ROUTE(app, "/settings/calendar").methods("POST"_method)(
         [&](const crow::request& req) {
         crow::response res;
-        if (!is_admin_or_403(req, app, res)) return res;
+        if (!require_auth(req, res, app, "admin")) return res;
 
         auto params = crow::query_string("?" + req.body);
         auto get_param = [&](const char* k) -> std::string {
@@ -669,7 +637,7 @@ void register_settings_routes(LugApp& app, SettingsRepository& settings,
     CROW_ROUTE(app, "/settings/google-calendar").methods("POST"_method)(
         [&](const crow::request& req) {
         crow::response res;
-        if (!is_admin_or_403(req, app, res)) return res;
+        if (!require_auth(req, res, app, "admin")) return res;
 
         auto params = crow::query_string("?" + req.body);
         auto get_param = [&](const char* k) -> std::string {
@@ -693,13 +661,7 @@ void register_settings_routes(LugApp& app, SettingsRepository& settings,
     CROW_ROUTE(app, "/api/google-calendar/import").methods("POST"_method)(
         [&](const crow::request& req) {
         crow::response res;
-        auto& ctx = app.get_context<AuthMiddleware>(req);
-        if (ctx.auth.role != "admin") {
-            res.code = 403;
-            res.write(R"(<span class="text-red-600">Forbidden</span>)");
-            res.add_header("Content-Type", "text/html; charset=utf-8");
-            return res;
-        }
+        if (!require_auth(req, res, app, "admin")) return res;
 
         if (!gcal.is_configured()) {
             res.write(R"(<span class="text-red-600">Google Calendar not configured.</span>)");
@@ -762,13 +724,7 @@ void register_settings_routes(LugApp& app, SettingsRepository& settings,
     CROW_ROUTE(app, "/api/google-calendar/sync-all").methods("POST"_method)(
         [&](const crow::request& req) {
         crow::response res;
-        auto& ctx = app.get_context<AuthMiddleware>(req);
-        if (ctx.auth.role != "admin") {
-            res.code = 403;
-            res.write(R"(<span class="text-red-600">Forbidden</span>)");
-            res.add_header("Content-Type", "text/html; charset=utf-8");
-            return res;
-        }
+        if (!require_auth(req, res, app, "admin")) return res;
 
         if (!gcal.is_configured()) {
             res.write(R"(<span class="text-red-600">Google Calendar not configured.</span>)");
@@ -801,13 +757,7 @@ void register_settings_routes(LugApp& app, SettingsRepository& settings,
     CROW_ROUTE(app, "/api/discord/sync-all").methods("POST"_method)(
         [&](const crow::request& req) {
         crow::response res;
-        auto& ctx = app.get_context<AuthMiddleware>(req);
-        if (ctx.auth.role != "admin") {
-            res.code = 403;
-            res.write(R"(<span class="text-red-600">Forbidden</span>)");
-            res.add_header("Content-Type", "text/html; charset=utf-8");
-            return res;
-        }
+        if (!require_auth(req, res, app, "admin")) return res;
 
         try {
             auto ev_result  = events.sync_all_to_discord();
@@ -837,13 +787,7 @@ void register_settings_routes(LugApp& app, SettingsRepository& settings,
     CROW_ROUTE(app, "/api/members/regenerate-nicknames").methods("POST"_method)(
         [&](const crow::request& req) {
         crow::response res;
-        auto& ctx = app.get_context<AuthMiddleware>(req);
-        if (ctx.auth.role != "admin") {
-            res.code = 403;
-            res.write(R"(<span class="text-red-600">Forbidden</span>)");
-            res.add_header("Content-Type", "text/html; charset=utf-8");
-            return res;
-        }
+        if (!require_auth(req, res, app, "admin")) return res;
 
         auto result = members.regenerate_all_nicknames();
         audit.log(req, app, "sync.regen_nicknames", "settings", 0, "",
@@ -898,13 +842,7 @@ void register_settings_routes(LugApp& app, SettingsRepository& settings,
     CROW_ROUTE(app, "/api/discord/sync-nicknames").methods("POST"_method)(
         [&](const crow::request& req) {
         crow::response res;
-        auto& ctx = app.get_context<AuthMiddleware>(req);
-        if (ctx.auth.role != "admin") {
-            res.code = 403;
-            res.write(R"(<span class="text-red-600">Forbidden</span>)");
-            res.add_header("Content-Type", "text/html; charset=utf-8");
-            return res;
-        }
+        if (!require_auth(req, res, app, "admin")) return res;
 
         try {
             auto result = members.sync_nicknames_to_discord();

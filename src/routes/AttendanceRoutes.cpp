@@ -143,12 +143,7 @@ void register_attendance_routes(LugApp& app, AttendanceService& attendance,
         crow::response res;
         if (!require_auth(req, res, app)) return res;
 
-        auto& auth = app.get_context<AuthMiddleware>(req);
-        if (auth.auth.role != "admin") {
-            res.code = 403;
-            res.write("Forbidden");
-            return res;
-        }
+        if (!require_auth(req, res, app, "admin")) return res;
 
         // Parse query params
         std::time_t now = std::time(nullptr);
