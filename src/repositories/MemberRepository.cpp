@@ -448,3 +448,35 @@ std::vector<Member> MemberRepository::search_names(const std::string& q, int lim
     while (stmt.step()) result.push_back(row_to_member(stmt));
     return result;
 }
+
+MemberRepository::Guardian MemberRepository::get_guardian(int64_t id) {
+    auto st = db_.prepare("SELECT guardian_name, guardian_phone, guardian_email, consent_on_file, consent_date, "
+                          "photo_release FROM members WHERE id=?");
+    st.bind(1, id);
+    Guardian g;
+    if (st.step()) {
+        g.name = st.col_text(0); g.phone = st.col_text(1); g.email = st.col_text(2);
+        g.consent_on_file = st.col_bool(3); g.consent_date = st.col_text(4); g.photo_release = st.col_bool(5);
+    }
+    return g;
+}
+
+void MemberRepository::set_guardian(int64_t id, const Guardian& g) {
+    auto st = db_.prepare("UPDATE members SET guardian_name=?, guardian_phone=?, guardian_email=?, "
+                          "consent_on_file=?, consent_date=?, photo_release=?, updated_at=datetime('now') WHERE id=?");
+    st.bind(1, g.name); st.bind(2, g.phone); st.bind(3, g.email); st.bind(4, g.consent_on_file);
+    st.bind(5, g.consent_date); st.bind(6, g.photo_release); st.bind(7, id);
+    st.step();
+}
+
+std::unordered_map<int64_t, std::pair<bool, bool>> MemberRepository::minor_flags(const std::vector<int64_t>& ids) {
+    std::unordered_map<int64_t, std::pair<bool, bool>> out;
+    if (ids.empty()) return out;
+    std::string in = "(";
+    for (size_t i = 0; i < ids.size(); ++i) in += i ? ",?" : "?";
+    auto st = db_.prepare("SELECT id, consent_on_file, photo_release FROM members "
+                          "WHERE fol_status IN ('kfol','tfol') AND id IN " + in + ")");
+    for (size_t i = 0; i < ids.size(); ++i) st.bind(static_cast<int>(i + 1), ids[i]);
+    while (st.step()) out[st.col_int(0)] = {st.col_bool(1), st.col_bool(2)};
+    return out;
+}

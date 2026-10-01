@@ -26,6 +26,7 @@ struct DatatableResult {
 class MemberService {
 public:
     MemberService(MemberRepository& repo, DiscordClient* discord = nullptr);
+    MemberRepository& repo() { return repo_; }
 
     std::optional<Member> get(int64_t id);
     std::optional<Member> get_by_discord_id(const std::string& discord_id);

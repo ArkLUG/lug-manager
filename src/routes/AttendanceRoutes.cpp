@@ -43,6 +43,21 @@ static bool is_entity_type(const std::string& t) {
 
 // Build the attendance list context and render the template fragment.
 // Events use a per-day grouped template; meetings use the flat list.
+// Minors (KFOL/TFOL) in an attendance list, with their consent/photo status,
+// so organisers see "no photos" / "consent missing" right where they check in.
+static MemberRepository* g_member_repo_for_badges = nullptr;
+static void add_minor_badges(crow::json::wvalue& rows, const std::vector<int64_t>& ids) {
+    if (!g_member_repo_for_badges || ids.empty()) return;
+    auto flags = g_member_repo_for_badges->minor_flags(ids);
+    for (size_t i = 0; i < ids.size(); ++i) {
+        auto it = flags.find(ids[i]);
+        bool minor = it != flags.end();
+        rows[i]["is_minor"] = minor;
+        rows[i]["no_consent"] = minor && !it->second.first;
+        rows[i]["no_photos"] = minor && !it->second.second;
+    }
+}
+
 static std::string render_attendance_list(AttendanceService& attendance,
                                            const std::string& entity_type, int64_t entity_id,
                                            bool can_manage, bool is_meeting) {
@@ -83,6 +98,11 @@ static std::string render_attendance_list(AttendanceService& attendance,
                 att_arr[j]["entity_id"]              = static_cast<int>(entity_id);
                 att_arr[j]["day_number"]             = d.day_number;
             }
+            {
+                std::vector<int64_t> ids;
+                for (const auto& r : day_rows) ids.push_back(r.member_id);
+                add_minor_badges(att_arr, ids);
+            }
             days_arr[i]["attendees"] = std::move(att_arr);
         }
         ctx["days"] = std::move(days_arr);
@@ -114,6 +134,11 @@ static std::string render_attendance_list(AttendanceService& attendance,
         arr[i]["entity_type"]            = entity_type;
         arr[i]["entity_id"]              = static_cast<int>(entity_id);
     }
+    {
+        std::vector<int64_t> ids;
+        for (const auto& a : attendees) ids.push_back(a.member_id);
+        add_minor_badges(arr, ids);
+    }
     ctx["attendees"] = std::move(arr);
     auto tmpl = crow::mustache::load("meetings/_attendance.html");
     return tmpl.render(ctx).dump();
@@ -137,6 +162,7 @@ void register_attendance_routes(LugApp& app, AttendanceService& attendance,
                                 MemberService& members,
                                 ChapterMemberRepository& chapter_members,
                                 PerkLevelRepository& perks, AuditService& audit) {
+    g_member_repo_for_badges = &members.repo();
 
     // GET /attendance/overview - admin/lead attendance overview for all members
     // Query param: ?year=YYYY (defaults to current year)

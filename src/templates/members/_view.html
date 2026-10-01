@@ -104,6 +104,17 @@
         {{/is_paid}}
       </dd>
     </div>
+    {{#show_guardian}}
+    <div class="grid grid-cols-3 gap-1 pt-2 border-t border-gray-100">
+      <dt class="text-gray-500 font-medium">Guardian</dt>
+      <dd class="col-span-2 text-gray-800">
+        {{#guardian_name}}{{guardian_name}}{{#guardian_phone}} · {{guardian_phone}}{{/guardian_phone}}{{#guardian_email}} · {{guardian_email}}{{/guardian_email}}<br>{{/guardian_name}}
+        {{#consent_on_file}}<span class="text-xs text-green-700">Consent on file{{#consent_date}} ({{consent_date}}){{/consent_date}}</span>{{/consent_on_file}}
+        {{^consent_on_file}}<span class="text-xs text-amber-700">No signed consent on file</span>{{/consent_on_file}}
+        · {{#photo_release}}<span class="text-xs text-green-700">photo release given</span>{{/photo_release}}{{^photo_release}}<span class="text-xs text-red-700">no photos</span>{{/photo_release}}
+      </dd>
+    </div>
+    {{/show_guardian}}
     <div class="pt-1">
       <div hx-get="/members/{{id}}/dues" hx-trigger="load" hx-swap="outerHTML"><p class="text-xs text-gray-400">Loading dues history…</p></div>
     </div>

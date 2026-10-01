@@ -2,6 +2,7 @@
 #include "db/SqliteDatabase.hpp"
 #include "models/Member.hpp"
 #include <vector>
+#include <unordered_map>
 #include <optional>
 #include <string>
 
@@ -28,6 +29,16 @@ public:
     bool   update(const Member& m);  // Returns false if not found
     // members.role_source: "manual" | "discord" - see services/RoleSync.hpp
     std::string get_role_source(int64_t id);
+
+    // Guardian / consent details for young members (migration 056).
+    struct Guardian {
+        std::string name, phone, email, consent_date;
+        bool consent_on_file = false, photo_release = false;
+    };
+    Guardian get_guardian(int64_t id);
+    void     set_guardian(int64_t id, const Guardian& g);
+    // For check-in lists: minors (KFOL/TFOL) among `ids` -> {consent_on_file, photo_release}.
+    std::unordered_map<int64_t, std::pair<bool, bool>> minor_flags(const std::vector<int64_t>& ids);
     // Exact first+last name match (case-insensitive, indexed - migration 053).
     std::optional<Member> find_by_full_name(const std::string& first, const std::string& last);
     // Name-only search for the public check-in page (never matches email etc.).

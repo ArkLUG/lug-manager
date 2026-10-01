@@ -81,7 +81,22 @@ static std::string render_members_page(const crow::request& req,
     return render_in_layout(req, app, content, "Members", "active_members");
 }
 
+// Reads the guardian/consent block of the member form (only when it was on the form).
+template <typename GetParam>
+static std::optional<MemberRepository::Guardian> guardian_from_form(GetParam get_param) {
+    if (get_param("guardian_form") != "1") return std::nullopt;
+    MemberRepository::Guardian g;
+    g.name            = get_param("guardian_name").substr(0, 100);
+    g.phone           = get_param("guardian_phone").substr(0, 40);
+    g.email           = get_param("guardian_email").substr(0, 200);
+    g.consent_on_file = get_param("consent_on_file") == "1";
+    g.consent_date    = get_param("consent_date").substr(0, 10);
+    g.photo_release   = get_param("photo_release") == "1";
+    return g;
+}
+
 void register_member_routes(LugApp& app, MemberService& members, AttendanceRepository& attendance_repo, AuditService& audit) {
+    MemberRepository& member_repo = members.repo();
 
     // GET /members - members page (table shell; data loaded via AJAX)
     CROW_ROUTE(app, "/members")([&](const crow::request& req) {
@@ -314,6 +329,17 @@ void register_member_routes(LugApp& app, MemberService& members, AttendanceRepos
                              || can_see(m->sharing_discord);
         ctx["show_dues"]     = privileged || is_self;
         ctx["viewer_is_admin"] = auth.is_admin() && !is_self;
+        if (privileged || is_self) {
+            auto g = member_repo.get_guardian(m->id);
+            bool minor = m->fol_status == "kfol" || m->fol_status == "tfol";
+            ctx["show_guardian"]   = minor || !g.name.empty();
+            ctx["guardian_name"]   = g.name;
+            ctx["guardian_phone"]  = g.phone;
+            ctx["guardian_email"]  = g.email;
+            ctx["consent_on_file"] = g.consent_on_file;
+            ctx["consent_date"]    = g.consent_date;
+            ctx["photo_release"]   = g.photo_release;
+        }
         ctx["is_self"]       = is_self;
 
         res.add_header("Content-Type", "text/html; charset=utf-8");
@@ -354,6 +380,13 @@ void register_member_routes(LugApp& app, MemberService& members, AttendanceRepos
         res.add_header("Content-Type", "text/html; charset=utf-8");
         auto tmpl = crow::mustache::load("members/_form.html");
         auto ctx  = member_to_ctx(*m);
+        {
+            auto g = member_repo.get_guardian(m->id);
+            ctx["guardian_name"] = g.name; ctx["guardian_phone"] = g.phone; ctx["guardian_email"] = g.email;
+            ctx["consent_on_file"] = g.consent_on_file; ctx["consent_date"] = g.consent_date;
+            ctx["photo_release"] = g.photo_release;
+            ctx["guardian_open"] = m->fol_status == "kfol" || m->fol_status == "tfol" || !g.name.empty();
+        }
         ctx["action"]   = "/members/" + std::to_string(id);
         ctx["title"]    = "Edit Member";
         ctx["is_edit"]  = true;
@@ -399,6 +432,7 @@ void register_member_routes(LugApp& app, MemberService& members, AttendanceRepos
         res.add_header("Content-Type", "text/html; charset=utf-8");
         try {
             auto created = members.create(m);
+            if (auto g = guardian_from_form(get_param)) member_repo.set_guardian(created.id, *g);
             audit.log(req, app, "member.create", "member", created.id, created.display_name,
                       "Created member: " + created.first_name + " " + created.last_name);
             res.add_header("HX-Trigger", "{\"closeModal\":true,\"membersUpdated\":true}");
@@ -455,6 +489,7 @@ void register_member_routes(LugApp& app, MemberService& members, AttendanceRepos
             std::string chapter_str = get_param("chapter_id");
             int64_t new_chapter_id = parse_id(chapter_str);
             members.set_chapter(static_cast<int64_t>(id), new_chapter_id);
+            if (auto g = guardian_from_form(get_param)) member_repo.set_guardian(static_cast<int64_t>(id), *g);
             // Re-read after all changes (including chapter) for accurate diff
             auto after = members.get(static_cast<int64_t>(id));
             {

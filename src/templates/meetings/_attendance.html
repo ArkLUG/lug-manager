@@ -11,7 +11,7 @@
       <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"/>
     </svg>
     {{/is_virtual}}
-    <span class="font-medium truncate">{{member_display_name}}</span>
+    <span class="font-medium truncate">{{member_display_name}}</span>{{#no_photos}}<span class="ml-1 px-1.5 py-0.5 rounded text-[10px] font-semibold bg-red-100 text-red-700" title="Minor without a photo release">no photos</span>{{/no_photos}}{{#no_consent}}<span class="ml-1 px-1.5 py-0.5 rounded text-[10px] font-semibold bg-amber-100 text-amber-800" title="Minor without signed consent on file">consent missing</span>{{/no_consent}}
     {{#has_discord_username}}<span class="text-gray-400 hidden sm:inline">@{{member_discord_username}}</span>{{/has_discord_username}}
     {{#is_virtual}}<span class="ml-1 px-1.5 py-0.5 rounded text-[10px] font-medium bg-indigo-100 text-indigo-700">Virtual</span>{{/is_virtual}}
 
