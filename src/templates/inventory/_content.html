@@ -48,7 +48,7 @@
           {{#members}}<option value="{{id}}">{{name}}</option>{{/members}}
         </select></label>
       <label>Qty <input type="number" name="quantity" value="1" min="1" class="mt-1 w-full border border-gray-300 rounded-lg px-2 py-1.5"></label>
-      <label>Due <input type="date" name="due_on" min="{{today}}" class="mt-1 w-full border border-gray-300 rounded-lg px-2 py-1.5"></label>
+      <label>Due <input type="date" name="due_on" min="{{today}}" title="The borrower gets a reminder on this date" class="mt-1 w-full border border-gray-300 rounded-lg px-2 py-1.5"></label>
       <input name="notes" maxlength="500" placeholder="Notes (e.g. for which show)" class="md:col-span-5 border border-gray-300 rounded-lg px-2 py-1.5">
       <button class="px-4 py-2 bg-yellow-400 text-gray-900 rounded-lg font-semibold hover:bg-yellow-300">Check out</button>
     </form>

@@ -71,3 +71,34 @@ TEST_F(IntegrationTest, InventoryCheckoutAndReturn) {
     ASSERT_TRUE(a.step());
     EXPECT_GE(a.col_int(0), 5);
 }
+
+#include "services/LoanReminders.hpp"
+#include "repositories/NotificationPrefs.hpp"
+
+TEST_F(IntegrationTest, InventoryOverdueReminderOncePerLoan) {
+    Member m;
+    m.first_name = "Bo"; m.last_name = "Rower"; m.display_name = "Bo R."; m.email = "bo@example.org"; m.role = "member";
+    int64_t bo = member_repo->create(m).id;
+    ASSERT_EQ(POST("/inventory", "name=Banner&quantity=2", admin_token).code, 200);
+    std::string id = std::to_string(item_id(*db, "Banner"));
+    ASSERT_EQ(POST("/inventory/checkout", "item_id=" + id + "&member_id=" + std::to_string(bo) + "&quantity=1&due_on=2030-05-01", admin_token).code, 200);
+    ASSERT_EQ(POST("/inventory/checkout", "item_id=" + id + "&member_id=" + std::to_string(regular_member_id) + "&quantity=1&due_on=2030-06-01", admin_token).code, 200);
+
+    LoanReminders lr(*db, std::make_shared<Notifier>(*db, *discord_client, mailer, "http://lug.test"));
+    EXPECT_EQ(lr.run_once("2030-04-30"), 0);           // not due yet
+    lr.run_once("2030-05-02");                          // Bo's is overdue (email); regular's isn't due
+    auto out = mailer->outbox();
+    ASSERT_EQ(out.size(), 1u);
+    EXPECT_EQ(out[0].to, "bo@example.org");
+    EXPECT_EQ(out[0].subject, "Please return: Banner");
+    EXPECT_NE(out[0].body.find("due back on 2030-05-01"), std::string::npos);
+    EXPECT_NE(out[0].unsubscribe_url.find("kind=loan_reminder"), std::string::npos);
+    lr.run_once("2030-05-03");                          // only once
+    EXPECT_EQ(mailer->outbox().size(), 1u);
+
+    // Opted-out borrowers aren't messaged (but the loan is still marked)
+    NotificationPrefs(*db).set(regular_member_id, "loan_reminder", false);
+    mailer->clear_outbox();
+    lr.run_once("2030-06-01");
+    EXPECT_TRUE(mailer->outbox().empty());
+}

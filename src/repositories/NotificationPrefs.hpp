@@ -16,6 +16,7 @@ public:
             {"shift_reminder", "Volunteer shift reminders", "Before a volunteer shift you signed up for."},
             {"waitlist",       "Waitlist spot opened", "When you move off an event waitlist."},
             {"dues_reminder",  "Dues renewal reminders", "Shortly before your dues run out."},
+            {"loan_reminder",  "LUG items due back", "When something you borrowed from the LUG inventory is due."},
             {"email",          "Email when I'm not on Discord", "If your account has no Discord linked, send the notifications above to your email instead."},
         };
         return k;

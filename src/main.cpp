@@ -39,6 +39,7 @@
 #include "middleware/AuthMiddleware.hpp"
 #include "services/ReminderService.hpp"
 #include "services/DuesService.hpp"
+#include "services/LoanReminders.hpp"
 #include "services/BackupService.hpp"
 #include "services/SeriesService.hpp"
 #include "utils/TemplateCache.hpp"
@@ -269,7 +270,9 @@ int main() {
                      svc.mailer->enabled() ? "SMTP set but LUG_PUBLIC_URL missing - email off" : "off (LUG_SMTP_* not set)") << "\n";
         BackupService  backup_service(db, data_dir);
         SeriesService  series_service(db, meeting_service);
-        std::thread reminder_thread([&reminder_service, &dues_service, &backup_service, &settings_repo, &series_service] {
+        LoanReminders  loan_reminders(db, svc.notifier);
+        std::thread reminder_thread([&reminder_service, &dues_service, &backup_service, &settings_repo, &series_service,
+                                     &loan_reminders] {
             std::this_thread::sleep_for(std::chrono::seconds(60));
             while (true) {
                 try {
@@ -284,6 +287,8 @@ int main() {
                     auto d = dues_service.run_once();
                     if (d.expired || d.reminded)
                         std::cout << "[dues] " << d.expired << " lapsed, " << d.reminded << " reminded\n";
+                    if (int n = loan_reminders.run_once(AttendanceService::today_ymd()))
+                        std::cout << "[inventory] Reminded " << n << " borrower(s)\n";
                     auto r = reminder_service.run_once();
                     if (r.meetings || r.events || r.dms)
                         std::cout << "[reminders] Sent " << r.meetings << " meeting, " << r.events
