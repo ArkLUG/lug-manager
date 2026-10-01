@@ -110,7 +110,7 @@ void register_meetings_api_routes(LugApp& app, MeetingService& meetings,
         if (body.has("excludes_perks"))    updates.excludes_perks    = body["excludes_perks"].b();
 
         try {
-            auto updated = meetings.update(static_cast<int64_t>(id), updates);
+            auto updated = meetings.update(static_cast<int64_t>(id), updates, /*replace_text_fields=*/true);
             audit.log_system("meeting.update", "meeting", updated.id, updated.title,
                               "Updated via " + actor_label(app.template get_context<ApiKeyMiddleware>(req).api_key));
             write_json(res, 200, envelope_ok(to_json(updated)));

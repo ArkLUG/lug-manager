@@ -651,7 +651,10 @@ void register_event_routes(LugApp& app, EventService& events, AttendanceService&
         std::string content_type = req.get_header_value("Content-Type");
         bool is_form = content_type.find("application/x-www-form-urlencoded") != std::string::npos;
 
-        LugEvent updates;
+        // Start from the current record: the service treats flags/notes/ping
+        // roles as "always replace", so a sparse JSON body used to clear them.
+        LugEvent updates = *ev_before;
+        bool route_created_thread = false;
 
         if (is_form) {
             auto params = crow::query_string("?" + req.body);
@@ -661,10 +664,9 @@ void register_event_routes(LugApp& app, EventService& events, AttendanceService&
             };
             std::string title = gp("title");
             if (!title.empty())                updates.title           = title;
-            std::string desc = gp("description");
-            if (!desc.empty())                 updates.description     = desc;
-            std::string loc = gp("location");
-            if (!loc.empty())                  updates.location        = loc;
+            // Present-but-empty clears the field (edit form always sends both).
+            if (params.get("description")) updates.description = gp("description");
+            if (params.get("location"))    updates.location    = gp("location");
             std::string st = gp("start_time");
             if (!st.empty())                   updates.start_time      = ev_normalize_datetime(st);
             std::string et = gp("end_time");
@@ -674,17 +676,10 @@ void register_event_routes(LugApp& app, EventService& events, AttendanceService&
             std::string scope = gp("scope");
             if (!scope.empty())                updates.scope           = scope;
             std::string ch = gp("chapter_id");
-            if (!ch.empty()) {
-                int64_t new_chapter = parse_id(ch);
-                // Moving to another chapter (or LUG-wide, 0) needs rights there
-                // too, not just in the current chapter.
-                if (new_chapter != ev_before->chapter_id &&
-                    !can_manage_chapter_content(req, res, app, new_chapter, chapter_members))
-                    return res;
-                updates.chapter_id = new_chapter;
-            }
+            if (!ch.empty()) updates.chapter_id = parse_id(ch);
             std::string lead = gp("event_lead_id");
             if (!lead.empty()) try { updates.event_lead_id = std::stoll(lead); } catch (...) {}
+            else if (params.get("event_lead_id")) updates.event_lead_id = -1; // "no lead" selected -> clear
             {
                 // Multi-select: always apply (absent = user cleared all selections)
                 auto role_vals = params.get_list("discord_ping_role_ids", false);
@@ -720,7 +715,10 @@ void register_event_routes(LugApp& app, EventService& events, AttendanceService&
                       if (!updates.end_time.empty()) merged.end_time = updates.end_time;
                       std::string thread_name = merged.title;
                       std::string new_tid = discord.sync_create_forum_thread_for_event(thread_name, merged);
-                      if (!new_tid.empty()) updates.discord_thread_id = new_tid;
+                      if (!new_tid.empty()) {
+                          updates.discord_thread_id = new_tid;
+                          route_created_thread = true; // app-owned, see below
+                      }
                   }
               }
             }
@@ -733,7 +731,17 @@ void register_event_routes(LugApp& app, EventService& events, AttendanceService&
                 return res;
             }
             try {
-                auto ev_after = events.update(static_cast<int64_t>(id), updates);
+                // Where the record ends up (non-chapter scopes have no chapter) must
+                // also be manageable by the caller, not just where it is now.
+                {
+                    int64_t target_chapter = (updates.scope == "lug_wide" || updates.scope == "non_lug")
+                                                 ? 0 : updates.chapter_id;
+                    if (target_chapter != ev_before->chapter_id &&
+                        !can_manage_chapter_content(req, res, app, target_chapter, chapter_members))
+                        return res;
+                }
+                auto ev_after = events.update(static_cast<int64_t>(id), updates, /*replace_text_fields=*/true);
+                if (route_created_thread) events.repo().set_thread_owned(static_cast<int64_t>(id), true);
                 {
                     AuditDiff diff;
                     diff.field("title", ev_before->title, ev_after.title);
@@ -803,7 +811,16 @@ void register_event_routes(LugApp& app, EventService& events, AttendanceService&
             if (body.has("event_lead_id"))        updates.event_lead_id        = body["event_lead_id"].i();
             if (body.has("discord_ping_role_ids")) updates.discord_ping_role_ids = body["discord_ping_role_ids"].s();
             try {
-                auto updated = events.update(static_cast<int64_t>(id), updates);
+                // Where the record ends up (non-chapter scopes have no chapter) must
+                // also be manageable by the caller, not just where it is now.
+                {
+                    int64_t target_chapter = (updates.scope == "lug_wide" || updates.scope == "non_lug")
+                                                 ? 0 : updates.chapter_id;
+                    if (target_chapter != ev_before->chapter_id &&
+                        !can_manage_chapter_content(req, res, app, target_chapter, chapter_members))
+                        return res;
+                }
+                auto updated = events.update(static_cast<int64_t>(id), updates, /*replace_text_fields=*/true);
                 audit.log(req, app, "event.update", "event", updated.id, updated.title, "Updated event (JSON)");
                 crow::json::wvalue resp;
                 resp["id"]      = updated.id;

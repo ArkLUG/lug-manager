@@ -28,7 +28,11 @@ public:
 
     Meeting create(const Meeting& m);           // Generates ical_uid, posts to Discord
     Meeting create_imported(const Meeting& m);  // Creates without Discord/Google Calendar integration
-    Meeting update(int64_t id, const Meeting& updates); // Propagates to Discord + calendar
+    // Propagates to Discord + calendar. Empty text fields in `updates` mean
+    // "keep" unless replace_text_fields is set, in which case description and
+    // location are taken verbatim (so a caller passing a full record - edit
+    // form, API - can clear them).
+    Meeting update(int64_t id, const Meeting& updates, bool replace_text_fields = false);
     void    cancel(int64_t id);
     void    complete(int64_t id);
 
@@ -51,4 +55,9 @@ private:
     CalendarGenerator&      cal_;
     ChapterRepository*      chapter_repo_;
     GoogleCalendarClient*   gcal_;
+
+    // Creates the Discord scheduled event + announcement(s) and stores their ids.
+    void publish_to_discord(Meeting& m);
+    // Best-effort removal of the scheduled event + announcements (never throws).
+    void remove_from_discord(const Meeting& m);
 };

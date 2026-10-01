@@ -326,3 +326,46 @@ TEST_F(IntegrationTest, EventManagerCannotMoveMeetingToOtherChapter) {
     EXPECT_EQ(r.code, 403);
     EXPECT_EQ(meeting_repo->find_by_id(mtg.id)->chapter_id, test_chapter_id);
 }
+
+// Edit form: an emptied description must clear it (it used to be ignored),
+// and switching a chapter meeting to LUG-wide needs LUG-wide rights.
+TEST_F(IntegrationTest, MeetingEditClearsDescriptionAndGuardsLugWideMove) {
+    Meeting m;
+    m.title = "Desc Meeting";
+    m.description = "old text";
+    m.start_time = "2026-08-02T19:00:00";
+    m.end_time = "2026-08-02T21:00:00";
+    m.scope = "chapter";
+    m.chapter_id = test_chapter_id;
+    auto mtg = meeting_svc->create(m);
+
+    auto ok = PUT("/meetings/" + std::to_string(mtg.id),
+                  "title=Desc+Meeting&description=&location=&scope=chapter&chapter_id=" +
+                  std::to_string(test_chapter_id), admin_token);
+    EXPECT_EQ(meeting_repo->find_by_id(mtg.id)->description, "");
+
+    auto r = PUT("/meetings/" + std::to_string(mtg.id),
+                 "title=Desc+Meeting&scope=lug_wide", event_manager_token);
+    EXPECT_EQ(r.code, 403);
+    auto after = meeting_repo->find_by_id(mtg.id);
+    EXPECT_EQ(after->scope, "chapter");
+    EXPECT_EQ(after->chapter_id, test_chapter_id);
+}
+
+// A thread the user picked for an event isn't the app's to delete on cancel.
+TEST_F(IntegrationTest, UserPickedEventThreadIsNotOwned) {
+    LugEvent e;
+    e.title = "Picked Thread Event";
+    e.start_time = "2026-09-10T10:00:00";
+    e.end_time = "2026-09-10T16:00:00";
+    e.scope = "lug_wide";
+    e.discord_thread_id = "123456789012345678";
+    e.suppress_discord = true;
+    auto created = event_svc->create(e);
+    EXPECT_FALSE(event_repo->is_thread_owned(created.id));
+
+    LugEvent plain = e;
+    plain.discord_thread_id.clear();
+    auto p = event_svc->create(plain);
+    EXPECT_TRUE(event_repo->is_thread_owned(p.id));
+}

@@ -495,7 +495,9 @@ void register_meeting_routes(LugApp& app, MeetingService& meetings, AttendanceSe
         std::string content_type = req.get_header_value("Content-Type");
         bool is_form = content_type.find("application/x-www-form-urlencoded") != std::string::npos;
 
-        Meeting updates;
+        // Start from the current record: the service treats flags/notes as
+        // "always replace", so a sparse JSON body used to clear them.
+        Meeting updates = *mtg_before;
 
         if (is_form) {
             auto params = crow::query_string("?" + req.body);
@@ -505,10 +507,9 @@ void register_meeting_routes(LugApp& app, MeetingService& meetings, AttendanceSe
             };
             std::string title = gp("title");
             if (!title.empty())       updates.title       = title;
-            std::string desc = gp("description");
-            if (!desc.empty())        updates.description = desc;
-            std::string loc = gp("location");
-            if (!loc.empty())         updates.location    = loc;
+            // Present-but-empty clears the field (edit form always sends both).
+            if (params.get("description")) updates.description = gp("description");
+            if (params.get("location"))    updates.location    = gp("location");
             std::string st = gp("start_time");
             if (!st.empty())          updates.start_time  = normalize_datetime(st);
             std::string et = gp("end_time");
@@ -516,15 +517,7 @@ void register_meeting_routes(LugApp& app, MeetingService& meetings, AttendanceSe
             std::string scope = gp("scope");
             if (!scope.empty())       updates.scope       = scope;
             std::string ch = gp("chapter_id");
-            if (!ch.empty()) {
-                int64_t new_chapter = parse_id(ch);
-                // Moving to another chapter (or LUG-wide, 0) needs rights there
-                // too, not just in the current chapter.
-                if (new_chapter != mtg_before->chapter_id &&
-                    !can_manage_chapter_content(req, res, app, new_chapter, chapter_members))
-                    return res;
-                updates.chapter_id = new_chapter;
-            }
+            if (!ch.empty()) updates.chapter_id = parse_id(ch);
             updates.is_virtual        = (gp("is_virtual") == "on" || gp("is_virtual") == "1");
             updates.discord_voice_channel_id = gp("discord_voice_channel_id");
             updates.suppress_discord  = (gp("suppress_discord") == "on" || gp("suppress_discord") == "1");
@@ -541,7 +534,16 @@ void register_meeting_routes(LugApp& app, MeetingService& meetings, AttendanceSe
                 return res;
             }
             try {
-                auto mtg_after = meetings.update(static_cast<int64_t>(id), updates);
+                // Where the record ends up (non-chapter scopes have no chapter) must
+                // also be manageable by the caller, not just where it is now.
+                {
+                    int64_t target_chapter = (updates.scope == "lug_wide" || updates.scope == "non_lug")
+                                                 ? 0 : updates.chapter_id;
+                    if (target_chapter != mtg_before->chapter_id &&
+                        !can_manage_chapter_content(req, res, app, target_chapter, chapter_members))
+                        return res;
+                }
+                auto mtg_after = meetings.update(static_cast<int64_t>(id), updates, /*replace_text_fields=*/true);
                 {
                     AuditDiff diff;
                     diff.field("title", mtg_before->title, mtg_after.title);
@@ -593,7 +595,16 @@ void register_meeting_routes(LugApp& app, MeetingService& meetings, AttendanceSe
             if (body.has("end_time"))    updates.end_time    = normalize_datetime(body["end_time"].s());
             if (body.has("scope"))       updates.scope       = body["scope"].s();
             try {
-                auto updated = meetings.update(static_cast<int64_t>(id), updates);
+                // Where the record ends up (non-chapter scopes have no chapter) must
+                // also be manageable by the caller, not just where it is now.
+                {
+                    int64_t target_chapter = (updates.scope == "lug_wide" || updates.scope == "non_lug")
+                                                 ? 0 : updates.chapter_id;
+                    if (target_chapter != mtg_before->chapter_id &&
+                        !can_manage_chapter_content(req, res, app, target_chapter, chapter_members))
+                        return res;
+                }
+                auto updated = meetings.update(static_cast<int64_t>(id), updates, /*replace_text_fields=*/true);
                 audit.log(req, app, "meeting.update", "meeting", updated.id, updated.title, "Updated meeting (JSON)");
                 crow::json::wvalue resp;
                 resp["id"]      = updated.id;

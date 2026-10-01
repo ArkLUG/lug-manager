@@ -145,7 +145,7 @@ void register_events_api_routes(LugApp& app, EventService& events, MeetingServic
         if (body.has("event_feedback"))    updates.event_feedback    = body["event_feedback"].s();
 
         try {
-            auto updated = events.update(static_cast<int64_t>(id), updates);
+            auto updated = events.update(static_cast<int64_t>(id), updates, /*replace_text_fields=*/true);
             audit.log_system("event.update", "event", updated.id, updated.title,
                               "Updated via " + actor_label(app.template get_context<ApiKeyMiddleware>(req).api_key));
             write_json(res, 200, envelope_ok(to_json(updated)));

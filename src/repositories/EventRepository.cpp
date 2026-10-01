@@ -418,3 +418,16 @@ std::optional<LugEvent> EventRepository::find_by_checkin_token(const std::string
     if (stmt.step()) return row_to_event(stmt);
     return std::nullopt;
 }
+
+bool EventRepository::is_thread_owned(int64_t id) {
+    auto stmt = db_.prepare("SELECT discord_thread_owned FROM lug_events WHERE id=?");
+    stmt.bind(1, id);
+    return stmt.step() ? stmt.col_int(0) != 0 : true;
+}
+
+void EventRepository::set_thread_owned(int64_t id, bool owned) {
+    auto stmt = db_.prepare("UPDATE lug_events SET discord_thread_owned=? WHERE id=?");
+    stmt.bind(1, static_cast<int64_t>(owned ? 1 : 0));
+    stmt.bind(2, id);
+    stmt.step();
+}

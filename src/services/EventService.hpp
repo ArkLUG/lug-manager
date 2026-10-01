@@ -30,7 +30,11 @@ public:
     LugEvent create(const LugEvent& e);
     LugEvent create_imported(const LugEvent& e);  // Creates without Discord/Google Calendar integration
     bool     exists_by_google_calendar_id(const std::string& gcal_event_id);
-    LugEvent update(int64_t id, const LugEvent& updates);
+    // See MeetingService::update for replace_text_fields.
+    // notify=false skips the "Event Updated" post in the event's thread (bulk
+    // re-syncs and status-only changes shouldn't spam every thread).
+    LugEvent update(int64_t id, const LugEvent& updates, bool replace_text_fields = false,
+                    bool notify = true);
     void     cancel(int64_t id);
     void     update_status(int64_t id, const std::string& status);
 
@@ -47,6 +51,11 @@ private:
     ChapterRepository*      chapter_repo_;
     GoogleCalendarClient*   gcal_;
     EventDayRepository*     event_day_repo_;
+
+    // Creates thread/announcements/scheduled event and stores their ids.
+    void publish_to_discord(LugEvent& e);
+    // Removes them (thread only if the app created it). Never throws.
+    void remove_from_discord(const LugEvent& e);
 
 public:
     EventRepository& repo() { return repo_; }

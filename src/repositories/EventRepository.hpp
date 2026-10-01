@@ -31,6 +31,9 @@ public:
                                 const std::string& discord_thread_id,
                                 const std::string& discord_event_id);
     bool     update_lug_message_id(int64_t id, const std::string& message_id);
+    // lug_events.discord_thread_owned - see migration 046
+    bool     is_thread_owned(int64_t id);
+    void     set_thread_owned(int64_t id, bool owned);
     bool     update_chapter_message_id(int64_t id, const std::string& message_id);
     bool     update_google_calendar_event_id(int64_t id, const std::string& gcal_event_id);
     bool     update_notes_discord_post_id(int64_t id, const std::string& post_id);
