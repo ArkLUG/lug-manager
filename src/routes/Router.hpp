@@ -69,6 +69,7 @@
 #include "routes/TreasuryRoutes.hpp"
 #include "routes/MemberMergeRoutes.hpp"
 #include "routes/ShowsRoutes.hpp"
+#include "services/Notifier.hpp"
 #include <memory>
 
 struct Services {
@@ -112,6 +113,8 @@ struct Services {
     std::shared_ptr<SeriesService> series;
     std::shared_ptr<ShiftRepository> shifts;
     std::shared_ptr<PhotoStore> photos;
+    std::shared_ptr<Mailer> mailer;       // from LUG_SMTP_* when null
+    std::shared_ptr<Notifier> notifier;
 };
 
 void register_all_routes(LugApp& app, Services& svc);

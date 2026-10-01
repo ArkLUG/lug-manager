@@ -41,6 +41,7 @@ public:
     // Members due a reminder (expiring by `until`, not yet reminded for this paid_until).
     std::vector<DuesStatusRow> needing_reminder(const std::string& today, const std::string& until);
     void mark_reminded(int64_t member_id, const std::string& paid_until);
+    SqliteDatabase& db() { return db_; }
 
 private:
     SqliteDatabase& db_;

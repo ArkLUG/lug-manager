@@ -206,7 +206,9 @@ int main() {
             nullptr, // backups: ditto
             nullptr, // series: ditto
             nullptr, // shifts: ditto
-            nullptr  // photos: ditto
+            nullptr, // photos: ditto
+            nullptr, // mailer: ditto (LUG_SMTP_*)
+            nullptr  // notifier: ditto
         };
         register_all_routes(app, svc);
 
@@ -261,6 +263,10 @@ int main() {
                                                 member_repo, settings_repo, discord_client);
         DuesRepository dues_repo(db);
         DuesService    dues_service(dues_repo, settings_repo, discord_client, audit_service);
+        reminder_service.set_notifier(svc.notifier);
+        dues_service.set_notifier(svc.notifier);
+        std::cout << "[email] " << (svc.notifier->email_enabled() ? "enabled" :
+                     svc.mailer->enabled() ? "SMTP set but LUG_PUBLIC_URL missing - email off" : "off (LUG_SMTP_* not set)") << "\n";
         BackupService  backup_service(db, data_dir);
         SeriesService  series_service(db, meeting_service);
         std::thread reminder_thread([&reminder_service, &dues_service, &backup_service, &settings_repo, &series_service] {

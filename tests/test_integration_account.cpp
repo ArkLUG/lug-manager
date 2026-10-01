@@ -67,7 +67,7 @@ TEST_F(IntegrationTest, NotificationPrefsSaveAndApply) {
     EXPECT_EQ(dr[0].member_id, admin_member_id);
 
     // Ticking everything back on clears the opt-outs
-    POST("/account/notifications", "event_reminder=1&shift_reminder=1&waitlist=1&dues_reminder=1", member_token);
+    POST("/account/notifications", "event_reminder=1&shift_reminder=1&waitlist=1&dues_reminder=1&email=1", member_token);
     EXPECT_TRUE(prefs.optouts(regular_member_id).empty());
 }
 
@@ -100,7 +100,7 @@ TEST_F(IntegrationTest, AccountExportHasOwnDataOnly) {
     EXPECT_FALSE(j["profile"][0].has("calendar_token_hash"));
     ASSERT_GE(j["sessions"].size(), 1u);
     EXPECT_FALSE(j["sessions"][0].has("token"));
-    EXPECT_EQ(j["notification_optouts"].size(), 3u);
+    EXPECT_EQ(j["notification_optouts"].size(), 4u);
     expect_not_contains(r, "Admin U.");
     expect_not_contains(r, member_token);
 }

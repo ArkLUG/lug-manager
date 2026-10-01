@@ -1,5 +1,9 @@
 #include "routes/AuthRoutes.hpp"
 #include "utils/AssetVersion.hpp"
+#include "utils/Crypto.hpp"
+#include "services/Notifier.hpp"
+#include "services/AuditService.hpp"
+#include "repositories/NotificationPrefs.hpp"
 #include <crow.h>
 #include <algorithm>
 #include <cctype>
@@ -7,6 +11,8 @@
 
 // Canonical base URL from LUG_PUBLIC_URL; empty = derive from headers.
 static std::string g_public_url;
+// Set by register_email_auth_routes when email sign-in is available.
+static bool g_email_login = false;
 
 // Build an absolute URL. Prefers the configured public URL: the Host and
 // X-Forwarded-* headers are client-controllable unless the reverse proxy
@@ -82,6 +88,9 @@ void register_auth_routes(LugApp& app, AuthService& auth, DiscordOAuth& oauth,
         if (error == "discord_denied")  mctx["error_discord_denied"] = true;
         if (error == "failed")          mctx["error_failed"]         = true;
         if (error == "no_code")         mctx["error_failed"]         = true;
+        if (error == "link")            mctx["error_link"]           = true;
+        if (params.get("email_sent"))   mctx["email_sent"]           = true;
+        mctx["email_login"] = g_email_login;
 
         crow::response res;
         res.add_header("Content-Type", "text/html; charset=utf-8");
@@ -214,5 +223,182 @@ void register_auth_routes(LugApp& app, AuthService& auth, DiscordOAuth& oauth,
             res.redirect(build_url(req, "/login"));
         }
         return res;
+    });
+}
+
+// ── Email sign-in + unsubscribe ─────────────────────────────────────────────
+
+namespace {
+
+std::string lower(std::string s) {
+    for (auto& c : s) c = static_cast<char>(std::tolower(static_cast<unsigned char>(c)));
+    return s;
+}
+
+std::string utc_in(int seconds) {
+    std::time_t t = std::time(nullptr) + seconds;
+    std::tm tm{};
+    gmtime_r(&t, &tm);
+    char b[32];
+    std::strftime(b, sizeof(b), "%Y-%m-%dT%H:%M:%S", &tm);
+    return b;
+}
+
+crow::response page(const std::string& tmpl, crow::mustache::context& ctx, int code = 200) {
+    crow::response res;
+    res.code = code;
+    ctx["asset_v"] = asset_version();
+    res.add_header("Content-Type", "text/html; charset=utf-8");
+    res.add_header("Cache-Control", "no-store");
+    res.add_header("Referrer-Policy", "no-referrer");   // the URL carries a token
+    res.write(crow::mustache::load(tmpl).render(ctx).dump());
+    return res;
+}
+
+// Valid, unused, unexpired sign-in token -> member id.
+std::optional<int64_t> pending_login(SqliteDatabase& db, const std::string& token) {
+    auto st = db.prepare("SELECT member_id FROM email_login_tokens WHERE token_hash=? AND used_at IS NULL AND expires_at > ?");
+    st.bind(1, sha256_hex(token)); st.bind(2, utc_in(0));
+    if (!st.step()) return std::nullopt;
+    return st.col_int(0);
+}
+
+bool token_shape_ok(const std::string& t) {
+    return !t.empty() && t.size() <= 128 &&
+           std::all_of(t.begin(), t.end(), [](char c) { return std::isxdigit(static_cast<unsigned char>(c)); });
+}
+
+} // namespace
+
+void register_email_auth_routes(LugApp& app, AuthService& auth, SqliteDatabase& db,
+                                std::shared_ptr<Notifier> notifier, AuditService& audit) {
+    g_email_login = notifier && notifier->mailer() && notifier->mailer()->enabled();
+
+    // POST /auth/email - email a one-time sign-in link to a member without Discord.
+    // Always answers the same way so it can't be used to discover addresses.
+    CROW_ROUTE(app, "/auth/email").methods("POST"_method)([&db, notifier](const crow::request& req) {
+        crow::response res;
+        res.redirect(build_url(req, "/login?email_sent=1"));
+        if (!g_email_login) return res;
+        auto p = crow::query_string("?" + req.body);
+        const char* raw = p.get("email");
+        std::string email = raw ? lower(std::string(raw).substr(0, 254)) : "";
+        if (email.find('@') == std::string::npos) return res;
+        auto st = db.prepare("SELECT id, display_name, email FROM members WHERE lower(email)=? "
+                             "AND COALESCE(discord_user_id,'')='' ORDER BY id LIMIT 1");
+        st.bind(1, email);
+        if (!st.step()) return res;
+        int64_t id = st.col_int(0);
+        std::string name = st.col_text(1), to = st.col_text(2);
+        st.reset();
+        {
+            auto rl = db.prepare("SELECT COUNT(*) FROM email_login_tokens WHERE member_id=? AND created_at > ?");
+            rl.bind(1, id); rl.bind(2, utc_in(-3600));
+            if (rl.step() && rl.col_int(0) >= 3) return res;   // max 3 links an hour
+        }
+        std::string token = SessionStore::generate_token();
+        {
+            auto ins = db.prepare("INSERT INTO email_login_tokens (token_hash, member_id, expires_at) VALUES (?,?,?)");
+            ins.bind(1, sha256_hex(token)); ins.bind(2, id); ins.bind(3, utc_in(15 * 60));
+            ins.step();
+        }
+        notifier->send_email(id, to, name, "", "Your LUG Manager sign-in link",
+            "Use this link to sign in to LUG Manager. It works once and expires in 15 minutes:\n\n" +
+            build_url(req, "/auth/email/" + token) +
+            "\n\nIf you didn't ask for this, you can ignore this email.");
+        return res;
+    });
+
+    // GET /auth/email/<token> - confirm page (a POST does the sign-in, so mail
+    // scanners that prefetch links can't use up the token).
+    CROW_ROUTE(app, "/auth/email/<string>")([&db](const crow::request& req, const std::string& token) {
+        crow::response res;
+        if (!token_shape_ok(token) || !pending_login(db, token)) {
+            res.redirect(build_url(req, "/login?error=link"));
+            return res;
+        }
+        crow::mustache::context ctx;
+        ctx["token"] = token;
+        return page("auth_email.html", ctx);
+    });
+
+    CROW_ROUTE(app, "/auth/email/<string>").methods("POST"_method)(
+        [&app, &auth, &db, &audit](const crow::request& req, const std::string& token) {
+        crow::response res;
+        if (!token_shape_ok(token)) { res.redirect(build_url(req, "/login?error=link")); return res; }
+        int64_t member_id = 0;
+        {
+            auto use = db.prepare("UPDATE email_login_tokens SET used_at=? WHERE token_hash=? AND used_at IS NULL "
+                                  "AND expires_at > ? RETURNING member_id");
+            use.bind(1, utc_in(0)); use.bind(2, sha256_hex(token)); use.bind(3, utc_in(0));
+            if (use.step()) member_id = use.col_int(0);
+        }
+        std::string role, name;
+        if (member_id > 0) {
+            auto m = db.prepare("SELECT role, display_name FROM members WHERE id=? AND COALESCE(discord_user_id,'')=''");
+            m.bind(1, member_id);
+            if (m.step()) { role = m.col_text(0); name = m.col_text(1); }
+        }
+        if (role.empty()) { res.redirect(build_url(req, "/login?error=link")); return res; }
+        std::string session = auth.sessions().create(member_id, role, name, 24, req.get_header_value("User-Agent"));
+        audit.log_system("auth.email_login", "member", member_id, name, "Signed in with an email link");
+        res.add_header("Set-Cookie", "session=" + session + "; HttpOnly; Path=/; Max-Age=86400; SameSite=Lax" + secure_attr(req));
+        res.redirect(build_url(req, "/dashboard"));
+        (void)app;
+        return res;
+    });
+
+    // GET /unsubscribe/<token>[?kind=..] - no login; shows the choices
+    CROW_ROUTE(app, "/unsubscribe/<string>")([&db](const crow::request& req, const std::string& token) {
+        crow::mustache::context ctx;
+        int64_t id = 0;
+        if (token_shape_ok(token)) {
+            auto st = db.prepare("SELECT id FROM members WHERE email_token=?");
+            st.bind(1, token);
+            if (st.step()) id = st.col_int(0);
+        }
+        if (!id) { ctx["invalid"] = true; return page("unsubscribe.html", ctx, 404); }
+        auto off = NotificationPrefs(db).optouts(id);
+        const char* kind = req.url_params.get("kind");
+        crow::json::wvalue kinds = crow::json::wvalue::list();
+        int i = 0;
+        for (const auto& k : NotificationPrefs::kinds()) {
+            if (std::string(k.key) == "email") continue;
+            kinds[i]["key"] = k.key; kinds[i]["label"] = k.label; kinds[i]["off"] = off.count(k.key) > 0;
+            kinds[i]["this_one"] = kind && std::string(kind) == k.key;
+            ++i;
+        }
+        ctx["kinds"] = std::move(kinds);
+        ctx["token"] = token;
+        ctx["all_off"] = off.count("email") > 0;
+        return page("unsubscribe.html", ctx);
+    });
+
+    // POST /unsubscribe/<token>?kind=<k|email> - also the RFC 8058 one-click target
+    CROW_ROUTE(app, "/unsubscribe/<string>").methods("POST"_method)(
+        [&db, &audit](const crow::request& req, const std::string& token) {
+        crow::mustache::context ctx;
+        int64_t id = 0;
+        std::string name;
+        if (token_shape_ok(token)) {
+            auto st = db.prepare("SELECT id, display_name FROM members WHERE email_token=?");
+            st.bind(1, token);
+            if (st.step()) { id = st.col_int(0); name = st.col_text(1); }
+        }
+        if (!id) { ctx["invalid"] = true; return page("unsubscribe.html", ctx, 404); }
+        auto body = crow::query_string("?" + req.body);
+        const char* k = req.url_params.get("kind");
+        if (!k) k = body.get("kind");
+        std::string kind = k ? k : "email";
+        bool resub = body.get("resubscribe") != nullptr;
+        if (!NotificationPrefs::is_kind(kind)) kind = "email";
+        NotificationPrefs(db).set(id, kind, resub);
+        audit.log_system("member.email_unsubscribe", "member", id, name, (resub ? "Re-enabled " : "Turned off ") + kind);
+        ctx["done"] = true;
+        ctx["resubscribed"] = resub;
+        ctx["token"] = token;
+        for (const auto& kk : NotificationPrefs::kinds())
+            if (kind == kk.key) ctx["what"] = std::string(kind == "email" ? "all email" : kk.label);
+        return page("unsubscribe.html", ctx);
     });
 }

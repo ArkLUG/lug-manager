@@ -112,6 +112,7 @@ protected:
     // directory - see main.cpp). Created in SetUp(), removed in TearDown()
     // so tests never leave files behind or collide with each other.
     std::string data_dir;
+    std::shared_ptr<Mailer> mailer = Mailer::capture();
 
     // Test session tokens
     std::string admin_token;
@@ -259,14 +260,16 @@ protected:
             *audit_svc, *api_key_repo, *pending_discord_match_repo,
             config.discord_public_key,
             data_dir,
-            "",      // public_url
+            "http://lug.test", // public_url (absolute links in emails)
             nullptr, // rsvps
             nullptr, // displays
             nullptr, // dues
             nullptr, // backups
             nullptr, // series
             nullptr, // shifts
-            nullptr  // photos
+            nullptr, // photos
+            mailer,  // captures instead of sending
+            nullptr  // notifier
 
         };
         register_all_routes(*app, svc);

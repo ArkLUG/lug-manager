@@ -12,10 +12,11 @@ public:
 
     static const std::vector<Kind>& kinds() {
         static const std::vector<Kind> k = {
-            {"event_reminder", "Event reminders", "A Discord DM before events you RSVP'd to."},
-            {"shift_reminder", "Volunteer shift reminders", "A Discord DM before a shift you signed up for."},
-            {"waitlist",       "Waitlist spot opened", "A Discord DM when you move off an event waitlist."},
-            {"dues_reminder",  "Dues renewal reminders", "A Discord DM shortly before your dues run out."},
+            {"event_reminder", "Event reminders", "Before events you RSVP'd to."},
+            {"shift_reminder", "Volunteer shift reminders", "Before a volunteer shift you signed up for."},
+            {"waitlist",       "Waitlist spot opened", "When you move off an event waitlist."},
+            {"dues_reminder",  "Dues renewal reminders", "Shortly before your dues run out."},
+            {"email",          "Email when I'm not on Discord", "If your account has no Discord linked, send the notifications above to your email instead."},
         };
         return k;
     }

@@ -15,6 +15,11 @@ services:
       - DISCORD_BOT_TOKEN=${DISCORD_BOT_TOKEN}
       - DISCORD_REDIRECT_URI=${DISCORD_REDIRECT_URI:-http://localhost:8080/auth/callback}
       - BOOTSTRAP_ADMIN_DISCORD_ID=${BOOTSTRAP_ADMIN_DISCORD_ID:-}
+      - LUG_PUBLIC_URL=${LUG_PUBLIC_URL:-}
+      - LUG_SMTP_URL=${LUG_SMTP_URL:-}
+      - LUG_SMTP_USER=${LUG_SMTP_USER:-}
+      - LUG_SMTP_PASSWORD=${LUG_SMTP_PASSWORD:-}
+      - LUG_SMTP_FROM=${LUG_SMTP_FROM:-}
     volumes:
       - lug-data:/app/data
     restart: unless-stopped

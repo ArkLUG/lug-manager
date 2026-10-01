@@ -82,6 +82,9 @@ Only secrets need to be in `.env` — everything else is configured from the Set
 | `DISCORD_REDIRECT_URI` | Yes | OAuth2 callback URL (e.g. `https://lug.example.com/auth/callback`) |
 | `LUG_PUBLIC_URL` | Recommended | Public base URL (e.g. `https://lug.example.com`). Login redirects are built from it instead of the request's `Host`/`X-Forwarded-*` headers, and cookies are marked `Secure` when it is `https://`. If unset, those headers are used. |
 | `BOOTSTRAP_ADMIN_DISCORD_ID` | First run | Your Discord user ID — auto-creates admin account |
+| `LUG_SMTP_URL` | Optional | SMTP server for email sign-in links and email notifications to members without Discord, e.g. `smtps://smtp.example.com:465` (needs `LUG_PUBLIC_URL`) |
+| `LUG_SMTP_USER` / `LUG_SMTP_PASSWORD` | Optional | SMTP login |
+| `LUG_SMTP_FROM` | Optional | Sender address, e.g. `Arkansas LUG <lug@example.com>` |
 | `LUG_PORT` | No | Server port (default: `8080`) |
 | `LUG_DB_PATH` | No | Database path (default: `/app/data/lug.db`) |
 | `LUG_TEMPLATES_DIR` | No | Templates path (default: `/app/src/templates`) |

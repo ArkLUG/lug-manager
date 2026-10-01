@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="robots" content="noindex">
+  <title>Email Preferences</title>
+  <link rel="stylesheet" href="/static/tailwind.min.css?v={{asset_v}}">
+  <link rel="stylesheet" href="/static/theme.css?v={{asset_v}}">
+  <script src="/static/theme.js?v={{asset_v}}"></script>
+</head>
+<body class="bg-gray-50 min-h-screen flex items-center justify-center p-4">
+  <div class="w-full max-w-md bg-white border border-gray-200 rounded-2xl p-8 space-y-4">
+    <h1 class="text-xl font-bold text-gray-900">Email preferences</h1>
+    {{#invalid}}<p class="text-sm text-gray-600">This link isn't valid any more. Sign in and use My Account to change notifications.</p>{{/invalid}}
+    {{#done}}
+      {{#resubscribed}}<p class="text-sm text-gray-700">Done - you'll get {{what}} emails again.</p>{{/resubscribed}}
+      {{^resubscribed}}<p class="text-sm text-gray-700">Done - you won't get {{what}} emails any more.</p>{{/resubscribed}}
+      <a href="/unsubscribe/{{token}}" class="text-sm text-indigo-600 hover:text-indigo-800">Change other email choices</a>
+    {{/done}}
+    {{^done}}{{^invalid}}
+    <p class="text-sm text-gray-600">Choose which emails to stop. No login needed.</p>
+    <ul class="space-y-2">
+      {{#kinds}}
+      <li class="flex items-center justify-between gap-3 text-sm">
+        <span class="{{#this_one}}font-semibold{{/this_one}} text-gray-800">{{label}}</span>
+        {{#off}}
+        <form method="post" action="/unsubscribe/{{token}}"><input type="hidden" name="kind" value="{{key}}"><input type="hidden" name="resubscribe" value="1">
+          <button class="text-xs px-3 py-1 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50">Turn back on</button></form>
+        {{/off}}
+        {{^off}}
+        <form method="post" action="/unsubscribe/{{token}}"><input type="hidden" name="kind" value="{{key}}">
+          <button class="text-xs px-3 py-1 bg-gray-800 text-white rounded-lg hover:bg-gray-700">Unsubscribe</button></form>
+        {{/off}}
+      </li>
+      {{/kinds}}
+    </ul>
+    <form method="post" action="/unsubscribe/{{token}}" class="pt-2 border-t border-gray-200">
+      <input type="hidden" name="kind" value="email">
+      {{#all_off}}<input type="hidden" name="resubscribe" value="1"><p class="text-sm text-gray-600 mb-2">All email is currently off.</p>
+      <button class="w-full px-4 py-2 border border-gray-300 rounded-lg text-sm text-gray-700 hover:bg-gray-50">Turn email back on</button>{{/all_off}}
+      {{^all_off}}<button class="w-full px-4 py-2 bg-red-600 text-white rounded-lg text-sm font-medium hover:bg-red-700">Stop all email</button>{{/all_off}}
+    </form>
+    {{/invalid}}{{/done}}
+  </div>
+</body>
+</html>

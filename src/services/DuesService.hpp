@@ -3,6 +3,8 @@
 #include "repositories/DuesRepository.hpp"
 #include "repositories/SettingsRepository.hpp"
 #include "services/AuditService.hpp"
+#include "services/Notifier.hpp"
+#include <memory>
 #include "utils/LocalTime.hpp"
 #include <ctime>
 #include <string>
@@ -42,7 +44,8 @@ public:
             for (const auto& m : dues_.needing_reminder(today, until)) {
                 // Mark first: a DM failure (closed DMs) shouldn't retry every 10 minutes.
                 dues_.mark_reminded(m.member_id, m.paid_until);
-                if (discord_.send_dm(m.discord_user_id,
+                if (!notifier_) notifier_ = std::make_shared<Notifier>(dues_.db(), discord_, nullptr, "");
+                if (notifier_->notify(m.member_id, "dues_reminder", "Your LUG dues run out on " + m.paid_until,
                         "Hi " + m.display_name + "! Your LUG membership dues are paid through " +
                         m.paid_until + ". Please renew before then to keep your member perks."))
                     ++r.reminded;
@@ -51,7 +54,10 @@ public:
         return r;
     }
 
+    void set_notifier(std::shared_ptr<Notifier> n) { notifier_ = std::move(n); }
+
 private:
+    std::shared_ptr<Notifier> notifier_;
     DuesRepository&     dues_;
     SettingsRepository& settings_;
     DiscordClient&      discord_;

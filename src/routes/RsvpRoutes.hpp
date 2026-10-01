@@ -4,8 +4,7 @@
 #include "repositories/ChapterMemberRepository.hpp"
 #include "services/EventService.hpp"
 #include "services/AuditService.hpp"
-#include "repositories/MemberRepository.hpp"
-#include "integrations/DiscordClient.hpp"
+#include "services/Notifier.hpp"
 #include <memory>
 
 // Is RSVP open for this event right now? Not cancelled, not over, and the
@@ -15,4 +14,4 @@ bool rsvp_open(const LugEvent& ev);
 void register_rsvp_routes(LugApp& app, EventService& events,
                           std::shared_ptr<RsvpRepository> rsvps,
                           ChapterMemberRepository& chapter_members, AuditService& audit,
-                          MemberRepository& members, DiscordClient& discord, SqliteDatabase& db);
+                          std::shared_ptr<Notifier> notifier);

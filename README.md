@@ -37,6 +37,7 @@ A modern web application for managing LEGO User Groups (LUGs). Built with **C++ 
 - **Treasury** (admin): Record other income and expenses (category, optional event link) next to the dues recorded on member records. Each year shows the opening balance, dues, other income, expenses, net and closing balance, with breakdowns by category, event and month, a ledger and a CSV export. Event reports show that event's income and expenses.
 - **Merge Duplicates** (admin): Members > Merge previews and then merges a duplicate record into the one to keep - check-ins, RSVPs, dues, displays, shifts, photos, challenge entries, chapter roles (higher wins) and loans move over, blank fields are filled in, and the duplicate is deleted. Records linked to two different Discord accounts can't be merged.
 - **Public Shows Page**: Optional (Settings > Public Shows Page) no-login page at `/shows` listing upcoming non-private, non-cancelled events with dates, location, admission and description; `/shows?embed=1` can be iframed on the LUG website and `/shows.json` (CORS-enabled) lets the site render its own list.
+- **Email for Members Without Discord** <a id="email-for-members-without-discord"></a>: With SMTP configured (`LUG_SMTP_*` + `LUG_PUBLIC_URL`), members who have an email address but no Discord account can sign in with a one-time link ("Email me a link" on the login page; 15 minutes, single use, max 3 an hour, same answer for unknown addresses), and get event/shift/waitlist/dues notifications by email instead of DM. Every email has a no-login unsubscribe link plus `List-Unsubscribe` / one-click headers; members can also turn email off in My Account.
 - **Event Photos**: Members add photos to an event's Photos panel (JPEG/PNG/GIF/WebP, 10 MB, EXIF/location stripped, members-only, served sandboxed). Uploaders and event managers can delete them.
 - **Build Challenges**: Admins set a theme and entry window; members submit one photo entry each and vote for one other entry (votes can be moved). Counts appear when voting closes a week after entries close, and an admin can announce the winner to the LUG Discord channel.
 - **Young Member Consent**: Guardian contact, signed-consent and photo-release tracking on member records (shown to chapter leads and the member). Attendance lists flag KFOL/TFOL attendees with "no photos" or "consent missing" so organisers know at check-in.
@@ -125,6 +126,13 @@ brew install cmake curl sqlite openssl pkg-config
    |----------|-------------|
    | `DISCORD_PUBLIC_KEY` | Application's Ed25519 public key (Developer Portal > General Information) |
    | `DISCORD_APPLICATION_ID` | Application ID (Developer Portal > General Information) |
+
+   Optional, for [email](#email-for-members-without-discord) (all four plus `LUG_PUBLIC_URL`):
+   | Variable | Description |
+   |----------|-------------|
+   | `LUG_SMTP_URL` | `smtps://smtp.example.com:465` or `smtp://smtp.example.com:587` (TLS is required either way) |
+   | `LUG_SMTP_USER` / `LUG_SMTP_PASSWORD` | SMTP login |
+   | `LUG_SMTP_FROM` | Sender, e.g. `Arkansas LUG <lug@example.com>` |
 
 4. **Run**:
    ```bash

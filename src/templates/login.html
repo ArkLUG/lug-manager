@@ -150,6 +150,20 @@
         </div>
         {{/error_failed}}
 
+        {{#email_sent}}
+        <div class="mb-5 bg-green-900/40 border border-green-700/60 text-green-300 text-sm px-4 py-3 rounded-lg">
+          <strong class="font-semibold block">Check your email</strong>
+          If that address belongs to a member without Discord, a sign-in link is on its way. It expires in 15 minutes.
+        </div>
+        {{/email_sent}}
+
+        {{#error_link}}
+        <div class="mb-5 bg-red-900/40 border border-red-700/60 text-red-300 text-sm px-4 py-3 rounded-lg">
+          <strong class="font-semibold block">Link expired</strong>
+          That sign-in link has expired or was already used. Request a new one below.
+        </div>
+        {{/error_link}}
+
         <!-- Discord sign-in button -->
         <a href="/auth/login"
            class="discord-btn w-full flex items-center justify-center gap-3 px-5 py-3.5
@@ -169,6 +183,15 @@
           </svg>
           Sign in with Discord
         </a>
+
+        {{#email_login}}
+        <div class="my-5 flex items-center gap-3 text-xs text-gray-500"><div class="flex-1 h-px bg-gray-700"></div>not on Discord?<div class="flex-1 h-px bg-gray-700"></div></div>
+        <form method="post" action="/auth/email" class="flex gap-2">
+          <input type="email" name="email" required autocomplete="email" placeholder="you@example.com" aria-label="Email address"
+                 class="flex-1 min-w-0 rounded-xl bg-gray-900 border border-gray-600 text-white text-sm px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-yellow-400">
+          <button class="px-4 py-2.5 bg-yellow-400 text-gray-900 rounded-xl text-sm font-semibold hover:bg-yellow-300 whitespace-nowrap">Email me a link</button>
+        </form>
+        {{/email_login}}
 
         <!-- Info text -->
         <p class="mt-5 text-center text-xs text-gray-500">

@@ -1,14 +1,17 @@
 #include "routes/Router.hpp"
 
 void register_all_routes(LugApp& app, Services& svc) {
+    if (!svc.mailer) svc.mailer = std::make_shared<Mailer>(Mailer::from_env());
+    if (!svc.notifier)
+        svc.notifier = std::make_shared<Notifier>(svc.attendance_repo.db(), svc.discord, svc.mailer, svc.public_url);
     register_auth_routes(app, svc.auth, svc.oauth, svc.public_url);
+    register_email_auth_routes(app, svc.auth, svc.attendance_repo.db(), svc.notifier, svc.audit);
     register_chapter_routes(app, svc.chapters, svc.chapter_members, svc.members, svc.discord, svc.audit);
     register_member_routes(app, svc.members, svc.attendance_repo, svc.audit);
     register_meeting_routes(app, svc.meetings, svc.attendance, svc.chapter_members, svc.chapters, svc.discord, svc.audit);
     register_event_routes(app, svc.events, svc.attendance, svc.chapter_members, svc.discord, svc.members, svc.meetings, svc.chapters, svc.audit);
     if (!svc.rsvps) svc.rsvps = std::make_shared<RsvpRepository>(svc.attendance_repo.db());
-    register_rsvp_routes(app, svc.events, svc.rsvps, svc.chapter_members, svc.audit,
-                         svc.member_repo, svc.discord, svc.attendance_repo.db());
+    register_rsvp_routes(app, svc.events, svc.rsvps, svc.chapter_members, svc.audit, svc.notifier);
     if (!svc.displays) svc.displays = std::make_shared<DisplayRequestRepository>(svc.attendance_repo.db());
     register_display_routes(app, svc.events, svc.displays, svc.chapter_members, svc.audit);
     if (!svc.dues) svc.dues = std::make_shared<DuesRepository>(svc.attendance_repo.db());

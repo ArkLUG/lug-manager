@@ -9,6 +9,11 @@ ReminderService::ReminderService(SqliteDatabase& db, MeetingRepository& meetings
     : db_(db), meetings_(meetings), events_(events), chapters_(chapters), members_(members),
       settings_(settings), discord_(discord), rsvps_(db), shifts_(db) {}
 
+Notifier& ReminderService::notifier() {
+    if (!notifier_) notifier_ = std::make_shared<Notifier>(db_, discord_, nullptr, "");  // DMs only
+    return *notifier_;
+}
+
 bool ReminderService::claim(const char* table, int64_t id) {
     // Compare-and-set so two runs (or instances) can never both send.
     auto stmt = db_.prepare(std::string("UPDATE ") + table +
@@ -58,12 +63,9 @@ ReminderService::Result ReminderService::run_once(std::time_t now) {
         if (discord_.sync_post_message(channel, msg)) ++r.events;
 
         if (dm_rsvps) {
-            NotificationPrefs prefs(db_);
             for (const auto& rs : rsvps_.list(e.id)) {
-                if (rs.status != "going" || !prefs.wants(rs.member_id, "event_reminder")) continue;
-                auto mem = members_.find_by_id(rs.member_id);
-                if (!mem || mem->discord_user_id.empty()) continue;
-                if (discord_.send_dm(mem->discord_user_id,
+                if (rs.status != "going") continue;
+                if (notifier().notify(rs.member_id, "event_reminder", "Reminder: " + e.title + " - " + when,
                         "⏰ You're going to **" + e.title + "** - " + when +
                         (e.location.empty() ? "" : " at " + e.location) + ". See you there!"))
                     ++r.dms;
@@ -81,9 +83,11 @@ ReminderService::Result ReminderService::run_once(std::time_t now) {
         for (const auto& d : shifts_.due_reminders(fmt(now - 86400), fmt(now + (hours + 24) * 3600L))) {
             std::time_t t = DiscordClient::local_to_epoch(d.starts_at, tz);
             if (t <= now || t - now > static_cast<std::time_t>(hours) * 3600) continue;
-            if (d.discord_user_id.empty() || !shifts_.claim_reminder(d.signup_id)) continue;
-            if (discord_.send_dm(d.discord_user_id, "\u23F0 Reminder: you're volunteering for **" + d.shift_title +
-                                 "** at " + d.event_title + " - " + DiscordClient::friendly_time(d.starts_at, tz) + ". Thank you!"))
+            if (!shifts_.claim_reminder(d.signup_id)) continue;
+            std::string at = DiscordClient::friendly_time(d.starts_at, tz);
+            if (notifier().notify(d.member_id, "shift_reminder", "Volunteer shift: " + d.shift_title + " - " + at,
+                                  "\u23F0 Reminder: you're volunteering for **" + d.shift_title +
+                                  "** at " + d.event_title + " - " + at + ". Thank you!"))
                 ++r.dms;
         }
     }

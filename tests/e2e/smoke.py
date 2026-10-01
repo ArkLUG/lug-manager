@@ -109,6 +109,8 @@ shot("member_merge")
 # Public shows page (enabled by the caller's test DB; 404 otherwise)
 visit("/shows"); shot("shows")
 visit("/shows?embed=1"); shot("shows_embed")
+# No-login unsubscribe page (token seeded by the caller; invalid tokens render a notice)
+visit("/unsubscribe/abcdef0123456789abcdef"); shot("unsubscribe")
 
 # Settings (TomSelect), backups, attendance overview, help, audit
 for p in ("/settings", "/settings/backups", "/attendance/overview", "/help", "/audit", "/chapters", "/events", "/perks", "/challenges", "/account", "/inventory", "/treasury"):
