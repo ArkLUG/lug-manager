@@ -20,6 +20,7 @@ void register_settings_routes(LugApp& app, SettingsRepository& settings,
     CROW_ROUTE(app, "/api/discord/channel-options")(
         [&](const crow::request& req) {
         crow::response res;
+        if (req.url_params.get("refresh")) discord.clear_cache(); // "Refresh" buttons
         if (!require_auth(req, res, app, "admin")) return res;
 
         std::string selected;
@@ -68,6 +69,7 @@ void register_settings_routes(LugApp& app, SettingsRepository& settings,
     CROW_ROUTE(app, "/api/discord/forum-options")(
         [&](const crow::request& req) {
         crow::response res;
+        if (req.url_params.get("refresh")) discord.clear_cache(); // "Refresh" buttons
         if (!require_auth(req, res, app, "admin")) return res;
 
         std::string selected;
@@ -101,6 +103,7 @@ void register_settings_routes(LugApp& app, SettingsRepository& settings,
     CROW_ROUTE(app, "/api/discord/voice-channel-options")(
         [&](const crow::request& req) {
         crow::response res;
+        if (req.url_params.get("refresh")) discord.clear_cache(); // "Refresh" buttons
         auto& ctx = app.get_context<AuthMiddleware>(req);
         if (!ctx.auth.authenticated) { res.code = 401; return res; }
 
@@ -155,6 +158,7 @@ void register_settings_routes(LugApp& app, SettingsRepository& settings,
     CROW_ROUTE(app, "/api/discord/role-options")(
         [&](const crow::request& req) {
         crow::response res;
+        if (req.url_params.get("refresh")) discord.clear_cache(); // "Refresh" buttons
         if (!require_auth(req, res, app, "admin")) return res;
 
         std::string selected;

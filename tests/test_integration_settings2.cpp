@@ -241,3 +241,14 @@ TEST_F(IntegrationTest, VoiceChannelOptionsMemberAllowed) {
     EXPECT_EQ(r.code, 200);
     EXPECT_FALSE(r.body.empty());
 }
+
+// "Refresh" buttons pass refresh=1 to bypass the 2-minute Discord list cache.
+TEST_F(IntegrationTest, DiscordOptionRoutesAcceptRefresh) {
+    for (const char* u : {"/api/discord/channel-options?refresh=1", "/api/discord/forum-options?refresh=1",
+                          "/api/discord/role-options?refresh=1"}) {
+        EXPECT_EQ(GET(u, admin_token).code, 200) << u;
+        EXPECT_EQ(GET(u, member_token).code, 403) << u;
+    }
+    auto page = GET("/settings", admin_token);
+    expect_contains(page, "/api/discord/channel-options?refresh=1");
+}

@@ -10,6 +10,8 @@
 #include <functional>
 #include <atomic>
 #include <mutex>
+#include <chrono>
+#include <unordered_map>
 
 struct DiscordChannel {
     std::string id;
@@ -119,6 +121,9 @@ public:
     // Direct message a user (opens the DM channel first). Fails quietly
     // (returns false) if they don't share a server or have DMs closed.
     bool send_dm(const std::string& discord_user_id, const std::string& content);
+    // Guild channel/role/thread lists are cached for 2 minutes (settings and
+    // forms used to hit Discord on every view). Call to force a fresh read.
+    void clear_cache() const;
     // Interprets an ISO "YYYY-MM-DDTHH:MM[:SS]" in IANA zone tz_name and
     // returns the UTC epoch, or -1 if unparseable.
     static std::time_t local_to_epoch(const std::string& iso, const std::string& tz_name);
@@ -184,6 +189,9 @@ private:
     // Always read through the get_*() accessors, which copy under this lock -
     // an unsynchronized std::string read racing a write is undefined behavior.
     mutable std::mutex cfg_mutex_;
+    // GET cache for guild lists - see clear_cache().
+    mutable std::mutex cache_mutex_;
+    mutable std::unordered_map<std::string, std::pair<std::chrono::steady_clock::time_point, std::string>> get_cache_;
     std::string   guild_id_;
     std::string   lug_channel_id_;
     std::string   events_forum_channel_id_;
@@ -198,6 +206,8 @@ private:
     static size_t write_cb(void* contents, size_t size, size_t nmemb, std::string* s);
     std::string discord_api_request(const std::string& method, const std::string& endpoint,
                                     const std::string& json_body = "") const;
+    std::string discord_api_request_uncached(const std::string& method, const std::string& endpoint,
+                                             const std::string& json_body) const;
     std::string build_meeting_event_json(const Meeting& m) const;
     std::string build_lug_event_json(const LugEvent& e) const;
     std::string iso_to_discord_timestamp(const std::string& iso) const;

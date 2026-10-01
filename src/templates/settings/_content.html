@@ -25,7 +25,7 @@
                  placeholder="e.g. 123456789012345678"
                  class="flex-1 px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-yellow-400 focus:border-transparent font-mono">
           <button type="button"
-                  hx-get="/api/discord/channel-options"
+                  hx-get="/api/discord/channel-options?refresh=1"
                   hx-vals='js:{"guild_id": document.getElementById("guild-id-input").value}'
                   hx-target="#lug-channel-select"
                   hx-swap="innerHTML"
@@ -35,7 +35,7 @@
             Refresh Channels
           </button>
           <button type="button"
-                  hx-get="/api/discord/forum-options"
+                  hx-get="/api/discord/forum-options?refresh=1"
                   hx-vals='js:{"guild_id": document.getElementById("guild-id-input").value}'
                   hx-target="#forum-channel-select"
                   hx-swap="innerHTML"
@@ -67,7 +67,7 @@
             {{{role_options}}}
           </select>
           <button type="button"
-                  hx-get="/api/discord/role-options"
+                  hx-get="/api/discord/role-options?refresh=1"
                   hx-vals='js:{"selected": ""}'
                   hx-target="#announcement-role-select"
                   hx-swap="innerHTML"
@@ -89,7 +89,7 @@
             {{{non_lug_role_options}}}
           </select>
           <button type="button"
-                  hx-get="/api/discord/role-options"
+                  hx-get="/api/discord/role-options?refresh=1"
                   hx-vals='js:{"selected": ""}'
                   hx-target="#non-lug-role-select"
                   hx-swap="innerHTML"

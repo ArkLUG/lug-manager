@@ -1,5 +1,6 @@
 #include "integrations/DiscordClient.hpp"
 #include "utils/Utf8.hpp"
+#include <regex>
 #include <curl/curl.h>
 #include <nlohmann/json.hpp>
 #include <algorithm>
@@ -31,6 +32,7 @@ void DiscordClient::reconfigure(const std::string& guild_id,
                                 const std::string& announcement_role_id,
                                 const std::string& non_lug_event_role_id,
                                 const std::string& timezone) {
+    clear_cache();
     std::lock_guard<std::mutex> l(cfg_mutex_);
     if (!guild_id.empty())                guild_id_                = guild_id;
     if (!lug_channel_id.empty())          lug_channel_id_          = lug_channel_id;
@@ -124,6 +126,31 @@ std::vector<DiscordChannel> DiscordClient::fetch_voice_channels() const {
 std::string DiscordClient::discord_api_request(const std::string& method,
                                                 const std::string& endpoint,
                                                 const std::string& json_body) const {
+    // Cache guild-level list reads (channels, roles, active threads) briefly.
+    static const std::regex cacheable(R"(^/guilds/\d+/(channels|roles|threads/active)$)");
+    bool use_cache = method == "GET" && std::regex_match(endpoint, cacheable);
+    if (use_cache) {
+        std::lock_guard<std::mutex> lock(cache_mutex_);
+        auto it = get_cache_.find(endpoint);
+        if (it != get_cache_.end() && std::chrono::steady_clock::now() - it->second.first < std::chrono::minutes(2))
+            return it->second.second;
+    }
+    std::string fresh = discord_api_request_uncached(method, endpoint, json_body);
+    if (use_cache && !fresh.empty() && (fresh[0] == '[' || fresh.find("\"threads\"") != std::string::npos)) {
+        std::lock_guard<std::mutex> lock(cache_mutex_);
+        get_cache_[endpoint] = {std::chrono::steady_clock::now(), fresh};
+    }
+    return fresh;
+}
+
+void DiscordClient::clear_cache() const {
+    std::lock_guard<std::mutex> lock(cache_mutex_);
+    get_cache_.clear();
+}
+
+std::string DiscordClient::discord_api_request_uncached(const std::string& method,
+                                                       const std::string& endpoint,
+                                                       const std::string& json_body) const {
     // Endpoints are built by concatenating ids that can originate from user
     // input (member discord_user_id via forms/API, channel/role ids from
     // settings). Refuse anything that could walk the URL path, so e.g. a
