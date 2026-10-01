@@ -3,6 +3,7 @@
 #include "auth/SessionStore.hpp"
 #include "repositories/ChapterMemberRepository.hpp"
 #include "repositories/SettingsRepository.hpp"
+#include "services/Features.hpp"
 #include "utils/AssetVersion.hpp"
 #include <crow.h>
 #include <string>
@@ -60,8 +61,14 @@ struct AuthMiddleware {
         std::string csp_nonce; // per-request nonce for inline <script> (see after_handle)
     };
 
-    void before_handle(crow::request& req, crow::response& /*res*/, context& ctx) {
+    void before_handle(crow::request& req, crow::response& res, context& ctx) {
         ctx.csp_nonce = SessionStore::generate_token().substr(0, 32);
+        // Pages of a switched-off feature don't exist (Settings > Features).
+        if (Features::blocking(req.url)) {
+            res.code = 404;
+            res.end();
+            return;
+        }
         if (!auth_service) return;
 
         std::string token = get_cookie(req, "session");
@@ -136,6 +143,7 @@ inline void set_layout_auth(const crow::request& req, App& app,
     layout_ctx["is_admin"]        = ctx.auth.is_admin();
     layout_ctx["is_chapter_lead"] = ctx.auth.is_chapter_lead();
     layout_ctx["can_treasury"]    = ctx.auth.can_treasury();
+    Features::add_flags(layout_ctx);
     // Sidebar's "Chapter Tools" accordion: chapter leads/moderators who are NOT
     // admin get their own small accordion (admins already see Discord Matches
     // nested inside the "Settings" accordion, so they don't need a second copy).

@@ -47,6 +47,7 @@ std::string render(const crow::request& req, LugApp& app, SeriesService& series,
     ctx["can_create"] = a.is_chapter_lead() || !cm.find_by_member(a.member_id).empty();
     ctx["is_admin"] = a.is_admin();
     ctx["today"] = AttendanceService::today_ymd();
+    Features::add_flags(ctx);
     return crow::mustache::load("meetings/_series.html").render(ctx).dump();
 }
 
@@ -83,7 +84,7 @@ void register_series_routes(LugApp& app, std::shared_ptr<SeriesService> series,
         s.title = gp("title").substr(0, 200);
         s.description = gp("description").substr(0, 4000);
         s.location = gp("location").substr(0, 300);
-        s.scope = gp("scope");
+        s.scope = Features::normalize_scope(gp("scope"));
         if (s.scope != "chapter" && s.scope != "lug_wide" && s.scope != "non_lug") s.scope = "chapter";
         s.chapter_id = s.scope == "chapter" ? parse_id(gp("chapter_id")) : 0;
         s.rule = gp("rule") == "weekly" ? "weekly" : "monthly";

@@ -48,9 +48,9 @@
       <input type="hidden" name="ids" id="bulk-ids">
       <select name="action" id="bulk-action" data-change="bulk-action"
               class="border border-gray-300 rounded-lg px-2 py-1 text-sm">
-        <option value="paid">Mark paid until…</option>
-        <option value="unpaid">Mark unpaid</option>
-        <option value="chapter">Set chapter…</option>
+        {{#f_dues}}<option value="paid">Mark paid until…</option>
+        <option value="unpaid">Mark unpaid</option>{{/f_dues}}
+        {{#f_chapters}}<option value="chapter">Set chapter…</option>{{/f_chapters}}
         <option value="fol">Set age range…</option>
       </select>
       <input type="date" name="value" id="bulk-value-paid" class="border border-gray-300 rounded-lg px-2 py-1 text-sm">
@@ -76,10 +76,10 @@
             <th>Name</th>
             {{#can_see_pii}}<th class="hidden md:table-cell">Discord</th>{{/can_see_pii}}
             {{#can_see_pii}}<th class="hidden lg:table-cell">Email</th>{{/can_see_pii}}
-            {{#can_see_dues}}<th class="hidden lg:table-cell">Dues</th>{{/can_see_dues}}
+            {{#can_see_dues}}{{#f_dues}}<th class="hidden lg:table-cell">Dues</th>{{/f_dues}}{{/can_see_dues}}
             <th class="hidden sm:table-cell">Role</th>
             <th class="hidden lg:table-cell">Age</th>
-            <th class="hidden md:table-cell">Chapter</th>
+            {{#f_chapters}}<th class="hidden md:table-cell">Chapter</th>{{/f_chapters}}
             <th>Actions</th>
           </tr>
         </thead>
@@ -160,6 +160,7 @@
     document.querySelectorAll('.bulk-sel').forEach(function(cb) { cb.checked = false; });
     document.getElementById('bulk-result').textContent = '';
     bulkRefresh();
+  if (document.getElementById('bulk-action')) window.bulkActionChanged();
   };
   window.bulkActionChanged = function() {
     var a = document.getElementById('bulk-action').value;
@@ -181,6 +182,8 @@
   var canSeePii  = {{#can_see_pii}}true{{/can_see_pii}}{{^can_see_pii}}false{{/can_see_pii}};
   var canSeeDues = {{#can_see_dues}}true{{/can_see_dues}}{{^can_see_dues}}false{{/can_see_dues}};
   var isAdmin    = {{#is_admin}}true{{/is_admin}}{{^is_admin}}false{{/is_admin}};
+  var featDues     = {{#f_dues}}true{{/f_dues}}{{^f_dues}}false{{/f_dues}};
+  var featChapters = {{#f_chapters}}true{{/f_chapters}}{{^f_chapters}}false{{/f_chapters}};
 
   var columns = [
     {
@@ -219,7 +222,7 @@
     });
   }
 
-  if (canSeeDues) {
+  if (canSeeDues && featDues) {
     columns.push({
       data: 'is_paid',
       className: 'hidden lg:table-cell',
@@ -261,16 +264,16 @@
                 :                   'bg-gray-100 text-gray-600';
         return '<span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium ' + cls + '">' + label + '</span>';
       }
-    },
-    {
+    }
+  );
+  if (featChapters) columns.push({
       data: 'chapter_name',
       className: 'hidden md:table-cell',
       render: function(data, type) {
         if (type !== 'display') return data || '';
         return data ? '<span class="text-gray-600 text-xs">' + escHtml(data) + '</span>' : '<span class="text-gray-300 text-xs">—</span>';
       }
-    }
-  );
+  });
 
   columns.push({
     data: null,
@@ -283,8 +286,8 @@
         + ' class="text-xs px-2 py-1 text-gray-600 border border-gray-300 rounded hover:bg-gray-50">View</button>';
       {{#can_see_dues}}
       html += '<button hx-get="/members/' + row.id + '" hx-target="#modal" hx-swap="innerHTML"'
-        + ' class="text-xs px-2 py-1 text-gray-600 border border-gray-300 rounded hover:bg-gray-50">Edit</button>'
-        + '<button data-action="set-member-dues" data-member-id="' + row.id + '" data-member-name="' + escHtml(row.display_name) + '"'
+        + ' class="text-xs px-2 py-1 text-gray-600 border border-gray-300 rounded hover:bg-gray-50">Edit</button>';
+      if (featDues) html += '<button data-action="set-member-dues" data-member-id="' + row.id + '" data-member-name="' + escHtml(row.display_name) + '"'
         + ' class="text-xs px-2 py-1 text-gray-600 border border-gray-300 rounded hover:bg-gray-50">Dues</button>';
       {{#is_admin}}
       html += '<button hx-delete="/members/' + row.id + '" hx-confirm="Delete ' + escHtml(row.display_name) + '?' + (row.discord_username ? ' This also removes them from the Discord server.' : '') + ' This cannot be undone." hx-swap="none"'

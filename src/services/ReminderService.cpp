@@ -1,5 +1,6 @@
 #include "services/ReminderService.hpp"
 #include "repositories/NotificationPrefs.hpp"
+#include "services/Features.hpp"
 #include <iostream>
 
 ReminderService::ReminderService(SqliteDatabase& db, MeetingRepository& meetings,
@@ -62,7 +63,7 @@ ReminderService::Result ReminderService::run_once(std::time_t now) {
                           (e.location.empty() ? "" : " at " + e.location);
         if (discord_.sync_post_message(channel, msg)) ++r.events;
 
-        if (dm_rsvps) {
+        if (dm_rsvps && Features::on("rsvps")) {
             for (const auto& rs : rsvps_.list(e.id)) {
                 if (rs.status != "going") continue;
                 if (notifier().notify(rs.member_id, "event_reminder", "Reminder: " + e.title + " - " + when,
@@ -73,7 +74,7 @@ ReminderService::Result ReminderService::run_once(std::time_t now) {
         }
     }
     // Volunteers get a DM before their shift (same lead time, same opt-in).
-    if (dm_rsvps) {
+    if (dm_rsvps && Features::on("shifts")) {
         auto fmt = [&](std::time_t t) {
             std::tm tm{}; localtime_r(&t, &tm);
             char b[32]; std::strftime(b, sizeof(b), "%Y-%m-%dT%H:%M", &tm); return std::string(b);

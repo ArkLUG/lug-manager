@@ -12,6 +12,7 @@ std::string render_notifications(SqliteDatabase& db, int64_t member_id, const st
     crow::json::wvalue arr = crow::json::wvalue::list();
     int i = 0;
     for (const auto& k : NotificationPrefs::kinds()) {
+        if (*k.feature && !Features::on(k.feature)) continue;   // switched off
         arr[i]["key"] = k.key; arr[i]["label"] = k.label; arr[i]["help"] = k.help;
         arr[i]["on"] = !off.count(k.key);
         ++i;
@@ -68,8 +69,10 @@ void register_account_routes(LugApp& app, SqliteDatabase& db, MemberService& mem
         int64_t me = app.get_context<AuthMiddleware>(req).auth.member_id;
         auto p = crow::query_string("?" + req.body);
         NotificationPrefs prefs(db);
-        for (const auto& k : NotificationPrefs::kinds())
+        for (const auto& k : NotificationPrefs::kinds()) {
+            if (*k.feature && !Features::on(k.feature)) continue;   // hidden: leave as is
             prefs.set(me, k.key, p.get(k.key) != nullptr);
+        }
         res.add_header("Content-Type", "text/html; charset=utf-8");
         res.write(render_notifications(db, me, "Saved."));
         return res;

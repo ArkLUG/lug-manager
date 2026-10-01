@@ -282,6 +282,7 @@ int main() {
                         if (backup_service.create_if_due(24, keep))
                             std::cout << "[backup] Daily backup created\n";
                     }
+                    if (Features::on("series"))
                     if (int made = series_service.materialize(AttendanceService::today_ymd()))
                         std::cout << "[series] Scheduled " << made << " recurring meeting(s)\n";
                     auto d = dues_service.run_once();

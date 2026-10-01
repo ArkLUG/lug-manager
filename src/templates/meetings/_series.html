@@ -15,7 +15,7 @@
     <div class="flex flex-wrap items-center justify-between gap-2 px-4 py-3">
       <div>
         <div class="font-medium text-gray-900">{{title}} {{^active}}<span class="ml-1 px-1.5 py-0.5 rounded text-xs bg-gray-100 text-gray-500">stopped</span>{{/active}}</div>
-        <div class="text-xs text-gray-500">{{when}}{{#where}} · {{where}}{{/where}}{{#chapter}} · {{chapter}}{{/chapter}} · {{range}}</div>
+        <div class="text-xs text-gray-500">{{when}}{{#where}} · {{where}}{{/where}}{{#chapter}}<span class="f-chapters"> · {{chapter}}</span>{{/chapter}} · {{range}}</div>
       </div>
       {{#can_stop}}
       <button hx-post="/meetings/series/{{id}}/stop" hx-target="#main-content" hx-swap="innerHTML"
@@ -69,14 +69,14 @@
     <div class="grid md:grid-cols-2 gap-3">
       <label class="block text-gray-700">Scope
         <select name="scope" class="mt-1 w-full border border-gray-300 rounded-lg px-3 py-2">
-          <option value="chapter">Chapter</option>
+          {{#f_chapters}}<option value="chapter">Chapter</option>{{/f_chapters}}
           {{#is_admin}}<option value="lug_wide">LUG-wide</option><option value="non_lug">Non-LUG</option>{{/is_admin}}
         </select>
       </label>
-      <label class="block text-gray-700">Chapter
+      {{#f_chapters}}<label class="block text-gray-700">Chapter
         <select name="chapter_id" class="mt-1 w-full border border-gray-300 rounded-lg px-3 py-2"
                 hx-get="/api/chapter-options" hx-trigger="load" hx-swap="innerHTML"></select>
-      </label>
+      </label>{{/f_chapters}}
     </div>
     <div class="flex flex-wrap gap-4 text-gray-700">
       <label class="flex items-center gap-2"><input type="checkbox" name="is_virtual" value="1" class="accent-yellow-400"> Virtual</label>

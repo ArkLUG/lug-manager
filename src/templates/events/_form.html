@@ -81,26 +81,26 @@
       <label class="block text-sm font-medium text-gray-700 mb-1">Scope</label>
       <select name="scope" id="event-scope-select"
               class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-yellow-400">
-        <option value="chapter" {{#scope_chapter}}selected{{/scope_chapter}}>Chapter Event</option>
+        {{#show_chapter_scope}}<option value="chapter" {{#scope_chapter}}selected{{/scope_chapter}}>Chapter Event</option>{{/show_chapter_scope}}
         <option value="lug_wide" {{#scope_lug_wide}}selected{{/scope_lug_wide}}>LUG Wide Event</option>
         <option value="non_lug" {{#scope_non_lug}}selected{{/scope_non_lug}}>Non-LUG Event</option>
       </select>
     </div>
 
-    <div id="event-chapter-row">
+    {{#show_chapter_scope}}<div id="event-chapter-row">
       <label class="block text-sm font-medium text-gray-700 mb-1">Chapter <span class="text-gray-400">(optional for admins)</span></label>
       <select name="chapter_id" id="event-chapter-select"
               class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-yellow-400">
         {{{chapter_options}}}
       </select>
-    </div>
+    </div>{{/show_chapter_scope}}
 
     <script>
     (function() {
       var scopeSel   = document.getElementById('event-scope-select');
       var chapterRow = document.getElementById('event-chapter-row');
       function toggle() {
-        chapterRow.style.display = scopeSel.value === 'chapter' ? '' : 'none';
+        if (chapterRow) chapterRow.style.display = scopeSel.value === 'chapter' ? '' : 'none';
       }
       toggle();
       scopeSel.addEventListener('change', toggle);

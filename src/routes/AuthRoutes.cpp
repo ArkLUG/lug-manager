@@ -363,7 +363,7 @@ void register_email_auth_routes(LugApp& app, AuthService& auth, SqliteDatabase& 
         crow::json::wvalue kinds = crow::json::wvalue::list();
         int i = 0;
         for (const auto& k : NotificationPrefs::kinds()) {
-            if (std::string(k.key) == "email") continue;
+            if (std::string(k.key) == "email" || (*k.feature && !Features::on(k.feature))) continue;
             kinds[i]["key"] = k.key; kinds[i]["label"] = k.label; kinds[i]["off"] = off.count(k.key) > 0;
             kinds[i]["this_one"] = kind && std::string(kind) == k.key;
             ++i;

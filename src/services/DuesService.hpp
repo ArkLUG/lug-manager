@@ -4,6 +4,7 @@
 #include "repositories/SettingsRepository.hpp"
 #include "services/AuditService.hpp"
 #include "services/Notifier.hpp"
+#include "services/Features.hpp"
 #include <memory>
 #include "utils/LocalTime.hpp"
 #include <ctime>
@@ -31,6 +32,7 @@ public:
 
     Result run_once(std::time_t now = std::time(nullptr)) {
         Result r;
+        if (!Features::on("dues")) return r;   // Settings > Features
         std::string today = ymd(now);
         for (const auto& m : dues_.expire_lapsed(today)) {
             audit_.log_system("member.dues_expired", "member", m.member_id, m.display_name,

@@ -215,6 +215,11 @@ void register_calendar_routes(LugApp& app, CalendarGenerator& cal,
             ctx["has_dues_expiring"]   = !rows.empty();
             ctx["dues_expiring_count"] = static_cast<int>(rows.size());
         }
+        // Sections of switched-off features (Settings > Features)
+        Features::add_flags(ctx);
+        if (!Features::on("chapters")) ctx["member_has_chapter"] = false;
+        if (!Features::on("perks"))    { ctx["has_perks"] = false; ctx["has_close_to_tier"] = false; }
+        if (!Features::on("dues"))     ctx["has_dues_expiring"] = false;
 
         res.add_header("Content-Type", "text/html; charset=utf-8");
         bool is_htmx = req.get_header_value("HX-Request") == "true";

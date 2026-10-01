@@ -8,15 +8,15 @@
 // Which notifications a member wants. Opt-out model: no row = wanted.
 class NotificationPrefs {
 public:
-    struct Kind { const char* key; const char* label; const char* help; };
+    struct Kind { const char* key; const char* label; const char* help; const char* feature = ""; };
 
     static const std::vector<Kind>& kinds() {
         static const std::vector<Kind> k = {
-            {"event_reminder", "Event reminders", "Before events you RSVP'd to."},
-            {"shift_reminder", "Volunteer shift reminders", "Before a volunteer shift you signed up for."},
-            {"waitlist",       "Waitlist spot opened", "When you move off an event waitlist."},
-            {"dues_reminder",  "Dues renewal reminders", "Shortly before your dues run out."},
-            {"loan_reminder",  "LUG items due back", "When something you borrowed from the LUG inventory is due."},
+            {"event_reminder", "Event reminders", "Before events you RSVP'd to.", "rsvps"},
+            {"shift_reminder", "Volunteer shift reminders", "Before a volunteer shift you signed up for.", "shifts"},
+            {"waitlist",       "Waitlist spot opened", "When you move off an event waitlist.", "rsvps"},
+            {"dues_reminder",  "Dues renewal reminders", "Shortly before your dues run out.", "dues"},
+            {"loan_reminder",  "LUG items due back", "When something you borrowed from the LUG inventory is due.", "inventory"},
             {"email",          "Email when I'm not on Discord", "If your account has no Discord linked, send the notifications above to your email instead."},
         };
         return k;

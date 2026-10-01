@@ -88,7 +88,7 @@ bool rate_ok(const std::string& ip) {
     return true;
 }
 
-bool enabled(SettingsRepository& settings) { return settings.get("public_shows_enabled", "") == "1"; }
+bool enabled(SettingsRepository&) { return Features::on("public_shows"); }
 
 std::string settings_card(SettingsRepository& settings, const std::string& flash = "") {
     crow::mustache::context ctx;
@@ -124,7 +124,7 @@ void register_shows_routes(LugApp& app, SqliteDatabase& db, SettingsRepository& 
             o["interest"] = s.interest;
             o["has_interest"] = s.interest > 0;
             o["mine"] = mine.count(s.id) > 0;
-            o["has_shifts"] = s.has_shifts;
+            o["has_shifts"] = s.has_shifts && Features::on("shifts");
             o["embed"] = embed;
         }
         ctx["shows"] = std::move(arr);
@@ -231,7 +231,7 @@ void register_shows_routes(LugApp& app, SqliteDatabase& db, SettingsRepository& 
         auto gp = [&](const char* k, size_t max) { const char* v = p.get(k); return v ? std::string(v).substr(0, max) : std::string(); };
         bool on = gp("enabled", 2) == "1";
         std::string title = gp("title", 100);
-        settings.set("public_shows_enabled", on ? "1" : "0");
+        Features::set("public_shows", on);
         settings.set("public_shows_title", title.empty() ? "Upcoming shows" : title);
         settings.set("public_shows_intro", gp("intro", 1000));
         audit.log(req, app, "settings.public_shows", "settings", 0, "Public shows page", on ? "Enabled" : "Disabled");

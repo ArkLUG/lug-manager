@@ -69,6 +69,7 @@ static std::string render_members_page(const crow::request& req,
     ctx["is_admin"]     = is_admin;
     ctx["can_see_pii"]  = can_see_pii;
     ctx["can_see_dues"] = can_see_dues;
+    Features::add_flags(ctx);
 
     bool is_htmx = req.get_header_value("HX-Request") == "true";
     if (is_htmx) {
@@ -327,12 +328,13 @@ void register_member_routes(LugApp& app, MemberService& members, AttendanceRepos
         ctx["show_any_pii"]  = can_see(m->sharing_email) || can_see(m->sharing_phone)
                              || can_see(m->sharing_address) || can_see(m->sharing_birthday)
                              || can_see(m->sharing_discord);
-        ctx["show_dues"]     = privileged || is_self;
+        ctx["show_dues"]     = (privileged || is_self) && Features::on("dues");
+        if (!Features::on("chapters")) ctx["chapter_id_str"] = "";
         ctx["viewer_is_admin"] = auth.is_admin() && !is_self;
         if (privileged || is_self) {
             auto g = member_repo.get_guardian(m->id);
             bool minor = m->fol_status == "kfol" || m->fol_status == "tfol";
-            ctx["show_guardian"]   = minor || !g.name.empty();
+            ctx["show_guardian"]   = (minor || !g.name.empty()) && Features::on("guardians");
             ctx["guardian_name"]   = g.name;
             ctx["guardian_phone"]  = g.phone;
             ctx["guardian_email"]  = g.email;

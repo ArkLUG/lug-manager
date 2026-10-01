@@ -69,6 +69,7 @@
 #include "routes/TreasuryRoutes.hpp"
 #include "routes/MemberMergeRoutes.hpp"
 #include "routes/ShowsRoutes.hpp"
+#include "routes/FeatureRoutes.hpp"
 #include "services/Notifier.hpp"
 #include <memory>
 

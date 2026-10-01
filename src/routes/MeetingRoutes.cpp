@@ -257,7 +257,7 @@ void register_meeting_routes(LugApp& app, MeetingService& meetings, AttendanceSe
         mctx["action"]        = "/meetings";
         mctx["title"]         = "Schedule New Meeting";
         mctx["is_new"]        = true;
-        mctx["scope_chapter"] = true;
+        Features::scope_flags(mctx, "", true);
         res.write(tmpl.render(mctx).dump());
         return res;
     });
@@ -303,9 +303,7 @@ void register_meeting_routes(LugApp& app, MeetingService& meetings, AttendanceSe
                      << ">" << html_escape(ch.name) << "</option>\n";
             mctx["chapter_options"] = opts.str();
         }
-        mctx["scope_chapter"]     = (m->scope == "chapter" || m->scope.empty());
-        mctx["scope_lug_wide"]    = (m->scope == "lug_wide");
-        mctx["scope_non_lug"]     = (m->scope == "non_lug");
+        Features::scope_flags(mctx, m->scope, false);
         mctx["is_virtual"]                 = m->is_virtual;
         mctx["discord_voice_channel_id"]   = m->discord_voice_channel_id;
         {
@@ -353,6 +351,7 @@ void register_meeting_routes(LugApp& app, MeetingService& meetings, AttendanceSe
         ctx["title"]        = m->title;
         ctx["description"]  = m->description;
         if (!m->description.empty()) ctx["description_html"] = render_markdown(m->description);
+        Features::add_flags(ctx);
         ctx["location"]     = m->location;
         ctx["start_time"]   = m->start_time;
         ctx["end_time"]     = m->end_time;
@@ -448,7 +447,7 @@ void register_meeting_routes(LugApp& app, MeetingService& meetings, AttendanceSe
         m.start_time  = normalize_datetime(get_param("start_time"));
         m.end_time    = normalize_datetime(get_param("end_time"));
         m.status      = "scheduled";
-        m.scope       = get_param("scope").empty() ? "chapter" : get_param("scope");
+        m.scope       = Features::normalize_scope(get_param("scope").empty() ? "chapter" : get_param("scope"));
         { std::string ch = get_param("chapter_id");
           if (!ch.empty()) try { m.chapter_id = std::stoll(ch); } catch (...) {} }
         m.is_virtual        = (get_param("is_virtual") == "on" || get_param("is_virtual") == "1");

@@ -330,6 +330,7 @@ void register_event_routes(LugApp& app, EventService& events, AttendanceService&
         mctx["action"]            = "/events";
         mctx["method"]            = "POST";
         mctx["title"]             = "Create New Event";
+        Features::scope_flags(mctx, "", true);
         mctx["is_new"]            = true;
         mctx["has_forum_channel"] = !discord.get_events_forum_channel_id().empty();
         res.write(tmpl.render(mctx).dump());
@@ -411,9 +412,7 @@ void register_event_routes(LugApp& app, EventService& events, AttendanceService&
                      << ">" << html_escape(ch.name) << "</option>\n";
             mctx["chapter_options"] = opts.str();
         }
-        mctx["scope_chapter"]      = (ev->scope == "chapter" || ev->scope.empty());
-        mctx["scope_lug_wide"]     = (ev->scope == "lug_wide");
-        mctx["scope_non_lug"]      = (ev->scope == "non_lug");
+        Features::scope_flags(mctx, ev->scope, false);
         mctx["has_forum_channel"]  = !discord.get_events_forum_channel_id().empty();
         mctx["has_thread"]         = !ev->discord_thread_id.empty();
         mctx["discord_thread_id"]  = ev->discord_thread_id;
@@ -464,6 +463,7 @@ void register_event_routes(LugApp& app, EventService& events, AttendanceService&
         ctx["title"]            = ev->title;
         ctx["description"]      = ev->description;
         if (!ev->description.empty()) ctx["description_html"] = render_markdown(ev->description);
+        Features::add_flags(ctx);
         ctx["location"]         = ev->location;
         ctx["start_time"]       = ev->start_time;
         ctx["end_time"]         = ev->end_time;
@@ -578,7 +578,7 @@ void register_event_routes(LugApp& app, EventService& events, AttendanceService&
         e.start_time       = ev_normalize_datetime(get_param("start_time"));
         e.end_time         = ev_normalize_datetime(get_param("end_time"));
         e.signup_deadline  = ev_normalize_datetime(get_param("signup_deadline"));
-        e.scope            = get_param("scope").empty() ? "chapter" : get_param("scope");
+        e.scope            = Features::normalize_scope(get_param("scope").empty() ? "chapter" : get_param("scope"));
         e.status           = "open";
         { std::string ch = get_param("chapter_id");
           if (!ch.empty()) try { e.chapter_id = std::stoll(ch); } catch (...) {} }

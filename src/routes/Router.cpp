@@ -1,6 +1,7 @@
 #include "routes/Router.hpp"
 
 void register_all_routes(LugApp& app, Services& svc) {
+    Features::bind(&svc.settings);
     if (!svc.mailer) svc.mailer = std::make_shared<Mailer>(Mailer::from_env());
     if (!svc.notifier)
         svc.notifier = std::make_shared<Notifier>(svc.attendance_repo.db(), svc.discord, svc.mailer, svc.public_url);
@@ -34,6 +35,7 @@ void register_all_routes(LugApp& app, Services& svc) {
                              std::make_shared<PhotoStore>(svc.data_dir, "uploads/receipts"));
     register_member_merge_routes(app, svc.attendance_repo.db(), svc.audit);
     register_shows_routes(app, svc.attendance_repo.db(), svc.settings, svc.audit);
+    register_feature_routes(app, svc.settings, svc.audit);
     register_series_routes(app, svc.series, svc.chapters, svc.chapter_members, svc.audit);
     if (!svc.backups) svc.backups = std::make_shared<BackupService>(svc.attendance_repo.db(), svc.data_dir);
     register_backup_routes(app, svc.backups, svc.settings, svc.audit);

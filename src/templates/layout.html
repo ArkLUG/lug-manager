@@ -49,6 +49,16 @@
   }
   </script>
   <style>
+    /* Settings > Features: elements of a switched-off feature carry f-<key> */
+    [data-features-off~="chapters"] .f-chapters, [data-features-off~="dues"] .f-dues,
+    [data-features-off~="perks"] .f-perks, [data-features-off~="rsvps"] .f-rsvps,
+    [data-features-off~="displays"] .f-displays, [data-features-off~="shifts"] .f-shifts,
+    [data-features-off~="photos"] .f-photos, [data-features-off~="challenges"] .f-challenges,
+    [data-features-off~="inventory"] .f-inventory, [data-features-off~="treasury"] .f-treasury,
+    [data-features-off~="series"] .f-series, [data-features-off~="reports"] .f-reports,
+    [data-features-off~="kiosk"] .f-kiosk, [data-features-off~="qr_checkin"] .f-qr_checkin,
+    [data-features-off~="calendar"] .f-calendar, [data-features-off~="discord_reports"] .f-discord_reports,
+    [data-features-off~="guardians"] .f-guardians { display: none !important; }
     /* HTMX loading indicator */
     .htmx-indicator          { opacity: 0; transition: opacity 200ms ease-in; }
     .htmx-request .htmx-indicator { opacity: 1; }
@@ -124,7 +134,7 @@
     }
   </style>
 </head>
-<body class="bg-gray-100 min-h-screen flex" hx-boost="false">
+<body class="bg-gray-100 min-h-screen flex" hx-boost="false" data-features-off="{{features_off}}">
   <a href="#main-content" class="skip-link">Skip to content</a>
 
   <!-- ===== SIDEBAR ===== -->
@@ -250,6 +260,7 @@
         My Attendance
       </a>
 
+      {{#f_chapters}}
       <!-- Chapters (all authenticated users) -->
       <a hx-get="/chapters"
          hx-target="#main-content"
@@ -265,7 +276,9 @@
         </svg>
         Chapters
       </a>
+      {{/f_chapters}}
 
+      {{#f_challenges}}
       <!-- Build Challenges -->
       <a hx-get="/challenges"
          hx-target="#main-content"
@@ -280,7 +293,9 @@
         </svg>
         Build Challenges
       </a>
+      {{/f_challenges}}
 
+      {{#f_inventory}}
       <!-- Inventory -->
       <a hx-get="/inventory"
          hx-target="#main-content"
@@ -295,8 +310,10 @@
         </svg>
         Inventory
       </a>
+      {{/f_inventory}}
 
       {{#can_treasury}}
+      {{#f_treasury}}
       <!-- Treasury (admin or treasurer) -->
       <a hx-get="/treasury"
          hx-target="#main-content"
@@ -311,6 +328,7 @@
         </svg>
         Treasury
       </a>
+      {{/f_treasury}}
       {{/can_treasury}}
 
       {{#is_admin}}
@@ -330,6 +348,7 @@
         Attendance Overview
       </a>
 
+      {{#f_reports}}
       <!-- Annual Report (admin) -->
       <a hx-get="/reports/annual"
          hx-target="#main-content"
@@ -344,7 +363,9 @@
         </svg>
         Annual Report
       </a>
+      {{/f_reports}}
 
+      {{#f_perks}}
       <!-- Perk Levels (admin) -->
       <a hx-get="/perks"
          hx-target="#main-content"
@@ -360,6 +381,7 @@
         </svg>
         Perk Levels
       </a>
+      {{/f_perks}}
 
       <!-- Audit Log (admin) -->
       <a hx-get="/audit"
@@ -402,6 +424,16 @@
                     {{#active_settings}}nav-active{{/active_settings}}
                     {{^active_settings}}nav-inactive{{/active_settings}}">
             Discord
+          </a>
+          <a hx-get="/settings/features"
+             hx-target="#main-content"
+             hx-push-url="true"
+             hx-swap="innerHTML"
+             hx-indicator="#nav-spinner"
+             class="block px-3 py-2 rounded-lg text-sm cursor-pointer transition-colors
+                    {{#active_features}}nav-active{{/active_features}}
+                    {{^active_features}}nav-inactive{{/active_features}}">
+            Features
           </a>
           <a hx-get="/settings/calendar"
              hx-target="#main-content"
@@ -538,6 +570,7 @@
         </svg>
         My Account
       </a>
+      {{#f_calendar}}
       <a href="/calendar.ics" target="_blank"
          class="flex items-center gap-2 px-3 py-2 text-xs text-gray-400
                 hover:text-yellow-400 hover:bg-gray-800 rounded-lg transition-colors">
@@ -547,6 +580,7 @@
         </svg>
         Subscribe to Calendar (.ics)
       </a>
+      {{/f_calendar}}
       <form method="post" action="/auth/logout">
       <button type="submit"
          class="w-full flex items-center gap-2 px-3 py-2 text-sm text-gray-400

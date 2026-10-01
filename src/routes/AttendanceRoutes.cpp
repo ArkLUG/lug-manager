@@ -47,7 +47,7 @@ static bool is_entity_type(const std::string& t) {
 // so organisers see "no photos" / "consent missing" right where they check in.
 static MemberRepository* g_member_repo_for_badges = nullptr;
 static void add_minor_badges(crow::json::wvalue& rows, const std::vector<int64_t>& ids) {
-    if (!g_member_repo_for_badges || ids.empty()) return;
+    if (!g_member_repo_for_badges || ids.empty() || !Features::on("guardians")) return;
     auto flags = g_member_repo_for_badges->minor_flags(ids);
     for (size_t i = 0; i < ids.size(); ++i) {
         auto it = flags.find(ids[i]);

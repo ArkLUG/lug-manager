@@ -1,5 +1,6 @@
 #pragma once
 #include "services/Notifier.hpp"
+#include "services/Features.hpp"
 #include <memory>
 #include <string>
 
@@ -10,6 +11,7 @@ public:
     LoanReminders(SqliteDatabase& db, std::shared_ptr<Notifier> notifier) : db_(db), notifier_(std::move(notifier)) {}
 
     int run_once(const std::string& today) {
+        if (!Features::on("inventory")) return 0;
         struct Due { int64_t id, member_id, qty; std::string item, due; };
         std::vector<Due> due;
         {
