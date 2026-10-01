@@ -158,7 +158,7 @@ void register_auth_routes(LugApp& app, AuthService& auth, DiscordOAuth& oauth,
         std::string code(code_raw);
         std::string redirect_uri = build_url(req, "/auth/callback");
         try {
-            std::string session_token = auth.login_with_discord(code, redirect_uri);
+            std::string session_token = auth.login_with_discord(code, redirect_uri, req.get_header_value("User-Agent"));
             crow::response res;
             res.add_header("Set-Cookie",
                 "session=" + session_token + "; HttpOnly; Path=/; Max-Age=86400; SameSite=Lax" + secure_attr(req));

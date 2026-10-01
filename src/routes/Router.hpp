@@ -57,6 +57,7 @@
 #include "routes/ExportRoutes.hpp"
 #include "routes/MemberBulkRoutes.hpp"
 #include "routes/BackupRoutes.hpp"
+#include "routes/SessionRoutes.hpp"
 #include <memory>
 
 struct Services {

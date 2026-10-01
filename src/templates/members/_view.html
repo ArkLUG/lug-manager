@@ -109,4 +109,12 @@
     </div>
     {{/show_dues}}
   </dl>
+  {{#viewer_is_admin}}
+  <div class="mt-4 pt-3 border-t border-gray-100 flex items-center gap-2">
+    <button hx-post="/members/{{id}}/sessions/revoke" hx-target="#revoke-result-{{id}}" hx-swap="innerHTML"
+            hx-confirm="Sign {{display_name}} out on all devices?"
+            class="text-xs px-3 py-1.5 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50">Sign out all devices</button>
+    <span id="revoke-result-{{id}}"></span>
+  </div>
+  {{/viewer_is_admin}}
 </div>

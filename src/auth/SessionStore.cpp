@@ -88,7 +88,8 @@ std::string SessionStore::generate_token() {
 }
 
 std::string SessionStore::create(int64_t member_id, const std::string& role,
-                                  const std::string& display_name, int hours) {
+                                  const std::string& display_name, int hours,
+                                  const std::string& user_agent) {
     std::string token      = generate_token();
     std::string expires_at = now_plus_hours(hours);
     std::string created_at = now_iso();
@@ -97,13 +98,14 @@ std::string SessionStore::create(int64_t member_id, const std::string& role,
         std::lock_guard<std::mutex> lock(mutex_);
 
         auto stmt = db_.prepare(
-            "INSERT INTO sessions (token, member_id, role, expires_at, created_at, token_is_hash) "
-            "VALUES (?, ?, ?, ?, ?, 1)");
+            "INSERT INTO sessions (token, member_id, role, expires_at, created_at, token_is_hash, user_agent) "
+            "VALUES (?, ?, ?, ?, ?, 1, ?)");
         stmt.bind(1, sha256_hex(token)) // only the hash is persisted
             .bind(2, member_id)
             .bind(3, role)
             .bind(4, expires_at)
-            .bind(5, created_at);
+            .bind(5, created_at)
+            .bind(6, user_agent.substr(0, 300));
         stmt.step();
 
         Session s;
@@ -196,4 +198,41 @@ void SessionStore::purge_expired() {
             ++it;
         }
     }
+}
+
+std::vector<SessionStore::Info> SessionStore::list_for_member(int64_t member_id,
+                                                              const std::string& current_token) {
+    std::string current_hash = current_token.empty() ? "" : sha256_hex(current_token);
+    std::lock_guard<std::mutex> lock(mutex_);
+    auto stmt = db_.prepare(
+        "SELECT token, created_at, expires_at, user_agent FROM sessions "
+        "WHERE member_id=? AND expires_at > strftime('%Y-%m-%dT%H:%M:%S','now') ORDER BY created_at DESC");
+    stmt.bind(1, member_id);
+    std::vector<Info> out;
+    while (stmt.step()) {
+        Info i;
+        std::string hash = stmt.col_text(0);
+        i.id         = hash.substr(0, 12);
+        i.created_at = stmt.col_text(1);
+        i.expires_at = stmt.col_text(2);
+        i.user_agent = stmt.col_text(3);
+        i.current    = !current_hash.empty() && hash == current_hash;
+        out.push_back(std::move(i));
+    }
+    return out;
+}
+
+int SessionStore::remove_all_for_member(int64_t member_id, const std::string& keep_token) {
+    std::string keep_hash = keep_token.empty() ? "" : sha256_hex(keep_token);
+    std::lock_guard<std::mutex> lock(mutex_);
+    auto stmt = db_.prepare("DELETE FROM sessions WHERE member_id=? AND token<>? RETURNING token");
+    stmt.bind(1, member_id);
+    stmt.bind(2, keep_hash);
+    int n = 0;
+    while (stmt.step()) ++n;
+    for (auto it = cache_.begin(); it != cache_.end(); ) {
+        if (it->second.member_id == member_id && it->first != keep_token) it = cache_.erase(it);
+        else ++it;
+    }
+    return n;
 }

@@ -5,6 +5,7 @@
 #include <unordered_map>
 #include <mutex>
 #include <string>
+#include <vector>
 
 class SessionStore {
 public:
@@ -12,7 +13,20 @@ public:
 
     // Create new session, returns token
     std::string create(int64_t member_id, const std::string& role,
-                       const std::string& display_name = "", int hours = 24);
+                       const std::string& display_name = "", int hours = 24,
+                       const std::string& user_agent = "");
+
+    struct Info {
+        std::string id;          // first 12 hex chars of the token hash (not usable as a token)
+        std::string created_at;
+        std::string expires_at;
+        std::string user_agent;
+        bool        current = false;
+    };
+    // Active sessions of a member; `current_token` (raw) is flagged current.
+    std::vector<Info> list_for_member(int64_t member_id, const std::string& current_token = "");
+    // Signs a member out everywhere, optionally keeping one (raw) token. Returns count removed.
+    int remove_all_for_member(int64_t member_id, const std::string& keep_token = "");
 
     // Find session by token (checks in-memory cache first, then DB)
     std::optional<Session> find(const std::string& token);

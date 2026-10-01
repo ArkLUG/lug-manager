@@ -20,7 +20,9 @@ public:
     // Complete Discord OAuth2 login flow.
     // Returns session token on success.
     // Throws std::runtime_error("not_authorized") if the user has no access.
-    std::string login_with_discord(const std::string& code, const std::string& redirect_uri = "");
+    std::string login_with_discord(const std::string& code, const std::string& redirect_uri = "",
+                                   const std::string& user_agent = "");
+    SessionStore& sessions() { return sessions_; }
 
     // Validate session token. Returns Session if valid, nullopt if expired/missing.
     std::optional<Session> validate_session(const std::string& token);

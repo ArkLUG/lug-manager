@@ -313,6 +313,7 @@ void register_member_routes(LugApp& app, MemberService& members, AttendanceRepos
                              || can_see(m->sharing_address) || can_see(m->sharing_birthday)
                              || can_see(m->sharing_discord);
         ctx["show_dues"]     = privileged || is_self;
+        ctx["viewer_is_admin"] = auth.is_admin() && !is_self;
         ctx["is_self"]       = is_self;
 
         res.add_header("Content-Type", "text/html; charset=utf-8");

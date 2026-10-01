@@ -24,6 +24,7 @@ A modern web application for managing LEGO User Groups (LUGs). Built with **C++ 
 - **CSV Exports**: Members (chapter leads+), attendance overview by year with perk tiers, and the audit log (admins). Exports are audit-logged and protected against spreadsheet formula injection.
 - **Bulk Member Actions**: Chapter leads+ can tick members in the table (selection survives paging and search) and mark them paid until a date, unpaid, move them to a chapter, or set their age range in one go; each change is audit-logged per member.
 - **Backups**: Daily consistent SQLite snapshots in `data/backups` (on by default, keeps the newest 14), plus "Back up now" and download links at Settings > Backups (admin).
+- **Signed-in Devices**: The dashboard lists your active sessions (browser and OS) with "Sign out everywhere else"; admins can sign a member out on all devices from their profile.
 - **Dark Mode**: Follows the system light/dark setting by default; a Light / System / Dark switch in the sidebar overrides it per browser. Applies to the check-in page too.
 - **Audit Log**: Every action is tracked — who did what, when, to which entity, from what IP. Admin-only viewer with search, category filtering, and pagination. 47 distinct audited actions covering members, meetings, events, chapters, attendance, check-ins, perks, settings, syncs, and role mappings.
 - **Discord Integration**: OAuth2 login, scheduled events, forum threads, announcements, role sync, perk role assignment, voice channel selection for virtual meetings, member sync every 6 hours
