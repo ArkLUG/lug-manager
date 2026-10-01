@@ -1,4 +1,5 @@
 #include "routes/api/MembersApiRoutes.hpp"
+#include "services/DiscordLinkPolicy.hpp"
 #include "utils/Snowflake.hpp"
 #include "routes/api/ApiCommon.hpp"
 #include "routes/api/Serialize.hpp"
@@ -174,6 +175,10 @@ void register_members_api_routes(LugApp& app, MemberService& members,
             return res;
         }
         std::string discord_username = body.has("discord_username") ? std::string(body["discord_username"].s()) : "";
+
+        bool key_is_admin = app.template get_context<ApiKeyMiddleware>(req).api_key.has_scope("admin");
+        std::string blocked = discord_link_block_reason(*existing, key_is_admin);
+        if (!blocked.empty()) { envelope_error(res, 403, blocked, "forbidden"); return res; }
 
         bool ok = member_repo.link_discord_id(static_cast<int64_t>(id), discord_user_id, discord_username);
         if (!ok) { envelope_error(res, 400, "could not link Discord identity", "validation_error"); return res; }

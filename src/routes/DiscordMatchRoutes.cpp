@@ -1,4 +1,5 @@
 #include "routes/DiscordMatchRoutes.hpp"
+#include "services/DiscordLinkPolicy.hpp"
 #include "utils/HtmlEscape.hpp"
 #include <crow/mustache.h>
 #include <sstream>
@@ -163,6 +164,14 @@ void register_discord_match_routes(LugApp& app,
         auto member = member_repo.find_by_id(member_id);
         if (!member) {
             res.write(R"(<tr><td colspan="4" class="px-3 py-2 text-red-600">Member not found</td></tr>)");
+            res.add_header("Content-Type", "text/html; charset=utf-8");
+            return res;
+        }
+
+        std::string blocked = discord_link_block_reason(*member, ctx.auth.is_admin());
+        if (!blocked.empty()) {
+            res.code = 403;
+            res.write("<tr><td colspan=\"4\" class=\"px-3 py-2 text-red-600\">" + html_escape(blocked) + "</td></tr>");
             res.add_header("Content-Type", "text/html; charset=utf-8");
             return res;
         }

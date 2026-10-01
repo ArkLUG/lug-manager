@@ -275,3 +275,21 @@ TEST_F(IntegrationTest, WriteScopeCannotDemoteChapterLead) {
     ASSERT_TRUE(role);
     EXPECT_EQ(*role, "lead");
 }
+
+// Account takeover: a chapter lead must not be able to link a Discord account
+// (e.g. their own alt) to an admin's member record.
+TEST_F(IntegrationTest, ChapterLeadCannotLinkDiscordToAdmin) {
+    auto admin_before = member_repo->find_by_id(admin_member_id);
+    ASSERT_TRUE(admin_before);
+    PendingDiscordMatch p;
+    p.discord_user_id = "999000999000999000";
+    p.discord_username = "alt";
+    p.discord_display_name = "Alt";
+    auto pending = pending_discord_match_repo->create(p);
+
+    auto r = POST("/settings/discord-matches/" + std::to_string(pending.id) + "/link",
+                  "member_id=" + std::to_string(admin_member_id), chapter_lead_token);
+    EXPECT_EQ(r.code, 403);
+    auto admin_after = member_repo->find_by_id(admin_member_id);
+    EXPECT_EQ(admin_after->discord_user_id, admin_before->discord_user_id);
+}

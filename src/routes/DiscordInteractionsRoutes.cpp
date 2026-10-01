@@ -1,4 +1,5 @@
 #include "routes/DiscordInteractionsRoutes.hpp"
+#include "services/DiscordLinkPolicy.hpp"
 #include "integrations/DiscordSignatureVerifier.hpp"
 #include "models/Member.hpp"
 #include <crow.h>
@@ -236,6 +237,10 @@ void register_discord_interactions_routes(LugApp& app,
             if (!member) {
                 return ephemeral_message("No member found with ID " + std::to_string(member_id) + ".");
             }
+
+            // Interaction resolvers are never LUG admins as far as we can tell.
+            std::string blocked = discord_link_block_reason(*member, /*caller_is_admin=*/false);
+            if (!blocked.empty()) return ephemeral_message(blocked);
 
             member_repo.link_discord_id(member_id, pending->discord_user_id, pending->discord_username);
             pending_matches.mark_resolved(pending->id, "linked", member_id);

@@ -1,4 +1,5 @@
 #include "routes/api/PendingDiscordMatchesApiRoutes.hpp"
+#include "services/DiscordLinkPolicy.hpp"
 #include "routes/api/ApiCommon.hpp"
 #include "routes/api/Serialize.hpp"
 #include <crow.h>
@@ -61,6 +62,9 @@ void register_pending_discord_matches_api_routes(LugApp& app,
 
         auto member = member_repo.find_by_id(member_id);
         if (!member) { envelope_error(res, 404, "member not found", "not_found"); return res; }
+        bool key_is_admin = app.template get_context<ApiKeyMiddleware>(req).api_key.has_scope("admin");
+        std::string blocked = discord_link_block_reason(*member, key_is_admin);
+        if (!blocked.empty()) { envelope_error(res, 403, blocked, "forbidden"); return res; }
 
         try {
             member_repo.link_discord_id(member_id, pending->discord_user_id, pending->discord_username);
