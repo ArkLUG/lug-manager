@@ -111,7 +111,7 @@ TEST_F(IntegrationTest, LogoutClearsSessionAndRedirects) {
 
     // Logout
     auto r = POST("/auth/logout", "", admin_token);
-    EXPECT_TRUE(r.code == 302 || r.code == 307);
+    EXPECT_EQ(r.code, 303);   // See Other: the browser must GET /login, not re-POST it
     EXPECT_NE(r.location.find("/login"), std::string::npos);
 }
 

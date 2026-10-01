@@ -21,7 +21,7 @@ TEST_F(IntegrationTest, SettingsCalendarPageLoads) {
 
 TEST_F(IntegrationTest, SettingsCalendarPageNonAdminForbidden) {
     auto r = GET("/settings/calendar", member_token);
-    EXPECT_TRUE(r.code == 302 || r.code == 307); // non-admin gets redirected to dashboard
+    EXPECT_TRUE(r.code == 302 || r.code == 303 || r.code == 307); // non-admin gets redirected to dashboard
 }
 
 TEST_F(IntegrationTest, SettingsGoogleCalendarPageLoads) {
@@ -33,7 +33,7 @@ TEST_F(IntegrationTest, SettingsGoogleCalendarPageLoads) {
 
 TEST_F(IntegrationTest, SettingsGoogleCalendarPageNonAdminForbidden) {
     auto r = GET("/settings/google-calendar", member_token);
-    EXPECT_TRUE(r.code == 302 || r.code == 307); // non-admin gets redirected to dashboard
+    EXPECT_TRUE(r.code == 302 || r.code == 303 || r.code == 307); // non-admin gets redirected to dashboard
 }
 
 TEST_F(IntegrationTest, SettingsCalendarSaveOnly) {
@@ -285,12 +285,12 @@ TEST_F(IntegrationTest, RolesMappingSaveHtmxReturns200) {
 TEST_F(IntegrationTest, RolesMappingSaveNonHtmxReturns302) {
     // Non-HTMX POST to /settings/roles returns redirect (302 or 307)
     auto r = POST("/settings/roles", "", admin_token);
-    EXPECT_TRUE(r.code == 302 || r.code == 307);
+    EXPECT_TRUE(r.code == 302 || r.code == 303 || r.code == 307);
 }
 
 TEST_F(IntegrationTest, RolesPageNonAdminForbidden) {
     auto r = GET("/settings/roles", member_token);
-    EXPECT_TRUE(r.code == 302 || r.code == 307); // non-admin gets redirected to dashboard
+    EXPECT_TRUE(r.code == 302 || r.code == 303 || r.code == 307); // non-admin gets redirected to dashboard
 }
 
 // ═══════════════════════════════════════════════════════════════════════════

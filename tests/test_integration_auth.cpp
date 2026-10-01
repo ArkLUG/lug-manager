@@ -35,13 +35,13 @@ TEST_F(IntegrationTest, CalendarIcsPublic) {
 
 TEST_F(IntegrationTest, RootUnauthenticatedRedirectsToLogin) {
     auto r = GET("/");
-    EXPECT_TRUE(r.code == 302 || r.code == 307);
+    EXPECT_TRUE(r.code == 302 || r.code == 303 || r.code == 307);
     EXPECT_NE(r.location.find("/login"), std::string::npos);
 }
 
 TEST_F(IntegrationTest, RootAuthenticatedRedirectsToDashboard) {
     auto r = GET("/", admin_token);
-    EXPECT_TRUE(r.code == 302 || r.code == 307);
+    EXPECT_TRUE(r.code == 302 || r.code == 303 || r.code == 307);
     EXPECT_NE(r.location.find("/dashboard"), std::string::npos);
 }
 
@@ -51,7 +51,7 @@ TEST_F(IntegrationTest, RootAuthenticatedRedirectsToDashboard) {
 
 TEST_F(IntegrationTest, UnauthenticatedRedirectsToLogin) {
     auto r = GET("/dashboard");
-    EXPECT_TRUE(r.code == 302 || r.code == 307);
+    EXPECT_TRUE(r.code == 302 || r.code == 303 || r.code == 307);
     EXPECT_NE(r.location.find("/login"), std::string::npos);
 }
 
@@ -70,7 +70,7 @@ TEST_F(IntegrationTest, LoginPageLoads) {
 
 TEST_F(IntegrationTest, LogoutWorks) {
     auto r = POST("/auth/logout", "", admin_token);
-    EXPECT_TRUE(r.code == 302 || r.code == 307);
+    EXPECT_TRUE(r.code == 302 || r.code == 303 || r.code == 307);
     EXPECT_NE(r.location.find("/login"), std::string::npos);
 }
 
@@ -82,5 +82,5 @@ TEST_F(IntegrationTest, AdminCanAccessSettings) {
 
 TEST_F(IntegrationTest, MemberCannotAccessSettings) {
     auto r = GET("/settings", member_token);
-    EXPECT_TRUE(r.code == 302 || r.code == 307); // redirects to dashboard
+    EXPECT_TRUE(r.code == 302 || r.code == 303 || r.code == 307); // redirects to dashboard
 }

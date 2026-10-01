@@ -87,7 +87,12 @@ struct AuthMiddleware {
     // handlers (onclick=...) are refused by the browser, so templates use
     // data-action attributes wired up by /static/app.js instead. htmx is told
     // the nonce (htmx-config meta) so scripts inside swapped-in fragments run.
-    void after_handle(crow::request& /*req*/, crow::response& res, context& ctx) {
+    void after_handle(crow::request& req, crow::response& res, context& ctx) {
+        // Crow's redirect() is a 307, which makes browsers repeat a form POST
+        // against the target (e.g. Sign Out -> POST /login -> 405). After a
+        // non-GET request the follow-up must be a GET: 303 See Other.
+        if (res.code == 307 && req.method != crow::HTTPMethod::Get && req.method != crow::HTTPMethod::Head)
+            res.code = 303;
         auto set_default = [&](const char* name, const char* value) {
             if (res.get_header_value(name).empty()) res.set_header(name, value);
         };
