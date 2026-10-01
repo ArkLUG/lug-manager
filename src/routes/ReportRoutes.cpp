@@ -9,17 +9,6 @@
 #include <cstdio>
 #include <set>
 
-namespace {
-
-int64_t scalar(SqliteDatabase& db, const std::string& sql, const std::vector<std::string>& args) {
-    auto st = db.prepare(sql);
-    for (size_t i = 0; i < args.size(); ++i) st.bind(static_cast<int>(i + 1), args[i]);
-    return st.step() ? st.col_int(0) : 0;
-}
-
-
-} // namespace
-
 void register_report_routes(LugApp& app, SqliteDatabase& db, EventService& events,
                             EventDayRepository& days, EventDayAttendanceRepository& day_att,
                             std::shared_ptr<DisplayRequestRepository> displays,
@@ -37,29 +26,29 @@ void register_report_routes(LugApp& app, SqliteDatabase& db, EventService& event
         ctx["year"] = year;
         ctx["prev_year"] = year - 1;
         ctx["next_year"] = year + 1;
-        ctx["members_total"] = scalar(db, "SELECT COUNT(*) FROM members WHERE created_at < ?", {hi});
-        ctx["members_new"]   = scalar(db, "SELECT COUNT(*) FROM members WHERE created_at >= ? AND created_at < ?", range);
-        ctx["members_paid"]  = scalar(db, "SELECT COUNT(*) FROM members WHERE is_paid=1", {});
-        ctx["dues_collected"] = money(scalar(db,
+        ctx["members_total"] = query_int(db, "SELECT COUNT(*) FROM members WHERE created_at < ?", {hi});
+        ctx["members_new"]   = query_int(db, "SELECT COUNT(*) FROM members WHERE created_at >= ? AND created_at < ?", range);
+        ctx["members_paid"]  = query_int(db, "SELECT COUNT(*) FROM members WHERE is_paid=1", {});
+        ctx["dues_collected"] = money(query_int(db,
             "SELECT COALESCE(SUM(amount_cents),0) FROM dues_payments WHERE paid_on >= ? AND paid_on < ?", range));
-        ctx["meetings_held"] = scalar(db,
+        ctx["meetings_held"] = query_int(db,
             "SELECT COUNT(*) FROM meetings WHERE status <> 'cancelled' AND start_time >= ? AND start_time < ?", range);
-        ctx["meeting_checkins"] = scalar(db,
+        ctx["meeting_checkins"] = query_int(db,
             "SELECT COUNT(*) FROM attendance a JOIN meetings mt ON mt.id = a.entity_id "
             "WHERE a.entity_type='meeting' AND mt.start_time >= ? AND mt.start_time < ?", range);
-        ctx["events_held"] = scalar(db,
+        ctx["events_held"] = query_int(db,
             "SELECT COUNT(*) FROM lug_events WHERE status <> 'cancelled' AND start_time >= ? AND start_time < ?", range);
-        ctx["event_attendees"] = scalar(db,
+        ctx["event_attendees"] = query_int(db,
             "SELECT COUNT(*) FROM (SELECT DISTINCT ed.event_id, eda.member_id FROM event_day_attendance eda "
             "JOIN event_days ed ON ed.id = eda.event_day_id WHERE ed.day_date >= ? AND ed.day_date < ?)", range);
-        ctx["active_members"] = scalar(db,
+        ctx["active_members"] = query_int(db,
             "SELECT COUNT(*) FROM (SELECT a.member_id FROM attendance a JOIN meetings mt ON mt.id = a.entity_id "
             " WHERE a.entity_type='meeting' AND mt.start_time >= ?1 AND mt.start_time < ?2 "
             " UNION SELECT eda.member_id FROM event_day_attendance eda JOIN event_days ed ON ed.id = eda.event_day_id "
             " WHERE ed.day_date >= ?1 AND ed.day_date < ?2)", range);
-        int64_t kids = scalar(db, "SELECT COALESCE(SUM(public_kids),0) FROM lug_events WHERE start_time >= ? AND start_time < ?", range);
-        int64_t teens = scalar(db, "SELECT COALESCE(SUM(public_teens),0) FROM lug_events WHERE start_time >= ? AND start_time < ?", range);
-        int64_t adults = scalar(db, "SELECT COALESCE(SUM(public_adults),0) FROM lug_events WHERE start_time >= ? AND start_time < ?", range);
+        int64_t kids = query_int(db, "SELECT COALESCE(SUM(public_kids),0) FROM lug_events WHERE start_time >= ? AND start_time < ?", range);
+        int64_t teens = query_int(db, "SELECT COALESCE(SUM(public_teens),0) FROM lug_events WHERE start_time >= ? AND start_time < ?", range);
+        int64_t adults = query_int(db, "SELECT COALESCE(SUM(public_adults),0) FROM lug_events WHERE start_time >= ? AND start_time < ?", range);
         ctx["visitors_total"] = kids + teens + adults;
         ctx["visitors_kids"] = kids;
         ctx["visitors_teens"] = teens;
@@ -151,13 +140,13 @@ void register_report_routes(LugApp& app, SqliteDatabase& db, EventService& event
             bool started = false;  // skip the empty years before the LUG's records begin
             for (int y = year - 4; y <= year; ++y) {
                 std::vector<std::string> r{std::to_string(y) + "-01-01", std::to_string(y + 1) + "-01-01"};
-                int64_t held = scalar(db, "SELECT COUNT(*) FROM meetings WHERE status <> 'cancelled' AND start_time >= ? AND start_time < ?", r);
-                int64_t checkins = scalar(db, "SELECT COUNT(*) FROM attendance a JOIN meetings mt ON mt.id = a.entity_id "
+                int64_t held = query_int(db, "SELECT COUNT(*) FROM meetings WHERE status <> 'cancelled' AND start_time >= ? AND start_time < ?", r);
+                int64_t checkins = query_int(db, "SELECT COUNT(*) FROM attendance a JOIN meetings mt ON mt.id = a.entity_id "
                                               "WHERE a.entity_type='meeting' AND mt.start_time >= ? AND mt.start_time < ?", r);
-                int64_t visitors = scalar(db, "SELECT COALESCE(SUM(public_kids+public_teens+public_adults),0) FROM lug_events "
+                int64_t visitors = query_int(db, "SELECT COALESCE(SUM(public_kids+public_teens+public_adults),0) FROM lug_events "
                                               "WHERE start_time >= ? AND start_time < ?", r);
                 const int active = static_cast<int>(active_ids(y).size());
-                const int64_t new_members = scalar(db, "SELECT COUNT(*) FROM members WHERE created_at >= ? AND created_at < ?", r);
+                const int64_t new_members = query_int(db, "SELECT COUNT(*) FROM members WHERE created_at >= ? AND created_at < ?", r);
                 started = started || y == year || held || active || new_members || visitors;
                 if (!started) continue;
                 rows[i]["year"] = y;

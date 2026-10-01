@@ -30,12 +30,6 @@ struct Form {
     }
 };
 
-int64_t scalar(SqliteDatabase& db, const std::string& sql, const std::vector<std::string>& args) {
-    auto st = db.prepare(sql);
-    for (size_t i = 0; i < args.size(); ++i) st.bind(static_cast<int>(i + 1), args[i]);
-    return st.step() ? st.col_int(0) : 0;
-}
-
 int this_year() { return local_tm(std::time(nullptr)).tm_year + 1900; }
 
 int year_param(const char* v) {
@@ -74,19 +68,19 @@ Summary summarize(SqliteDatabase& db, int year) {
     s.year = year;
     std::string lo = std::to_string(year) + "-01-01", hi = std::to_string(year + 1) + "-01-01";
     const std::vector<std::string> range{lo, hi};
-    s.members_total = scalar(db, "SELECT COUNT(*) FROM members WHERE created_at < ?", {hi});
-    s.members_new = scalar(db, "SELECT COUNT(*) FROM members WHERE created_at >= ? AND created_at < ?", range);
-    s.active = scalar(db,
+    s.members_total = query_int(db, "SELECT COUNT(*) FROM members WHERE created_at < ?", {hi});
+    s.members_new = query_int(db, "SELECT COUNT(*) FROM members WHERE created_at >= ? AND created_at < ?", range);
+    s.active = query_int(db,
         "SELECT COUNT(*) FROM (SELECT a.member_id FROM attendance a JOIN meetings mt ON mt.id = a.entity_id "
         " WHERE a.entity_type='meeting' AND mt.start_time >= ?1 AND mt.start_time < ?2 "
         " UNION SELECT eda.member_id FROM event_day_attendance eda JOIN event_days ed ON ed.id = eda.event_day_id "
         " WHERE ed.day_date >= ?1 AND ed.day_date < ?2)", range);
-    s.meetings = scalar(db,
+    s.meetings = query_int(db,
         "SELECT COUNT(*) FROM meetings WHERE status <> 'cancelled' AND start_time >= ? AND start_time < ?", range);
-    s.checkins = scalar(db,
+    s.checkins = query_int(db,
         "SELECT COUNT(*) FROM attendance a JOIN meetings mt ON mt.id = a.entity_id "
         "WHERE a.entity_type='meeting' AND mt.status <> 'cancelled' AND mt.start_time >= ? AND mt.start_time < ?", range);
-    s.lug_events = scalar(db,
+    s.lug_events = query_int(db,
         "SELECT COUNT(*) FROM lug_events WHERE is_private=1 AND status <> 'cancelled' AND start_time >= ? AND start_time < ?", range);
 
     auto st = db.prepare(
@@ -535,16 +529,16 @@ void register_fan_colab_routes(LugApp& app, SqliteDatabase& db, SettingsReposito
         ctx["shows_link"] = Features::on("public_shows");
         if (settings.get("about_show_numbers", "1") == "1") {
             // The past twelve months, so the page never shows an empty January.
-            int64_t shows = scalar(db,
+            int64_t shows = query_int(db,
                 "SELECT COUNT(*) FROM lug_events WHERE is_private=0 AND status <> 'cancelled' "
                 "AND start_time >= date('now','-12 months') AND start_time < date('now','+1 day')", {});
-            int64_t visitors = scalar(db,
+            int64_t visitors = query_int(db,
                 "SELECT COALESCE(SUM(public_kids+public_teens+public_adults),0) FROM lug_events WHERE is_private=0 "
                 "AND status <> 'cancelled' AND start_time >= date('now','-12 months') AND start_time < date('now','+1 day')", {});
-            int64_t meetings = scalar(db,
+            int64_t meetings = query_int(db,
                 "SELECT COUNT(*) FROM meetings WHERE status <> 'cancelled' "
                 "AND start_time >= date('now','-12 months') AND start_time < date('now','+1 day')", {});
-            int64_t active = scalar(db,
+            int64_t active = query_int(db,
                 "SELECT COUNT(*) FROM (SELECT a.member_id FROM attendance a JOIN meetings mt ON mt.id = a.entity_id "
                 " WHERE a.entity_type='meeting' AND mt.start_time >= date('now','-12 months') "
                 " UNION SELECT eda.member_id FROM event_day_attendance eda JOIN event_days ed ON ed.id = eda.event_day_id "

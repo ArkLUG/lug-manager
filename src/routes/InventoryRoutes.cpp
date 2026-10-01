@@ -51,25 +51,18 @@ bool valid_ymd(const std::string& s) {
     return s.empty() || std::regex_match(s, ymd);
 }
 
-int64_t scalar(SqliteDatabase& db, const std::string& sql, int64_t a, int64_t b = -1) {
-    auto st = db.prepare(sql);
-    st.bind(1, a);
-    if (b >= 0) st.bind(2, b);
-    return st.step() ? st.col_int(0) : 0;
-}
-
 int64_t out_count(SqliteDatabase& db, int64_t item) {
-    return scalar(db, "SELECT COALESCE(SUM(quantity),0) FROM inventory_loans WHERE item_id=? AND returned_at IS NULL", item);
+    return query_int(db, "SELECT COALESCE(SUM(quantity),0) FROM inventory_loans WHERE item_id=? AND returned_at IS NULL", item);
 }
 int64_t placed_count(SqliteDatabase& db, int64_t item) {
-    return scalar(db, "SELECT COALESCE(SUM(quantity),0) FROM inventory_stock WHERE item_id=?", item);
+    return query_int(db, "SELECT COALESCE(SUM(quantity),0) FROM inventory_stock WHERE item_id=?", item);
 }
 int64_t stock_at(SqliteDatabase& db, int64_t item, int64_t loc) {
-    return scalar(db, "SELECT COALESCE(SUM(quantity),0) FROM inventory_stock WHERE item_id=? AND location_id=?", item, loc);
+    return query_int(db, "SELECT COALESCE(SUM(quantity),0) FROM inventory_stock WHERE item_id=? AND location_id=?", item, loc);
 }
 // How many are neither at a location nor out on loan.
 int64_t unplaced(SqliteDatabase& db, int64_t item) {
-    int64_t total = scalar(db, "SELECT quantity FROM inventory_items WHERE id=?", item);
+    int64_t total = query_int(db, "SELECT quantity FROM inventory_items WHERE id=?", item);
     return total - placed_count(db, item) - out_count(db, item);
 }
 
@@ -94,7 +87,7 @@ void adjust_stock(SqliteDatabase& db, int64_t item, int64_t loc, int64_t delta) 
 }
 
 bool location_exists(SqliteDatabase& db, int64_t loc) {
-    return loc > 0 && scalar(db, "SELECT COUNT(*) FROM storage_locations WHERE id=? AND archived=0", loc) > 0;
+    return loc > 0 && query_int(db, "SELECT COUNT(*) FROM storage_locations WHERE id=? AND archived=0", loc) > 0;
 }
 
 std::string location_name(SqliteDatabase& db, int64_t loc) {
@@ -545,7 +538,7 @@ void register_inventory_routes(LugApp& app, SqliteDatabase& db, AuditService& au
         std::string name = f.get("name", 100), kind = f.get("kind", 20);
         int64_t keeper = f.num("keeper_id");
         if (name.empty() || !valid_kind(kind)) return fragment(req, app, db, 400, "Give the location a name and a type.");
-        if (keeper > 0 && scalar(db, "SELECT COUNT(*) FROM members WHERE id=?", keeper) == 0)
+        if (keeper > 0 && query_int(db, "SELECT COUNT(*) FROM members WHERE id=?", keeper) == 0)
             return fragment(req, app, db, 404, "That member doesn't exist.");
         auto ins = db.prepare("INSERT INTO storage_locations (name, kind, address, notes, keeper_id) VALUES (?,?,?,?,?) RETURNING id");
         ins.bind(1, name); ins.bind(2, kind); ins.bind(3, f.get("address", 200)); ins.bind(4, f.get("notes", 500));
@@ -564,7 +557,7 @@ void register_inventory_routes(LugApp& app, SqliteDatabase& db, AuditService& au
         std::string name = f.get("name", 100), kind = f.get("kind", 20);
         int64_t keeper = f.num("keeper_id");
         if (name.empty() || !valid_kind(kind)) return fragment(req, app, db, 400, "Give the location a name and a type.");
-        if (keeper > 0 && scalar(db, "SELECT COUNT(*) FROM members WHERE id=?", keeper) == 0)
+        if (keeper > 0 && query_int(db, "SELECT COUNT(*) FROM members WHERE id=?", keeper) == 0)
             return fragment(req, app, db, 404, "That member doesn't exist.");
         auto up = db.prepare("UPDATE storage_locations SET name=?, kind=?, address=?, notes=?, keeper_id=? "
                              "WHERE id=? AND archived=0 RETURNING id");
@@ -582,7 +575,7 @@ void register_inventory_routes(LugApp& app, SqliteDatabase& db, AuditService& au
     CROW_ROUTE(app, "/inventory/locations/<int>/archive").methods("POST"_method)([&app, &db, &audit](const crow::request& req, int id) {
         crow::response res;
         if (!require_auth(req, res, app, "chapter_lead")) return res;
-        if (scalar(db, "SELECT COUNT(*) FROM inventory_stock k JOIN inventory_items i ON i.id=k.item_id "
+        if (query_int(db, "SELECT COUNT(*) FROM inventory_stock k JOIN inventory_items i ON i.id=k.item_id "
                        "WHERE k.location_id=? AND i.archived=0", id) > 0)
             return fragment(req, app, db, 409, "Move everything out of that location first.");
         auto up = db.prepare("UPDATE storage_locations SET archived=1 WHERE id=? AND archived=0 RETURNING name");
@@ -655,7 +648,7 @@ void register_inventory_routes(LugApp& app, SqliteDatabase& db, AuditService& au
         Form f(req);
         int64_t from = f.num("from_location_id"), to = f.num("to_location_id"), qty = f.num("quantity", 0);
         int64_t item = static_cast<int64_t>(id);
-        if (scalar(db, "SELECT COUNT(*) FROM inventory_items WHERE id=? AND archived=0", item) == 0)
+        if (query_int(db, "SELECT COUNT(*) FROM inventory_items WHERE id=? AND archived=0", item) == 0)
             return fragment(req, app, db, 404, "That item doesn't exist.");
         if (qty < 1 || from == to) return fragment(req, app, db, 400, "Pick how many to move and where to.");
         if ((from > 0 && !location_exists(db, from)) || (to > 0 && !location_exists(db, to)))

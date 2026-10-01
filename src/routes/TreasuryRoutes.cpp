@@ -17,13 +17,6 @@ int year_param(const crow::request& req) {
     return y;
 }
 
-int64_t scalar(SqliteDatabase& db, const std::string& sql, const std::string& a, const std::string& b = "") {
-    auto st = db.prepare(sql);
-    st.bind(1, a);
-    if (!b.empty()) st.bind(2, b);
-    return st.step() ? st.col_int(0) : 0;
-}
-
 struct Line { std::string on, kind, category, description, event, who, receipt; int64_t cents = 0, id = 0; bool dues = false; };
 
 // Form fields from either a urlencoded or a multipart (file upload) body.
@@ -98,8 +91,8 @@ std::string render(SqliteDatabase& db, int year, const std::string& flash = "", 
         if (mo >= 0 && mo < 12) (in ? month_in[mo] : month_out[mo]) += l.cents;
     }
     // Balance carried in from all earlier years.
-    int64_t before = scalar(db, "SELECT COALESCE(SUM(amount_cents),0) FROM dues_payments WHERE paid_on < ?", from)
-                   + scalar(db, "SELECT COALESCE(SUM(CASE kind WHEN 'income' THEN amount_cents ELSE -amount_cents END),0) "
+    int64_t before = query_int(db, "SELECT COALESCE(SUM(amount_cents),0) FROM dues_payments WHERE paid_on < ?", from)
+                   + query_int(db, "SELECT COALESCE(SUM(CASE kind WHEN 'income' THEN amount_cents ELSE -amount_cents END),0) "
                                 "FROM treasury_entries WHERE entry_on < ?", from);
     int64_t net = dues + income - expense;
 

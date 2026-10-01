@@ -1,6 +1,7 @@
 #pragma once
 #include <sqlite3.h>
 #include <string>
+#include <vector>
 #include <functional>
 #include <mutex>
 #include <stdexcept>
@@ -95,3 +96,25 @@ private:
     std::unique_lock<std::recursive_mutex> lock_;
     bool                                   done_ = false;
 };
+
+// The first column of the first row as an integer (0 when there is no row),
+// e.g. query_int(db, "SELECT COUNT(*) FROM x WHERE a=? AND b=?", a, b).
+// Arguments bind to ?1, ?2, ... in order; a vector binds each of its strings.
+namespace db_detail {
+inline void bind_arg(Statement& st, int i, int64_t v) { st.bind(i, v); }
+inline void bind_arg(Statement& st, int i, int v) { st.bind(i, static_cast<int64_t>(v)); }
+inline void bind_arg(Statement& st, int i, const std::string& v) { st.bind(i, v); }
+inline void bind_arg(Statement& st, int i, const char* v) { st.bind(i, std::string(v)); }
+}
+template <class... Args>
+int64_t query_int(SqliteDatabase& db, const std::string& sql, const Args&... args) {
+    auto st = db.prepare(sql);
+    int i = 0;
+    (db_detail::bind_arg(st, ++i, args), ...);
+    return st.step() ? st.col_int(0) : 0;
+}
+inline int64_t query_int(SqliteDatabase& db, const std::string& sql, const std::vector<std::string>& args) {
+    auto st = db.prepare(sql);
+    for (size_t i = 0; i < args.size(); ++i) st.bind(static_cast<int>(i + 1), args[i]);
+    return st.step() ? st.col_int(0) : 0;
+}
