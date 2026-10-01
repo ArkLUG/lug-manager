@@ -463,6 +463,7 @@ void register_event_routes(LugApp& app, EventService& events, AttendanceService&
         ctx["id"]               = ev->id;
         ctx["title"]            = ev->title;
         ctx["description"]      = ev->description;
+        if (!ev->description.empty()) ctx["description_html"] = render_markdown(ev->description);
         ctx["location"]         = ev->location;
         ctx["start_time"]       = ev->start_time;
         ctx["end_time"]         = ev->end_time;

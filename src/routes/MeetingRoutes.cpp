@@ -352,6 +352,7 @@ void register_meeting_routes(LugApp& app, MeetingService& meetings, AttendanceSe
         ctx["id"]           = m->id;
         ctx["title"]        = m->title;
         ctx["description"]  = m->description;
+        if (!m->description.empty()) ctx["description_html"] = render_markdown(m->description);
         ctx["location"]     = m->location;
         ctx["start_time"]   = m->start_time;
         ctx["end_time"]     = m->end_time;

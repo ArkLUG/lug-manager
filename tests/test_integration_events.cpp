@@ -203,3 +203,15 @@ TEST_F(IntegrationTest, EventForumThreadsApiNonAdmin) {
 // Settings — Discord API endpoints
 // ═══════════════════════════════════════════════════════════════════════════
 
+
+TEST_F(IntegrationTest, EventDescriptionRendersMarkdownSafely) {
+    LugEvent e;
+    e.title = "Md Show"; e.start_time = "2099-07-01T09:00:00"; e.end_time = "2099-07-01T17:00:00";
+    e.scope = "lug_wide"; e.status = "confirmed"; e.suppress_discord = true; e.suppress_calendar = true;
+    e.description = "Come see **trains** <script>alert(1)</script>";
+    auto ev = event_svc->create(e);
+    auto r = GET_HTMX("/events/" + std::to_string(ev.id), member_token);
+    EXPECT_EQ(r.code, 200);
+    expect_contains(r, "<strong>trains</strong>");
+    expect_not_contains(r, "<script>alert(1)</script>");
+}
