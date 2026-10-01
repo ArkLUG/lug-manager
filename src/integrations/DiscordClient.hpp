@@ -7,6 +7,8 @@
 #include <string>
 #include <vector>
 #include <functional>
+#include <atomic>
+#include <mutex>
 
 struct DiscordChannel {
     std::string id;
@@ -44,17 +46,17 @@ public:
                             const std::string& announcement_role_id = "",
                             const std::string& non_lug_event_role_id = "",
                             const std::string& timezone = "");
-    void        set_timezone(const std::string& tz) { if (!tz.empty()) timezone_ = tz; }
-    std::string get_guild_id()                  const { return guild_id_; }
-    std::string get_lug_channel_id()            const { return lug_channel_id_; }
-    std::string get_events_forum_channel_id()   const { return events_forum_channel_id_; }
-    std::string get_event_reports_forum_id()   const { return event_reports_forum_id_; }
-    std::string get_meeting_reports_forum_id() const { return meeting_reports_forum_id_; }
-    void set_event_reports_forum_id(const std::string& id) { event_reports_forum_id_ = id; }
-    void set_meeting_reports_forum_id(const std::string& id) { meeting_reports_forum_id_ = id; }
-    std::string get_announcement_role_id()      const { return announcement_role_id_; }
-    std::string get_non_lug_event_role_id()     const { return non_lug_event_role_id_; }
-    std::string get_timezone()                  const { return timezone_; }
+    void        set_timezone(const std::string& tz) { if (tz.empty()) return; std::lock_guard<std::mutex> l(cfg_mutex_); timezone_ = tz; }
+    std::string get_guild_id()                  const { std::lock_guard<std::mutex> l(cfg_mutex_); return guild_id_; }
+    std::string get_lug_channel_id()            const { std::lock_guard<std::mutex> l(cfg_mutex_); return lug_channel_id_; }
+    std::string get_events_forum_channel_id()   const { std::lock_guard<std::mutex> l(cfg_mutex_); return events_forum_channel_id_; }
+    std::string get_event_reports_forum_id()   const { std::lock_guard<std::mutex> l(cfg_mutex_); return event_reports_forum_id_; }
+    std::string get_meeting_reports_forum_id() const { std::lock_guard<std::mutex> l(cfg_mutex_); return meeting_reports_forum_id_; }
+    void set_event_reports_forum_id(const std::string& id) { std::lock_guard<std::mutex> l(cfg_mutex_); event_reports_forum_id_ = id; }
+    void set_meeting_reports_forum_id(const std::string& id) { std::lock_guard<std::mutex> l(cfg_mutex_); meeting_reports_forum_id_ = id; }
+    std::string get_announcement_role_id()      const { std::lock_guard<std::mutex> l(cfg_mutex_); return announcement_role_id_; }
+    std::string get_non_lug_event_role_id()     const { std::lock_guard<std::mutex> l(cfg_mutex_); return non_lug_event_role_id_; }
+    std::string get_timezone()                  const { std::lock_guard<std::mutex> l(cfg_mutex_); return timezone_; }
     bool        get_suppress_pings()            const { return suppress_pings_; }
     void        set_suppress_pings(bool v)            { suppress_pings_ = v; }
     bool        get_suppress_updates()          const { return suppress_updates_; }
@@ -166,6 +168,11 @@ public:
 private:
     const Config& config_;
     ThreadPool&   pool_;
+    // Runtime-reconfigurable settings (admin Settings page saves call
+    // reconfigure()/setters while request and worker threads are mid-API-call).
+    // Always read through the get_*() accessors, which copy under this lock -
+    // an unsynchronized std::string read racing a write is undefined behavior.
+    mutable std::mutex cfg_mutex_;
     std::string   guild_id_;
     std::string   lug_channel_id_;
     std::string   events_forum_channel_id_;
@@ -174,8 +181,8 @@ private:
     std::string   timezone_              = "UTC";
     std::string   event_reports_forum_id_;
     std::string   meeting_reports_forum_id_;
-    bool          suppress_pings_        = false;
-    bool          suppress_updates_      = false;
+    std::atomic<bool> suppress_pings_{false};
+    std::atomic<bool> suppress_updates_{false};
 
     static size_t write_cb(void* contents, size_t size, size_t nmemb, std::string* s);
     std::string discord_api_request(const std::string& method, const std::string& endpoint,

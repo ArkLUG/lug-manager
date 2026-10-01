@@ -30,6 +30,7 @@ void DiscordClient::reconfigure(const std::string& guild_id,
                                 const std::string& announcement_role_id,
                                 const std::string& non_lug_event_role_id,
                                 const std::string& timezone) {
+    std::lock_guard<std::mutex> l(cfg_mutex_);
     if (!guild_id.empty())                guild_id_                = guild_id;
     if (!lug_channel_id.empty())          lug_channel_id_          = lug_channel_id;
     if (!events_forum_channel_id.empty()) events_forum_channel_id_ = events_forum_channel_id;
@@ -40,8 +41,8 @@ void DiscordClient::reconfigure(const std::string& guild_id,
 }
 
 std::vector<DiscordChannel> DiscordClient::fetch_forum_channels() const {
-    if (guild_id_.empty()) return {};
-    std::string resp = discord_api_request("GET", "/guilds/" + guild_id_ + "/channels");
+    if (get_guild_id().empty()) return {};
+    std::string resp = discord_api_request("GET", "/guilds/" + get_guild_id() + "/channels");
     std::vector<DiscordChannel> result;
     try {
         auto j = json::parse(resp);
@@ -66,8 +67,8 @@ std::vector<DiscordChannel> DiscordClient::fetch_forum_channels() const {
 }
 
 std::vector<DiscordChannel> DiscordClient::fetch_text_channels() const {
-    if (guild_id_.empty()) return {};
-    std::string resp = discord_api_request("GET", "/guilds/" + guild_id_ + "/channels");
+    if (get_guild_id().empty()) return {};
+    std::string resp = discord_api_request("GET", "/guilds/" + get_guild_id() + "/channels");
     std::vector<DiscordChannel> result;
     try {
         auto j = json::parse(resp);
@@ -93,8 +94,8 @@ std::vector<DiscordChannel> DiscordClient::fetch_text_channels() const {
 }
 
 std::vector<DiscordChannel> DiscordClient::fetch_voice_channels() const {
-    if (guild_id_.empty()) return {};
-    std::string resp = discord_api_request("GET", "/guilds/" + guild_id_ + "/channels");
+    if (get_guild_id().empty()) return {};
+    std::string resp = discord_api_request("GET", "/guilds/" + get_guild_id() + "/channels");
     std::vector<DiscordChannel> result;
     try {
         auto j = json::parse(resp);
@@ -250,7 +251,7 @@ std::string DiscordClient::iso_to_discord_timestamp(const std::string& iso) cons
             break;
         }
     }
-    return tz_convert(iso, timezone_).utc_iso;
+    return tz_convert(iso, get_timezone()).utc_iso;
 }
 
 std::string DiscordClient::build_meeting_event_json(const Meeting& m) const {
@@ -472,7 +473,7 @@ std::string DiscordClient::sync_post_meeting_announcement(const std::string& cha
                                                            const std::string& role_id) {
     if (channel_id.empty()) return "";
     json body;
-    body["content"] = build_meeting_announcement_content(m, role_id, timezone_, suppress_pings_);
+    body["content"] = build_meeting_announcement_content(m, role_id, get_timezone(), suppress_pings_);
     std::string resp = discord_api_request("POST", "/channels/" + channel_id + "/messages",
                                            body.dump());
     try {
@@ -487,14 +488,14 @@ std::string DiscordClient::sync_post_meeting_announcement(const std::string& cha
 
 std::string DiscordClient::sync_create_forum_thread_for_event(const std::string& title,
                                                                const LugEvent& e) {
-    if (events_forum_channel_id_.empty()) return "";
-    std::string role_id = (e.scope == "non_lug") ? non_lug_event_role_id_ : announcement_role_id_;
+    if (get_events_forum_channel_id().empty()) return "";
+    std::string role_id = (e.scope == "non_lug") ? get_non_lug_event_role_id() : get_announcement_role_id();
     json body;
     body["name"]                  = title;
     body["auto_archive_duration"] = 10080; // 7 days
     body["message"]["content"]    = build_thread_starter_content(e, suppress_pings_);
     std::string resp = discord_api_request(
-        "POST", "/channels/" + events_forum_channel_id_ + "/threads", body.dump());
+        "POST", "/channels/" + get_events_forum_channel_id() + "/threads", body.dump());
     try {
         auto j = json::parse(resp);
         if (j.contains("id")) return j["id"].get<std::string>();
@@ -507,13 +508,13 @@ std::string DiscordClient::sync_create_forum_thread_for_event(const std::string&
 
 std::string DiscordClient::sync_create_text_thread_for_event(const std::string& title,
                                                               const LugEvent& e) {
-    if (lug_channel_id_.empty()) return "";
-    std::string role_id = (e.scope == "non_lug") ? non_lug_event_role_id_ : announcement_role_id_;
+    if (get_lug_channel_id().empty()) return "";
+    std::string role_id = (e.scope == "non_lug") ? get_non_lug_event_role_id() : get_announcement_role_id();
     // Step 1: post announcement message
     json msg_body;
     msg_body["content"] = build_event_announcement_content(e, role_id, "", suppress_pings_);
     std::string msg_resp = discord_api_request("POST",
-                                               "/channels/" + lug_channel_id_ + "/messages",
+                                               "/channels/" + get_lug_channel_id() + "/messages",
                                                msg_body.dump());
     std::string message_id;
     try {
@@ -534,7 +535,7 @@ std::string DiscordClient::sync_create_text_thread_for_event(const std::string& 
     thread_body["auto_archive_duration"] = 10080;
     std::string thread_resp = discord_api_request(
         "POST",
-        "/channels/" + lug_channel_id_ + "/messages/" + message_id + "/threads",
+        "/channels/" + get_lug_channel_id() + "/messages/" + message_id + "/threads",
         thread_body.dump());
     try {
         auto j = json::parse(thread_resp);
@@ -618,7 +619,7 @@ void DiscordClient::update_channel_message(const std::string& channel_id,
 }
 
 std::string DiscordClient::sync_create_scheduled_event_meeting(const Meeting& m) {
-    std::string endpoint = "/guilds/" + guild_id_ + "/scheduled-events";
+    std::string endpoint = "/guilds/" + get_guild_id() + "/scheduled-events";
     std::string body = build_meeting_event_json(m);
     std::string resp = discord_api_request("POST", endpoint, body);
     try {
@@ -634,7 +635,7 @@ std::string DiscordClient::sync_create_scheduled_event_meeting(const Meeting& m)
 }
 
 std::string DiscordClient::sync_create_scheduled_event_event(const LugEvent& e) {
-    std::string endpoint = "/guilds/" + guild_id_ + "/scheduled-events";
+    std::string endpoint = "/guilds/" + get_guild_id() + "/scheduled-events";
     std::string body = build_lug_event_json(e);
     std::string resp = discord_api_request("POST", endpoint, body);
     try {
@@ -655,8 +656,8 @@ std::string DiscordClient::sync_create_event_thread(const std::string& channel_i
     // Step 1: Post a message to the channel
     json msg_body;
     std::string msg_content;
-    if (!suppress_pings_ && !announcement_role_id_.empty())
-        msg_content = "<@&" + announcement_role_id_ + "> ";
+    if (!suppress_pings_ && !get_announcement_role_id().empty())
+        msg_content = "<@&" + get_announcement_role_id() + "> ";
     msg_content += "**" + title + "**\n" + description;
     msg_body["content"] = msg_content;
     std::string msg_resp = discord_api_request("POST",
@@ -697,15 +698,15 @@ std::string DiscordClient::sync_create_event_thread(const std::string& channel_i
 }
 
 std::vector<DiscordThread> DiscordClient::fetch_forum_threads() const {
-    if (guild_id_.empty() || events_forum_channel_id_.empty()) return {};
-    std::string resp = discord_api_request("GET", "/guilds/" + guild_id_ + "/threads/active");
+    if (get_guild_id().empty() || get_events_forum_channel_id().empty()) return {};
+    std::string resp = discord_api_request("GET", "/guilds/" + get_guild_id() + "/threads/active");
     std::vector<DiscordThread> result;
     try {
         auto j = json::parse(resp);
         if (!j.contains("threads") || !j["threads"].is_array()) return result;
         for (auto& t : j["threads"]) {
             if (!t.contains("id") || !t.contains("name") || !t.contains("parent_id")) continue;
-            if (t["parent_id"].get<std::string>() != events_forum_channel_id_) continue;
+            if (t["parent_id"].get<std::string>() != get_events_forum_channel_id()) continue;
             DiscordThread dt;
             dt.id   = t["id"].get<std::string>();
             dt.name = t["name"].get<std::string>();
@@ -723,17 +724,17 @@ std::vector<DiscordThread> DiscordClient::fetch_forum_threads() const {
 
 std::string DiscordClient::sync_create_forum_thread(const std::string& title,
                                                       const std::string& description) {
-    if (events_forum_channel_id_.empty()) return "";
+    if (get_events_forum_channel_id().empty()) return "";
     json body;
     body["name"]                  = title;
     body["auto_archive_duration"] = 10080; // 7 days
     std::string content;
-    if (!suppress_pings_ && !announcement_role_id_.empty())
-        content = "<@&" + announcement_role_id_ + "> ";
+    if (!suppress_pings_ && !get_announcement_role_id().empty())
+        content = "<@&" + get_announcement_role_id() + "> ";
     content += "**" + title + "**\n" + description;
     body["message"]["content"]    = content;
     std::string resp = discord_api_request(
-        "POST", "/channels/" + events_forum_channel_id_ + "/threads", body.dump());
+        "POST", "/channels/" + get_events_forum_channel_id() + "/threads", body.dump());
     try {
         auto j = json::parse(resp);
         if (j.contains("id")) return j["id"].get<std::string>();
@@ -747,8 +748,8 @@ std::string DiscordClient::sync_create_forum_thread(const std::string& title,
 }
 
 std::vector<DiscordRole> DiscordClient::fetch_guild_roles() const {
-    if (guild_id_.empty()) return {};
-    std::string resp = discord_api_request("GET", "/guilds/" + guild_id_ + "/roles");
+    if (get_guild_id().empty()) return {};
+    std::string resp = discord_api_request("GET", "/guilds/" + get_guild_id() + "/roles");
     std::vector<DiscordRole> result;
     try {
         auto j = json::parse(resp);
@@ -779,9 +780,9 @@ std::vector<std::string> DiscordClient::fetch_member_role_ids(const std::string&
 
 std::optional<std::vector<std::string>>
 DiscordClient::fetch_guild_member_role_ids(const std::string& discord_user_id) const {
-    if (guild_id_.empty() || discord_user_id.empty()) return std::nullopt;
+    if (get_guild_id().empty() || discord_user_id.empty()) return std::nullopt;
     std::string resp = discord_api_request("GET",
-        "/guilds/" + guild_id_ + "/members/" + discord_user_id);
+        "/guilds/" + get_guild_id() + "/members/" + discord_user_id);
     try {
         auto j = json::parse(resp);
         // A guild member object always carries "user"; errors such as
@@ -802,9 +803,9 @@ DiscordClient::fetch_guild_member_role_ids(const std::string& discord_user_id) c
 
 void DiscordClient::add_member_role(const std::string& discord_user_id,
                                     const std::string& role_id) {
-    if (guild_id_.empty() || discord_user_id.empty() || role_id.empty()) return;
+    if (get_guild_id().empty() || discord_user_id.empty() || role_id.empty()) return;
     auto resp = discord_api_request("PUT",
-        "/guilds/" + guild_id_ + "/members/" + discord_user_id + "/roles/" + role_id);
+        "/guilds/" + get_guild_id() + "/members/" + discord_user_id + "/roles/" + role_id);
     // Success returns 204 No Content (empty body); any response body means an error
     if (!resp.empty()) {
         std::cerr << "[DiscordClient] add_member_role failed (user=" << discord_user_id
@@ -814,9 +815,9 @@ void DiscordClient::add_member_role(const std::string& discord_user_id,
 
 void DiscordClient::remove_member_role(const std::string& discord_user_id,
                                        const std::string& role_id) {
-    if (guild_id_.empty() || discord_user_id.empty() || role_id.empty()) return;
+    if (get_guild_id().empty() || discord_user_id.empty() || role_id.empty()) return;
     auto resp = discord_api_request("DELETE",
-        "/guilds/" + guild_id_ + "/members/" + discord_user_id + "/roles/" + role_id);
+        "/guilds/" + get_guild_id() + "/members/" + discord_user_id + "/roles/" + role_id);
     // Success returns 204 No Content (empty body); any response body means an error
     if (!resp.empty()) {
         std::cerr << "[DiscordClient] remove_member_role failed (user=" << discord_user_id
@@ -826,13 +827,13 @@ void DiscordClient::remove_member_role(const std::string& discord_user_id,
 
 std::string DiscordClient::set_member_nickname(const std::string& discord_user_id,
                                                 const std::string& nickname) {
-    if (guild_id_.empty() || discord_user_id.empty()) return "skipped: empty id";
+    if (get_guild_id().empty() || discord_user_id.empty()) return "skipped: empty id";
     json body;
     body["nick"] = nickname;
 
     for (int attempt = 0; attempt < 3; ++attempt) {
         auto resp = discord_api_request("PATCH",
-            "/guilds/" + guild_id_ + "/members/" + discord_user_id, body.dump());
+            "/guilds/" + get_guild_id() + "/members/" + discord_user_id, body.dump());
         try {
             auto j = json::parse(resp);
             if (j.contains("retry_after")) {
@@ -858,9 +859,9 @@ std::string DiscordClient::set_member_nickname(const std::string& discord_user_i
 }
 
 void DiscordClient::kick_member(const std::string& discord_user_id) {
-    if (guild_id_.empty() || discord_user_id.empty()) return;
+    if (get_guild_id().empty() || discord_user_id.empty()) return;
     auto resp = discord_api_request("DELETE",
-        "/guilds/" + guild_id_ + "/members/" + discord_user_id);
+        "/guilds/" + get_guild_id() + "/members/" + discord_user_id);
     if (!resp.empty()) {
         try {
             auto j = json::parse(resp);
@@ -873,12 +874,12 @@ void DiscordClient::kick_member(const std::string& discord_user_id) {
 }
 
 std::vector<DiscordGuildMember> DiscordClient::fetch_guild_members() const {
-    if (guild_id_.empty()) return {};
+    if (get_guild_id().empty()) return {};
     std::vector<DiscordGuildMember> result;
     std::string after = "0";
 
     while (true) {
-        std::string endpoint = "/guilds/" + guild_id_ + "/members?limit=1000&after=" + after;
+        std::string endpoint = "/guilds/" + get_guild_id() + "/members?limit=1000&after=" + after;
         std::string resp = discord_api_request("GET", endpoint);
 
         json j;
@@ -948,7 +949,7 @@ void DiscordClient::update_scheduled_event(const Meeting& m) {
     }
     pool_.enqueue([this, m]() {
         try {
-            std::string endpoint = "/guilds/" + guild_id_ +
+            std::string endpoint = "/guilds/" + get_guild_id() +
                                    "/scheduled-events/" + m.discord_event_id;
             std::string body = build_meeting_event_json(m);
             std::string resp = discord_api_request("PATCH", endpoint, body);
@@ -964,7 +965,7 @@ void DiscordClient::cancel_scheduled_event(const std::string& discord_event_id) 
     if (discord_event_id.empty()) return;
     pool_.enqueue([this, discord_event_id]() {
         try {
-            std::string endpoint = "/guilds/" + guild_id_ +
+            std::string endpoint = "/guilds/" + get_guild_id() +
                                    "/scheduled-events/" + discord_event_id;
             json body;
             body["status"] = 4; // CANCELLED
@@ -981,7 +982,7 @@ void DiscordClient::delete_scheduled_event(const std::string& discord_event_id) 
     pool_.enqueue([this, discord_event_id]() {
         try {
             discord_api_request("DELETE",
-                "/guilds/" + guild_id_ + "/scheduled-events/" + discord_event_id);
+                "/guilds/" + get_guild_id() + "/scheduled-events/" + discord_event_id);
             std::cout << "[DiscordClient] Deleted scheduled event " << discord_event_id << "\n";
         } catch (const std::exception& e) {
             std::cerr << "[DiscordClient] delete_scheduled_event failed: " << e.what() << "\n";
@@ -1005,7 +1006,7 @@ void DiscordClient::create_event_thread(LugEvent& e) {
     // Sync call so we can fill e.discord_thread_id in place
     try {
         std::string thread_id = sync_create_event_thread(
-            lug_channel_id_,
+            get_lug_channel_id(),
             e.title,
             e.description);
         e.discord_thread_id = thread_id;
@@ -1036,7 +1037,7 @@ void DiscordClient::update_event(const LugEvent& e) {
     pool_.enqueue([this, e]() {
         try {
             if (!e.discord_event_id.empty()) {
-                std::string endpoint = "/guilds/" + guild_id_ +
+                std::string endpoint = "/guilds/" + get_guild_id() +
                                        "/scheduled-events/" + e.discord_event_id;
                 std::string body = build_lug_event_json(e);
                 discord_api_request("PATCH", endpoint, body);

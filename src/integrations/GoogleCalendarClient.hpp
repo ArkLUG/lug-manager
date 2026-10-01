@@ -36,22 +36,29 @@ public:
     std::vector<GCalImportedEvent> fetch_upcoming_events(int max_results = 50);
 
 private:
-    std::string service_account_json_path_;
-    std::string calendar_id_;
-    std::string timezone_;
-
-    // Service account fields
-    std::string sa_client_email_;
-    std::string sa_private_key_;
-    std::string sa_token_uri_;
-    bool        configured_ = false;
+    // All runtime-reconfigurable settings live in one struct that reconfigure()
+    // replaces wholesale under cfg_mutex_; readers take a copy via cfg(), so a
+    // Settings save can't race a sync that's mid-request (unsynchronized
+    // std::string read/write is undefined behavior).
+    struct Settings {
+        std::string service_account_json_path;
+        std::string calendar_id;
+        std::string timezone;
+        std::string sa_client_email;
+        std::string sa_private_key;
+        std::string sa_token_uri;
+        bool        configured = false;
+    };
+    mutable std::mutex cfg_mutex_;
+    Settings           cfg_;
+    Settings cfg() const { std::lock_guard<std::mutex> l(cfg_mutex_); return cfg_; }
 
     // Cached OAuth2 token
     mutable std::mutex  token_mutex_;
     mutable std::string access_token_;
     mutable time_t      token_expiry_ = 0;
 
-    void        load_service_account();
+    static void load_service_account(Settings& into);
     std::string ensure_access_token() const;
     std::string build_jwt() const;
     std::string sign_jwt(const std::string& header_payload) const;

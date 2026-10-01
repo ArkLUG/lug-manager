@@ -49,47 +49,49 @@ std::string GoogleCalendarClient::url_encode(const std::string& s) {
 void GoogleCalendarClient::reconfigure(const std::string& service_account_json_path,
                                         const std::string& calendar_id,
                                         const std::string& timezone) {
-    service_account_json_path_ = service_account_json_path;
-    calendar_id_ = calendar_id;
-    if (!timezone.empty()) timezone_ = timezone;
-    configured_ = false;
-    {
-        std::lock_guard<std::mutex> lock(token_mutex_);
-        access_token_.clear();
-        token_expiry_ = 0;
-    }
-    if (!service_account_json_path_.empty() && !calendar_id_.empty()) {
+    Settings next;
+    next.service_account_json_path = service_account_json_path;
+    next.calendar_id               = calendar_id;
+    next.timezone                  = timezone.empty() ? cfg().timezone : timezone;
+    if (!next.service_account_json_path.empty() && !next.calendar_id.empty()) {
         try {
-            load_service_account();
+            load_service_account(next);
         } catch (const std::exception& ex) {
             std::cerr << "[GoogleCalendar] Failed to load service account: " << ex.what() << "\n";
         }
     }
+    {
+        std::lock_guard<std::mutex> l(cfg_mutex_);
+        cfg_ = std::move(next);
+    }
+    std::lock_guard<std::mutex> lock(token_mutex_);
+    access_token_.clear();
+    token_expiry_ = 0;
 }
 
 bool GoogleCalendarClient::is_configured() const {
-    return configured_;
+    return cfg().configured;
 }
 
-void GoogleCalendarClient::load_service_account() {
-    std::ifstream f(service_account_json_path_);
+void GoogleCalendarClient::load_service_account(Settings& into) {
+    std::ifstream f(into.service_account_json_path);
     if (!f.is_open()) {
         std::cerr << "[GoogleCalendar] Cannot open service account file: "
-                  << service_account_json_path_ << "\n";
+                  << into.service_account_json_path << "\n";
         return;
     }
     try {
         json j = json::parse(f);
-        sa_client_email_ = j.value("client_email", "");
-        sa_private_key_  = j.value("private_key", "");
-        sa_token_uri_    = j.value("token_uri", "https://oauth2.googleapis.com/token");
-        if (sa_client_email_.empty() || sa_private_key_.empty()) {
+        into.sa_client_email = j.value("client_email", "");
+        into.sa_private_key  = j.value("private_key", "");
+        into.sa_token_uri    = j.value("token_uri", "https://oauth2.googleapis.com/token");
+        if (into.sa_client_email.empty() || into.sa_private_key.empty()) {
             std::cerr << "[GoogleCalendar] Service account JSON missing client_email or private_key\n";
             return;
         }
-        configured_ = true;
-        std::cout << "[GoogleCalendar] Configured: " << sa_client_email_
-                  << " → calendar " << calendar_id_ << "\n";
+        into.configured = true;
+        std::cout << "[GoogleCalendar] Configured: " << into.sa_client_email
+                  << " → calendar " << into.calendar_id << "\n";
     } catch (const json::exception& ex) {
         std::cerr << "[GoogleCalendar] Failed to parse service account JSON: " << ex.what() << "\n";
     }
@@ -105,9 +107,9 @@ std::string GoogleCalendarClient::build_jwt() const {
     // Claims
     time_t now = time(nullptr);
     json claims;
-    claims["iss"]   = sa_client_email_;
+    claims["iss"]   = cfg().sa_client_email;
     claims["scope"] = "https://www.googleapis.com/auth/calendar";
-    claims["aud"]   = sa_token_uri_;
+    claims["aud"]   = cfg().sa_token_uri;
     claims["iat"]   = now;
     claims["exp"]   = now + 3600;
     std::string c = claims.dump();
@@ -120,7 +122,8 @@ std::string GoogleCalendarClient::build_jwt() const {
 
 std::string GoogleCalendarClient::sign_jwt(const std::string& header_payload) const {
     // Load RSA private key from PEM string
-    BIO* bio = BIO_new_mem_buf(sa_private_key_.data(), static_cast<int>(sa_private_key_.size()));
+    const std::string private_key = cfg().sa_private_key;
+    BIO* bio = BIO_new_mem_buf(private_key.data(), static_cast<int>(private_key.size()));
     if (!bio) throw std::runtime_error("BIO_new_mem_buf failed");
 
     EVP_PKEY* pkey = PEM_read_bio_PrivateKey(bio, nullptr, nullptr, nullptr);
@@ -173,7 +176,8 @@ std::string GoogleCalendarClient::ensure_access_token() const {
     std::string post_data = "grant_type=urn%3Aietf%3Aparams%3Aoauth%3Agrant-type%3Ajwt-bearer&assertion=" + assertion;
     std::string response;
 
-    curl_easy_setopt(curl, CURLOPT_URL, sa_token_uri_.c_str());
+    const std::string token_uri = cfg().sa_token_uri; // must outlive curl_easy_perform
+    curl_easy_setopt(curl, CURLOPT_URL, token_uri.c_str());
     curl_easy_setopt(curl, CURLOPT_POSTFIELDS, post_data.c_str());
     curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, write_cb);
     curl_easy_setopt(curl, CURLOPT_WRITEDATA, &response);
@@ -295,7 +299,7 @@ std::string GoogleCalendarClient::build_event_json(const std::string& title,
         j["start"]["date"] = start_date;
         j["end"]["date"]   = next_day(end_date);
     } else {
-        std::string tz = timezone_.empty() ? "UTC" : timezone_;
+        std::string tz = cfg().timezone.empty() ? "UTC" : cfg().timezone;
         j["start"]["dateTime"] = start_time;
         j["start"]["timeZone"] = tz;
         if (!end_time.empty()) {
@@ -311,10 +315,10 @@ std::string GoogleCalendarClient::build_event_json(const std::string& title,
 }
 
 std::string GoogleCalendarClient::create_event(const Meeting& m) {
-    if (!configured_) return "";
+    if (!cfg().configured) return "";
     std::string body = build_event_json(m.title, m.description, m.location, m.start_time, m.end_time, m.status);
     std::string resp = gcal_api_request("POST",
-        "/calendars/" + url_encode(calendar_id_) + "/events", body);
+        "/calendars/" + url_encode(cfg().calendar_id) + "/events", body);
     try {
         auto j = json::parse(resp);
         if (j.contains("id")) return j["id"].get<std::string>();
@@ -326,10 +330,10 @@ std::string GoogleCalendarClient::create_event(const Meeting& m) {
 }
 
 std::string GoogleCalendarClient::create_event(const LugEvent& e) {
-    if (!configured_) return "";
+    if (!cfg().configured) return "";
     std::string body = build_event_json(e.title, e.description, e.location, e.start_time, e.end_time, e.status, true);
     std::string resp = gcal_api_request("POST",
-        "/calendars/" + url_encode(calendar_id_) + "/events", body);
+        "/calendars/" + url_encode(cfg().calendar_id) + "/events", body);
     try {
         auto j = json::parse(resp);
         if (j.contains("id")) return j["id"].get<std::string>();
@@ -341,22 +345,22 @@ std::string GoogleCalendarClient::create_event(const LugEvent& e) {
 }
 
 void GoogleCalendarClient::update_event(const std::string& gcal_event_id, const Meeting& m) {
-    if (!configured_ || gcal_event_id.empty()) return;
+    if (!cfg().configured || gcal_event_id.empty()) return;
     std::string body = build_event_json(m.title, m.description, m.location, m.start_time, m.end_time, m.status);
     gcal_api_request("PUT",
-        "/calendars/" + url_encode(calendar_id_) + "/events/" + url_encode(gcal_event_id), body);
+        "/calendars/" + url_encode(cfg().calendar_id) + "/events/" + url_encode(gcal_event_id), body);
 }
 
 void GoogleCalendarClient::update_event(const std::string& gcal_event_id, const LugEvent& e) {
-    if (!configured_ || gcal_event_id.empty()) return;
+    if (!cfg().configured || gcal_event_id.empty()) return;
     std::string body = build_event_json(e.title, e.description, e.location, e.start_time, e.end_time, e.status, true);
     gcal_api_request("PUT",
-        "/calendars/" + url_encode(calendar_id_) + "/events/" + url_encode(gcal_event_id), body);
+        "/calendars/" + url_encode(cfg().calendar_id) + "/events/" + url_encode(gcal_event_id), body);
 }
 
 std::vector<GCalImportedEvent> GoogleCalendarClient::fetch_upcoming_events(int max_results) {
     std::vector<GCalImportedEvent> result;
-    if (!configured_) return result;
+    if (!cfg().configured) return result;
 
     // Build timeMin as current UTC time in RFC 3339
     time_t now = time(nullptr);
@@ -365,7 +369,7 @@ std::vector<GCalImportedEvent> GoogleCalendarClient::fetch_upcoming_events(int m
     char time_min[32];
     strftime(time_min, sizeof(time_min), "%Y-%m-%dT%H:%M:%SZ", &utc);
 
-    std::string endpoint = "/calendars/" + url_encode(calendar_id_) + "/events"
+    std::string endpoint = "/calendars/" + url_encode(cfg().calendar_id) + "/events"
         "?timeMin=" + url_encode(time_min) +
         "&maxResults=" + std::to_string(max_results) +
         "&singleEvents=true&orderBy=startTime";
@@ -426,10 +430,10 @@ std::vector<GCalImportedEvent> GoogleCalendarClient::fetch_upcoming_events(int m
 }
 
 void GoogleCalendarClient::delete_event(const std::string& gcal_event_id) {
-    if (!configured_ || gcal_event_id.empty()) return;
+    if (!cfg().configured || gcal_event_id.empty()) return;
     try {
         gcal_api_request("DELETE",
-            "/calendars/" + url_encode(calendar_id_) + "/events/" + url_encode(gcal_event_id));
+            "/calendars/" + url_encode(cfg().calendar_id) + "/events/" + url_encode(gcal_event_id));
     } catch (const std::exception& ex) {
         std::cerr << "[GoogleCalendar] delete_event failed: " << ex.what() << "\n";
     }
