@@ -167,59 +167,78 @@ std::string DiscordClient::discord_api_request(const std::string& method,
         }
     }
 
-    CURL* curl = curl_easy_init();
-    if (!curl) throw std::runtime_error("curl_easy_init failed");
+    // Discord answers 429 with {"retry_after": seconds} when rate limited;
+    // bulk operations (sync-all, nickname sync) hit this routinely. Honor it
+    // a few times instead of treating the error body as a success.
+    for (int attempt = 0;; ++attempt) {
+        CURL* curl = curl_easy_init();
+        if (!curl) throw std::runtime_error("curl_easy_init failed");
 
-    std::string url = "https://discord.com/api/v10" + endpoint;
-    std::string response;
+        std::string url = "https://discord.com/api/v10" + endpoint;
+        std::string response;
 
-    struct curl_slist* headers = nullptr;
-    std::string auth_header = "Authorization: Bot " + config_.discord_bot_token;
-    headers = curl_slist_append(headers, auth_header.c_str());
-    headers = curl_slist_append(headers, "Content-Type: application/json");
+        struct curl_slist* headers = nullptr;
+        std::string auth_header = "Authorization: Bot " + config_.discord_bot_token;
+        headers = curl_slist_append(headers, auth_header.c_str());
+        headers = curl_slist_append(headers, "Content-Type: application/json");
 
-    curl_easy_setopt(curl, CURLOPT_URL, url.c_str());
-    curl_easy_setopt(curl, CURLOPT_HTTPHEADER, headers);
-    curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, write_cb);
-    curl_easy_setopt(curl, CURLOPT_WRITEDATA, &response);
-    curl_easy_setopt(curl, CURLOPT_SSL_VERIFYPEER, 1L);
-    curl_easy_setopt(curl, CURLOPT_CONNECTTIMEOUT, 5L);
-    curl_easy_setopt(curl, CURLOPT_TIMEOUT, 15L);
+        curl_easy_setopt(curl, CURLOPT_URL, url.c_str());
+        curl_easy_setopt(curl, CURLOPT_HTTPHEADER, headers);
+        curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, write_cb);
+        curl_easy_setopt(curl, CURLOPT_WRITEDATA, &response);
+        curl_easy_setopt(curl, CURLOPT_SSL_VERIFYPEER, 1L);
+        curl_easy_setopt(curl, CURLOPT_CONNECTTIMEOUT, 5L);
+        curl_easy_setopt(curl, CURLOPT_TIMEOUT, 15L);
 
-    if (method == "POST") {
-        curl_easy_setopt(curl, CURLOPT_POST, 1L);
-        if (!json_body.empty()) {
-            curl_easy_setopt(curl, CURLOPT_POSTFIELDS, body_to_send.c_str());
-            curl_easy_setopt(curl, CURLOPT_POSTFIELDSIZE, static_cast<long>(body_to_send.size()));
-        } else {
-            curl_easy_setopt(curl, CURLOPT_POSTFIELDS, "");
-            curl_easy_setopt(curl, CURLOPT_POSTFIELDSIZE, 0L);
+        if (method == "POST") {
+            curl_easy_setopt(curl, CURLOPT_POST, 1L);
+            if (!json_body.empty()) {
+                curl_easy_setopt(curl, CURLOPT_POSTFIELDS, body_to_send.c_str());
+                curl_easy_setopt(curl, CURLOPT_POSTFIELDSIZE, static_cast<long>(body_to_send.size()));
+            } else {
+                curl_easy_setopt(curl, CURLOPT_POSTFIELDS, "");
+                curl_easy_setopt(curl, CURLOPT_POSTFIELDSIZE, 0L);
+            }
+        } else if (method == "PATCH") {
+            curl_easy_setopt(curl, CURLOPT_CUSTOMREQUEST, "PATCH");
+            if (!json_body.empty()) {
+                curl_easy_setopt(curl, CURLOPT_POSTFIELDS, body_to_send.c_str());
+                curl_easy_setopt(curl, CURLOPT_POSTFIELDSIZE, static_cast<long>(body_to_send.size()));
+            }
+        } else if (method == "PUT") {
+            curl_easy_setopt(curl, CURLOPT_CUSTOMREQUEST, "PUT");
+            if (!json_body.empty()) {
+                curl_easy_setopt(curl, CURLOPT_POSTFIELDS, body_to_send.c_str());
+                curl_easy_setopt(curl, CURLOPT_POSTFIELDSIZE, static_cast<long>(body_to_send.size()));
+            }
+        } else if (method == "DELETE") {
+            curl_easy_setopt(curl, CURLOPT_CUSTOMREQUEST, "DELETE");
         }
-    } else if (method == "PATCH") {
-        curl_easy_setopt(curl, CURLOPT_CUSTOMREQUEST, "PATCH");
-        if (!json_body.empty()) {
-            curl_easy_setopt(curl, CURLOPT_POSTFIELDS, body_to_send.c_str());
-            curl_easy_setopt(curl, CURLOPT_POSTFIELDSIZE, static_cast<long>(body_to_send.size()));
+        // GET is default
+
+        CURLcode res = curl_easy_perform(curl);
+        curl_slist_free_all(headers);
+        long http_code = 0;
+        curl_easy_getinfo(curl, CURLINFO_RESPONSE_CODE, &http_code);
+        curl_easy_cleanup(curl);
+
+        if (res != CURLE_OK) {
+            throw std::runtime_error(std::string("Discord API curl error: ") + curl_easy_strerror(res));
         }
-    } else if (method == "PUT") {
-        curl_easy_setopt(curl, CURLOPT_CUSTOMREQUEST, "PUT");
-        if (!json_body.empty()) {
-            curl_easy_setopt(curl, CURLOPT_POSTFIELDS, body_to_send.c_str());
-            curl_easy_setopt(curl, CURLOPT_POSTFIELDSIZE, static_cast<long>(body_to_send.size()));
+
+        if (http_code == 429 && attempt < 3) {
+            double wait = 1.0;
+            try {
+                auto j = json::parse(response);
+                if (j.contains("retry_after") && j["retry_after"].is_number())
+                    wait = j["retry_after"].get<double>();
+            } catch (...) {}
+            if (wait > 10.0) wait = 10.0;
+            std::this_thread::sleep_for(std::chrono::milliseconds(static_cast<int>(wait * 1000) + 100));
+            continue;
         }
-    } else if (method == "DELETE") {
-        curl_easy_setopt(curl, CURLOPT_CUSTOMREQUEST, "DELETE");
+        return response;
     }
-    // GET is default
-
-    CURLcode res = curl_easy_perform(curl);
-    curl_slist_free_all(headers);
-    curl_easy_cleanup(curl);
-
-    if (res != CURLE_OK) {
-        throw std::runtime_error(std::string("Discord API curl error: ") + curl_easy_strerror(res));
-    }
-    return response;
 }
 
 // Thread-safe conversion: interpret `iso` as local time in `tz_name` (IANA), return UTC ISO + tz abbreviation.
@@ -1110,29 +1129,15 @@ void DiscordClient::update_event(const LugEvent& e) {
                     }
                 }
 
-                // For forum threads the starter message ID == thread ID; try to edit it.
-                // For text channel threads this will fail — fall back to a new update post.
-                std::string new_content = build_thread_starter_content(e, suppress_pings_);
+                // For forum threads the starter message ID == thread ID; edit it in
+                // place. For text threads this fails harmlessly - EventService
+                // posts the "Event Updated" notice itself (a fallback post here
+                // used to produce a second, duplicate notice).
                 json patch_body;
-                patch_body["content"] = new_content;
-                std::string patch_resp = discord_api_request(
-                    "PATCH",
+                patch_body["content"] = build_thread_starter_content(e, suppress_pings_);
+                discord_api_request("PATCH",
                     "/channels/" + e.discord_thread_id + "/messages/" + e.discord_thread_id,
                     patch_body.dump());
-                bool patched = false;
-                try {
-                    auto j = json::parse(patch_resp);
-                    patched = j.contains("id");
-                } catch (...) {}
-
-                if (!patched && !suppress_updates_) {
-                    // Fallback: post an update message to the thread
-                    json msg;
-                    msg["content"] = "**Event Updated**\n" + new_content;
-                    discord_api_request("POST",
-                                        "/channels/" + e.discord_thread_id + "/messages",
-                                        msg.dump());
-                }
             }
         } catch (const std::exception& ex) {
             std::cerr << "[DiscordClient] update_event failed: " << ex.what() << "\n";

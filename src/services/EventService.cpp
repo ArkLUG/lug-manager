@@ -252,7 +252,10 @@ LugEvent EventService::update(int64_t id, const LugEvent& updates, bool replace_
         publish_to_discord(updated);
     } else if (!updated.suppress_discord) {
         try {
-            discord_.update_event(updated);
+            // A user-picked thread isn't ours to rename or rewrite.
+            LugEvent for_discord = updated;
+            if (!repo_.is_thread_owned(updated.id)) for_discord.discord_thread_id.clear();
+            discord_.update_event(for_discord);
         } catch (const std::exception& ex) {
             std::cerr << "[EventService] Warning: failed to update Discord event for event "
                       << updated.id << ": " << ex.what() << "\n";
