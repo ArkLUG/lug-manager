@@ -531,3 +531,23 @@ TEST_F(ServiceFixture, CalendarInvalidateRefreshes) {
     std::string ics_fresh = calendar->get_ics();
     EXPECT_NE(ics_fresh.find("Second"), std::string::npos);
 }
+
+// With an async pool, create() returns before external publishing runs; the
+// job still completes (no Discord configured here, so it's a quick no-op).
+TEST_F(ServiceFixture, AsyncPublishingDoesNotBlockCreate) {
+    ThreadPool pool(1);
+    meeting_svc->set_async_pool(&pool);
+    Meeting m;
+    m.title = "Async Meeting";
+    m.start_time = "2099-01-01T19:00:00";
+    m.end_time = "2099-01-01T21:00:00";
+    m.scope = "lug_wide";
+    auto created = meeting_svc->create(m);
+    EXPECT_GT(created.id, 0);
+    Meeting upd = created;
+    upd.title = "Async Meeting 2";
+    auto u = meeting_svc->update(created.id, upd);
+    EXPECT_EQ(u.title, "Async Meeting 2");
+    meeting_svc->set_async_pool(nullptr);
+    // ThreadPool's destructor drains queued jobs before repos go away.
+}

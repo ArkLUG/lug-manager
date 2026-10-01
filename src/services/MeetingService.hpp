@@ -1,4 +1,7 @@
 #pragma once
+#include <iostream>
+#include <functional>
+#include "async/ThreadPool.hpp"
 #include "repositories/MeetingRepository.hpp"
 #include "repositories/ChapterRepository.hpp"
 #include "integrations/DiscordClient.hpp"
@@ -49,6 +52,11 @@ public:
     // and both are unit-tested directly against their redaction behavior.
     Meeting with_calendar_title(const Meeting& m) const;
 
+    // Production: publish to Discord / Google Calendar on a background
+    // thread so saving doesn't wait on several external API calls. Tests leave
+    // it unset (synchronous).
+    void set_async_pool(ThreadPool* pool) { async_pool_ = pool; }
+
 private:
     MeetingRepository&      repo_;
     DiscordClient&          discord_;
@@ -60,4 +68,13 @@ private:
     void publish_to_discord(Meeting& m);
     // Best-effort removal of the scheduled event + announcements (never throws).
     void remove_from_discord(const Meeting& m);
+    ThreadPool* async_pool_ = nullptr;
+    void run_external(std::function<void()> job) {
+        if (async_pool_) async_pool_->enqueue([job = std::move(job)] {
+            try { job(); } catch (const std::exception& e) {
+                std::cerr << "[external sync] " << e.what() << "\n";
+            } catch (...) {}
+        });
+        else job();
+    }
 };

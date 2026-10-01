@@ -158,6 +158,9 @@ int main() {
                                               pending_discord_match_repo, &settings_repo);
         MeetingService    meeting_service(meeting_repo, discord_client, calendar, &chapter_repo, &gcal_client);
         EventService      event_service(event_repo, discord_client, calendar, &chapter_repo, &gcal_client, &event_day_repo);
+        // Discord/Google Calendar publishing runs in the background (saves return immediately).
+        meeting_service.set_async_pool(&pool);
+        event_service.set_async_pool(&pool);
         AttendanceService attendance_service(attendance_repo, member_repo, event_repo, event_day_repo, event_day_attendance_repo);
         AuditService      audit_service(audit_log_repo);
 

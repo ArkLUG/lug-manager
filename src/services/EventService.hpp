@@ -1,4 +1,7 @@
 #pragma once
+#include <iostream>
+#include <functional>
+#include "async/ThreadPool.hpp"
 #include "repositories/EventRepository.hpp"
 #include "repositories/EventDayRepository.hpp"
 #include "repositories/ChapterRepository.hpp"
@@ -44,6 +47,11 @@ public:
 
     static std::string generate_uuid();
 
+    // Production: publish to Discord / Google Calendar on a background
+    // thread so saving doesn't wait on several external API calls. Tests leave
+    // it unset (synchronous).
+    void set_async_pool(ThreadPool* pool) { async_pool_ = pool; }
+
 private:
     EventRepository&        repo_;
     DiscordClient&          discord_;
@@ -60,4 +68,13 @@ private:
 public:
     EventRepository& repo() { return repo_; }
     LugEvent with_calendar_title(const LugEvent& e) const;
+    ThreadPool* async_pool_ = nullptr;
+    void run_external(std::function<void()> job) {
+        if (async_pool_) async_pool_->enqueue([job = std::move(job)] {
+            try { job(); } catch (const std::exception& e) {
+                std::cerr << "[external sync] " << e.what() << "\n";
+            } catch (...) {}
+        });
+        else job();
+    }
 };
