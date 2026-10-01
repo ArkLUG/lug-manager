@@ -53,6 +53,10 @@
     'bulk-clear':         function () { call('bulkClear'); },
     'copy':               copyFrom,
     'select-self':        function (el) { el.select(); },
+    'show-hidden':        function (el) {
+      document.querySelectorAll(el.dataset.target).forEach(function (x) { x.classList.remove('hidden'); });
+      el.remove();
+    },
     'insert-text':        function (el) {
       var t = document.querySelector(el.dataset.target);
       if (!t) return;

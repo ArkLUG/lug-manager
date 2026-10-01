@@ -1,15 +1,14 @@
-<div class="space-y-6">
+<div class="space-y-6 max-w-6xl" data-page-title="{{name}}">
   <div class="bg-white rounded-xl border border-gray-200 p-6">
-    <div class="flex items-start justify-between">
+    <div class="flex flex-wrap items-start justify-between gap-3">
       <div>
         <div class="flex items-center gap-2">
           <h2 class="text-2xl font-bold text-gray-900">{{name}}</h2>
           {{#has_shorthand}}<span class="px-2 py-0.5 rounded text-sm font-medium bg-gray-100 text-gray-600">{{shorthand}}</span>{{/has_shorthand}}
         </div>
-        <p class="text-gray-600 mt-2">{{description}}</p>
-        <div class="mt-4 bg-gray-50 rounded-lg p-3 font-mono text-sm text-gray-700 border border-gray-200">
-          <span class="text-gray-500">Discord Channel ID: </span>{{discord_channel}}
-        </div>
+        {{#description}}<p class="text-gray-600 mt-2">{{description}}</p>{{/description}}
+        <p class="f-calendar text-sm mt-3"><a href="/calendar/chapter/{{id}}/feed.ics" class="text-indigo-600 hover:underline">Subscribe to this chapter's calendar</a>
+          <span class="text-xs text-gray-400">(add the link to Google Calendar, Apple Calendar or Outlook)</span></p>
       </div>
       <div class="flex gap-2">
         {{#can_manage}}
@@ -39,6 +38,59 @@
         {{/is_admin}}
       </div>
     </div>
+  </div>
+
+  <!-- At a glance -->
+  <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
+    <div class="bg-white rounded-xl border border-gray-200 p-4"><div class="text-2xl font-bold text-gray-900">{{member_count}}</div><div class="text-xs text-gray-500">members</div></div>
+    <div class="bg-white rounded-xl border border-gray-200 p-4"><div class="text-2xl font-bold text-gray-900">{{organiser_count}}</div><div class="text-xs text-gray-500">leads &amp; event managers</div></div>
+    <div class="bg-white rounded-xl border border-gray-200 p-4"><div class="text-2xl font-bold text-gray-900">{{meetings_held}}</div><div class="text-xs text-gray-500">meetings in {{year}} so far</div></div>
+    <div class="bg-white rounded-xl border border-gray-200 p-4"><div class="text-2xl font-bold text-gray-900">{{avg_attendance}}</div><div class="text-xs text-gray-500">average at a meeting</div></div>
+    <div class="bg-white rounded-xl border border-gray-200 p-4"><div class="text-2xl font-bold text-gray-900">{{events_this_year}}</div><div class="text-xs text-gray-500">events in {{year}}</div></div>
+    <div class="bg-white rounded-xl border border-gray-200 p-4"><div class="text-2xl font-bold text-gray-900">{{active_90}}</div><div class="text-xs text-gray-500">came to something in the last 90 days</div></div>
+  </div>
+
+  <div class="grid lg:grid-cols-2 gap-6">
+    <section class="bg-white rounded-xl border border-gray-200 p-6">
+      <h3 class="text-lg font-semibold text-gray-900 mb-3">Coming up</h3>
+      {{#has_upcoming}}
+      <ul class="divide-y divide-gray-100">
+        {{#upcoming}}
+        <li>
+          <button hx-get="{{url}}" hx-target="#modal" hx-swap="innerHTML" class="w-full text-left flex items-start gap-3 py-2 hover:bg-gray-50 rounded">
+            <span class="text-xs font-medium text-gray-500 w-28 shrink-0 pt-0.5">{{when}}</span>
+            <span class="min-w-0"><span class="text-sm font-medium text-gray-800">{{title}}</span>
+              {{#is_event}}<span class="ml-1 text-xs px-1.5 py-0.5 rounded bg-purple-100 text-purple-700">event</span>{{/is_event}}
+              {{#tentative}}<span class="ml-1 text-xs px-1.5 py-0.5 rounded bg-amber-100 text-amber-800">tentative</span>{{/tentative}}
+              {{#place}}<span class="block text-xs text-gray-500 truncate">{{place}}</span>{{/place}}</span>
+          </button>
+        </li>
+        {{/upcoming}}
+      </ul>
+      {{/has_upcoming}}
+      {{^has_upcoming}}<p class="text-sm text-gray-400">Nothing scheduled for this chapter yet.</p>{{/has_upcoming}}
+    </section>
+
+    <section class="bg-white rounded-xl border border-gray-200 p-6">
+      <h3 class="text-lg font-semibold text-gray-900 mb-3">Recent meetings</h3>
+      {{#has_recent}}
+      <ul class="space-y-2">
+        {{#recent}}
+        <li>
+          <button hx-get="{{url}}" hx-target="#modal" hx-swap="innerHTML" class="w-full text-left hover:bg-gray-50 rounded px-1">
+            <div class="flex items-baseline justify-between gap-2 text-sm"><span class="text-gray-800 truncate">{{title}}</span><span class="text-xs text-gray-500 whitespace-nowrap">{{when}} &middot; {{count}} came</span></div>
+            <div class="h-1.5 bg-gray-100 rounded mt-1"><div class="h-1.5 bg-yellow-400 rounded" style="width: {{pct}}%"></div></div>
+          </button>
+        </li>
+        {{/recent}}
+      </ul>
+      {{/has_recent}}
+      {{^has_recent}}<p class="text-sm text-gray-400">No meetings yet.</p>{{/has_recent}}
+      {{#has_top}}
+      <h4 class="text-sm font-semibold text-gray-700 mt-5 mb-2">Most active in {{year}}</h4>
+      <ol class="text-sm text-gray-700 space-y-1 list-decimal list-inside">{{#top}}<li>{{name}} <span class="text-gray-400">({{count}})</span></li>{{/top}}</ol>
+      {{/has_top}}
+    </section>
   </div>
 
   <!-- Chapter Leads -->
@@ -90,21 +142,30 @@
     {{/can_manage}}
   </div>
 
-  <div class="bg-white rounded-xl border border-gray-200 p-6">
-    <h3 class="text-lg font-semibold text-gray-900 mb-4">Quick Links</h3>
-    <div class="flex flex-wrap gap-3">
-      <a href="/meetings?chapter={{id}}" class="inline-flex items-center gap-2 px-4 py-2 bg-blue-100 text-blue-700 rounded-lg text-sm font-medium hover:bg-blue-200 transition-colors">
-        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/>
-        </svg>
-        View Meetings
-      </a>
-      <a href="/events?chapter={{id}}" class="inline-flex items-center gap-2 px-4 py-2 bg-purple-100 text-purple-700 rounded-lg text-sm font-medium hover:bg-purple-200 transition-colors">
-        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"/>
-        </svg>
-        View Events
-      </a>
+  <section class="bg-white rounded-xl border border-gray-200 p-6">
+    <div class="flex items-baseline justify-between gap-2 mb-3">
+      <h3 class="text-lg font-semibold text-gray-900">People</h3>
+      {{#can_manage}}<a hx-get="/chapters/{{id}}/members" hx-target="#main-content" hx-push-url="true" hx-swap="innerHTML" class="text-sm text-indigo-600 hover:underline cursor-pointer">Manage members</a>{{/can_manage}}
     </div>
-  </div>
+    {{#has_event_managers}}<p class="text-sm text-gray-600 mb-2"><span class="font-medium text-gray-700">Event managers:</span> {{event_manager_names}}</p>{{/has_event_managers}}
+    {{#has_people}}
+    <ul class="flex flex-wrap gap-2" aria-label="Chapter members">
+      {{#people}}<li class="text-xs px-2 py-1 rounded-full border {{#lead}}border-purple-300 bg-purple-50 text-purple-800{{/lead}}{{#manager}}border-blue-300 bg-blue-50 text-blue-800{{/manager}}{{^lead}}{{^manager}}border-gray-200 bg-gray-50 text-gray-700{{/manager}}{{/lead}}">{{name}}{{#lead}} &middot; lead{{/lead}}{{#manager}} &middot; event manager{{/manager}}</li>{{/people}}
+      {{#more_people}}<li class="text-xs px-2 py-1 text-gray-500">and {{more_people}} more</li>{{/more_people}}
+    </ul>
+    {{/has_people}}
+    {{^has_people}}<p class="text-sm text-gray-400">No members in this chapter yet.</p>{{/has_people}}
+  </section>
+
+  {{#show_discord_status}}
+  <section class="f-discord bg-white rounded-xl border border-gray-200 p-6 text-sm">
+    <h3 class="text-lg font-semibold text-gray-900 mb-2">Discord</h3>
+    <ul class="space-y-1 text-gray-700">
+      <li>{{#has_discord_channel}}&#10003; Chapter meetings and a copy of its events are announced in the chapter's own channel.{{/has_discord_channel}}{{^has_discord_channel}}<span class="text-amber-700">No announcements channel set</span> - chapter meetings aren't announced on Discord.{{/has_discord_channel}}</li>
+      <li>{{#has_member_role}}&#10003; Announcements mention the chapter's member role.{{/has_member_role}}{{^has_member_role}}Announcements mention the LUG's announcement role.{{/has_member_role}}</li>
+      <li>{{#has_lead_role}}&#10003; Leads get the chapter's lead role on Discord automatically.{{/has_lead_role}}{{^has_lead_role}}No lead role set - leads aren't given a Discord role.{{/has_lead_role}}</li>
+    </ul>
+    {{#is_admin}}<p class="text-xs text-gray-400 mt-2">Change these with Edit above.</p>{{/is_admin}}
+  </section>
+  {{/show_discord_status}}
 </div>

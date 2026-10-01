@@ -108,10 +108,10 @@ TEST_F(IntegrationTest, FanCoLabYearlyTodo) {
     const int year = local_tm(std::time(nullptr)).tm_year + 1900;
     const std::string ys = std::to_string(year);
     // Reminder only for recognized groups, only for admins
-    expect_not_contains(GET("/dashboard", admin_token), "things left on the");
+    expect_not_contains(GET("/dashboard", admin_token), "LEGO Fan CoLab to-do list");
     settings_repo->set("fan_colab_recognized", "1");
-    expect_contains(GET("/dashboard", admin_token), "3 of 3 things left on the " + ys + " to-do list");
-    expect_not_contains(GET("/dashboard", member_token), "things left on the");
+    expect_contains(GET("/dashboard", admin_token), ">3</span>thing(s) left on this year&#39;s LEGO Fan CoLab to-do list");
+    expect_not_contains(GET("/dashboard", member_token), "LEGO Fan CoLab to-do list");
 
     int64_t first = one_int(*db, "SELECT id FROM fan_colab_tasks ORDER BY sort_order LIMIT 1");
     std::string toggle = "/fancolab/tasks/" + std::to_string(first) + "/toggle";
@@ -120,7 +120,7 @@ TEST_F(IntegrationTest, FanCoLabYearlyTodo) {
     EXPECT_EQ(t.code, 200);
     expect_contains(t, "1 of 3 done");
     EXPECT_EQ(one_int(*db, "SELECT done_by FROM fan_colab_task_done WHERE task_id=" + std::to_string(first)), admin_member_id);
-    expect_contains(GET("/dashboard", admin_token), "2 of 3 things left");
+    expect_contains(GET("/dashboard", admin_token), ">2</span>thing(s) left on this year&#39;s LEGO Fan CoLab");
     // Ticks are per year
     expect_contains(GET("/fancolab?year=" + std::to_string(year + 1), admin_token), "0 of 3 done");
     // Untick
@@ -143,11 +143,11 @@ TEST_F(IntegrationTest, FanCoLabYearlyTodo) {
     while (st.step()) rest.push_back(st.col_int(0));
     for (auto id : rest) POST("/fancolab/tasks/" + std::to_string(id) + "/toggle", "year=" + ys, admin_token);
     expect_contains(GET("/fancolab", admin_token), "3 of 3 done");
-    expect_not_contains(GET("/dashboard", admin_token), "things left on the");
+    expect_not_contains(GET("/dashboard", admin_token), "LEGO Fan CoLab to-do list");
     // Switched off: no reminder
     exec(*db, "DELETE FROM fan_colab_task_done");
     Features::set("fancolab", false);
-    expect_not_contains(GET("/dashboard", admin_token), "things left on the");
+    expect_not_contains(GET("/dashboard", admin_token), "LEGO Fan CoLab to-do list");
     Features::set("fancolab", true);
 }
 

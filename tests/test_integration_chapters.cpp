@@ -1,4 +1,6 @@
 #include "integration_test_base.hpp"
+#include "utils/LocalTime.hpp"
+#include "services/AttendanceService.hpp"
 
 TEST_F(IntegrationTest, ChaptersPageLoads) {
     auto r = GET("/chapters", admin_token);
@@ -182,3 +184,43 @@ TEST_F(IntegrationTest, ChapterMembersNonAdminForbidden) {
 // Meetings — additional coverage
 // ═══════════════════════════════════════════════════════════════════════════
 
+
+TEST_F(IntegrationTest, ChapterPageOverview) {
+    // A past meeting with two check-ins, an upcoming meeting and an event, all in the chapter
+    auto mk = [&](const std::string& title, const std::string& start) {
+        auto st = db->prepare("INSERT INTO meetings (title, start_time, end_time, ical_uid, chapter_id, scope, location) "
+                              "VALUES (?,?,?,?,?, 'chapter', 'Library')");
+        st.bind(1, title); st.bind(2, start); st.bind(3, start); st.bind(4, "ch-" + title); st.bind(5, test_chapter_id);
+        st.step();
+        return db->last_insert_rowid();
+    };
+    auto year = std::to_string(local_tm(std::time(nullptr)).tm_year + 1900);
+    std::string past = year + "-01-02T19:00:00";
+    if (past > AttendanceService::today_ymd()) past = year + "-01-01T00:00:01";
+    int64_t old_id = mk("January meeting", past);
+    mk("Future meeting", "2099-05-05T19:00:00");
+    for (int64_t who : {admin_member_id, regular_member_id}) {
+        auto st = db->prepare("INSERT INTO attendance (member_id, entity_type, entity_id) VALUES (?, 'meeting', ?)");
+        st.bind(1, who); st.bind(2, old_id);
+        st.step();
+    }
+    auto ev = db->prepare("INSERT INTO lug_events (title, start_time, end_time, status, ical_uid, chapter_id, scope) "
+                          "VALUES ('Chapter Show', '2099-06-01T09:00:00', '2099-06-01T17:00:00', 'tentative', 'ch-show', ?, 'chapter')");
+    ev.bind(1, test_chapter_id);
+    ev.step();
+
+    auto page = GET("/chapters/" + std::to_string(test_chapter_id), member_token);
+    EXPECT_EQ(page.code, 200);
+    expect_contains(page, "Coming up");
+    expect_contains(page, "Future meeting");
+    expect_contains(page, "Chapter Show");
+    expect_contains(page, "tentative");
+    expect_contains(page, "Recent meetings");
+    expect_contains(page, "January meeting");
+    expect_contains(page, "2 came");
+    expect_contains(page, "Most active in " + year);
+    expect_contains(page, "/calendar/chapter/" + std::to_string(test_chapter_id) + "/feed.ics");
+    expect_not_contains(page, "?chapter=");                      // the old links went nowhere
+    expect_not_contains(page, "No announcements channel set");   // Discord set-up is for managers
+    expect_contains(GET("/chapters/" + std::to_string(test_chapter_id), admin_token), "No announcements channel set");
+}

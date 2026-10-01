@@ -1,4 +1,8 @@
 #include "routes/ChapterRoutes.hpp"
+#include <tuple>
+#include <ctime>
+#include <algorithm>
+#include "utils/LocalTime.hpp"
 #include "utils/ParseId.hpp"
 #include "utils/AuditDiff.hpp"
 #include "utils/HtmlEscape.hpp"
@@ -40,6 +44,161 @@ static std::string build_channel_options(DiscordClient& discord, const std::stri
     }
     return oss.str();
 }
+
+namespace {
+
+std::string iso_now_local() {
+    std::tm t = local_tm(std::time(nullptr));
+    char b[24];
+    std::strftime(b, sizeof(b), "%Y-%m-%dT%H:%M:%S", &t);
+    return b;
+}
+
+// "Sat 10/14 7:00 PM"
+std::string short_when(const std::string& iso) {
+    if (iso.size() < 10) return iso;
+    std::tm t{};
+    if (!strptime(iso.substr(0, 10).c_str(), "%Y-%m-%d", &t)) return iso.substr(0, 10);
+    t.tm_isdst = -1;
+    std::mktime(&t);
+    char d[24];
+    std::strftime(d, sizeof(d), "%a %m/%d", &t);
+    std::string out = d;
+    if (out.size() > 4 && out[4] == '0') out.erase(4, 1);
+    if (iso.size() >= 16) {
+        int h = std::stoi(iso.substr(11, 2)), m = std::stoi(iso.substr(14, 2));
+        char tb[16];
+        std::snprintf(tb, sizeof(tb), " %d:%02d %s", h % 12 == 0 ? 12 : h % 12, m, h >= 12 ? "PM" : "AM");
+        out += tb;
+    }
+    return out;
+}
+
+// Everything the chapter page shows beyond the basics: numbers for this
+// year, what's coming up, recent meetings, people and Discord set-up.
+void add_chapter_overview(crow::mustache::context& ctx, SqliteDatabase& db, const Chapter& ch,
+                          const std::vector<ChapterMember>& people, bool can_manage) {
+    const std::string now = iso_now_local(), today = now.substr(0, 10);
+    const int year = local_tm(std::time(nullptr)).tm_year + 1900;
+    const std::string lo = std::to_string(year) + "-01-01";
+    auto num = [&](const std::string& sql, std::vector<std::string> args) -> int64_t {
+        auto st = db.prepare(sql);
+        st.bind(1, ch.id);
+        for (size_t i = 0; i < args.size(); ++i) st.bind(static_cast<int>(i + 2), args[i]);
+        return st.step() ? st.col_int(0) : 0;
+    };
+    int64_t held = num("SELECT COUNT(*) FROM meetings WHERE chapter_id=? AND status<>'cancelled' AND start_time>=? AND start_time<?", {lo, now});
+    int64_t checkins = num("SELECT COUNT(*) FROM attendance a JOIN meetings m ON m.id=a.entity_id AND a.entity_type='meeting' "
+                           "WHERE m.chapter_id=? AND m.status<>'cancelled' AND m.start_time>=? AND m.start_time<?", {lo, now});
+    int64_t events = num("SELECT COUNT(*) FROM lug_events WHERE chapter_id=? AND status<>'cancelled' AND start_time>=? AND start_time<?",
+                         {lo, std::to_string(year + 1) + "-01-01"});
+    int64_t active = num("SELECT COUNT(*) FROM (SELECT a.member_id FROM attendance a JOIN meetings m ON m.id=a.entity_id AND a.entity_type='meeting' "
+                         " WHERE m.chapter_id=?1 AND m.start_time>=date(?2,'-90 days') "
+                         " UNION SELECT eda.member_id FROM event_day_attendance eda JOIN event_days d ON d.id=eda.event_day_id "
+                         " JOIN lug_events e ON e.id=d.event_id WHERE e.chapter_id=?1 AND d.day_date>=date(?2,'-90 days'))", {today});
+    int organisers = 0, member_count = 0;
+    crow::json::wvalue managers = crow::json::wvalue::list(), everyone = crow::json::wvalue::list();
+    int mi = 0, ei = 0;
+    for (const auto& p : people) {
+        ++member_count;
+        if (p.chapter_role == "lead" || p.chapter_role == "event_manager") ++organisers;
+        if (p.chapter_role == "event_manager") { managers[mi]["name"] = p.display_name; ++mi; }
+        if (ei < 60) { everyone[ei]["name"] = p.display_name; everyone[ei]["lead"] = p.chapter_role == "lead";
+                       everyone[ei]["manager"] = p.chapter_role == "event_manager"; ++ei; }
+    }
+    ctx["member_count"] = member_count;
+    ctx["organiser_count"] = organisers;
+    ctx["meetings_held"] = held;
+    char avg[16];
+    std::snprintf(avg, sizeof(avg), "%.1f", held ? static_cast<double>(checkins) / held : 0.0);
+    ctx["avg_attendance"] = std::string(avg);
+    ctx["events_this_year"] = events;
+    ctx["active_90"] = active;
+    ctx["year"] = year;
+    std::string mgr_names;
+    for (const auto& p : people) if (p.chapter_role == "event_manager") mgr_names += (mgr_names.empty() ? "" : ", ") + p.display_name;
+    ctx["event_manager_names"] = mgr_names;
+    ctx["has_event_managers"] = mi > 0;
+    (void)managers;
+    ctx["people"] = std::move(everyone);
+    ctx["has_people"] = ei > 0;
+    ctx["more_people"] = member_count > 60 ? member_count - 60 : 0;
+
+    // Coming up: this chapter's meetings and events, soonest first
+    struct Item { std::string when, kind, title, place; int64_t id; bool tentative; };
+    std::vector<Item> up;
+    {
+        auto st = db.prepare("SELECT id, start_time, title, location, status FROM meetings WHERE chapter_id=? AND status<>'cancelled' "
+                             "AND start_time>=? ORDER BY start_time LIMIT 6");
+        st.bind(1, ch.id); st.bind(2, today);
+        while (st.step()) up.push_back({st.col_text(1), "meeting", st.col_text(2), st.col_text(3), st.col_int(0), false});
+    }
+    {
+        auto st = db.prepare("SELECT id, start_time, title, location, status FROM lug_events WHERE chapter_id=? AND status<>'cancelled' "
+                             "AND COALESCE(NULLIF(end_time,''), start_time)>=? ORDER BY start_time LIMIT 6");
+        st.bind(1, ch.id); st.bind(2, today);
+        while (st.step()) up.push_back({st.col_text(1), "event", st.col_text(2), st.col_text(3), st.col_int(0), st.col_text(4) == "tentative"});
+    }
+    std::sort(up.begin(), up.end(), [](const Item& a, const Item& b) { return a.when < b.when; });
+    if (up.size() > 6) up.resize(6);
+    crow::json::wvalue upcoming = crow::json::wvalue::list();
+    for (size_t i = 0; i < up.size(); ++i) {
+        upcoming[i]["when"] = short_when(up[i].when);
+        upcoming[i]["title"] = up[i].title;
+        upcoming[i]["place"] = up[i].place;
+        upcoming[i]["url"] = "/" + up[i].kind + "s/" + std::to_string(up[i].id);
+        upcoming[i]["is_event"] = up[i].kind == "event";
+        upcoming[i]["tentative"] = up[i].tentative;
+    }
+    ctx["upcoming"] = std::move(upcoming);
+    ctx["has_upcoming"] = !up.empty();
+
+    // Recent meetings with how many came
+    {
+        auto st = db.prepare("SELECT m.id, m.start_time, m.title, (SELECT COUNT(*) FROM attendance a WHERE a.entity_type='meeting' AND a.entity_id=m.id) "
+                             "FROM meetings m WHERE m.chapter_id=? AND m.status<>'cancelled' AND m.start_time<? ORDER BY m.start_time DESC LIMIT 5");
+        st.bind(1, ch.id); st.bind(2, now);
+        crow::json::wvalue recent = crow::json::wvalue::list();
+        int i = 0;
+        int64_t peak = 1;
+        std::vector<std::tuple<int64_t, std::string, std::string, int64_t>> rows;
+        while (st.step()) { rows.emplace_back(st.col_int(0), st.col_text(1), st.col_text(2), st.col_int(3)); peak = std::max(peak, st.col_int(3)); }
+        for (const auto& [id, when, title, n] : rows) {
+            recent[i]["url"] = "/meetings/" + std::to_string(id);
+            recent[i]["when"] = short_when(when);
+            recent[i]["title"] = title;
+            recent[i]["count"] = n;
+            recent[i]["pct"] = static_cast<int>(n * 100 / peak);
+            ++i;
+        }
+        ctx["recent"] = std::move(recent);
+        ctx["has_recent"] = i > 0;
+    }
+
+    // Most active this year
+    {
+        auto st = db.prepare("SELECT mb.display_name, COUNT(*) AS n FROM ("
+                             " SELECT a.member_id AS mid FROM attendance a JOIN meetings m ON m.id=a.entity_id AND a.entity_type='meeting' "
+                             "  WHERE m.chapter_id=?1 AND m.start_time>=?2 "
+                             " UNION ALL SELECT eda.member_id FROM event_day_attendance eda JOIN event_days d ON d.id=eda.event_day_id "
+                             "  JOIN lug_events e ON e.id=d.event_id WHERE e.chapter_id=?1 AND d.day_date>=?2) x "
+                             "JOIN members mb ON mb.id=x.mid GROUP BY x.mid ORDER BY n DESC, mb.display_name LIMIT 5");
+        st.bind(1, ch.id); st.bind(2, lo);
+        crow::json::wvalue top = crow::json::wvalue::list();
+        int i = 0;
+        while (st.step()) { top[i]["name"] = st.col_text(0); top[i]["count"] = st.col_int(1); ++i; }
+        ctx["top"] = std::move(top);
+        ctx["has_top"] = i > 0;
+    }
+
+    // Discord set-up (managers)
+    ctx["show_discord_status"] = can_manage;
+    ctx["has_discord_channel"] = !ch.discord_announcement_channel_id.empty();
+    ctx["has_lead_role"] = !ch.discord_lead_role_id.empty();
+    ctx["has_member_role"] = !ch.discord_member_role_id.empty();
+}
+
+} // namespace
 
 void register_chapter_routes(LugApp& app, ChapterService& chapters,
                               ChapterMemberRepository& chapter_members,
@@ -210,6 +369,7 @@ void register_chapter_routes(LugApp& app, ChapterService& chapters,
         mctx["has_leads"]       = lead_count > 0;
         mctx["add_lead_options"]= add_lead_opts.str();
         mctx["has_non_leads"]   = has_non_leads;
+        add_chapter_overview(mctx, members.repo().db(), *ch, ch_members, can_manage);
 
         res.add_header("Content-Type", "text/html; charset=utf-8");
         bool is_htmx = req.get_header_value("HX-Request") == "true";

@@ -4,6 +4,7 @@
 #include "services/PerkProgress.hpp"
 #include "services/DuesService.hpp"
 #include "services/FanCoLab.hpp"
+#include "routes/DashboardWidgets.hpp"
 #include "services/Features.hpp"
 #include "utils/LocalTime.hpp"
 #include <crow.h>
@@ -193,7 +194,9 @@ void register_calendar_routes(LugApp& app, CalendarGenerator& cal,
                     arr[i]["events"]   = close[i].e;
                     arr[i]["show_m"]   = close[i].m > 0;
                     arr[i]["show_e"]   = close[i].e > 0;
+                    arr[i]["extra"]    = i >= 5;   // past the first five: folded away
                 }
+                ctx["close_more"] = close.size() > 5 ? static_cast<int>(close.size() - 5) : 0;
                 ctx["close_to_tier"]     = std::move(arr);
                 ctx["has_close_to_tier"] = !close.empty();
             }
@@ -218,17 +221,9 @@ void register_calendar_routes(LugApp& app, CalendarGenerator& cal,
         if (auto* st = app.get_middleware<AuthMiddleware>().settings;
             st && auth_ctx.auth.is_admin() && st->get("setup_completed", "") != "1")
             ctx["show_setup_banner"] = true;
-        // Admins: this year's LEGO Fan CoLab to-do list, until it's done.
-        if (auto* st = app.get_middleware<AuthMiddleware>().settings;
-            st && auth_ctx.auth.is_admin() && Features::on("fancolab") && st->get("fan_colab_recognized", "") == "1") {
-            int year = local_tm(std::time(nullptr)).tm_year + 1900;
-            auto [done, total] = fan_colab_todo(st->db(), year);
-            if (done < total) {
-                ctx["fancolab_todo"] = true;
-                ctx["fancolab_left"] = total - done;
-                ctx["fancolab_total"] = total;
-                ctx["fancolab_year"] = year;
-            }
+        if (auto* st = app.get_middleware<AuthMiddleware>().settings) {
+            dashboard::add_coming_up(ctx, st->db(), auth_ctx.auth.member_id, st->get("lug_timezone", "America/Chicago"));
+            if (auth_ctx.auth.is_admin()) dashboard::add_needs_attention(ctx, st->db());
         }
         // Sections of switched-off features (Settings > Features)
         Features::add_flags(ctx);
