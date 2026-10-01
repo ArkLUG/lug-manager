@@ -158,6 +158,7 @@ inline void set_layout_auth(const crow::request& req, App& app,
     // through the middleware's own pointer (see the struct above) rather
     // than a function parameter, so every page picks this up automatically.
     auto& mw = app.template get_middleware<AuthMiddleware>();
+    layout_ctx["lug_name"] = mw.settings ? mw.settings->get("lug_name", "LEGO User Group") : "LEGO User Group";
     if (mw.settings) {
         std::string ext = mw.settings->get("branding_logo_extension", "");
         if (!ext.empty()) {

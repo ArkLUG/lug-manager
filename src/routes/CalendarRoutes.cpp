@@ -213,6 +213,9 @@ void register_calendar_routes(LugApp& app, CalendarGenerator& cal,
             ctx["has_dues_expiring"]   = !rows.empty();
             ctx["dues_expiring_count"] = static_cast<int>(rows.size());
         }
+        if (auto* st = app.get_middleware<AuthMiddleware>().settings;
+            st && auth_ctx.auth.is_admin() && st->get("setup_completed", "") != "1")
+            ctx["show_setup_banner"] = true;
         // Sections of switched-off features (Settings > Features)
         Features::add_flags(ctx);
         if (!Features::on("chapters")) ctx["member_has_chapter"] = false;

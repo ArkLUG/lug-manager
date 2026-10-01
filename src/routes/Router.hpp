@@ -70,6 +70,7 @@
 #include "routes/MemberMergeRoutes.hpp"
 #include "routes/ShowsRoutes.hpp"
 #include "routes/FeatureRoutes.hpp"
+#include "routes/SetupRoutes.hpp"
 #include "services/Notifier.hpp"
 #include <memory>
 

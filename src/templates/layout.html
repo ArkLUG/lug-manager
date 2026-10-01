@@ -157,7 +157,7 @@
       {{/has_logo}}
       <div class="min-w-0">
         <div class="font-bold text-white text-sm leading-tight">LUG Manager</div>
-        <div class="text-yellow-400 text-xs font-medium truncate">LEGO User Group</div>
+        <div class="text-yellow-400 text-xs font-medium truncate">{{lug_name}}</div>
       </div>
     </div>
 
@@ -426,6 +426,16 @@
                     {{#active_settings}}nav-active{{/active_settings}}
                     {{^active_settings}}nav-inactive{{/active_settings}}">
             Discord
+          </a>
+          <a hx-get="/setup"
+             hx-target="#main-content"
+             hx-push-url="true"
+             hx-swap="innerHTML"
+             hx-indicator="#nav-spinner"
+             class="block px-3 py-2 rounded-lg text-sm cursor-pointer transition-colors
+                    {{#active_setup}}nav-active{{/active_setup}}
+                    {{^active_setup}}nav-inactive{{/active_setup}}">
+            Setup
           </a>
           <a hx-get="/settings/features"
              hx-target="#main-content"

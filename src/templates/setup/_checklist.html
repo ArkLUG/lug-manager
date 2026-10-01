@@ -1,0 +1,58 @@
+<div id="setup-page" class="max-w-3xl space-y-4" data-page-title="Setup">
+  <div>
+    <h2 class="text-xl font-semibold text-gray-800">Set up your LUG</h2>
+    <p class="text-sm text-gray-500">{{done_count}} of 4 done. Everything here can be changed later under Settings.</p>
+  </div>
+  {{#flash}}<div class="text-sm rounded-lg px-4 py-2 border border-gray-200 bg-white text-gray-700">{{flash}}</div>{{/flash}}
+
+  <section class="bg-white rounded-xl border border-gray-200 p-5 space-y-3">
+    <h3 class="font-semibold text-gray-800">{{#basics_done}}&#10003; {{/basics_done}}1. Name and time zone</h3>
+    <form hx-post="/setup/basics" hx-target="#setup-page" hx-swap="outerHTML" class="grid grid-cols-1 md:grid-cols-3 gap-2 text-sm items-end">
+      <label class="md:col-span-2">LUG name <input name="lug_name" value="{{lug_name}}" required maxlength="80" placeholder="e.g. Arkansas LEGO Users Group" class="mt-1 w-full border border-gray-300 rounded-lg px-3 py-2"></label>
+      <label>Time zone
+        <select name="lug_timezone" class="mt-1 w-full border border-gray-300 rounded-lg px-3 py-2">
+          {{#zones}}<option value="{{zone}}" {{#selected}}selected{{/selected}}>{{zone}}</option>{{/zones}}
+        </select></label>
+      <button class="md:col-span-3 justify-self-start px-4 py-2 bg-gray-800 text-white rounded-lg font-medium hover:bg-gray-700">Save</button>
+    </form>
+  </section>
+
+  <section class="bg-white rounded-xl border border-gray-200 p-5 space-y-3">
+    <h3 class="font-semibold text-gray-800">{{#features_done}}&#10003; {{/features_done}}2. What does your LUG use?</h3>
+    <form hx-post="/setup/features" hx-target="#setup-page" hx-swap="outerHTML" class="space-y-2 text-sm">
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-2">
+        {{#features}}
+        <label class="flex items-start gap-2"><input type="checkbox" name="{{key}}" value="1" {{#on}}checked{{/on}} class="mt-1 accent-yellow-400">
+          <span><span class="font-medium text-gray-800">{{label}}</span><br><span class="text-xs text-gray-500">{{help}}</span></span></label>
+        {{/features}}
+      </div>
+      <button class="px-4 py-2 bg-gray-800 text-white rounded-lg font-medium hover:bg-gray-700">Save</button>
+    </form>
+  </section>
+
+  <section class="bg-white rounded-xl border border-gray-200 p-5 space-y-3">
+    <h3 class="font-semibold text-gray-800">{{#discord_done}}&#10003; {{/discord_done}}3. Discord server</h3>
+    <p class="text-sm text-gray-500">Invite the bot to your server first (see README &gt; Discord Setup). Then paste the IDs - turn on Developer Mode in Discord and right-click &gt; Copy ID.</p>
+    <form hx-post="/setup/discord" hx-target="#setup-page" hx-swap="outerHTML" class="grid grid-cols-1 md:grid-cols-2 gap-2 text-sm items-end">
+      <label>Server ID <input name="discord_guild_id" value="{{guild_id}}" required inputmode="numeric" class="mt-1 w-full border border-gray-300 rounded-lg px-3 py-2"></label>
+      <label>Announcements channel ID <input name="discord_announcements_channel_id" value="{{lug_channel}}" inputmode="numeric" class="mt-1 w-full border border-gray-300 rounded-lg px-3 py-2"></label>
+      <div class="md:col-span-2 flex items-center gap-3">
+        <button class="px-4 py-2 bg-gray-800 text-white rounded-lg font-medium hover:bg-gray-700">Save</button>
+        <a hx-get="/settings" hx-target="#main-content" hx-push-url="true" class="text-indigo-600 hover:text-indigo-800 cursor-pointer">More Discord settings</a>
+      </div>
+    </form>
+  </section>
+
+  <section class="bg-white rounded-xl border border-gray-200 p-5 space-y-2">
+    <h3 class="font-semibold text-gray-800">{{#roles_done}}&#10003; {{/roles_done}}4. Who gets in</h3>
+    <p class="text-sm text-gray-600">Anyone in your Discord server can sign in as a member. Map Discord roles to Admin so your other organisers get admin automatically{{#roles_done}} ({{mapped_roles}} role(s) mapped){{/roles_done}}.</p>
+    <a hx-get="/settings/roles" hx-target="#main-content" hx-push-url="true" class="inline-block px-4 py-2 border border-gray-300 rounded-lg text-sm text-gray-700 hover:bg-gray-50 cursor-pointer">Map Discord roles</a>
+  </section>
+
+  {{^completed}}
+  <div class="flex items-center justify-between gap-3">
+    <span class="text-xs text-gray-400">You can come back to this page any time from Settings &gt; Setup.</span>
+    <button hx-post="/setup/finish" class="px-4 py-2 bg-yellow-400 text-gray-900 rounded-lg font-semibold hover:bg-yellow-300">Finish setup</button>
+  </div>
+  {{/completed}}
+</div>

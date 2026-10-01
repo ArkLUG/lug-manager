@@ -1,0 +1,19 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Set up LUG Manager</title>
+  <link rel="stylesheet" href="/static/tailwind.min.css?v={{asset_v}}">
+  <link rel="stylesheet" href="/static/theme.css?v={{asset_v}}">
+  <script src="/static/theme.js?v={{asset_v}}"></script>
+</head>
+<body class="bg-gray-900 min-h-screen flex items-center justify-center p-4">
+  <div class="w-full max-w-md bg-gray-800 border border-gray-700 rounded-2xl p-8 space-y-4 text-sm text-gray-300">
+    <h1 class="text-xl font-bold text-white">Admin created</h1>
+    <p>{{name}} is now an admin. Sign in to finish setting up - you'll find a short checklist on the dashboard.</p>
+    <p>{{#discord}}Use <strong>Sign in with Discord</strong>.{{/discord}}{{^discord}}Use <strong>Email me a link</strong> (needs email configured on the server).{{/discord}}</p>
+    <a href="/login" class="block text-center px-5 py-3 bg-yellow-400 text-gray-900 rounded-xl font-semibold hover:bg-yellow-300">Go to sign in</a>
+  </div>
+</body>
+</html>

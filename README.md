@@ -32,6 +32,7 @@ A modern web application for managing LEGO User Groups (LUGs). Built with **C++ 
 - **Visitor Counter**: For public shows, "Visitor counter" on the event opens a phone-friendly tap counter (kids / teens / adults, with undo) that fills the event's public visitor totals used in reports.
 - **Reports**: Annual Report (admin) shows the year in numbers - members, active members, meetings and check-ins, events, public visitors, dues recorded, check-ins per month, most active members and an events table. Each event has a printable report (visitors, participating members by day, approved displays, social links, feedback) suited to LEGO Ambassador Network event reporting.
 - **Volunteer Shifts**: Event managers add shifts (set-up, booth, tear-down) with a number of volunteers needed; members sign up or leave from the event page, managers see who's on each shift, and volunteers get a reminder DM when Discord reminders + DMs are on.
+- **First-Run Setup**: On a fresh install the server log prints a one-time `/setup?token=...` link to create the first admin (an alternative to `BOOTSTRAP_ADMIN_DISCORD_ID`). Admins then get a dashboard banner and a short checklist at Settings > Setup: LUG name (shown in the sidebar) and time zone, features, Discord server and announcements channel, and Discord role mappings.
 - **Feature Toggles** (admin, Settings > Features): switch off what a LUG doesn't use - chapters, dues, perk levels, RSVPs, display requests, volunteer shifts, event photos, build challenges, inventory, treasury, recurring meetings, reports, kiosk/visitor counter, QR self check-in, calendar feeds, Discord reports, young-member consent tracking and the public shows page (off by default). A switched-off feature disappears from the sidebar, pages and forms, its pages return 404 and its reminders stop; data is kept, and the `/api/v1` API is unaffected. With chapters off, new events/meetings are LUG-wide.
 - **My Account**: Per-member notification choices (event / shift reminders, waitlist promotion, dues reminders), signed-in devices, "Download my data" (JSON of everything stored about the member) and "Delete my account" (type DELETE; the last admin can't delete themselves). Members moved off an event waitlist get a Discord DM.
 - **Inventory**: LUG-owned items (tables, baseplates, display cases, banners) with quantities and where they're kept. Chapter leads and admins check items out to members with an optional due date, mark them returned, and export a CSV; members see what they currently have. Overdue loans are highlighted and the borrower gets one reminder (DM, or email without Discord) on the due date.
@@ -139,7 +140,7 @@ brew install cmake curl sqlite openssl pkg-config
    ```bash
    ./build/lug_manager
    ```
-   Open `http://localhost:8080` and log in with Discord. The first user matching `BOOTSTRAP_ADMIN_DISCORD_ID` is automatically made admin. All other guild members can log in as regular members.
+   Open `http://localhost:8080` and log in with Discord. The first user matching `BOOTSTRAP_ADMIN_DISCORD_ID` is automatically made admin - or, without that variable, open the one-time `/setup?token=...` link printed in the server log to create the first admin, then follow the setup checklist. All other guild members can log in as regular members.
 
 ## Roles & Permissions
 
