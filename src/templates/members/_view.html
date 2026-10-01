@@ -127,5 +127,15 @@
             class="text-xs px-3 py-1.5 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50">Sign out all devices</button>
     <span id="revoke-result-{{id}}"></span>
   </div>
+  <div class="mt-2 flex flex-wrap items-center gap-2">
+    <button hx-post="/members/{{id}}/password-link" hx-target="#pw-result-{{id}}" hx-swap="innerHTML"
+            class="text-xs px-3 py-1.5 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50">Make a set-password link</button>
+    <button hx-post="/members/{{id}}/password-link?email=1" hx-target="#pw-result-{{id}}" hx-swap="innerHTML"
+            class="text-xs px-3 py-1.5 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50">Email them a set-password link</button>
+    <button hx-post="/members/{{id}}/reset-2fa" hx-target="#pw-result-{{id}}" hx-swap="innerHTML"
+            hx-confirm="Turn off two-factor for {{display_name}}? Only do this if you're sure it's them (for example, they lost their phone and codes)."
+            class="text-xs px-3 py-1.5 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50">Reset two-factor</button>
+  </div>
+  <div id="pw-result-{{id}}"></div>
   {{/viewer_is_admin}}
 </div>

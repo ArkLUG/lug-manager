@@ -1,4 +1,5 @@
 #include "services/MemberService.hpp"
+#include "auth/AccountSecurity.hpp"
 #include "utils/Snowflake.hpp"
 #include <algorithm>
 #include <iostream>
@@ -158,6 +159,9 @@ Member MemberService::update(int64_t id, const Member& updates) {
     }
 
     repo_.update(m);
+    // The sign-in email changed: links already sent to the old address stop working.
+    if (AccountSecurity::lower(existing->email) != AccountSecurity::lower(m.email))
+        AccountSecurity(repo_.db()).invalidate_reset_tokens(id);
     // A role changed through the service is a human decision - see RoleSync.hpp.
     if (!updates.role.empty() && updates.role != existing->role)
         repo_.set_role_source(id, "manual");

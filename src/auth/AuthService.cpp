@@ -12,6 +12,11 @@ AuthService::AuthService(SessionStore& sessions, MemberRepository& members, Disc
 
 std::string AuthService::login_with_discord(const std::string& code, const std::string& redirect_uri,
                                             const std::string& user_agent) {
+    Member member = discord_member(code, redirect_uri);
+    return sessions_.create(member.id, member.role, member.display_name, 24, user_agent);
+}
+
+Member AuthService::discord_member(const std::string& code, const std::string& redirect_uri) {
     // 1. Exchange code for access token
     std::string access_token = oauth_.exchange_code(code, redirect_uri);
 
@@ -120,8 +125,7 @@ std::string AuthService::login_with_discord(const std::string& code, const std::
     }
     if (!new_source.empty()) members_.set_role_source(member.id, new_source);
 
-    // 7. Create and return session token (24 hour lifetime)
-    return sessions_.create(member.id, member.role, member.display_name, 24, user_agent);
+    return member;
 }
 
 std::optional<Session> AuthService::validate_session(const std::string& token) {

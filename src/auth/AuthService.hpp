@@ -22,6 +22,9 @@ public:
     // Throws std::runtime_error("not_authorized") if the user has no access.
     std::string login_with_discord(const std::string& code, const std::string& redirect_uri = "",
                                    const std::string& user_agent = "");
+    // Who the Discord sign-in is (provisioning / name and role sync included),
+    // without creating a session - the caller may still need a 2FA code.
+    Member discord_member(const std::string& code, const std::string& redirect_uri = "");
     SessionStore& sessions() { return sessions_; }
 
     // Validate session token. Returns Session if valid, nullopt if expired/missing.

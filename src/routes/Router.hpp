@@ -71,6 +71,7 @@
 #include "routes/ShowsRoutes.hpp"
 #include "routes/FanCoLabRoutes.hpp"
 #include "routes/DiscordTimeRepairRoutes.hpp"
+#include "routes/AccountSecurityRoutes.hpp"
 #include "routes/FeatureRoutes.hpp"
 #include "routes/SetupRoutes.hpp"
 #include "services/Notifier.hpp"

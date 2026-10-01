@@ -35,6 +35,7 @@ struct AuthContext {
     std::string discord_username;
     std::string display_name;
     bool        treasurer     = false;
+    bool        must_setup_2fa = false;   // two-factor required but not set up (see before_handle)
 
     bool is_admin()        const { return role == "admin"; }
     // Treasury pages and recording dues there: admins and the treasurer(s).
@@ -83,6 +84,35 @@ struct AuthMiddleware {
         ctx.auth.role          = session_opt->role;
         ctx.auth.display_name  = session_opt->display_name;
         ctx.auth.treasurer     = session_opt->treasurer;
+
+        // Two-factor required for this member but not set up yet: everything
+        // except the setup page (and signing out) sends them there.
+        if (settings) {
+            std::string need = settings->get("auth_require_2fa", "off");
+            bool required = need == "everyone" || (need == "staff" && ctx.auth.role != "member");
+            if (required && !has_two_factor(ctx.auth.member_id) && !allowed_without_2fa(req.url)) {
+                ctx.auth.must_setup_2fa = true;
+                if (req.get_header_value("HX-Request") == "true") {
+                    res.code = 200;
+                    res.add_header("HX-Redirect", "/account/security");
+                } else {
+                    res.code = 303;
+                    res.add_header("Location", "/account/security");
+                }
+                res.end();
+            }
+        }
+    }
+
+    bool has_two_factor(int64_t member_id) {
+        auto st = settings->db().prepare("SELECT totp_enabled_at IS NOT NULL FROM members WHERE id=?");
+        st.bind(1, member_id);
+        return st.step() && st.col_int(0) != 0;
+    }
+    static bool allowed_without_2fa(const std::string& url) {
+        for (const char* p : {"/account/security", "/account/2fa/", "/auth/", "/static/", "/branding/", "/manifest.webmanifest", "/sw.js"})
+            if (url.rfind(p, 0) == 0) return true;
+        return url == "/login" || url == "/favicon.ico";
     }
 
     // Baseline security headers on every response (this middleware runs for

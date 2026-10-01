@@ -100,6 +100,18 @@
     if (el.querySelectorAll) el.querySelectorAll('select[data-tomselect]:not([hx-get])').forEach(initTomSelect);
   });
 
+  // QR codes: <div data-qr="text"> (two-factor setup), drawn with the vendored QRCode lib.
+  function initQr(root) {
+    if (typeof QRCode === 'undefined' || !root || !root.querySelectorAll) return;
+    root.querySelectorAll('[data-qr]:not([data-qr-done])').forEach(function (el) {
+      el.setAttribute('data-qr-done', '1');
+      new QRCode(el, { text: el.getAttribute('data-qr'), width: 192, height: 192 });
+    });
+  }
+  document.addEventListener('htmx:load', function (e) { initQr(e.detail && e.detail.elt); });
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', function () { initQr(document); });
+  else initQr(document);
+
   function initStaticSelects() {
     document.querySelectorAll('select[data-tomselect]:not([hx-get])').forEach(initTomSelect);
   }

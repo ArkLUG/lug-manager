@@ -95,7 +95,7 @@
       <div class="p-8">
         <h1 class="text-xl font-bold text-white mb-1">Welcome back</h1>
         <p class="text-gray-400 text-sm mb-6">
-          Sign in with your Discord account to access the LUG member portal.
+          Sign in to the LUG member portal.
         </p>
 
         <!-- Error messages -->
@@ -153,9 +153,40 @@
         {{#email_sent}}
         <div class="mb-5 bg-green-900/40 border border-green-700/60 text-green-300 text-sm px-4 py-3 rounded-lg">
           <strong class="font-semibold block">Check your email</strong>
-          If that address belongs to a member without Discord, a sign-in link is on its way. It expires in 15 minutes.
+          If that address belongs to a member, a sign-in link is on its way. It expires in 15 minutes.
         </div>
         {{/email_sent}}
+
+        {{#error_password}}
+        <div role="alert" class="mb-5 bg-red-900/40 border border-red-700/60 text-red-300 text-sm px-4 py-3 rounded-lg">
+          <strong class="font-semibold block">Couldn't sign you in</strong>
+          The email or password is wrong.
+        </div>
+        {{/error_password}}
+        {{#error_locked}}
+        <div role="alert" class="mb-5 bg-red-900/40 border border-red-700/60 text-red-300 text-sm px-4 py-3 rounded-lg">
+          <strong class="font-semibold block">Too many tries</strong>
+          Wait 15 minutes and try again{{#forgot}}, or reset your password{{/forgot}}.
+        </div>
+        {{/error_locked}}
+        {{#error_expired}}
+        <div role="alert" class="mb-5 bg-red-900/40 border border-red-700/60 text-red-300 text-sm px-4 py-3 rounded-lg">
+          <strong class="font-semibold block">Please sign in again</strong>
+          The code step timed out or had too many wrong codes.
+        </div>
+        {{/error_expired}}
+        {{#reset_done}}
+        <div role="status" class="mb-5 bg-green-900/40 border border-green-700/60 text-green-300 text-sm px-4 py-3 rounded-lg">
+          <strong class="font-semibold block">Password saved</strong>
+          Sign in with your email and new password.
+        </div>
+        {{/reset_done}}
+        {{#forgot_sent}}
+        <div role="status" class="mb-5 bg-green-900/40 border border-green-700/60 text-green-300 text-sm px-4 py-3 rounded-lg">
+          <strong class="font-semibold block">Check your email</strong>
+          If that address belongs to a member, a link to set a new password is on its way. It expires in an hour.
+        </div>
+        {{/forgot_sent}}
 
         {{#error_link}}
         <div class="mb-5 bg-red-900/40 border border-red-700/60 text-red-300 text-sm px-4 py-3 rounded-lg">
@@ -164,6 +195,27 @@
         </div>
         {{/error_link}}
 
+        {{#password_login}}
+        <form method="post" action="/auth/password" class="space-y-3">
+          <div>
+            <label for="login-email" class="block text-sm text-gray-300 mb-1">Email</label>
+            <input id="login-email" type="email" name="email" required autocomplete="username" maxlength="254"
+                   class="w-full rounded-xl bg-gray-900 border border-gray-600 text-white text-sm px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-yellow-400">
+          </div>
+          <div>
+            <div class="flex items-baseline justify-between mb-1">
+              <label for="login-password" class="block text-sm text-gray-300">Password</label>
+              {{#forgot}}<a href="/auth/forgot" class="text-xs text-gray-400 underline hover:text-gray-200">Forgot it?</a>{{/forgot}}
+            </div>
+            <input id="login-password" type="password" name="password" required autocomplete="current-password" maxlength="200"
+                   class="w-full rounded-xl bg-gray-900 border border-gray-600 text-white text-sm px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-yellow-400">
+          </div>
+          <button class="w-full px-5 py-3 bg-yellow-400 text-gray-900 rounded-xl text-sm font-semibold hover:bg-yellow-300">Sign in</button>
+        </form>
+        {{#discord_login}}<div class="my-5 flex items-center gap-3 text-xs text-gray-500"><div class="flex-1 h-px bg-gray-700"></div>or<div class="flex-1 h-px bg-gray-700"></div></div>{{/discord_login}}
+        {{/password_login}}
+
+        {{#discord_login}}
         <!-- Discord sign-in button -->
         <a href="/auth/login"
            class="discord-btn w-full flex items-center justify-center gap-3 px-5 py-3.5
@@ -183,9 +235,10 @@
           </svg>
           Sign in with Discord
         </a>
+        {{/discord_login}}
 
         {{#email_login}}
-        <div class="my-5 flex items-center gap-3 text-xs text-gray-500"><div class="flex-1 h-px bg-gray-700"></div>not on Discord?<div class="flex-1 h-px bg-gray-700"></div></div>
+        <div class="my-5 flex items-center gap-3 text-xs text-gray-500"><div class="flex-1 h-px bg-gray-700"></div>or get a sign-in link<div class="flex-1 h-px bg-gray-700"></div></div>
         <form method="post" action="/auth/email" class="flex gap-2">
           <input type="email" name="email" required autocomplete="email" placeholder="you@example.com" aria-label="Email address"
                  class="flex-1 min-w-0 rounded-xl bg-gray-900 border border-gray-600 text-white text-sm px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-yellow-400">
@@ -195,8 +248,7 @@
 
         <!-- Info text -->
         <p class="mt-5 text-center text-xs text-gray-500">
-          Only pre-authorized Discord accounts can log in.<br>
-          Contact the LUG admin to request access.
+          Members only. Ask a LUG admin if you need access{{#password_login}} or a password{{/password_login}}.
         </p>
       </div>
 

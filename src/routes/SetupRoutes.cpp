@@ -2,6 +2,7 @@
 #include "services/Features.hpp"
 #include "services/FanCoLab.hpp"
 #include "services/AttendanceService.hpp"
+#include "auth/AccountSecurity.hpp"
 #include "auth/SessionStore.hpp"
 #include "utils/HtmlEscape.hpp"
 #include <crow/mustache.h>
@@ -146,8 +147,15 @@ void register_setup_routes(LugApp& app, SqliteDatabase& db, SettingsRepository& 
         std::string first = form(req, "first_name", 50), last = form(req, "last_name", 50);
         std::string discord_id = form(req, "discord_user_id", 30), email = form(req, "email", 200);
         bool id_ok = !discord_id.empty() && discord_id.find_first_not_of("0123456789") == std::string::npos;
+        std::string pw = form(req, "password", 201), pw2 = form(req, "confirm", 201);
         if (first.empty() || (!id_ok && email.find('@') == std::string::npos))
             return page(req, app, render_first_admin(t, "Enter your name and your Discord user ID (numbers only) or an email address."), true, 400);
+        if (!pw.empty()) {
+            std::string err = email.find('@') == std::string::npos ? "A password needs an email address to sign in with."
+                                                                    : password::policy_error(pw, email);
+            if (err.empty() && pw != pw2) err = "The two passwords don't match.";
+            if (!err.empty()) return page(req, app, render_first_admin(t, err), true, 400);
+        }
         std::string display = first + (last.empty() ? "" : " " + last.substr(0, 1) + ".");
         {
             auto ins = db.prepare("INSERT INTO members (discord_user_id, display_name, first_name, last_name, email, role, role_source) "
@@ -156,6 +164,7 @@ void register_setup_routes(LugApp& app, SqliteDatabase& db, SettingsRepository& 
             ins.bind(2, display); ins.bind(3, first); ins.bind(4, last); ins.bind(5, email);
             ins.step();
         }
+        if (!pw.empty()) AccountSecurity(db).set_password(db.last_insert_rowid(), pw);
         {
             std::lock_guard<std::mutex> l(g_mu);
             g_token.clear();
@@ -164,6 +173,8 @@ void register_setup_routes(LugApp& app, SqliteDatabase& db, SettingsRepository& 
         ctx["asset_v"] = asset_version();
         ctx["name"] = display;
         ctx["discord"] = id_ok;
+        ctx["password"] = !pw.empty();
+        ctx["email"] = email;
         return page(req, app, crow::mustache::load("setup/first_admin_done.html").render(ctx).dump(), true);
     });
 

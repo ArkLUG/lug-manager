@@ -465,6 +465,16 @@
                     {{^active_features}}nav-inactive{{/active_features}}">
             Features
           </a>
+          <a hx-get="/settings/sign-in"
+             hx-target="#main-content"
+             hx-push-url="true"
+             hx-swap="innerHTML"
+             hx-indicator="#nav-spinner"
+             class="block px-3 py-2 rounded-lg text-sm cursor-pointer transition-colors
+                    {{#active_sign_in}}nav-active{{/active_sign_in}}
+                    {{^active_sign_in}}nav-inactive{{/active_sign_in}}">
+            Sign-in
+          </a>
           <a hx-get="/settings/about"
              hx-target="#main-content"
              hx-push-url="true"

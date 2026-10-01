@@ -8,6 +8,14 @@
             class="px-4 py-2 bg-gray-800 text-white rounded-lg text-sm font-medium hover:bg-gray-700">Edit my profile &amp; privacy</button>
   </div>
 
+  <section class="bg-white rounded-xl border border-gray-200 p-6 flex flex-wrap items-center justify-between gap-3">
+    <div>
+      <h3 class="font-semibold text-gray-800">Password &amp; two-factor</h3>
+      <p class="text-sm text-gray-600">Sign in with your email and a password, and add a code from an authenticator app.</p>
+    </div>
+    <a hx-get="/account/security" hx-target="#main-content" hx-push-url="true" hx-swap="innerHTML" class="px-4 py-2 border border-gray-300 rounded-lg text-sm text-gray-700 hover:bg-gray-50 cursor-pointer">Manage</a>
+  </section>
+
   <section class="bg-white rounded-xl border border-gray-200 p-6">
     <h3 class="font-semibold text-gray-800 mb-3">Notifications</h3>
     {{{notifications}}}

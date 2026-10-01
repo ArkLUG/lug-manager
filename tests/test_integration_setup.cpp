@@ -100,3 +100,22 @@ TEST_F(IntegrationTest, SetupFanCoLabRecognitionAndAmbassador) {
     expect_not_contains(GET(report, admin_token), "Recognized LEGO");
     expect_not_contains(GET("/shows"), "Recognized LEGO");
 }
+
+TEST_F(IntegrationTest, SetupFirstAdminWithPassword) {
+    {
+        auto u = db->prepare("UPDATE members SET role='member' WHERE role='admin'");
+        u.step();
+    }
+    std::string token = ensure_setup_token(*db);
+    // A password needs an email, and must be good enough
+    EXPECT_EQ(POST("/setup/admin", "token=" + token + "&first_name=Ann&discord_user_id=123456789012345678&password=long+enough+pw&confirm=long+enough+pw").code, 400);
+    EXPECT_EQ(POST("/setup/admin", "token=" + token + "&first_name=Ann&email=ann%40example.org&password=short&confirm=short").code, 400);
+    EXPECT_EQ(POST("/setup/admin", "token=" + token + "&first_name=Ann&email=ann%40example.org&password=long+enough+pw&confirm=other+one+here").code, 400);
+    auto ok = POST("/setup/admin", "token=" + token + "&first_name=Ann&last_name=Admin&email=ann%40example.org&password=long+enough+pw&confirm=long+enough+pw");
+    EXPECT_EQ(ok.code, 200);
+    expect_contains(ok, "ann@example.org</strong> and your password");
+    // Signs in with no Discord and no email server
+    auto in = POST("/auth/password", "email=ann%40example.org&password=long+enough+pw");
+    EXPECT_NE(in.location.find("/dashboard"), std::string::npos);
+    EXPECT_NE(in.headers.find("session="), std::string::npos);
+}

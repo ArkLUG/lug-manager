@@ -40,13 +40,14 @@ TEST(Mailer, BuildsSafeMessage) {
 TEST_F(IntegrationTest, EmailSignInLink) {
     expect_contains(GET("/login"), "Email me a link");
     int64_t id = email_member(*member_repo, "Kay@Example.org");
-    email_member(*member_repo, "discord@example.org", "has-discord-1");
+    email_member(*member_repo, "shared@example.org");
+    email_member(*member_repo, "SHARED@example.org", "has-discord-1");
 
-    // Unknown address and Discord-linked members get the same answer and no email
+    // Unknown addresses, and an address on two member records, get the same answer and no email
     auto r = POST("/auth/email", "email=nobody%40example.org");
     EXPECT_EQ(r.code, 303);
     EXPECT_NE(r.location.find("/login?email_sent=1"), std::string::npos);
-    POST("/auth/email", "email=discord%40example.org");
+    POST("/auth/email", "email=shared%40example.org");
     EXPECT_TRUE(mailer->outbox().empty());
 
     POST("/auth/email", "email=kay%40EXAMPLE.org");
@@ -74,7 +75,7 @@ TEST_F(IntegrationTest, EmailSignInLink) {
     ASSERT_FALSE(session.empty());
     EXPECT_EQ(GET("/account", session).code, 200);
     EXPECT_NE(POST("/auth/email/" + token, "").location.find("/login?error=link"), std::string::npos);   // single use
-    auto a = db->prepare("SELECT COUNT(*) FROM audit_log WHERE action='auth.email_login' AND entity_id=?");
+    auto a = db->prepare("SELECT COUNT(*) FROM audit_log WHERE action='auth.login' AND details='Signed in (email link)' AND entity_id=?");
     a.bind(1, id);
     ASSERT_TRUE(a.step());
     EXPECT_EQ(a.col_int(0), 1);

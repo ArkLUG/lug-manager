@@ -1,0 +1,33 @@
+<div id="sign-in-settings" class="max-w-3xl space-y-4" data-page-title="Sign-in">
+  <div>
+    <h2 class="text-xl font-semibold text-gray-800">Sign-in</h2>
+    <p class="text-sm text-gray-500">How members sign in, and who has to use two-factor codes.</p>
+  </div>
+  {{#flash}}<div role="status" class="bg-green-50 text-green-800 rounded-lg px-4 py-2 text-sm">{{flash}}</div>{{/flash}}
+  <form hx-post="/settings/sign-in" hx-target="#sign-in-settings" hx-swap="outerHTML" class="bg-white rounded-xl border border-gray-200 p-5 space-y-4 text-sm">
+    <fieldset class="space-y-2">
+      <legend class="font-semibold text-gray-800 mb-1">Ways to sign in</legend>
+      <label class="flex items-start gap-2"><input type="checkbox" name="password" value="1" {{#password_on}}checked{{/password_on}} class="mt-1 accent-yellow-400">
+        <span><strong>Email and password.</strong> Members set a password under My Account &gt; Password &amp; two-factor (they need an email on their profile), or you send them a set-password link from their member page.</span></label>
+      <label class="flex items-start gap-2"><input type="checkbox" name="links" value="1" {{#links_on}}checked{{/links_on}} class="mt-1 accent-yellow-400">
+        <span><strong>Emailed sign-in links.</strong> "Email me a link" on the sign-in page. Only works when the server has email set up.</span></label>
+      <p class="text-gray-500">Discord sign-in is set under Settings &gt; Discord.</p>
+    </fieldset>
+    <fieldset class="space-y-2">
+      <legend class="font-semibold text-gray-800 mb-1">Require two-factor</legend>
+      <label class="flex items-center gap-2"><input type="radio" name="require_2fa" value="off" {{#req_off}}checked{{/req_off}} class="accent-yellow-400"> Optional for everyone</label>
+      <label class="flex items-center gap-2"><input type="radio" name="require_2fa" value="staff" {{#req_staff}}checked{{/req_staff}} class="accent-yellow-400"> Required for admins, moderators and chapter leads</label>
+      <label class="flex items-center gap-2"><input type="radio" name="require_2fa" value="everyone" {{#req_everyone}}checked{{/req_everyone}} class="accent-yellow-400"> Required for all members</label>
+      <p class="text-gray-500">When it's required, members without it are sent to set it up the next time they open LUG Manager, whichever way they signed in.</p>
+    </fieldset>
+    <button class="px-4 py-2 bg-gray-800 text-white rounded-lg font-medium hover:bg-gray-700">Save</button>
+  </form>
+  <section class="bg-white rounded-xl border border-gray-200 p-5 text-sm">
+    <h3 class="font-semibold text-gray-800 mb-2">Where things stand</h3>
+    <ul class="space-y-1 text-gray-700">
+      <li>{{with_email}} of {{members}} members have an email address; {{with_password}} have set a password.</li>
+      <li>{{with_2fa}} use two-factor; {{staff_without_2fa}} admins, moderators or chapter leads don't yet.</li>
+      {{#has_shared}}<li class="text-amber-800">{{shared_emails}} email address(es) are on more than one member record. Those can't be used to sign in until they're fixed (Members &gt; Merge can combine duplicates).</li>{{/has_shared}}
+    </ul>
+  </section>
+</div>

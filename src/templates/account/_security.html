@@ -1,0 +1,79 @@
+<div id="account-security" class="max-w-3xl space-y-4" data-page-title="Password & two-factor">
+  {{#required_missing}}
+  <div role="alert" class="bg-amber-50 border border-amber-200 text-amber-900 rounded-xl px-4 py-3 text-sm">
+    <strong>Two-factor is required for your account.</strong> Set it up below to keep using LUG Manager. You'll need an authenticator app on your phone, such as Google Authenticator, Microsoft Authenticator, Authy, 1Password or Bitwarden.
+  </div>
+  {{/required_missing}}
+  {{#flash}}<div role="status" class="bg-green-50 text-green-800 rounded-lg px-4 py-2 text-sm">{{flash}}</div>{{/flash}}
+  {{#error}}<div role="alert" class="bg-red-50 text-red-700 rounded-lg px-4 py-2 text-sm">{{error}}</div>{{/error}}
+
+  {{#show_codes}}
+  <section class="bg-white rounded-xl border-2 border-yellow-400 p-5 space-y-3">
+    <h3 class="font-semibold text-gray-800">Your recovery codes</h3>
+    <p class="text-sm text-gray-600">If you lose your phone, each of these lets you sign in once instead of a 6-digit code. Print them or keep them in a password manager. They won't be shown again.</p>
+    <ul class="grid grid-cols-2 gap-2 font-mono text-sm" aria-label="Recovery codes">{{#recovery_codes}}<li class="bg-gray-50 border border-gray-200 rounded px-3 py-1.5">{{.}}</li>{{/recovery_codes}}</ul>
+    <button type="button" data-action="print" class="text-sm px-3 py-1.5 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50">Print</button>
+  </section>
+  {{/show_codes}}
+
+  <section class="bg-white rounded-xl border border-gray-200 p-5 space-y-3">
+    <h3 class="font-semibold text-gray-800">Password</h3>
+    {{^password_login}}<p class="text-sm text-gray-500">Password sign-in is turned off for this LUG.</p>{{/password_login}}
+    {{#password_login}}
+      {{^has_email}}<p class="text-sm text-gray-600">To sign in with a password, first add your email address to your profile (My Account &gt; Edit my profile). You'll sign in with that email.</p>{{/has_email}}
+      {{#email_shared}}<p class="text-sm text-amber-800">Another member has the same email address ({{email}}), so it can't be used to sign in. Ask an admin to fix it.</p>{{/email_shared}}
+      {{#email_unique}}
+      <p class="text-sm text-gray-600">{{#has_password}}You can sign in with <strong>{{email}}</strong> and your password{{#password_changed}} (set {{password_changed}}){{/password_changed}}.{{/has_password}}{{^has_password}}Set a password to sign in with <strong>{{email}}</strong> without Discord.{{/has_password}}</p>
+      <form hx-post="/account/password" hx-target="#account-security" hx-swap="outerHTML" class="grid grid-cols-1 md:grid-cols-3 gap-3 text-sm items-end">
+        <input type="email" name="username" value="{{email}}" autocomplete="username" class="hidden" aria-hidden="true" tabindex="-1" readonly>
+        {{#has_password}}<label class="block">Current password<input type="password" name="current" required autocomplete="current-password" maxlength="200" class="mt-1 w-full border border-gray-300 rounded-lg px-3 py-2"></label>{{/has_password}}
+        <label class="block">New password<input type="password" name="password" required minlength="10" maxlength="200" autocomplete="new-password" class="mt-1 w-full border border-gray-300 rounded-lg px-3 py-2"></label>
+        <label class="block">Type it again<input type="password" name="confirm" required minlength="10" maxlength="200" autocomplete="new-password" class="mt-1 w-full border border-gray-300 rounded-lg px-3 py-2"></label>
+        <div class="md:col-span-3"><button class="px-4 py-2 bg-gray-800 text-white rounded-lg font-medium hover:bg-gray-700">{{#has_password}}Change password{{/has_password}}{{^has_password}}Set password{{/has_password}}</button>
+          <span class="text-xs text-gray-500 ml-2">At least 10 characters. Your other devices are signed out.</span></div>
+      </form>
+      {{/email_unique}}
+    {{/password_login}}
+  </section>
+
+  <section class="bg-white rounded-xl border border-gray-200 p-5 space-y-3">
+    <h3 class="font-semibold text-gray-800">Two-factor sign-in</h3>
+    {{#two_factor}}
+      <p class="text-sm text-gray-600"><span class="text-green-700 font-medium">On</span>{{#two_factor_since}} since {{two_factor_since}}{{/two_factor_since}}. After signing in (with a password, Discord or an email link) you're asked for a code from your authenticator app. Recovery codes left: <strong>{{codes_left}}</strong>.</p>
+      {{#few_codes}}<p class="text-sm text-amber-800">You're running low on recovery codes. Make new ones below.</p>{{/few_codes}}
+      <div class="grid md:grid-cols-2 gap-4 text-sm">
+        <form hx-post="/account/2fa/recovery" hx-target="#account-security" hx-swap="outerHTML" class="space-y-2">
+          <label class="block">New recovery codes: enter a current code<input name="code" required autocomplete="one-time-code" maxlength="40" class="mt-1 w-full border border-gray-300 rounded-lg px-3 py-2"></label>
+          <button class="px-3 py-1.5 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50">Make new recovery codes</button>
+        </form>
+        {{^required}}
+        <form hx-post="/account/2fa/disable" hx-target="#account-security" hx-swap="outerHTML" hx-confirm="Turn off two-factor sign-in?" class="space-y-2">
+          <label class="block">Turn off: enter a current code<input name="code" required autocomplete="one-time-code" maxlength="40" class="mt-1 w-full border border-gray-300 rounded-lg px-3 py-2"></label>
+          <button class="px-3 py-1.5 border border-red-300 text-red-700 rounded-lg hover:bg-red-50">Turn off two-factor</button>
+        </form>
+        {{/required}}
+        {{#required}}<p class="text-gray-500">Two-factor is required for your account, so it stays on.</p>{{/required}}
+      </div>
+    {{/two_factor}}
+    {{^two_factor}}
+      {{^setup_secret}}
+      <p class="text-sm text-gray-600">Add a second step to signing in: a 6-digit code from an authenticator app on your phone. Even someone with your password or email can't get in without it.</p>
+      <form hx-post="/account/2fa/setup" hx-target="#account-security" hx-swap="outerHTML">
+        <button class="px-4 py-2 bg-gray-800 text-white rounded-lg text-sm font-medium hover:bg-gray-700">Set up two-factor</button>
+      </form>
+      {{/setup_secret}}
+      {{#setup_secret}}
+      <ol class="text-sm text-gray-700 space-y-3 list-decimal list-inside">
+        <li>In your authenticator app, add an account and scan this code:
+          <div class="mt-2 block w-fit bg-white p-2 border border-gray-200 rounded-lg" data-qr="{{setup_uri}}" role="img" aria-label="QR code for your authenticator app"></div>
+          <div class="text-xs text-gray-500 mt-1">Can't scan it? Type this key instead: <code class="font-mono text-gray-800 select-all">{{setup_secret_spaced}}</code></div></li>
+        <li>Enter the 6-digit code the app shows:
+          <form hx-post="/account/2fa/enable" hx-target="#account-security" hx-swap="outerHTML" class="mt-2 flex gap-2">
+            <input name="code" required autocomplete="one-time-code" inputmode="numeric" maxlength="7" aria-label="6-digit code" class="w-32 border border-gray-300 rounded-lg px-3 py-2 tracking-widest">
+            <button class="px-4 py-2 bg-gray-800 text-white rounded-lg font-medium hover:bg-gray-700">Turn on</button>
+          </form></li>
+      </ol>
+      {{/setup_secret}}
+    {{/two_factor}}
+  </section>
+</div>
