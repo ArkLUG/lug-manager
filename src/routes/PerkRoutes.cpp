@@ -1,4 +1,5 @@
 #include "routes/PerkRoutes.hpp"
+#include "services/PerkRoleSync.hpp"
 #include "utils/LocalTime.hpp"
 #include "utils/AuditDiff.hpp"
 #include "utils/HtmlEscape.hpp"
@@ -6,26 +7,6 @@
 #include <crow/mustache.h>
 #include <sstream>
 #include <ctime>
-
-// Compute the highest perk level a member qualifies for.
-// Returns nullopt if they don't qualify for any.
-static std::optional<PerkLevel> compute_perk_level(
-        const std::vector<PerkLevel>& levels,
-        int meeting_count, int event_count,
-        bool is_paid, const std::string& member_fol) {
-    std::optional<PerkLevel> best;
-    for (const auto& lvl : levels) {
-        if (meeting_count >= lvl.meeting_attendance_required &&
-            event_count   >= lvl.event_attendance_required &&
-            (!lvl.requires_paid_dues || is_paid) &&
-            fol_rank(member_fol) >= fol_rank(lvl.min_fol_status)) {
-            if (!best || lvl.sort_order > best->sort_order) {
-                best = lvl;
-            }
-        }
-    }
-    return best;
-}
 
 void register_perk_routes(LugApp& app, PerkLevelRepository& perks,
                            AttendanceRepository& attendance,
@@ -315,39 +296,7 @@ void register_perk_routes(LugApp& app, PerkLevelRepository& perks,
             return res;
         }
 
-        // Get current year
-        std::time_t now = std::time(nullptr);
-        std::tm tm_buf = local_tm(now);
-        std::tm* tm = &tm_buf;
-        int year = tm->tm_year + 1900;
-
-        auto all_members = members.find_all();
-        int synced = 0;
-        for (const auto& m : all_members) {
-            int meeting_count = attendance.count_member_by_year(m.id, year, "meeting");
-            int event_count   = attendance.count_member_by_year(m.id, year, "event");
-
-            auto achieved = compute_perk_level(levels, meeting_count, event_count, m.is_paid, m.fol_status);
-
-            for (const auto& lvl : levels) {
-                if (lvl.discord_role_id.empty() || m.discord_user_id.empty()) continue;
-
-                // Compute if member meets THIS specific tier
-                bool meets_tier = meeting_count >= lvl.meeting_attendance_required &&
-                                  event_count >= lvl.event_attendance_required &&
-                                  (!lvl.requires_paid_dues || m.is_paid) &&
-                                  fol_rank(m.fol_status) >= fol_rank(lvl.min_fol_status);
-
-                if (meets_tier) {
-                    try { discord.add_member_role(m.discord_user_id, lvl.discord_role_id); }
-                    catch (...) {}
-                } else {
-                    try { discord.remove_member_role(m.discord_user_id, lvl.discord_role_id); }
-                    catch (...) {}
-                }
-            }
-            ++synced;
-        }
+        int synced = sync_perk_roles(perks, members, attendance, discord, sync_year);
 
         audit.log(req, app, "perk.sync_roles", "perk", 0, "", "Synced " + std::to_string(synced) + " members");
         res.add_header("Content-Type", "text/html; charset=utf-8");

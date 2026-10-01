@@ -1,4 +1,5 @@
 #include "routes/api/PerkLevelsApiRoutes.hpp"
+#include "services/PerkRoleSync.hpp"
 #include "utils/LocalTime.hpp"
 #include "routes/api/ApiCommon.hpp"
 #include "routes/api/Serialize.hpp"
@@ -189,30 +190,7 @@ void register_perk_levels_api_routes(LugApp& app, PerkLevelRepository& perks,
             return res;
         }
 
-        auto all_members = members.find_all();
-        int synced = 0;
-        for (const auto& m : all_members) {
-            int meeting_count = attendance.count_member_by_year(m.id, year, "meeting");
-            int event_count   = attendance.count_member_by_year(m.id, year, "event");
-
-            for (const auto& lvl : levels) {
-                if (lvl.discord_role_id.empty() || m.discord_user_id.empty()) continue;
-
-                bool meets_tier = meeting_count >= lvl.meeting_attendance_required &&
-                                  event_count >= lvl.event_attendance_required &&
-                                  (!lvl.requires_paid_dues || m.is_paid) &&
-                                  fol_rank(m.fol_status) >= fol_rank(lvl.min_fol_status);
-
-                if (meets_tier) {
-                    try { discord.add_member_role(m.discord_user_id, lvl.discord_role_id); }
-                    catch (...) {}
-                } else {
-                    try { discord.remove_member_role(m.discord_user_id, lvl.discord_role_id); }
-                    catch (...) {}
-                }
-            }
-            ++synced;
-        }
+        int synced = sync_perk_roles(perks, members, attendance, discord, year);
 
         auto& ctx = app.template get_context<ApiKeyMiddleware>(req);
         audit.log_system("perk.sync_roles", "perk", 0, "",

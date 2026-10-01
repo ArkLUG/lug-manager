@@ -1,4 +1,5 @@
 #include "routes/CalendarRoutes.hpp"
+#include "services/PerkProgress.hpp"
 #include "utils/LocalTime.hpp"
 #include <crow.h>
 #include <crow/mustache.h>
@@ -74,45 +75,55 @@ void register_calendar_routes(LugApp& app, CalendarGenerator& cal,
             ctx["perk_year"]          = year;
 
             auto levels = perks.find_by_year(year);
-            std::string achieved_name, achieved_desc;
-            std::string next_name, next_desc;
-            int next_meetings_needed = 0;
-            int next_events_needed = 0;
-            bool next_needs_dues = false;
-
             auto member = member_repo.find_by_id(auth_ctx.auth.member_id);
             bool is_paid = member && member->is_paid;
-            std::string member_fol = member ? member->fol_status : "afol";
+            auto pp = compute_perk_progress(levels, meeting_count, event_count, is_paid,
+                                            member ? member->fol_status : "afol");
 
-            for (const auto& lvl : levels) {
-                bool meets = meeting_count >= lvl.meeting_attendance_required &&
-                             event_count >= lvl.event_attendance_required &&
-                             (!lvl.requires_paid_dues || is_paid) &&
-                             fol_rank(member_fol) >= fol_rank(lvl.min_fol_status);
-                if (meets) {
-                    achieved_name = lvl.name;
-                    achieved_desc = lvl.description;
-                } else if (next_name.empty()) {
-                    next_name = lvl.name;
-                    next_desc = lvl.description;
-                    next_meetings_needed = std::max(0, lvl.meeting_attendance_required - meeting_count);
-                    next_events_needed = std::max(0, lvl.event_attendance_required - event_count);
-                    next_needs_dues = lvl.requires_paid_dues && !is_paid;
-                }
-            }
-
-            ctx["perk_achieved"]         = !achieved_name.empty();
-            ctx["perk_achieved_name"]    = achieved_name;
-            ctx["perk_achieved_desc"]    = achieved_desc;
-            ctx["perk_has_next"]         = !next_name.empty();
-            ctx["perk_next_name"]        = next_name;
-            ctx["perk_next_desc"]        = next_desc;
-            ctx["perk_next_meetings"]    = next_meetings_needed > 0 ? next_meetings_needed : 0;
-            ctx["perk_next_events"]      = next_events_needed > 0 ? next_events_needed : 0;
-            ctx["perk_show_meetings"]    = (next_meetings_needed > 0);
-            ctx["perk_show_events"]      = (next_events_needed > 0);
-            ctx["perk_next_needs_dues"]  = next_needs_dues;
+            ctx["perk_achieved"]         = !pp.achieved.empty();
+            ctx["perk_achieved_name"]    = pp.achieved;
+            ctx["perk_achieved_desc"]    = pp.achieved_desc;
+            ctx["perk_has_next"]         = !pp.next.empty();
+            ctx["perk_next_name"]        = pp.next;
+            ctx["perk_next_desc"]        = pp.next_desc;
+            ctx["perk_next_meetings"]    = pp.meetings_needed;
+            ctx["perk_next_events"]      = pp.events_needed;
+            ctx["perk_show_meetings"]    = pp.meetings_needed > 0;
+            ctx["perk_show_events"]      = pp.events_needed > 0;
+            ctx["perk_next_needs_dues"]  = pp.needs_dues;
+            ctx["perk_next_needs_fol"]   = !pp.needs_fol.empty();
             ctx["perk_is_paid"]          = is_paid;
+
+            // Admins: members within 2 check-ins of their next tier, closest
+            // first - a nudge list ("one more meeting gets you Gold").
+            if (auth_ctx.auth.is_admin() && !levels.empty()) {
+                AttendanceRepository::OverviewParams op;
+                op.year = year;
+                op.limit = 100000;
+                struct Close { std::string name; std::string tier; int m; int e; int gap; };
+                std::vector<Close> close;
+                for (const auto& s : attendance_repo.get_overview_paginated(op)) {
+                    int in_person = s.meeting_count - s.meeting_virtual_count;
+                    auto mp = compute_perk_progress(levels, in_person, s.event_count, s.is_paid, s.fol_status);
+                    if (mp.next.empty() || mp.needs_dues || !mp.needs_fol.empty()) continue;
+                    if (mp.gap() < 1 || mp.gap() > 2) continue;
+                    close.push_back({s.display_name, mp.next, mp.meetings_needed, mp.events_needed, mp.gap()});
+                }
+                std::stable_sort(close.begin(), close.end(),
+                                 [](const Close& x, const Close& y) { return x.gap < y.gap; });
+                if (close.size() > 10) close.resize(10);
+                crow::json::wvalue arr;
+                for (size_t i = 0; i < close.size(); ++i) {
+                    arr[i]["name"]     = close[i].name;
+                    arr[i]["tier"]     = close[i].tier;
+                    arr[i]["meetings"] = close[i].m;
+                    arr[i]["events"]   = close[i].e;
+                    arr[i]["show_m"]   = close[i].m > 0;
+                    arr[i]["show_e"]   = close[i].e > 0;
+                }
+                ctx["close_to_tier"]     = std::move(arr);
+                ctx["has_close_to_tier"] = !close.empty();
+            }
             ctx["has_perks"]             = !levels.empty();
         }
 

@@ -1,4 +1,5 @@
 #include "routes/AttendanceRoutes.hpp"
+#include "services/PerkProgress.hpp"
 #include "utils/HtmlEscape.hpp"
 #include <crow.h>
 #include <crow/mustache.h>
@@ -237,10 +238,7 @@ void register_attendance_routes(LugApp& app, AttendanceService& attendance,
 
             std::string tier_name;
             for (const auto& lvl : perk_levels) {
-                if (meeting_count_in_person >= lvl.meeting_attendance_required &&
-                    s.event_count >= lvl.event_attendance_required &&
-                    (!lvl.requires_paid_dues || s.is_paid) &&
-                    fol_rank(s.fol_status) >= fol_rank(lvl.min_fol_status)) {
+                if (meets_perk_level(lvl, meeting_count_in_person, s.event_count, s.is_paid, s.fol_status)) {
                     tier_name = lvl.name;
                 }
             }

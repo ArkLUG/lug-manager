@@ -153,10 +153,30 @@
       {{#perk_show_meetings}} &mdash; {{perk_next_meetings}} more meeting(s){{/perk_show_meetings}}
       {{#perk_show_events}} &mdash; {{perk_next_events}} more event(s){{/perk_show_events}}
       {{#perk_next_needs_dues}} &mdash; <span class="text-red-600 font-medium">dues required</span>{{/perk_next_needs_dues}}
+      {{#perk_next_needs_fol}} &mdash; <span class="text-gray-500">age requirement not met</span>{{/perk_next_needs_fol}}
     </p>
     {{/perk_has_next}}
   </div>
   {{/has_perks}}
+
+  {{#has_close_to_tier}}
+  <!-- Admin: members close to their next perk tier -->
+  <div class="bg-white rounded-xl border border-gray-200 p-6">
+    <h3 class="font-semibold text-gray-800 mb-1">Almost There ({{perk_year}})</h3>
+    <p class="text-xs text-gray-500 mb-3">Members within two check-ins of their next perk tier.</p>
+    <ul class="divide-y divide-gray-100 text-sm">
+      {{#close_to_tier}}
+      <li class="flex items-center justify-between py-1.5">
+        <span class="text-gray-800">{{name}}</span>
+        <span class="text-xs text-gray-500">
+          <span class="font-medium text-gray-700">{{tier}}</span>:
+          {{#show_m}}{{meetings}} meeting(s){{/show_m}}{{#show_m}}{{#show_e}} + {{/show_e}}{{/show_m}}{{#show_e}}{{events}} event(s){{/show_e}} to go
+        </span>
+      </li>
+      {{/close_to_tier}}
+    </ul>
+  </div>
+  {{/has_close_to_tier}}
 
   {{#is_admin}}
   <!-- Admin quick actions -->
