@@ -55,3 +55,25 @@ TEST_F(IntegrationTest, DisplayCsvNeutralizesFormulas) {
     auto csv = GET(base + ".csv", admin_token);
     expect_contains(csv, "\"'=HYPERLINK");
 }
+
+// Public-show visitor counter.
+TEST_F(IntegrationTest, VisitorCounterTalliesAndClamps) {
+    auto ev = event_svc->create(show_event());
+    std::string id = std::to_string(ev.id);
+    EXPECT_EQ(GET("/events/" + id + "/counter", member_token).code, 403);
+    auto page = GET("/events/" + id + "/counter", admin_token);
+    EXPECT_EQ(page.code, 200);
+    expect_contains(page, "Tap for each public visitor");
+    POST("/events/" + id + "/visitors", "kind=kids&delta=1", admin_token);
+    POST("/events/" + id + "/visitors", "kind=kids&delta=1", admin_token);
+    auto r = POST("/events/" + id + "/visitors", "kind=adults&delta=1", admin_token);
+    expect_contains(r, "Total 3");
+    POST("/events/" + id + "/visitors", "kind=teens&delta=-1", admin_token); // clamps at 0
+    auto e = event_repo->find_by_id(ev.id);
+    EXPECT_EQ(e->public_kids, 2);
+    EXPECT_EQ(e->public_adults, 1);
+    EXPECT_EQ(e->public_teens, 0);
+    EXPECT_EQ(POST("/events/" + id + "/visitors", "kind=dogs&delta=1", admin_token).code, 400);
+    EXPECT_EQ(POST("/events/" + id + "/visitors", "kind=kids&delta=50", admin_token).code, 400);
+    EXPECT_EQ(POST("/events/" + id + "/visitors", "kind=kids&delta=1", member_token).code, 403);
+}

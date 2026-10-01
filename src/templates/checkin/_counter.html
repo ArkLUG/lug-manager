@@ -1,0 +1,21 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+  <title>Visitor Counter — {{title}}</title>
+  <link rel="stylesheet" href="/static/tailwind.min.css?v={{asset_v}}">
+  <script src="/static/theme.js?v={{asset_v}}"></script>
+  <link rel="stylesheet" href="/static/theme.css?v={{asset_v}}">
+  <link rel="manifest" href="/manifest.webmanifest">
+  <meta name="theme-color" content="#111827">
+  <script src="/static/vendor/htmx-1.9.12.min.js?v={{asset_v}}"></script>
+</head>
+<body class="bg-gray-100 min-h-screen p-4">
+  <div class="max-w-md mx-auto space-y-4">
+    <h1 class="text-xl font-bold text-gray-900 text-center">{{title}}</h1>
+    <p class="text-sm text-gray-500 text-center">Tap for each public visitor. Totals feed the event report.</p>
+    {{{counter}}}
+  </div>
+</body>
+</html>

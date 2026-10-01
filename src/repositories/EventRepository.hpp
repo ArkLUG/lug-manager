@@ -31,6 +31,10 @@ public:
                                 const std::string& discord_thread_id,
                                 const std::string& discord_event_id);
     bool     update_lug_message_id(int64_t id, const std::string& message_id);
+    // Public visitor tally (kids/teens/adults) for the visitor counter:
+    // atomically adds delta (clamped at 0) and returns {kids, teens, adults}.
+    struct Visitors { int kids = 0, teens = 0, adults = 0; };
+    Visitors add_visitors(int64_t id, const std::string& kind, int delta);
     // lug_events.discord_thread_owned - see migration 046
     bool     is_thread_owned(int64_t id);
     void     set_thread_owned(int64_t id, bool owned);

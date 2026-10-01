@@ -431,3 +431,19 @@ void EventRepository::set_thread_owned(int64_t id, bool owned) {
     stmt.bind(2, id);
     stmt.step();
 }
+
+EventRepository::Visitors EventRepository::add_visitors(int64_t id, const std::string& kind, int delta) {
+    // Column name comes from a fixed whitelist, never from input.
+    const char* col = kind == "kids" ? "public_kids" : kind == "teens" ? "public_teens" : "public_adults";
+    auto stmt = db_.prepare(std::string("UPDATE lug_events SET ") + col + " = MAX(0, COALESCE(" + col +
+                            ",0) + ?) WHERE id=? RETURNING public_kids, public_teens, public_adults");
+    stmt.bind(1, static_cast<int64_t>(delta));
+    stmt.bind(2, id);
+    Visitors v;
+    if (stmt.step()) {
+        v.kids = static_cast<int>(stmt.col_int(0));
+        v.teens = static_cast<int>(stmt.col_int(1));
+        v.adults = static_cast<int>(stmt.col_int(2));
+    }
+    return v;
+}

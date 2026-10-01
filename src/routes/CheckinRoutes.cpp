@@ -512,4 +512,59 @@ void register_checkin_routes(LugApp& app,
         res.write(html.str());
         return res;
     });
+
+    // ── Public-show visitor counter ─────────────────────────────────────────
+    // Phone-friendly tap counter for organizers at a public show; fills the
+    // event's public kids/teens/adults totals used in reports.
+    auto counter_html = [](int64_t id, const EventRepository::Visitors& v) {
+        auto btn = [&](const char* kind, const char* label, int n, const char* color) {
+            std::string k = kind;
+            return "<div class=\"flex items-center gap-3\">"
+                   "<button hx-post=\"/events/" + std::to_string(id) + "/visitors\" hx-vals='{\"kind\":\"" + k +
+                   "\",\"delta\":\"-1\"}' hx-target=\"#visitor-counter\" hx-swap=\"outerHTML\" "
+                   "aria-label=\"Undo one " + label + "\" class=\"w-14 h-14 rounded-xl border border-gray-300 text-2xl text-gray-600\">&minus;</button>"
+                   "<button hx-post=\"/events/" + std::to_string(id) + "/visitors\" hx-vals='{\"kind\":\"" + k +
+                   "\",\"delta\":\"1\"}' hx-target=\"#visitor-counter\" hx-swap=\"outerHTML\" "
+                   "class=\"flex-1 h-20 rounded-xl " + std::string(color) + " text-gray-900 text-2xl font-bold\">" +
+                   label + " <span class=\"ml-2\">" + std::to_string(n) + "</span></button></div>";
+        };
+        return "<div id=\"visitor-counter\" class=\"space-y-3\">" +
+               btn("kids", "Kids", v.kids, "bg-yellow-300") + btn("teens", "Teens", v.teens, "bg-sky-300") +
+               btn("adults", "Adults", v.adults, "bg-green-300") +
+               "<p class=\"text-center text-gray-500\">Total " + std::to_string(v.kids + v.teens + v.adults) + "</p></div>";
+    };
+
+    CROW_ROUTE(app, "/events/<int>/counter")([&, counter_html](const crow::request& req, int id) {
+        crow::response res;
+        if (!require_auth(req, res, app)) return res;
+        auto ev = events.get(id);
+        if (!ev) { res.code = 404; return res; }
+        if (!can_manage_event(req, app, *ev, chapter_members)) { res.code = 403; return res; }
+        crow::mustache::context ctx;
+        ctx["title"] = ev->title;
+        ctx["asset_v"] = asset_version();
+        ctx["counter"] = counter_html(ev->id, {ev->public_kids, ev->public_teens, ev->public_adults});
+        res.add_header("Content-Type", "text/html; charset=utf-8");
+        res.write(crow::mustache::load("checkin/_counter.html").render(ctx).dump());
+        return res;
+    });
+
+    CROW_ROUTE(app, "/events/<int>/visitors").methods("POST"_method)([&, counter_html](const crow::request& req, int id) {
+        crow::response res;
+        if (!require_auth(req, res, app)) return res;
+        auto ev = events.get(id);
+        if (!ev) { res.code = 404; return res; }
+        if (!can_manage_event(req, app, *ev, chapter_members)) { res.code = 403; return res; }
+        auto params = crow::query_string("?" + req.body);
+        std::string kind = params.get("kind") ? params.get("kind") : "";
+        std::string d = params.get("delta") ? params.get("delta") : "";
+        if ((kind != "kids" && kind != "teens" && kind != "adults") || (d != "1" && d != "-1")) {
+            res.code = 400;
+            return res;
+        }
+        auto v = event_repo.add_visitors(ev->id, kind, d == "1" ? 1 : -1);
+        res.add_header("Content-Type", "text/html; charset=utf-8");
+        res.write(counter_html(ev->id, v));
+        return res;
+    });
 }
