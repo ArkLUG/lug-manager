@@ -26,6 +26,7 @@ A modern web application for managing LEGO User Groups (LUGs). Built with **C++ 
 - **Backups**: Daily consistent SQLite snapshots in `data/backups` (on by default, keeps the newest 14), plus "Back up now" and download links at Settings > Backups (admin).
 - **Signed-in Devices**: The dashboard lists your active sessions (browser and OS) with "Sign out everywhere else"; admins can sign a member out on all devices from their profile.
 - **Check-in Kiosk**: A full-screen page for a tablet or projector at the venue (Kiosk button next to the QR code) showing a large check-in QR code, a live count and the latest arrivals.
+- **More Calendar Feeds**: Per-chapter feeds at `/calendar/chapter/<id>/feed.ics` (add `?lug_wide=0` to drop LUG-wide items), and a personal private feed (dashboard > Subscribe) that includes private meetings/events with full details via a secret, regenerable link.
 - **Dark Mode**: Follows the system light/dark setting by default; a Light / System / Dark switch in the sidebar overrides it per browser. Applies to the check-in page too.
 - **Audit Log**: Every action is tracked — who did what, when, to which entity, from what IP. Admin-only viewer with search, category filtering, and pagination. 47 distinct audited actions covering members, meetings, events, chapters, attendance, check-ins, perks, settings, syncs, and role mappings.
 - **Discord Integration**: OAuth2 login, scheduled events, forum threads, announcements, role sync, perk role assignment, voice channel selection for virtual meetings, member sync every 6 hours

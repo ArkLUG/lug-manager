@@ -1,4 +1,6 @@
 #include "routes/CalendarRoutes.hpp"
+#include "auth/SessionStore.hpp"
+#include "utils/Crypto.hpp"
 #include "services/PerkProgress.hpp"
 #include "services/DuesService.hpp"
 #include "utils/LocalTime.hpp"
@@ -22,6 +24,55 @@ void register_calendar_routes(LugApp& app, CalendarGenerator& cal,
     });
 
     // GET /dashboard - main dashboard page
+    // GET /calendar/chapter/<id>/feed.ics[?lug_wide=0] - one chapter's items
+    // (+ LUG-wide items unless lug_wide=0). Public, like /calendar.ics.
+    CROW_ROUTE(app, "/calendar/chapter/<int>/feed.ics")([&](const crow::request& req, int chapter_id) {
+        crow::response res;
+        CalendarGenerator::Filter f;
+        f.chapter_id = chapter_id;
+        const char* lw = req.url_params.get("lug_wide");
+        f.include_lug_wide = !(lw && std::string(lw) == "0");
+        f.name_suffix = " (chapter " + std::to_string(chapter_id) + ")";
+        res.write(cal.get_ics(f));
+        res.add_header("Content-Type", "text/calendar; charset=utf-8");
+        res.add_header("Cache-Control", "public, max-age=300");
+        return res;
+    });
+
+    // GET /calendar/me/<token>/feed.ics - personal feed with full details of
+    // private items. The token is the credential (stored hashed).
+    CROW_ROUTE(app, "/calendar/me/<string>/feed.ics")([&](const crow::request&, const std::string& token) {
+        crow::response res;
+        int64_t member_id = token.size() == 64 ? member_repo.find_by_calendar_token_hash(sha256_hex(token)) : 0;
+        if (member_id == 0) { res.code = 404; return res; }
+        CalendarGenerator::Filter f;
+        f.full_details = true;
+        f.name_suffix = " (private)";
+        res.write(cal.get_ics(f));
+        res.add_header("Content-Type", "text/calendar; charset=utf-8");
+        res.add_header("Cache-Control", "private, no-store");
+        return res;
+    });
+
+    // POST /account/calendar-token - (re)generate the personal feed URL
+    CROW_ROUTE(app, "/account/calendar-token").methods("POST"_method)([&](const crow::request& req) {
+        crow::response res;
+        if (!require_auth(req, res, app)) return res;
+        auto& a = app.get_context<AuthMiddleware>(req).auth;
+        std::string token = SessionStore::generate_token();
+        member_repo.set_calendar_token_hash(a.member_id, sha256_hex(token));
+        std::string url = "/calendar/me/" + token + "/feed.ics";
+        res.add_header("Content-Type", "text/html; charset=utf-8");
+        res.write("<div class=\"space-y-1\"><p class=\"text-xs text-gray-600\">Your private feed (includes private "
+                  "meetings/events - don't share it). Copy it now; it won't be shown again. Generating a new one "
+                  "disables the old link.</p><input readonly onclick=\"this.select()\" "
+                  "class=\"w-full text-xs font-mono border border-gray-300 rounded px-2 py-1\" "
+                  "data-path=\"" + url + "\" id=\"private-cal-url\"></div>"
+                  "<script>(function(){var i=document.getElementById('private-cal-url');"
+                  "i.value=window.location.origin+i.dataset.path;})();</script>");
+        return res;
+    });
+
     CROW_ROUTE(app, "/dashboard")([&](const crow::request& req) {
         crow::response res;
         if (!require_auth(req, res, app)) return res;
@@ -48,6 +99,7 @@ void register_calendar_routes(LugApp& app, CalendarGenerator& cal,
             ctx["member_phone"]         = member_info->phone;
             ctx["member_chapter"]       = member_info->chapter_name;
             ctx["member_has_chapter"]   = !member_info->chapter_name.empty();
+            ctx["member_chapter_id"]    = member_info->chapter_id;
             ctx["member_is_paid"]       = member_info->is_paid;
             ctx["member_paid_until"]    = member_info->paid_until;
             ctx["member_fol_status"]    = member_info->fol_status.empty() ? "afol" : member_info->fol_status;

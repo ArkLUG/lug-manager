@@ -21,6 +21,18 @@ public:
     // Update timezone at runtime (called when lug_timezone setting changes)
     void set_timezone(const std::string& tz);
 
+    // Feed variants (uncached):
+    //  chapter_id > 0  -> only that chapter's items (+ LUG-wide if include_lug_wide)
+    //  full_details    -> private items show real title/description/location
+    //                     (only for authenticated personal feeds)
+    struct Filter {
+        int64_t     chapter_id = 0;
+        bool        include_lug_wide = true;
+        bool        full_details = false;
+        std::string name_suffix;   // appended to X-WR-CALNAME
+    };
+    std::string get_ics(const Filter& f);
+
 private:
     MeetingRepository&  meetings_;
     EventRepository&    events_;
@@ -35,6 +47,7 @@ private:
     mutable std::mutex                    mutex_;
 
     std::string generate_ics() const;
+    std::string generate_ics(const Filter& f) const;
     static std::string escape_ical(const std::string& s);
     static std::string iso_to_ical_dt(const std::string& iso);
     static std::string fold_line(const std::string& prop, const std::string& val);

@@ -179,13 +179,22 @@ std::string CalendarGenerator::make_vevent(const std::string& uid,
     return block;
 }
 
+std::string CalendarGenerator::get_ics(const Filter& f) {
+    std::lock_guard<std::mutex> lock(mutex_);
+    return generate_ics(f);
+}
+
 std::string CalendarGenerator::generate_ics() const {
+    return generate_ics(Filter());
+}
+
+std::string CalendarGenerator::generate_ics(const Filter& f) const {
     std::ostringstream oss;
 
     oss << "BEGIN:VCALENDAR\r\n";
     oss << "VERSION:2.0\r\n";
     oss << "PRODID:-//LUG-Manager//LUG-Manager 1.0//EN\r\n";
-    oss << fold_line("X-WR-CALNAME", calendar_name_);
+    oss << fold_line("X-WR-CALNAME", calendar_name_ + f.name_suffix);
     oss << fold_line("X-WR-TIMEZONE", timezone_);
     oss << "CALSCALE:GREGORIAN\r\n";
     oss << "METHOD:PUBLISH\r\n";
@@ -205,15 +214,21 @@ std::string CalendarGenerator::generate_ics() const {
     };
 
     // Add meetings
+    auto wanted = [&f](const std::string& scope, int64_t chapter_id) {
+        if (f.chapter_id <= 0) return true;
+        return chapter_id == f.chapter_id || (f.include_lug_wide && scope == "lug_wide");
+    };
+
     auto meetings = meetings_.find_all();
     for (const auto& m : meetings) {
+        if (!wanted(m.scope, m.chapter_id)) continue;
         std::string uid = m.ical_uid.empty()
             ? ("meeting-" + std::to_string(m.id) + "@lug-manager")
             : m.ical_uid;
         // This feed is served with no auth at all (see calendar.ics) - private
         // meetings get the same generic placeholder treatment as the Google
         // Calendar sync, so it shows the LUG is busy without exposing details.
-        if (m.is_private) {
+        if (m.is_private && !f.full_details) {
             oss << make_vevent(uid, "Private LUG Meeting", "", "",
                                m.start_time, m.end_time, m.status, m.updated_at,
                                timezone_);
@@ -228,10 +243,11 @@ std::string CalendarGenerator::generate_ics() const {
     // Add LUG events
     auto events = events_.find_all();
     for (const auto& e : events) {
+        if (!wanted(e.scope, e.chapter_id)) continue;
         std::string uid = e.ical_uid.empty()
             ? ("event-" + std::to_string(e.id) + "@lug-manager")
             : e.ical_uid;
-        if (e.is_private) {
+        if (e.is_private && !f.full_details) {
             oss << make_vevent(uid, "Private LUG Event", "", "",
                                e.start_time, e.end_time, e.status, e.updated_at,
                                timezone_, true);

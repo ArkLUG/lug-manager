@@ -412,3 +412,17 @@ void MemberRepository::set_role_source(int64_t id, const std::string& source) {
     stmt.bind(2, id);
     stmt.step();
 }
+
+void MemberRepository::set_calendar_token_hash(int64_t id, const std::string& hash) {
+    auto stmt = db_.prepare("UPDATE members SET calendar_token_hash=? WHERE id=?");
+    stmt.bind(1, hash);
+    stmt.bind(2, id);
+    stmt.step();
+}
+
+int64_t MemberRepository::find_by_calendar_token_hash(const std::string& hash) {
+    if (hash.empty()) return 0;
+    auto stmt = db_.prepare("SELECT id FROM members WHERE calendar_token_hash=?");
+    stmt.bind(1, hash);
+    return stmt.step() ? stmt.col_int(0) : 0;
+}
