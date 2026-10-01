@@ -1,0 +1,28 @@
+<div id="public-shows-card" class="bg-white rounded-xl border border-gray-200 p-6">
+  <h2 class="text-xl font-bold text-gray-900 mb-1">Public Shows Page</h2>
+  <p class="text-sm text-gray-500 mb-4">A no-login page listing upcoming events for the public - for your website or social media. Private and cancelled events are never shown.</p>
+  <form hx-post="/settings/public-shows" hx-target="#public-shows-card" hx-swap="outerHTML" class="space-y-3 text-sm">
+    <label class="flex items-center gap-2 text-gray-700 cursor-pointer">
+      <input type="checkbox" name="enabled" value="1" {{#enabled}}checked{{/enabled}} class="w-4 h-4 accent-yellow-400 rounded"> Publish the page
+    </label>
+    <input name="title" value="{{title}}" maxlength="100" placeholder="Upcoming shows" aria-label="Page title"
+           class="w-full border border-gray-300 rounded-lg px-3 py-2">
+    <textarea name="intro" rows="2" maxlength="1000" placeholder="Intro text (optional), e.g. Come see our LEGO displays!"
+              class="w-full border border-gray-300 rounded-lg px-3 py-2">{{intro}}</textarea>
+    <div class="flex flex-wrap items-center gap-3">
+      <button class="px-4 py-2 bg-gray-800 text-white rounded-lg font-medium hover:bg-gray-700">Save</button>
+      {{#enabled}}
+      <a href="/shows" target="_blank" rel="noopener" class="text-indigo-600 hover:text-indigo-800">Open /shows</a>
+      <span class="text-gray-400">·</span>
+      <a href="/shows.json" target="_blank" rel="noopener" class="text-indigo-600 hover:text-indigo-800">JSON</a>
+      {{/enabled}}
+      {{#flash}}<span class="text-green-600">{{flash}}</span>{{/flash}}
+    </div>
+    {{#enabled}}
+    <div>
+      <div class="text-xs text-gray-500 mb-1">Embed on your website:</div>
+      <code class="block text-xs bg-gray-50 border border-gray-200 rounded p-2 break-all select-all">&lt;iframe src="https://YOUR-LUG-MANAGER/shows?embed=1" style="width:100%;height:600px;border:0" title="Upcoming shows"&gt;&lt;/iframe&gt;</code>
+    </div>
+    {{/enabled}}
+  </form>
+</div>

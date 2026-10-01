@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>{{title}}</title>
+  <link rel="stylesheet" href="/static/tailwind.min.css?v={{asset_v}}">
+  <link rel="stylesheet" href="/static/theme.css?v={{asset_v}}">
+  <script src="/static/theme.js?v={{asset_v}}"></script>
+  <link rel="alternate" type="text/calendar" title="Calendar" href="/calendar.ics">
+</head>
+<body class="bg-gray-50 text-gray-900">
+  <main class="max-w-3xl mx-auto px-4 {{#embed}}py-3{{/embed}}{{^embed}}py-10{{/embed}}">
+    {{^embed}}
+    <header class="flex items-center gap-4 mb-6">
+      {{#has_logo}}<img src="/branding/logo?v={{logo_v}}" alt="" class="w-14 h-14 object-contain rounded-lg">{{/has_logo}}
+      <div>
+        <h1 class="text-2xl font-bold">{{title}}</h1>
+        {{#intro}}<p class="text-gray-600 mt-1 whitespace-pre-line">{{intro}}</p>{{/intro}}
+      </div>
+    </header>
+    {{/embed}}
+    {{#has_shows}}
+    <ul class="space-y-4">
+      {{#shows}}
+      <li class="bg-white border border-gray-200 rounded-xl p-5">
+        <div class="flex flex-wrap items-baseline justify-between gap-2">
+          <h2 class="text-lg font-semibold">{{title}}</h2>
+          {{#tentative}}<span class="text-xs px-2 py-0.5 rounded bg-amber-100 text-amber-800">Date to be confirmed</span>{{/tentative}}
+        </div>
+        <p class="text-sm text-gray-700 mt-1">{{when}}</p>
+        {{#location}}<p class="text-sm text-gray-600">{{location}}</p>{{/location}}
+        {{#fee}}<p class="text-sm text-gray-600">Admission: {{fee}}</p>{{/fee}}
+        {{#description_html}}<div class="prose prose-sm max-w-none text-gray-700 mt-2">{{{description_html}}}</div>{{/description_html}}
+      </li>
+      {{/shows}}
+    </ul>
+    {{/has_shows}}
+    {{^has_shows}}<p class="text-gray-500">No upcoming shows right now - check back soon!</p>{{/has_shows}}
+    {{^embed}}<p class="text-xs text-gray-400 mt-8"><a href="/calendar.ics" class="underline">Subscribe to the calendar</a></p>{{/embed}}
+  </main>
+</body>
+</html>

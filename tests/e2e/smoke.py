@@ -106,6 +106,10 @@ if mb:
 errs("/members/merge modal")
 shot("member_merge")
 
+# Public shows page (enabled by the caller's test DB; 404 otherwise)
+visit("/shows"); shot("shows")
+visit("/shows?embed=1"); shot("shows_embed")
+
 # Settings (TomSelect), backups, attendance overview, help, audit
 for p in ("/settings", "/settings/backups", "/attendance/overview", "/help", "/audit", "/chapters", "/events", "/perks", "/challenges", "/account", "/inventory", "/treasury"):
     visit(p, "#main-content")

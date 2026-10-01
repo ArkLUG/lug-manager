@@ -68,6 +68,7 @@
 #include "routes/InventoryRoutes.hpp"
 #include "routes/TreasuryRoutes.hpp"
 #include "routes/MemberMergeRoutes.hpp"
+#include "routes/ShowsRoutes.hpp"
 #include <memory>
 
 struct Services {
