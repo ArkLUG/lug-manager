@@ -441,3 +441,24 @@ TEST_F(IntegrationTest, StrictCspNonceAndNoInlineHandlers) {
     auto r2 = GET("/dashboard", admin_token);
     EXPECT_EQ(r2.body.find("<script nonce=\"" + nonce + "\">"), std::string::npos);
 }
+
+// A failed COMMIT must not leave the shared connection mid-transaction.
+TEST_F(IntegrationTest, FailedCommitRollsBack) {
+    db->execute("CREATE TABLE commit_probe (v INTEGER)");
+    db->execute("INSERT INTO commit_probe VALUES (1), (2)");
+    try {
+        Transaction tx(*db);
+        db->execute("INSERT INTO commit_probe VALUES (3)");
+        // A write statement left mid-result blocks COMMIT.
+        auto pending = db->prepare("UPDATE commit_probe SET v = v RETURNING v");
+        pending.step();
+        tx.commit(); // SQLite: cannot commit - SQL statements in progress
+    } catch (const std::exception&) {}
+    // The connection is usable again for new transactions.
+    Transaction again(*db);
+    db->execute("INSERT INTO commit_probe VALUES (4)");
+    again.commit();
+    auto n = db->prepare("SELECT COUNT(*) FROM commit_probe");
+    ASSERT_TRUE(n.step());
+    EXPECT_EQ(n.col_int(0), 3); // 1, 2 and 4 - the failed transaction's 3 was rolled back
+}

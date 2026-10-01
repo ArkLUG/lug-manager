@@ -131,7 +131,16 @@ void Transaction::commit() {
     // An inner scope already rolled everything back (its exception was
     // caught somewhere inside this one) - committing now would be a lie.
     if (db_.tx_depth_ <= 0) throw DbError("commit after transaction was rolled back");
-    if (--db_.tx_depth_ == 0) db_.execute("COMMIT");
+    if (--db_.tx_depth_ == 0) {
+        try {
+            db_.execute("COMMIT");
+        } catch (...) {
+            // Never leave the shared connection inside an open transaction:
+            // every later BEGIN would fail ("transaction within a transaction").
+            try { db_.execute("ROLLBACK"); } catch (...) {}
+            throw;
+        }
+    }
 }
 
 Transaction::~Transaction() {
