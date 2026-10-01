@@ -7,6 +7,8 @@
 #include <crow.h>
 #include <crow/mustache.h>
 #include <ctime>
+#include <chrono>
+#include <mutex>
 
 void register_calendar_routes(LugApp& app, CalendarGenerator& cal,
                                PerkLevelRepository& perks,
@@ -150,20 +152,38 @@ void register_calendar_routes(LugApp& app, CalendarGenerator& cal,
             // Admins: members within 2 check-ins of their next tier, closest
             // first - a nudge list ("one more meeting gets you Gold").
             if (auth_ctx.auth.is_admin() && !levels.empty()) {
-                AttendanceRepository::OverviewParams op;
-                op.year = year;
-                op.limit = 100000;
+                // The full-overview query is the heaviest thing on the dashboard;
+                // admins reload it constantly, so cache the result for 5 minutes.
                 struct Close { std::string name; std::string tier; int m; int e; int gap; };
+                static std::mutex close_mutex;
+                static std::chrono::steady_clock::time_point close_at;
+                static int close_year = 0;
+                static const void* close_src = nullptr; // per database (tests run several)
+                static std::vector<Close> close_cached;
                 std::vector<Close> close;
-                for (const auto& s : attendance_repo.get_overview_paginated(op)) {
-                    int in_person = s.meeting_count - s.meeting_virtual_count;
-                    auto mp = compute_perk_progress(levels, in_person, s.event_count, s.is_paid, s.fol_status);
-                    if (mp.next.empty() || mp.needs_dues || !mp.needs_fol.empty()) continue;
-                    if (mp.gap() < 1 || mp.gap() > 2) continue;
-                    close.push_back({s.display_name, mp.next, mp.meetings_needed, mp.events_needed, mp.gap()});
+                {
+                    std::lock_guard<std::mutex> lock(close_mutex);
+                    if (close_year == year && close_src == &attendance_repo && std::chrono::steady_clock::now() - close_at < std::chrono::minutes(5)) {
+                        close = close_cached;
+                    } else {
+                        AttendanceRepository::OverviewParams op;
+                        op.year = year;
+                        op.limit = 100000;
+                        for (const auto& s : attendance_repo.get_overview_paginated(op)) {
+                            int in_person = s.meeting_count - s.meeting_virtual_count;
+                            auto mp = compute_perk_progress(levels, in_person, s.event_count, s.is_paid, s.fol_status);
+                            if (mp.next.empty() || mp.needs_dues || !mp.needs_fol.empty()) continue;
+                            if (mp.gap() < 1 || mp.gap() > 2) continue;
+                            close.push_back({s.display_name, mp.next, mp.meetings_needed, mp.events_needed, mp.gap()});
+                        }
+                        std::stable_sort(close.begin(), close.end(),
+                                         [](const Close& x, const Close& y) { return x.gap < y.gap; });
+                        close_cached = close;
+                        close_at = std::chrono::steady_clock::now();
+                        close_year = year;
+                        close_src = &attendance_repo;
+                    }
                 }
-                std::stable_sort(close.begin(), close.end(),
-                                 [](const Close& x, const Close& y) { return x.gap < y.gap; });
                 if (close.size() > 10) close.resize(10);
                 crow::json::wvalue arr;
                 for (size_t i = 0; i < close.size(); ++i) {

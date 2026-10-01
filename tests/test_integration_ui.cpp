@@ -279,3 +279,19 @@ TEST_F(IntegrationTest, CalendarEmptyIsValid) {
 // New feature tests — role redesign, PII hiding, suppress, perks, notes
 // ═══════════════════════════════════════════════════════════════════════════
 
+
+TEST_F(IntegrationTest, AlmostThereListsMembersNearNextTier) {
+    std::time_t now = std::time(nullptr);
+    std::tm tm{}; localtime_r(&now, &tm);
+    int year = tm.tm_year + 1900;
+    PerkLevel p;
+    p.name = "Silver Test Tier";
+    p.meeting_attendance_required = 1;
+    p.min_fol_status = "kfol";
+    p.year = year;
+    perk_level_repo->create(p);
+    auto r = GET("/dashboard", admin_token);
+    EXPECT_EQ(r.code, 200);
+    expect_contains(r, "Almost There");
+    expect_contains(r, "Silver Test Tier");
+}
