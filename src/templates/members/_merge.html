@@ -1,0 +1,23 @@
+<div class="p-6">
+  <div class="flex items-center justify-between mb-4">
+    <h3 class="text-lg font-semibold text-gray-800">Merge duplicate members</h3>
+    <button data-action="close-modal" aria-label="Close" class="text-gray-400 hover:text-gray-600 p-1 rounded">
+      <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+    </button>
+  </div>
+  <p class="text-sm text-gray-600 mb-4">Everything from the duplicate (check-ins, RSVPs, dues, displays, shifts, photos, chapter roles, loans) moves to the record you keep, blank fields are filled from the duplicate, and the duplicate is deleted.</p>
+  <form hx-post="/members/merge/preview" hx-target="#merge-preview" hx-swap="innerHTML" class="space-y-3 text-sm">
+    <label class="block">Keep
+      <select name="keep_id" required data-tomselect="single" class="mt-1 w-full">
+        <option value="">Choose…</option>
+        {{#members}}<option value="{{id}}">{{label}}</option>{{/members}}
+      </select></label>
+    <label class="block">Merge in and remove
+      <select name="drop_id" required data-tomselect="single" class="mt-1 w-full">
+        <option value="">Choose…</option>
+        {{#members}}<option value="{{id}}">{{label}}</option>{{/members}}
+      </select></label>
+    <button class="px-4 py-2 bg-gray-800 text-white rounded-lg text-sm font-medium hover:bg-gray-700">Preview</button>
+  </form>
+  <div id="merge-preview" class="mt-4"></div>
+</div>

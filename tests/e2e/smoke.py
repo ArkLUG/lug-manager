@@ -97,6 +97,15 @@ if nb:
 errs("/meetings/new form")
 shot("meeting_form")
 
+# Merge-duplicates modal: Tom Select initialises on modal-loaded selects
+visit("/members", "#main-content")
+mb = d.find_elements(By.CSS_SELECTOR, 'button[hx-get="/members/merge"]')
+if mb:
+    mb[0].click(); time.sleep(1.2)
+    check(len(d.find_elements(By.CSS_SELECTOR, "#modal .ts-wrapper")) >= 2, "merge pickers use Tom Select")
+errs("/members/merge modal")
+shot("member_merge")
+
 # Settings (TomSelect), backups, attendance overview, help, audit
 for p in ("/settings", "/settings/backups", "/attendance/overview", "/help", "/audit", "/chapters", "/events", "/perks", "/challenges", "/account", "/inventory", "/treasury"):
     visit(p, "#main-content")
