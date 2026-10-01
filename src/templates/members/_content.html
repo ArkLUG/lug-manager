@@ -217,7 +217,7 @@
         + '<button onclick="setMemberDues(' + row.id + ',\'' + escHtml(row.display_name).replace(/'/g,'&#39;') + '\')"'
         + ' class="text-xs px-2 py-1 text-gray-600 border border-gray-300 rounded hover:bg-gray-50">Dues</button>';
       {{#is_admin}}
-      html += '<button hx-delete="/members/' + row.id + '" hx-confirm="Delete ' + escHtml(row.display_name) + '? This cannot be undone." hx-swap="none"'
+      html += '<button hx-delete="/members/' + row.id + '" hx-confirm="Delete ' + escHtml(row.display_name) + '?' + (row.discord_username ? ' This also removes them from the Discord server.' : '') + ' This cannot be undone." hx-swap="none"'
         + ' class="text-xs px-2 py-1 text-red-500 border border-red-300 rounded hover:bg-red-50">Delete</button>';
       {{/is_admin}}
       {{/can_see_dues}}
