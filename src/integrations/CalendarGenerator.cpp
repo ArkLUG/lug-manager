@@ -46,8 +46,11 @@ std::string CalendarGenerator::escape_ical(const std::string& s) {
         if (c == '\\')      result += "\\\\";
         else if (c == ',')  result += "\\,";
         else if (c == ';')  result += "\\;";
-        else if (c == '\r' && i + 1 < s.size() && s[i + 1] == '\n') {
-            result += "\\n"; ++i;
+        else if (c == '\r') {
+            // CRLF, or a lone CR (some clients treat it as a line break, so
+            // leaving it raw would let a title inject extra iCal properties)
+            result += "\\n";
+            if (i + 1 < s.size() && s[i + 1] == '\n') ++i;
         }
         else if (c == '\n') result += "\\n";
         else                result += c;

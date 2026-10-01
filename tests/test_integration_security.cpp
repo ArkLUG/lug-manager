@@ -245,3 +245,18 @@ TEST_F(IntegrationTest, PathLikeDiscordIdRejected) {
     EXPECT_NE(r.code, 201);
     EXPECT_FALSE(member_repo->find_by_discord_id("../../channels/123").has_value());
 }
+
+// A bare CR in a title must not survive into the public iCal feed, where some
+// clients treat it as a line break (property injection).
+TEST_F(IntegrationTest, IcalEscapesBareCarriageReturn) {
+    Meeting m;
+    m.title = "Bad\rX-INJECTED:1";
+    m.start_time = "2026-07-01T19:00:00";
+    m.end_time = "2026-07-01T21:00:00";
+    m.scope = "lug_wide";
+    meeting_svc->create(m);
+    auto r = GET("/calendar.ics");
+    EXPECT_EQ(r.code, 200);
+    EXPECT_EQ(r.body.find("\rX-INJECTED"), std::string::npos);
+    EXPECT_NE(r.body.find("X-INJECTED"), std::string::npos); // still present, escaped
+}
