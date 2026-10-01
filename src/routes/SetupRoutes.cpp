@@ -55,6 +55,17 @@ std::string render_checklist(SettingsRepository& settings, SqliteDatabase& db, c
         if (st.step()) mapped = static_cast<int>(st.col_int(0));
     }
     bool roles = mapped > 0;
+    // Without Discord: step 3 is just "you're not using it", step 4 is having
+    // members with email addresses who can be sent set-password links.
+    bool discord_on = Features::on("discord");
+    ctx["discord_on"] = discord_on;
+    if (!discord_on) {
+        discord = true;
+        auto st = db.prepare("SELECT COUNT(*) FROM members WHERE COALESCE(email,'') <> ''");
+        int with_email = st.step() ? static_cast<int>(st.col_int(0)) : 0;
+        roles = with_email >= 2;
+        ctx["members_with_email"] = with_email;
+    }
     ctx["lug_name"] = name;
     ctx["timezone"] = tz;
     ctx["basics_done"] = basics;

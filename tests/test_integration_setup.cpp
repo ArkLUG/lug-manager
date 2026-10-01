@@ -46,7 +46,7 @@ TEST_F(IntegrationTest, SetupChecklistForAdmins) {
     EXPECT_EQ(settings_repo->get("lug_timezone", ""), "America/Denver");
     expect_contains(GET("/dashboard", admin_token), ">Test LUG</div>");     // sidebar shows the name
 
-    auto f = POST("/setup/features", "dues=1&perks=1", admin_token);      // everything else off
+    auto f = POST("/setup/features", "dues=1&perks=1&discord=1", admin_token);      // everything else off
     expect_contains(f, "2 of 4 done");
     EXPECT_FALSE(Features::on("chapters"));
     EXPECT_TRUE(Features::on("dues"));
@@ -118,4 +118,18 @@ TEST_F(IntegrationTest, SetupFirstAdminWithPassword) {
     auto in = POST("/auth/password", "email=ann%40example.org&password=long+enough+pw");
     EXPECT_NE(in.location.find("/dashboard"), std::string::npos);
     EXPECT_NE(in.headers.find("session="), std::string::npos);
+}
+
+TEST_F(IntegrationTest, SetupChecklistWithoutDiscord) {
+    Features::set("discord", false);
+    auto page = GET("/setup", admin_token);
+    expect_contains(page, "3. Discord");
+    expect_contains(page, "Discord is switched off");
+    expect_not_contains(page, "Server ID");
+    expect_contains(page, "1 of 4 done");                       // step 3 counts as done
+    Member a; a.first_name = "Ann"; a.display_name = "Ann A."; a.email = "a@example.org"; a.role = "member";
+    Member b; b.first_name = "Bob"; b.display_name = "Bob B."; b.email = "b@example.org"; b.role = "member";
+    member_repo->create(a); member_repo->create(b);
+    expect_contains(GET("/setup", admin_token), "2 of 4 done");
+    Features::set("discord", true);
 }

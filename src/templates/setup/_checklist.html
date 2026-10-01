@@ -30,6 +30,7 @@
     </form>
   </section>
 
+{{#discord_on}}
   <section class="bg-white rounded-xl border border-gray-200 p-5 space-y-3">
     <h3 class="font-semibold text-gray-800">{{#discord_done}}&#10003; {{/discord_done}}3. Discord server</h3>
     <p class="text-sm text-gray-500">Invite the bot to your server first (see README &gt; Discord Setup). Then paste the IDs - turn on Developer Mode in Discord and right-click &gt; Copy ID.</p>
@@ -48,6 +49,23 @@
     <p class="text-sm text-gray-600">Anyone in your Discord server can sign in as a member. Map Discord roles to Admin so your other organisers get admin automatically{{#roles_done}} ({{mapped_roles}} role(s) mapped){{/roles_done}}.</p>
     <a hx-get="/settings/roles" hx-target="#main-content" hx-push-url="true" class="inline-block px-4 py-2 border border-gray-300 rounded-lg text-sm text-gray-700 hover:bg-gray-50 cursor-pointer">Map Discord roles</a>
   </section>
+
+{{/discord_on}}
+{{^discord_on}}
+  <section class="bg-white rounded-xl border border-gray-200 p-5 space-y-2">
+    <h3 class="font-semibold text-gray-800">&#10003; 3. Discord <span class="text-xs font-normal text-gray-400">(not used)</span></h3>
+    <p class="text-sm text-gray-600">Discord is switched off, so members sign in with their email address and a password (or an emailed link, if the server has email set up). You can turn Discord on later under Settings &gt; Features.</p>
+  </section>
+
+  <section class="bg-white rounded-xl border border-gray-200 p-5 space-y-2">
+    <h3 class="font-semibold text-gray-800">{{#roles_done}}&#10003; {{/roles_done}}4. Who gets in</h3>
+    <p class="text-sm text-gray-600">Add your members with their email addresses (Members &gt; Add Member), then send each one a set-password link from their member page. {{members_with_email}} member(s) have an email address so far.</p>
+    <div class="flex flex-wrap gap-2">
+      <a hx-get="/members" hx-target="#main-content" hx-push-url="true" class="inline-block px-4 py-2 border border-gray-300 rounded-lg text-sm text-gray-700 hover:bg-gray-50 cursor-pointer">Members</a>
+      <a hx-get="/settings/sign-in" hx-target="#main-content" hx-push-url="true" class="inline-block px-4 py-2 border border-gray-300 rounded-lg text-sm text-gray-700 hover:bg-gray-50 cursor-pointer">Sign-in settings</a>
+    </div>
+  </section>
+{{/discord_on}}
 
   <section class="bg-white rounded-xl border border-gray-200 p-5 space-y-3">
     <h3 class="font-semibold text-gray-800">{{#fan_colab_done}}&#10003; {{/fan_colab_done}}5. LEGO Fan CoLab <span class="text-xs font-normal text-gray-400">(optional)</span></h3>
