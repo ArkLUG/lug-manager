@@ -506,7 +506,9 @@ void register_event_routes(LugApp& app, EventService& events, AttendanceService&
         ctx["is_checked_in"]    = checked_in;
         ctx["member_id"]        = mbr_id;
         ctx["attendance_count"] = count;
-        ctx["has_discord_thread"]= !ev->discord_thread_id.empty();
+        ctx["has_discord_thread"]= !ev->discord_thread_id.empty() && !discord.get_guild_id().empty();
+        // discord.com/channels/<guild>/<thread> - the guild part was missing, so the link 404'd
+        ctx["discord_thread_url"] = "https://discord.com/channels/" + discord.get_guild_id() + "/" + ev->discord_thread_id;
         ctx["page_title"]       = ev->title;
         // can_manage: admin, event lead, or chapter event_manager/lead
         {

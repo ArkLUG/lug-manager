@@ -374,6 +374,15 @@ paths:
       parameters: [{ name: id, in: path, required: true, schema: { type: integer } }]
       responses:
         "200": { description: OK }
+  /events/{id}/rsvps:
+    get:
+      tags: [events]
+      summary: List RSVPs for an event (going first, then waitlist, oldest first)
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: integer } }
+      responses:
+        "200": { description: "data: {event_id, max_attendees, going, waitlist, rsvps: [{member_id, display_name, status, created_at}]}" }
+        "404": { description: Event not found }
   /events/{id}/days:
     get:
       tags: [events]

@@ -51,6 +51,8 @@
 #include "repositories/MeetingRepository.hpp"
 #include "repositories/EventRepository.hpp"
 #include "services/AuditService.hpp"
+#include "routes/RsvpRoutes.hpp"
+#include <memory>
 
 struct Services {
     ChapterService&         chapters;
@@ -84,6 +86,9 @@ struct Services {
     // URLs are built from it instead of the request's Host/X-Forwarded-*
     // headers. Assigned after aggregate init (see main.cpp).
     std::string             public_url = "";
+    // Created by register_all_routes() when null; shared_ptr because route
+    // handlers hold it by value (Services itself may be a short-lived local).
+    std::shared_ptr<RsvpRepository> rsvps;
 };
 
 void register_all_routes(LugApp& app, Services& svc);

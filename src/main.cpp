@@ -189,9 +189,10 @@ int main() {
             api_key_repo,
             pending_discord_match_repo,
             config.discord_public_key,
-            data_dir
+            data_dir,
+            config.public_url,
+            nullptr // rsvps: created by register_all_routes
         };
-        svc.public_url = config.public_url;
         register_all_routes(app, svc);
 
         // Background thread: purge expired sessions once per hour

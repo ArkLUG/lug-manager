@@ -256,7 +256,10 @@ protected:
             *event_day_repo, *event_day_attendance_repo,
             *audit_svc, *api_key_repo, *pending_discord_match_repo,
             config.discord_public_key,
-            data_dir
+            data_dir,
+            "",      // public_url
+            nullptr  // rsvps
+
         };
         register_all_routes(*app, svc);
 

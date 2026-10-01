@@ -1,0 +1,44 @@
+<div id="rsvp-panel-{{event_id}}" class="space-y-3">
+  <div class="flex items-center justify-between gap-3">
+    <div class="text-sm text-gray-700">
+      <span class="font-semibold text-gray-900">{{going}}</span>{{#has_max}} / {{max}}{{/has_max}} going
+      {{#is_full}}<span class="ml-1 px-1.5 py-0.5 rounded text-xs font-medium bg-red-100 text-red-700">Full</span>{{/is_full}}
+      {{#has_waitlist}}<span class="ml-1 text-xs text-amber-700">· {{waitlist}} on waitlist</span>{{/has_waitlist}}
+    </div>
+    {{#has_rsvp}}
+    <button hx-post="/events/{{event_id}}/rsvp" hx-target="#rsvp-panel-{{event_id}}" hx-swap="outerHTML"
+            hx-confirm="Cancel your RSVP?"
+            class="text-xs px-3 py-1.5 border border-gray-300 text-gray-700 rounded-lg font-medium hover:bg-gray-50">
+      {{#is_going}}Cancel RSVP{{/is_going}}{{#is_waitlisted}}Leave waitlist{{/is_waitlisted}}
+    </button>
+    {{/has_rsvp}}
+    {{^has_rsvp}}{{#open}}
+    <button hx-post="/events/{{event_id}}/rsvp" hx-target="#rsvp-panel-{{event_id}}" hx-swap="outerHTML"
+            class="text-xs px-3 py-1.5 bg-yellow-400 text-gray-900 rounded-lg font-semibold hover:bg-yellow-300">
+      {{#is_full}}Join waitlist{{/is_full}}{{^is_full}}RSVP{{/is_full}}
+    </button>
+    {{/open}}{{^open}}
+    <span class="text-xs text-gray-500">RSVPs closed</span>
+    {{/open}}{{/has_rsvp}}
+  </div>
+
+  {{#is_going}}<p class="text-xs text-green-700">You're going.</p>{{/is_going}}
+  {{#is_waitlisted}}<p class="text-xs text-amber-700">You're #{{waitlist_pos}} on the waitlist - you'll move up automatically if a spot opens.</p>{{/is_waitlisted}}
+  {{#flash}}<p class="text-xs text-gray-500">{{flash}}</p>{{/flash}}
+
+  {{#can_manage}}{{#has_rsvps}}
+  <ul class="divide-y divide-gray-100 border border-gray-200 rounded-lg text-sm">
+    {{#rsvps}}
+    <li class="flex items-center justify-between px-3 py-1.5">
+      <span class="text-gray-800">{{name}}
+        {{#is_waitlist}}<span class="ml-1 px-1.5 py-0.5 rounded text-xs bg-amber-100 text-amber-700">waitlist</span>{{/is_waitlist}}
+      </span>
+      <button hx-post="/events/{{event_id}}/rsvp/{{member_id}}/remove"
+              hx-target="#rsvp-panel-{{event_id}}" hx-swap="outerHTML"
+              hx-confirm="Remove {{name}}'s RSVP?"
+              class="text-xs text-red-600 hover:text-red-800">Remove</button>
+    </li>
+    {{/rsvps}}
+  </ul>
+  {{/has_rsvps}}{{/can_manage}}
+</div>

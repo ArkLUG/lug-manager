@@ -6,6 +6,8 @@ void register_all_routes(LugApp& app, Services& svc) {
     register_member_routes(app, svc.members, svc.attendance_repo, svc.audit);
     register_meeting_routes(app, svc.meetings, svc.attendance, svc.chapter_members, svc.chapters, svc.discord, svc.audit);
     register_event_routes(app, svc.events, svc.attendance, svc.chapter_members, svc.discord, svc.members, svc.meetings, svc.chapters, svc.audit);
+    if (!svc.rsvps) svc.rsvps = std::make_shared<RsvpRepository>(svc.attendance_repo.db());
+    register_rsvp_routes(app, svc.events, svc.rsvps, svc.chapter_members, svc.audit);
     register_attendance_routes(app, svc.attendance, svc.events, svc.meetings, svc.members, svc.chapter_members, svc.perks, svc.audit);
     register_calendar_routes(app, svc.calendar, svc.perks, svc.attendance_repo, svc.member_repo);
     register_settings_routes(app, svc.settings, svc.discord, svc.member_sync, svc.calendar, svc.gcal, svc.events, svc.meetings, svc.members, svc.audit, svc.pending_discord_matches);
