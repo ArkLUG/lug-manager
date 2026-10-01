@@ -92,6 +92,25 @@ Persistent disks need a paid instance type. HTTPS is included at `https://<name>
 4. Under **Settings > Networking**, generate a domain on port 8080, then use that domain for `LUG_PUBLIC_URL` and `DISCORD_REDIRECT_URI`.
 5. Check the deploy logs for the `/setup` link.
 
+## DigitalOcean, AWS, Google Cloud, Azure and others
+
+**Use a small virtual server (VPS) running Docker**, then follow [Docker / docker compose](#docker--docker-compose) and put a reverse proxy with HTTPS in front. For example, [Caddy](https://caddyserver.com) gets a certificate for your domain automatically.
+
+These products fit:
+- DigitalOcean Droplet
+- AWS Lightsail or EC2
+- Google Compute Engine (an e2-micro is in Google's always-free tier in some US regions)
+- Azure virtual machine
+- Linode, Hetzner, Vultr or Oracle Cloud
+
+These don't fit, because they have no disk that survives restarts, or they stop the app when it's idle:
+- Heroku
+- DigitalOcean App Platform
+- Google Cloud Run
+- AWS App Runner
+
+LUG Manager keeps its database on disk and runs reminders and Discord sync in the background, so it would lose data or miss jobs on these.
+
 ## Updating
 
 - **Docker / compose:** `docker compose pull && docker compose up -d`.
