@@ -263,7 +263,8 @@ protected:
             nullptr, // rsvps
             nullptr, // displays
             nullptr, // dues
-            nullptr  // backups
+            nullptr, // backups
+            nullptr  // series
 
         };
         register_all_routes(*app, svc);

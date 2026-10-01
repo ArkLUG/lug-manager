@@ -40,6 +40,7 @@
 #include "services/ReminderService.hpp"
 #include "services/DuesService.hpp"
 #include "services/BackupService.hpp"
+#include "services/SeriesService.hpp"
 #include "utils/TemplateCache.hpp"
 #include "services/MemberSyncService.hpp"
 #include "routes/Router.hpp"
@@ -202,7 +203,8 @@ int main() {
             nullptr, // rsvps: created by register_all_routes
             nullptr, // displays: ditto
             nullptr, // dues: ditto
-            nullptr  // backups: ditto
+            nullptr, // backups: ditto
+            nullptr  // series: ditto
         };
         register_all_routes(app, svc);
 
@@ -258,7 +260,8 @@ int main() {
         DuesRepository dues_repo(db);
         DuesService    dues_service(dues_repo, settings_repo, discord_client, audit_service);
         BackupService  backup_service(db, data_dir);
-        std::thread reminder_thread([&reminder_service, &dues_service, &backup_service, &settings_repo] {
+        SeriesService  series_service(db, meeting_service);
+        std::thread reminder_thread([&reminder_service, &dues_service, &backup_service, &settings_repo, &series_service] {
             std::this_thread::sleep_for(std::chrono::seconds(60));
             while (true) {
                 try {
@@ -268,6 +271,8 @@ int main() {
                         if (backup_service.create_if_due(24, keep))
                             std::cout << "[backup] Daily backup created\n";
                     }
+                    if (int made = series_service.materialize(AttendanceService::today_ymd()))
+                        std::cout << "[series] Scheduled " << made << " recurring meeting(s)\n";
                     auto d = dues_service.run_once();
                     if (d.expired || d.reminded)
                         std::cout << "[dues] " << d.expired << " lapsed, " << d.reminded << " reminded\n";

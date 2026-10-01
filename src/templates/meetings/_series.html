@@ -1,0 +1,91 @@
+<div class="max-w-4xl space-y-4" data-page-title="Recurring Meetings">
+  <div class="flex items-center justify-between">
+    <div>
+      <h2 class="text-xl font-semibold text-gray-800">Recurring Meetings</h2>
+      <p class="text-sm text-gray-500">Set a schedule once; meetings (with their Discord and calendar posts) are created automatically a few weeks ahead. Each one can still be edited or cancelled on its own.</p>
+    </div>
+    <a hx-get="/meetings" hx-target="#main-content" hx-push-url="true" hx-swap="innerHTML"
+       class="text-sm text-gray-600 hover:text-gray-900 cursor-pointer">&larr; Meetings</a>
+  </div>
+  {{#flash}}<div class="text-sm text-gray-700 bg-white border border-gray-200 rounded-lg px-4 py-2">{{flash}}</div>{{/flash}}
+
+  {{#has_series}}
+  <div class="bg-white rounded-xl border border-gray-200 divide-y divide-gray-100">
+    {{#series}}
+    <div class="flex flex-wrap items-center justify-between gap-2 px-4 py-3">
+      <div>
+        <div class="font-medium text-gray-900">{{title}} {{^active}}<span class="ml-1 px-1.5 py-0.5 rounded text-xs bg-gray-100 text-gray-500">stopped</span>{{/active}}</div>
+        <div class="text-xs text-gray-500">{{when}}{{#where}} · {{where}}{{/where}}{{#chapter}} · {{chapter}}{{/chapter}} · {{range}}</div>
+      </div>
+      {{#can_stop}}
+      <button hx-post="/meetings/series/{{id}}/stop" hx-target="#main-content" hx-swap="innerHTML"
+              hx-confirm="Stop this series and remove its future meetings? Past meetings and their attendance are kept."
+              class="text-xs px-3 py-1.5 border border-red-300 text-red-700 rounded-lg hover:bg-red-50">Stop series</button>
+      {{/can_stop}}
+    </div>
+    {{/series}}
+  </div>
+  {{/has_series}}
+
+  {{#can_create}}
+  <form hx-post="/meetings/series" hx-target="#main-content" hx-swap="innerHTML"
+        class="bg-white rounded-xl border border-gray-200 p-6 space-y-4 text-sm">
+    <h3 class="font-semibold text-gray-800">New recurring meeting</h3>
+    <div class="grid md:grid-cols-2 gap-3">
+      <label class="block text-gray-700">Title<input name="title" required maxlength="200" placeholder="Monthly Build Night" class="mt-1 w-full border border-gray-300 rounded-lg px-3 py-2"></label>
+      <label class="block text-gray-700">Location<input name="location" maxlength="300" placeholder="Library, 123 Main St" class="mt-1 w-full border border-gray-300 rounded-lg px-3 py-2"></label>
+    </div>
+    <label class="block text-gray-700">Description<textarea name="description" rows="2" class="mt-1 w-full border border-gray-300 rounded-lg px-3 py-2"></textarea></label>
+
+    <fieldset class="border border-gray-200 rounded-lg p-3 space-y-2">
+      <legend class="px-1 text-gray-600">Repeats</legend>
+      <div class="flex flex-wrap items-center gap-2">
+        <label class="flex items-center gap-1"><input type="radio" name="rule" value="monthly" checked class="accent-yellow-400"> Monthly on the</label>
+        <select name="nth" class="border border-gray-300 rounded-lg px-2 py-1">
+          <option value="1">1st</option><option value="2">2nd</option><option value="3">3rd</option><option value="4">4th</option><option value="-1">last</option>
+        </select>
+        <span class="text-gray-500">day below</span>
+      </div>
+      <div class="flex flex-wrap items-center gap-2">
+        <label class="flex items-center gap-1"><input type="radio" name="rule" value="weekly" class="accent-yellow-400"> Every</label>
+        <input type="number" name="interval_weeks" min="1" max="8" value="1" class="w-16 border border-gray-300 rounded-lg px-2 py-1">
+        <span class="text-gray-500">week(s) on the day below</span>
+      </div>
+      <label class="flex items-center gap-2">Day
+        <select name="weekday" class="border border-gray-300 rounded-lg px-2 py-1">
+          <option value="0">Sunday</option><option value="1">Monday</option><option value="2" selected>Tuesday</option><option value="3">Wednesday</option><option value="4">Thursday</option><option value="5">Friday</option><option value="6">Saturday</option>
+        </select>
+      </label>
+      <div class="flex flex-wrap items-center gap-3">
+        <label class="flex items-center gap-2">From <input type="time" name="start_hm" value="19:00" required class="border border-gray-300 rounded-lg px-2 py-1"></label>
+        <label class="flex items-center gap-2">to <input type="time" name="end_hm" value="21:00" required class="border border-gray-300 rounded-lg px-2 py-1"></label>
+      </div>
+      <div class="flex flex-wrap items-center gap-3">
+        <label class="flex items-center gap-2">Starting <input type="date" name="starts_on" value="{{today}}" class="border border-gray-300 rounded-lg px-2 py-1"></label>
+        <label class="flex items-center gap-2">Ending <input type="date" name="ends_on" class="border border-gray-300 rounded-lg px-2 py-1"> <span class="text-xs text-gray-400">(optional)</span></label>
+      </div>
+    </fieldset>
+
+    <div class="grid md:grid-cols-2 gap-3">
+      <label class="block text-gray-700">Scope
+        <select name="scope" class="mt-1 w-full border border-gray-300 rounded-lg px-3 py-2">
+          <option value="chapter">Chapter</option>
+          {{#is_admin}}<option value="lug_wide">LUG-wide</option><option value="non_lug">Non-LUG</option>{{/is_admin}}
+        </select>
+      </label>
+      <label class="block text-gray-700">Chapter
+        <select name="chapter_id" class="mt-1 w-full border border-gray-300 rounded-lg px-3 py-2"
+                hx-get="/api/chapter-options" hx-trigger="load" hx-swap="innerHTML"></select>
+      </label>
+    </div>
+    <div class="flex flex-wrap gap-4 text-gray-700">
+      <label class="flex items-center gap-2"><input type="checkbox" name="is_virtual" value="1" class="accent-yellow-400"> Virtual</label>
+      <label class="flex items-center gap-2"><input type="checkbox" name="suppress_discord" value="1" class="accent-yellow-400"> No Discord posts</label>
+      <label class="flex items-center gap-2"><input type="checkbox" name="suppress_calendar" value="1" class="accent-yellow-400"> No Google Calendar</label>
+      <label class="flex items-center gap-2"><input type="checkbox" name="is_private" value="1" class="accent-yellow-400"> Private</label>
+      <label class="flex items-center gap-2"><input type="checkbox" name="excludes_perks" value="1" class="accent-yellow-400"> Doesn't count toward perks</label>
+    </div>
+    <button class="px-4 py-2 bg-yellow-400 text-gray-900 rounded-lg font-semibold hover:bg-yellow-300">Create series</button>
+  </form>
+  {{/can_create}}
+</div>
