@@ -7,6 +7,7 @@
   {{#has_logo}}<link rel="icon" href="{{logo_url}}">{{/has_logo}}{{^has_logo}}<link rel="icon" href="/static/icon-192.png?v={{asset_v}}">{{/has_logo}}
   <link rel="stylesheet" href="/static/tailwind.min.css?v={{asset_v}}" id="tw-local">
   <script src="/static/theme.js?v={{asset_v}}"></script>
+  <script src="/static/app.js?v={{asset_v}}" defer></script>
   <link rel="stylesheet" href="/static/theme.css?v={{asset_v}}">
   <link rel="manifest" href="/manifest.webmanifest">
   <meta name="theme-color" content="#111827">
@@ -331,7 +332,7 @@
 
       <!-- Settings accordion (admin): API Keys, Settings, Discord Matches -->
       <div class="nav-accordion" data-open="false">
-        <button type="button" onclick="toggleNavAccordion(this)"
+        <button type="button" data-action="toggle-accordion"
                 class="nav-accordion-toggle flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm
                        transition-colors nav-inactive">
           <svg class="w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -422,7 +423,7 @@
       <!-- Chapter Tools accordion (chapter lead / moderator, non-admin): Discord Matches -->
       {{#is_chapter_lead_not_admin}}
       <div class="nav-accordion" data-open="false">
-        <button type="button" onclick="toggleNavAccordion(this)"
+        <button type="button" data-action="toggle-accordion"
                 class="nav-accordion-toggle flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm
                        transition-colors nav-inactive">
           <svg class="w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -472,13 +473,13 @@
       <!-- Theme: Light / System / Dark (see /static/theme.js) -->
       <div class="flex items-center gap-1 px-3 pb-2" role="group" aria-label="Color theme">
         <span class="text-xs text-gray-500 mr-auto">Theme</span>
-        <button type="button" class="theme-btn" data-v="light" onclick="setTheme('light')" title="Light" aria-label="Light theme">
+        <button type="button" class="theme-btn" data-v="light" data-action="set-theme" data-theme-value="light" title="Light" aria-label="Light theme">
           <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><circle cx="12" cy="12" r="4" stroke-width="2"/><path stroke-linecap="round" stroke-width="2" d="M12 2v2m0 16v2M4.93 4.93l1.41 1.41m11.32 11.32l1.41 1.41M2 12h2m16 0h2M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41"/></svg>
         </button>
-        <button type="button" class="theme-btn" data-v="system" onclick="setTheme('system')" title="Match system" aria-label="Match system theme">
+        <button type="button" class="theme-btn" data-v="system" data-action="set-theme" data-theme-value="system" title="Match system" aria-label="Match system theme">
           <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="12" rx="2" stroke-width="2"/><path stroke-linecap="round" stroke-width="2" d="M8 20h8M12 16v4"/></svg>
         </button>
-        <button type="button" class="theme-btn" data-v="dark" onclick="setTheme('dark')" title="Dark" aria-label="Dark theme">
+        <button type="button" class="theme-btn" data-v="dark" data-action="set-theme" data-theme-value="dark" title="Dark" aria-label="Dark theme">
           <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 12.79A9 9 0 1111.21 3 7 7 0 0021 12.79z"/></svg>
         </button>
       </div>
@@ -509,7 +510,7 @@
   <!-- Mobile sidebar overlay -->
   <div id="sidebar-overlay"
        class="fixed inset-0 bg-black/60 z-30 hidden md:hidden"
-       onclick="closeSidebar()"></div>
+       data-action="close-sidebar"></div>
 
   <!-- ===== MAIN AREA ===== -->
   <div class="flex-1 flex flex-col md:ml-64 min-w-0">
@@ -518,7 +519,7 @@
     <header class="bg-white border-b border-gray-200 px-4 py-3 flex items-center gap-3
                    sticky top-0 z-20 shadow-sm">
       <!-- Mobile hamburger -->
-      <button onclick="toggleSidebar()"
+      <button data-action="toggle-sidebar"
               class="md:hidden p-2 rounded-lg text-gray-500 hover:bg-gray-100 transition-colors"
               aria-label="Toggle menu">
         <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -553,11 +554,11 @@
   </div>
 
   <!-- ===== MODAL ===== -->
-  <div id="modal-backdrop" onclick="closeModalOnBackdrop(event)">
+  <div id="modal-backdrop">
     <div id="modal"
          class="bg-white rounded-xl shadow-2xl w-full max-w-lg max-h-[90vh] overflow-y-auto
                 relative"
-         onclick="event.stopPropagation()">
+        >
       <!-- Modal content loaded via HTMX -->
     </div>
   </div>

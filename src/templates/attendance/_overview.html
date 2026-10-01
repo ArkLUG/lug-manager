@@ -118,7 +118,7 @@
             </td>
             {{/has_perks}}
             <td class="px-3 py-1.5 text-right">
-              <button onclick="toggleAttendance(this, 'attendance/member/{{member_id}}/detail?year={{selected_year}}', 'member-detail-{{member_id}}')"
+              <button data-action="toggle-attendance" data-url="attendance/member/{{member_id}}/detail?year={{selected_year}}" data-target="member-detail-{{member_id}}"
                       class="text-xs text-blue-600 hover:text-blue-800">View</button>
             </td>
           </tr>

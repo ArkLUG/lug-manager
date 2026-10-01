@@ -76,6 +76,15 @@ void register_static_routes(LugApp& app) {
     CROW_ROUTE(app, "/static/<path>")([](const crow::request& req, crow::response& res, const std::string& rel) {
         const Asset* a = load(rel);
         if (!a) { res.code = 404; res.end(); return; }
+        if (a->type.rfind("text/html", 0) == 0) {
+            // HTML gets a per-request CSP nonce stamped into its inline
+            // scripts, so it must never be served from cache (or a 304).
+            res.add_header("Cache-Control", "no-store");
+            res.add_header("Content-Type", a->type);
+            res.write(a->body);
+            res.end();
+            return;
+        }
         res.add_header("ETag", a->etag);
         // Versioned URLs (?v=<asset_version>) never change content: cache for
         // a year. Unversioned ones revalidate (cheap 304 via ETag).

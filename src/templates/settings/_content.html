@@ -3,12 +3,13 @@
   <div class="bg-white rounded-xl border border-gray-200 p-6">
     <div class="flex items-center justify-between mb-1">
       <h2 class="text-xl font-bold text-gray-900">Discord Settings</h2>
-      <button onclick="pageTour([
-        {element:'[data-page-title]', popover:{title:'Discord Settings', description:'Server, channels, and roles the LUG Manager bot uses. Calendar, Google Calendar, and Discord Matches now have their own pages under Settings in the sidebar.'}},
-        {popover:{title:'Discord Server', description:'Set your Guild ID so the bot knows which Discord server to interact with. The bot must be invited with proper permissions first.'}},
-        {popover:{title:'Channels', description:'Configure announcement channels (where meeting/event notifications post) and forum channels (where attendance reports go).'}},
-        {popover:{title:'Sync', description:'Use Sync Now to pull all Discord guild members. Sync All to Discord pushes meetings/events. Sync Nicknames updates Discord display names. Auto-sync runs every 6 hours.'}},
-      ])" class="inline-flex items-center gap-1 px-2 py-1 text-xs text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors" title="Page tour">
+<script type="application/json" id="tour-settings-content">[
+        {"element":"[data-page-title]", "popover":{"title":"Discord Settings", "description":"Server, channels, and roles the LUG Manager bot uses. Calendar, Google Calendar, and Discord Matches now have their own pages under Settings in the sidebar."}},
+        {"popover":{"title":"Discord Server", "description":"Set your Guild ID so the bot knows which Discord server to interact with. The bot must be invited with proper permissions first."}},
+        {"popover":{"title":"Channels", "description":"Configure announcement channels (where meeting/event notifications post) and forum channels (where attendance reports go)."}},
+        {"popover":{"title":"Sync", "description":"Use Sync Now to pull all Discord guild members. Sync All to Discord pushes meetings/events. Sync Nicknames updates Discord display names. Auto-sync runs every 6 hours."}}
+      ]</script>
+      <button data-action="tour" data-tour="tour-settings-content" class="inline-flex items-center gap-1 px-2 py-1 text-xs text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors" title="Page tour">
         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
       </button>
     </div>
@@ -26,21 +27,21 @@
                  class="flex-1 px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-yellow-400 focus:border-transparent font-mono">
           <button type="button"
                   hx-get="/api/discord/channel-options?refresh=1"
-                  hx-vals='js:{"guild_id": document.getElementById("guild-id-input").value}'
+                  hx-include="#guild-id-input"
                   hx-target="#lug-channel-select"
                   hx-swap="innerHTML"
-                  hx-on::before-request="destroyChannelSelect('lug-channel-select')"
-                  hx-on::after-settle="initChannelSelects()"
+                  data-destroy-select="lug-channel-select"
+                  data-init-selects
                   class="px-3 py-2 bg-gray-100 text-gray-700 rounded-lg text-sm font-medium hover:bg-gray-200 transition-colors whitespace-nowrap">
             Refresh Channels
           </button>
           <button type="button"
                   hx-get="/api/discord/forum-options?refresh=1"
-                  hx-vals='js:{"guild_id": document.getElementById("guild-id-input").value}'
+                  hx-include="#guild-id-input"
                   hx-target="#forum-channel-select"
                   hx-swap="innerHTML"
-                  hx-on::before-request="destroyChannelSelect('forum-channel-select')"
-                  hx-on::after-settle="initChannelSelects()"
+                  data-destroy-select="forum-channel-select"
+                  data-init-selects
                   class="px-3 py-2 bg-gray-100 text-gray-700 rounded-lg text-sm font-medium hover:bg-gray-200 transition-colors whitespace-nowrap">
             Refresh Forums
           </button>
@@ -68,11 +69,11 @@
           </select>
           <button type="button"
                   hx-get="/api/discord/role-options?refresh=1"
-                  hx-vals='js:{"selected": ""}'
+                  hx-vals='{"selected": ""}'
                   hx-target="#announcement-role-select"
                   hx-swap="innerHTML"
-                  hx-on::before-request="destroyChannelSelect('announcement-role-select')"
-                  hx-on::after-settle="initChannelSelects()"
+                  data-destroy-select="announcement-role-select"
+                  data-init-selects
                   class="px-3 py-2 bg-gray-100 text-gray-700 rounded-lg text-sm font-medium hover:bg-gray-200 transition-colors whitespace-nowrap">
             Refresh Roles
           </button>
@@ -90,11 +91,11 @@
           </select>
           <button type="button"
                   hx-get="/api/discord/role-options?refresh=1"
-                  hx-vals='js:{"selected": ""}'
+                  hx-vals='{"selected": ""}'
                   hx-target="#non-lug-role-select"
                   hx-swap="innerHTML"
-                  hx-on::before-request="destroyChannelSelect('non-lug-role-select')"
-                  hx-on::after-settle="initChannelSelects()"
+                  data-destroy-select="non-lug-role-select"
+                  data-init-selects
                   class="px-3 py-2 bg-gray-100 text-gray-700 rounded-lg text-sm font-medium hover:bg-gray-200 transition-colors whitespace-nowrap">
             Refresh Roles
           </button>

@@ -1,5 +1,6 @@
 #pragma once
 #include "auth/AuthService.hpp"
+#include "auth/SessionStore.hpp"
 #include "repositories/ChapterMemberRepository.hpp"
 #include "repositories/SettingsRepository.hpp"
 #include "utils/AssetVersion.hpp"
@@ -53,9 +54,11 @@ struct AuthMiddleware {
 
     struct context {
         AuthContext auth;
+        std::string csp_nonce; // per-request nonce for inline <script> (see after_handle)
     };
 
     void before_handle(crow::request& req, crow::response& /*res*/, context& ctx) {
+        ctx.csp_nonce = SessionStore::generate_token().substr(0, 32);
         if (!auth_service) return;
 
         std::string token = get_cookie(req, "session");
@@ -77,19 +80,36 @@ struct AuthMiddleware {
     // allows inline script ('unsafe-inline' + 'unsafe-eval' for htmx hx-on
     // handlers) because the templates use inline handlers throughout - moving
     // those into static files is what would let us drop them.
-    void after_handle(crow::request& /*req*/, crow::response& res, context& /*ctx*/) {
+    // Baseline security headers on every response (this middleware runs for
+    // all routes), plus a nonce-based Content-Security-Policy: scripts must
+    // come from this origin or carry this request's nonce. Every inline
+    // <script> we render gets the nonce stamped on here; inline event
+    // handlers (onclick=...) are refused by the browser, so templates use
+    // data-action attributes wired up by /static/app.js instead. htmx is told
+    // the nonce (htmx-config meta) so scripts inside swapped-in fragments run.
+    void after_handle(crow::request& /*req*/, crow::response& res, context& ctx) {
         auto set_default = [&](const char* name, const char* value) {
             if (res.get_header_value(name).empty()) res.set_header(name, value);
         };
         set_default("X-Content-Type-Options", "nosniff");
         set_default("X-Frame-Options", "DENY");
         set_default("Referrer-Policy", "strict-origin-when-cross-origin");
+
+        const std::string& nonce = ctx.csp_nonce;
+        if (!nonce.empty() && res.get_header_value("Content-Type").find("text/html") != std::string::npos &&
+            !res.body.empty()) {
+            const std::string tagged = "<script nonce=\"" + nonce + "\">";
+            for (size_t p = 0; (p = res.body.find("<script>", p)) != std::string::npos; p += tagged.size())
+                res.body.replace(p, 8, tagged);
+            size_t head = res.body.find("<head>");
+            if (head != std::string::npos)
+                res.body.insert(head + 6, "<meta name=\"htmx-config\" content='{\"inlineScriptNonce\":\"" + nonce + "\"}'>");
+        }
         if (res.get_header_value("Content-Security-Policy").empty())
             res.set_header("Content-Security-Policy",
                 "default-src 'self'; "
-                // Libraries are vendored under /static/vendor; cdn.tailwindcss.com is only the
-                // dev fallback when tailwind.min.css hasn't been built, maxcdn is EasyMDE's icons.
-                "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://cdn.tailwindcss.com; "
+                // cdn.tailwindcss.com: only the dev fallback when tailwind.min.css isn't built.
+                "script-src 'self' 'nonce-" + nonce + "' https://cdn.tailwindcss.com; "
                 "style-src 'self' 'unsafe-inline' https://maxcdn.bootstrapcdn.com; "
                 "font-src 'self' data: https://maxcdn.bootstrapcdn.com; "
                 "img-src 'self' data: blob: https:; "

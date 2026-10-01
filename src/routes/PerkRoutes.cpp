@@ -143,7 +143,7 @@ void register_perk_routes(LugApp& app, PerkLevelRepository& perks,
         h << "<div class=\"p-6\">"
           << "<div class=\"flex items-center justify-between mb-5\">"
           << "<h3 class=\"text-lg font-semibold text-gray-800\">Edit Perk Level</h3>"
-          << "<button onclick=\"closeModal()\" class=\"text-gray-400 hover:text-gray-600 p-1 rounded\">"
+          << "<button data-action=\"close-modal\" aria-label=\"Close\" class=\"text-gray-400 hover:text-gray-600 p-1 rounded\">"
           << "<svg class=\"w-5 h-5\" fill=\"none\" stroke=\"currentColor\" viewBox=\"0 0 24 24\"><path stroke-linecap=\"round\" stroke-linejoin=\"round\" stroke-width=\"2\" d=\"M6 18L18 6M6 6l12 12\"/></svg></button></div>"
           << "<form hx-put=\"/perks/" << id << "\" hx-swap=\"none\" class=\"space-y-4\">"
           << "<div class=\"grid grid-cols-2 gap-4\">"
@@ -175,7 +175,7 @@ void register_perk_routes(LugApp& app, PerkLevelRepository& perks,
           << "</select></div>"
           << "<div class=\"flex gap-3 pt-2\">"
           << "<button type=\"submit\" class=\"flex-1 py-2 bg-gray-800 text-white rounded-lg text-sm font-medium hover:bg-gray-700\">Save Changes</button>"
-          << "<button type=\"button\" onclick=\"closeModal()\" class=\"px-4 py-2 text-gray-600 border border-gray-300 rounded-lg text-sm hover:bg-gray-50\">Cancel</button>"
+          << "<button type=\"button\" data-action=\"close-modal\" class=\"px-4 py-2 text-gray-600 border border-gray-300 rounded-lg text-sm hover:bg-gray-50\">Cancel</button>"
           << "</div></form></div>";
 
         res.add_header("Content-Type", "text/html; charset=utf-8");

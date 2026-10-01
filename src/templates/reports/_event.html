@@ -5,6 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Event Report — {{title}}</title>
   <link rel="stylesheet" href="/static/tailwind.min.css?v={{asset_v}}">
+  <script src="/static/app.js?v={{asset_v}}" defer></script>
   <style>@media print { .no-print { display: none } body { background: #fff } }</style>
 </head>
 <body class="bg-white text-gray-900 p-8">
@@ -15,7 +16,7 @@
         <p class="text-gray-600">{{start}}{{#multi_day}} – {{end}}{{/multi_day}}{{#location}} · {{location}}{{/location}}</p>
         {{#lead}}<p class="text-gray-600">Event lead: {{lead}}</p>{{/lead}}
       </div>
-      <button class="no-print px-3 py-1.5 border border-gray-300 rounded-lg" onclick="window.print()">Print / Save PDF</button>
+      <button class="no-print px-3 py-1.5 border border-gray-300 rounded-lg" data-action="print">Print / Save PDF</button>
     </div>
 
     <table class="w-full border border-gray-300">

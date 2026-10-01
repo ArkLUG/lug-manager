@@ -4,7 +4,7 @@
       {{#is_edit}}Edit Chapter{{/is_edit}}
       {{^is_edit}}New Chapter{{/is_edit}}
     </h2>
-    <button onclick="closeModal()" aria-label="Close" class="text-gray-400 hover:text-gray-600 transition-colors">
+    <button data-action="close-modal" aria-label="Close" class="text-gray-400 hover:text-gray-600 transition-colors">
       <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
       </svg>
@@ -15,13 +15,13 @@
   <form hx-put="/chapters/{{id}}"
         hx-target="#main-content"
         hx-swap="innerHTML"
-        hx-on::after-request="if(event.detail.successful){ closeModal(); htmx.ajax('GET','/chapters',{target:'#main-content',swap:'innerHTML'}); }"
+        data-after-success="close-modal reload:/chapters"
         class="space-y-4">
   {{/is_edit}}
   {{^is_edit}}
   <form hx-post="/chapters"
         hx-encoding="application/x-www-form-urlencoded"
-        hx-on::after-request="if(event.detail.successful){ closeModal(); htmx.ajax('GET','/chapters',{target:'#main-content',swap:'innerHTML'}); }"
+        data-after-success="close-modal reload:/chapters"
         class="space-y-4">
   {{/is_edit}}
 
@@ -58,8 +58,8 @@
                 hx-get="/api/discord/channel-options"
                 hx-target="#chapter-channel-select"
                 hx-swap="innerHTML"
-                hx-on::before-request="destroyChannelSelect('chapter-channel-select')"
-                hx-on::after-settle="initChannelSelects()"
+                data-destroy-select="chapter-channel-select"
+                data-init-selects
                 class="px-3 py-2 bg-gray-100 text-gray-700 rounded-lg text-sm hover:bg-gray-200 transition-colors whitespace-nowrap">
           Refresh
         </button>
@@ -78,8 +78,8 @@
                 hx-get="/api/discord/role-options"
                 hx-target="#chapter-role-select"
                 hx-swap="innerHTML"
-                hx-on::before-request="destroyChannelSelect('chapter-role-select')"
-                hx-on::after-settle="initChannelSelects()"
+                data-destroy-select="chapter-role-select"
+                data-init-selects
                 class="px-3 py-2 bg-gray-100 text-gray-700 rounded-lg text-sm hover:bg-gray-200 transition-colors whitespace-nowrap">
           Refresh
         </button>
@@ -98,8 +98,8 @@
                 hx-get="/api/discord/role-options"
                 hx-target="#chapter-member-role-select"
                 hx-swap="innerHTML"
-                hx-on::before-request="destroyChannelSelect('chapter-member-role-select')"
-                hx-on::after-settle="initChannelSelects()"
+                data-destroy-select="chapter-member-role-select"
+                data-init-selects
                 class="px-3 py-2 bg-gray-100 text-gray-700 rounded-lg text-sm hover:bg-gray-200 transition-colors whitespace-nowrap">
           Refresh
         </button>
@@ -108,7 +108,7 @@
     </div>
 
     <div class="flex justify-end gap-3 pt-2">
-      <button type="button" onclick="closeModal()"
+      <button type="button" data-action="close-modal"
               class="px-4 py-2 text-sm text-gray-600 hover:text-gray-800 transition-colors">
         Cancel
       </button>

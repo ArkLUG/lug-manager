@@ -125,7 +125,7 @@
                     <label class="block text-sm font-medium text-gray-700">Discord Role</label>
                     <select name="discord_role_id" id="perk-role-select"
                             hx-get="/api/discord/role-options?selected=" hx-trigger="load" hx-swap="innerHTML"
-                            hx-on::after-settle="if(window.TomSelect && !this.tomselect) new TomSelect(this, {maxOptions:null})"
+                            data-tomselect="single"
                             class="mt-1 w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-yellow-400">
                         <option value="">Loading roles...</option>
                     </select>

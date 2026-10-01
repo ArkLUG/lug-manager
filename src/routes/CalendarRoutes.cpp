@@ -67,7 +67,7 @@ void register_calendar_routes(LugApp& app, CalendarGenerator& cal,
         res.add_header("Content-Type", "text/html; charset=utf-8");
         res.write("<div class=\"space-y-1\"><p class=\"text-xs text-gray-600\">Your private feed (includes private "
                   "meetings/events - don't share it). Copy it now; it won't be shown again. Generating a new one "
-                  "disables the old link.</p><input readonly onclick=\"this.select()\" "
+                  "disables the old link.</p><input readonly data-action=\"select-self\" "
                   "class=\"w-full text-xs font-mono border border-gray-300 rounded px-2 py-1\" "
                   "data-path=\"" + url + "\" id=\"private-cal-url\"></div>"
                   "<script>(function(){var i=document.getElementById('private-cal-url');"

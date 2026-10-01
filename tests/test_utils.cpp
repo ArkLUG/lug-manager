@@ -1,4 +1,5 @@
 #include <gtest/gtest.h>
+#include <sstream>
 #include "db/SqliteDatabase.hpp"
 #include "db/Migrations.hpp"
 #include <filesystem>
@@ -481,4 +482,19 @@ TEST(BackupService, FileDatabaseSnapshotViaSeparateConnection) {
         EXPECT_EQ(b.list().size(), 1u);
     }
     std::filesystem::remove_all(dir);
+}
+
+// ── Templates must not use inline event handlers (strict CSP) ─────────────
+#include <regex>
+TEST(Templates, NoInlineEventHandlers) {
+    std::regex handler(R"(\son(click|change|submit|input|load|error|keyup|keydown)=)");
+    for (const auto& e : std::filesystem::recursive_directory_iterator("src/templates")) {
+        if (!e.is_regular_file()) continue;
+        std::ifstream in(e.path());
+        std::stringstream buf; buf << in.rdbuf();
+        std::string s = buf.str();
+        EXPECT_FALSE(std::regex_search(s, handler)) << e.path();
+        EXPECT_EQ(s.find("hx-on"), std::string::npos) << e.path();
+        EXPECT_EQ(s.find("js:{"), std::string::npos) << e.path();
+    }
 }

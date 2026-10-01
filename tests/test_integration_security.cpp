@@ -413,3 +413,31 @@ TEST_F(IntegrationTest, PwaAssetsServed) {
     auto page = GET("/login");
     EXPECT_NE(page.headers.find("object-src 'none'"), std::string::npos);
 }
+
+// Strict CSP: inline scripts carry the per-request nonce from the header and
+// pages contain no inline event handlers (which the CSP would block).
+#include <regex>
+TEST_F(IntegrationTest, StrictCspNonceAndNoInlineHandlers) {
+    auto r = GET("/dashboard", admin_token);
+    std::smatch m;
+    std::regex nonce_re("script-src 'self' 'nonce-([0-9a-f]+)'");
+    ASSERT_TRUE(std::regex_search(r.headers, m, nonce_re));
+    std::string nonce = m[1];
+    EXPECT_EQ(r.headers.find("unsafe-inline' 'unsafe-eval"), std::string::npos);
+    EXPECT_NE(r.body.find("<script nonce=\"" + nonce + "\">"), std::string::npos);
+    EXPECT_EQ(r.body.find("<script>"), std::string::npos);
+    expect_contains(r, "inlineScriptNonce");
+
+    std::regex handler(R"(\son(click|change|submit|input|load|error)=)");
+    for (const char* page : {"/dashboard", "/members", "/meetings", "/events", "/settings", "/attendance/overview",
+                             "/help", "/chapters", "/perks", "/audit", "/settings/backups", "/meetings/series",
+                             "/reports/annual"}) {
+        auto p = GET(page, admin_token);
+        EXPECT_FALSE(std::regex_search(p.body, handler)) << page;
+        EXPECT_EQ(p.body.find("hx-on"), std::string::npos) << page;
+        EXPECT_EQ(p.body.find("js:{"), std::string::npos) << page;
+    }
+    // Each request gets a fresh nonce
+    auto r2 = GET("/dashboard", admin_token);
+    EXPECT_EQ(r2.body.find("<script nonce=\"" + nonce + "\">"), std::string::npos);
+}

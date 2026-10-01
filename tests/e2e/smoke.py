@@ -108,12 +108,73 @@ if acc:
     acc[0].click(); time.sleep(0.2)
 errs("accordion")
 
+# Page tour (JSON steps + driver.js) on the members page
+visit("/members", "#members-table")
+tours = d.find_elements(By.CSS_SELECTOR, '[data-action="tour"]')
+check(len(tours) > 0, "members tour button present")
+if tours:
+    tours[0].click(); time.sleep(0.6)
+    check(len(d.find_elements(By.CSS_SELECTOR, ".driver-popover")) > 0, "page tour opens")
+    d.execute_script("window._pageTourDriver && window._pageTourDriver.destroy()")
+errs("/members tour")
+
+# Dues modal from a members row
+WebDriverWait(d, 8).until(lambda x: x.find_elements(By.CSS_SELECTOR, '[data-action="set-member-dues"]'))
+d.find_elements(By.CSS_SELECTOR, '[data-action="set-member-dues"]')[0].click(); time.sleep(0.3)
+dm = d.find_elements(By.ID, "dues-modal")
+check(bool(dm) and "hidden" not in dm[0].get_attribute("class"), "dues modal opens")
+d.find_element(By.CSS_SELECTOR, '[data-action="close-dues"]').click(); time.sleep(0.2)
+errs("/members dues")
+
+# Help page tour
+visit("/help", "#main-content")
+st = d.find_elements(By.CSS_SELECTOR, '[data-action="start-tour"]')
+if st:
+    st[0].click(); time.sleep(0.6)
+    check(len(d.find_elements(By.CSS_SELECTOR, ".driver-popover")) > 0, "help tour opens")
+errs("/help tour")
+
+# Attendance overview row expand (toggle-attendance)
+visit("/attendance/overview", "#main-content")
+ta = d.find_elements(By.CSS_SELECTOR, '[data-action="toggle-attendance"]')
+if ta:
+    ta[0].click(); time.sleep(0.8)
+    tgt = d.find_element(By.ID, ta[0].get_attribute("data-target"))
+    check(tgt.get_attribute("innerHTML").strip() != "", "attendance detail loads")
+errs("/attendance/overview expand")
+
+# Event page: RSVP + displays panels load (full-page render of event 1)
+visit("/events/1", "#main-content")
+time.sleep(1.0)
+check(len(d.find_elements(By.CSS_SELECTOR, '[id^="rsvp-panel-"]')) > 0, "rsvp panel loads")
+check(len(d.find_elements(By.CSS_SELECTOR, '[id^="displays-panel-"]')) > 0, "displays panel loads")
+errs("/events/1")
+
 # Public check-in page and kiosk
 visit("/meetings/1/kiosk", "#kiosk-qr")
 time.sleep(1)
 check(len(d.find_elements(By.CSS_SELECTOR, "#kiosk-qr canvas, #kiosk-qr img")) > 0, "kiosk QR rendered")
 errs("kiosk")
 shot("kiosk")
+
+# Public check-in page (htmx 2): tabs switch via data-action
+html = d.execute_script("""
+  var x = new XMLHttpRequest(); x.open('POST', '/meetings/1/generate-checkin', false); x.send(); return x.responseText;""")
+import re as _re
+m = _re.search(r"/checkin/([0-9a-f-]{36})", html or "")
+if m:
+    visit("/checkin/" + m.group(1), "body")
+    for tab in ("search", "manual", "discord"):
+        btn = d.find_elements(By.CSS_SELECTOR, f'[data-action="show-tab"][data-tab="{tab}"]')
+        if btn:
+            btn[0].click(); time.sleep(0.2)
+    errs("/checkin")
+    shot("checkin")
+
+# Login page (public)
+d.delete_all_cookies()
+visit("/login", "body")
+shot("login")
 
 d.quit()
 print(json.dumps(problems, indent=1))

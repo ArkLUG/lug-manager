@@ -1,7 +1,7 @@
 <div class="p-6 max-w-lg" data-page-title="{{title}}">
   <div class="flex items-center justify-between mb-5">
     <h3 class="text-lg font-semibold text-gray-800 truncate pr-4">{{title}}</h3>
-    <button onclick="closeModal()" aria-label="Close"
+    <button data-action="close-modal" aria-label="Close"
             class="text-gray-400 hover:text-gray-600 p-1 rounded flex-shrink-0">
       <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
     </button>
@@ -61,7 +61,7 @@
     <div class="grid grid-cols-3 gap-1">
       <dt class="text-gray-500 font-medium">Location</dt>
       <dd class="col-span-2">
-        <a href="#" data-location="{{location}}" onclick="window.open(mapUrl(this.dataset.location),'_blank');return false"
+        <a href="#" data-location="{{location}}" data-action="open-map"
            class="inline-flex items-center gap-1.5 text-indigo-600 underline decoration-indigo-300 hover:decoration-indigo-600 hover:text-indigo-800">
           <svg class="w-4 h-4 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
           {{location}}

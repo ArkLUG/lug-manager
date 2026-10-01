@@ -13,7 +13,7 @@
     <form hx-post="/chapters/{{chapter_id}}/members"
           hx-target="body"
           hx-swap="none"
-          hx-on::after-request="if(event.detail.successful){ htmx.ajax('GET','/chapters/{{chapter_id}}/members',{target:'#main-content',swap:'innerHTML'}); }"
+          data-after-success="reload:/chapters/{{chapter_id}}/members"
           class="flex flex-wrap gap-3 items-end">
       <div class="flex-1 min-w-48">
         <label class="block text-sm font-medium text-gray-700 mb-1">Member</label>
@@ -59,11 +59,11 @@
       <form hx-post="/chapters/{{chapter_id}}/members"
             hx-target="body"
             hx-swap="none"
-            hx-on::after-request="if(event.detail.successful){ htmx.ajax('GET','/chapters/{{chapter_id}}/members',{target:'#main-content',swap:'innerHTML'}); }"
+            data-after-success="reload:/chapters/{{chapter_id}}/members"
             class="flex items-center gap-2">
         <input type="hidden" name="member_id" value="{{member_id}}">
         <select name="chapter_role"
-                onchange="this.form.requestSubmit()"
+                data-change="submit"
                 class="px-2 py-1 border rounded-lg text-xs focus:outline-none focus:ring-2 focus:ring-yellow-400
                        {{#is_lead}}border-purple-300 bg-purple-50 text-purple-700{{/is_lead}}
                        {{#is_event_manager}}border-blue-300 bg-blue-50 text-blue-700{{/is_event_manager}}
@@ -78,7 +78,7 @@
               hx-target="body"
               hx-swap="none"
               hx-confirm="Remove {{display_name}} from this chapter?"
-              hx-on::after-request="if(event.detail.successful){ htmx.ajax('GET','/chapters/{{chapter_id}}/members',{target:'#main-content',swap:'innerHTML'}); }"
+              data-after-success="reload:/chapters/{{chapter_id}}/members"
               class="text-red-400 hover:text-red-600 transition-colors p-1 rounded">
         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>

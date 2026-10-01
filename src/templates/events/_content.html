@@ -6,13 +6,14 @@
         <h2 class="text-xl font-semibold text-gray-800">Events</h2>
         <p class="text-sm text-gray-500 mt-0.5">{{total_count}} total</p>
       </div>
-      <button onclick="pageTour([
-        {element:'[data-page-title]', popover:{title:'Events', description:'All events listed by date. Events are date-based (no specific times) and can be Chapter, LUG Wide, or Non-LUG scope.'}},
-        {element:'input[name=&quot;search&quot;]', popover:{title:'Search', description:'Filter events by title, location, or any text.'}},
-        {{#can_create}}{element:'button[hx-get=&quot;/events/new&quot;]', popover:{title:'New Event', description:'Create a new event. You can assign an Event Lead who gets edit, attendance, and QR permissions for that specific event.'}},{{/can_create}}
-        {popover:{title:'Event Leads', description:'Any member can be assigned as an Event Lead for a specific event. The lead can edit the event, take attendance, generate QR codes, and publish reports — even if they are not an event manager.'}},
-        {popover:{title:'Event Details', description:'Click View to see full details including the assigned lead, attendance list, notes, and status (Tentative/Confirmed).'}},
-      ])" class="inline-flex items-center gap-1 px-2 py-1 text-xs text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors" title="Page tour">
+<script type="application/json" id="tour-events-content">[
+        {"element":"[data-page-title]", "popover":{"title":"Events", "description":"All events listed by date. Events are date-based (no specific times) and can be Chapter, LUG Wide, or Non-LUG scope."}},
+        {"element":"input[name=\"search\"]", "popover":{"title":"Search", "description":"Filter events by title, location, or any text."}},
+        {{#can_create}}{"element":"button[hx-get=\"/events/new\"]", "popover":{"title":"New Event", "description":"Create a new event. You can assign an Event Lead who gets edit, attendance, and QR permissions for that specific event."}},{{/can_create}}
+        {"popover":{"title":"Event Leads", "description":"Any member can be assigned as an Event Lead for a specific event. The lead can edit the event, take attendance, generate QR codes, and publish reports \u2014 even if they are not an event manager."}},
+        {"popover":{"title":"Event Details", "description":"Click View to see full details including the assigned lead, attendance list, notes, and status (Tentative/Confirmed)."}}
+      ]</script>
+      <button data-action="tour" data-tour="tour-events-content" class="inline-flex items-center gap-1 px-2 py-1 text-xs text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors" title="Page tour">
         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
       </button>
     </div>
@@ -118,7 +119,7 @@
               {{^scope_lug_wide}}{{^scope_non_lug}}{{#chapter_name}}<span class="text-xs text-gray-500">{{chapter_name}}</span>{{/chapter_name}}{{^chapter_name}}<span class="text-xs text-gray-400">Chapter</span>{{/chapter_name}}{{/scope_non_lug}}{{/scope_lug_wide}}
             </td>
             <td class="px-4 py-3 truncate max-w-[12rem] hidden md:table-cell">
-              {{#location}}<a href="#" data-location="{{location}}" onclick="window.open(mapUrl(this.dataset.location),'_blank');return false"
+              {{#location}}<a href="#" data-location="{{location}}" data-action="open-map"
                  class="inline-flex items-center gap-1 text-indigo-600 underline decoration-indigo-300 hover:decoration-indigo-600 hover:text-indigo-800">
                 <svg class="w-3.5 h-3.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
                 <span class="truncate">{{location}}</span>
