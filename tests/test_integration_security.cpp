@@ -462,3 +462,20 @@ TEST_F(IntegrationTest, FailedCommitRollsBack) {
     ASSERT_TRUE(n.step());
     EXPECT_EQ(n.col_int(0), 3); // 1, 2 and 4 - the failed transaction's 3 was rolled back
 }
+
+// Signed-in changes from another site (or another subdomain) are refused;
+// our own pages and plain reads still work.
+TEST_F(IntegrationTest, CrossSiteChangesRefused) {
+    auto cross = http("POST", "/settings/sign-in", "auth_require_2fa=everyone", admin_token, true, "", false,
+                      {"Sec-Fetch-Site: cross-site"});
+    EXPECT_EQ(cross.code, 403);
+    auto sibling = http("POST", "/settings/sign-in", "auth_require_2fa=everyone", admin_token, true, "", false,
+                        {"Sec-Fetch-Site: same-site"});
+    EXPECT_EQ(sibling.code, 403);
+    EXPECT_NE(settings_repo->get("auth_require_2fa", "off"), "everyone");
+
+    EXPECT_EQ(http("GET", "/dashboard", "", admin_token, true, "", false, {"Sec-Fetch-Site: cross-site"}).code, 200);
+    auto own = http("POST", "/settings/sign-in", "auth_password_enabled=1", admin_token, true, "", false,
+                    {"Sec-Fetch-Site: same-origin"});
+    EXPECT_EQ(own.code, 200);
+}

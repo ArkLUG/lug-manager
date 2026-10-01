@@ -79,6 +79,17 @@ struct AuthMiddleware {
 
         if (token.empty()) return;
 
+        // Cross-site request forgery: SameSite=Lax keeps the session cookie off
+        // POSTs from other sites, but not from other subdomains of the same
+        // site. Browsers say where a request came from in Sec-Fetch-Site; a
+        // signed-in change must come from our own pages.
+        if (is_cross_site_change(req)) {
+            res.code = 403;
+            res.write("This request came from another site.");
+            res.end();
+            return;
+        }
+
         auto session_opt = auth_service->validate_session(token);
         if (!session_opt) return;
 
@@ -107,6 +118,14 @@ struct AuthMiddleware {
         }
     }
 
+    static bool is_cross_site_change(const crow::request& req) {
+        if (req.method == crow::HTTPMethod::GET || req.method == crow::HTTPMethod::HEAD ||
+            req.method == crow::HTTPMethod::OPTIONS)
+            return false;
+        const std::string site = req.get_header_value("Sec-Fetch-Site");
+        return site == "cross-site" || site == "same-site";
+    }
+
     bool has_two_factor(int64_t member_id) {
         auto st = settings->db().prepare("SELECT totp_enabled_at IS NOT NULL FROM members WHERE id=?");
         st.bind(1, member_id);
@@ -118,12 +137,6 @@ struct AuthMiddleware {
         return url == "/login" || url == "/favicon.ico";
     }
 
-    // Baseline security headers on every response (this middleware runs for
-    // all routes). The CSP pins where scripts/styles may load from and blocks
-    // plugins, <base> hijacking, off-site form posts and framing. It still
-    // allows inline script ('unsafe-inline' + 'unsafe-eval' for htmx hx-on
-    // handlers) because the templates use inline handlers throughout - moving
-    // those into static files is what would let us drop them.
     // Baseline security headers on every response (this middleware runs for
     // all routes), plus a nonce-based Content-Security-Policy: scripts must
     // come from this origin or carry this request's nonce. Every inline
