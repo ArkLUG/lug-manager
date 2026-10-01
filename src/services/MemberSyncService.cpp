@@ -36,6 +36,10 @@ SyncResult MemberSyncService::sync_from_guild() {
     // Track discord_user_id → set of Discord role IDs (for chapter lead checks)
     std::unordered_map<std::string, std::unordered_set<std::string>> member_discord_roles;
 
+    // Discord-less members that a new guild member might be - loaded once per
+    // sync (it used to be re-queried for every unmatched guild member).
+    const auto candidates = member_repo_.find_without_discord_id();
+
     // --- Phase 1: sync LUG member records ---
     for (const auto& gm : guild_members) {
         try {
@@ -85,7 +89,6 @@ SyncResult MemberSyncService::sync_from_guild() {
             } else {
                 // No exact discord_user_id match — check for a plausible existing
                 // discord-less member before auto-creating a duplicate.
-                auto candidates = member_repo_.find_without_discord_id();
                 std::optional<int64_t> match_id;
                 for (const auto& cand : candidates) {
                     if (classify_name_match(display, cand.display_name) != MatchConfidence::None) {
