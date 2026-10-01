@@ -6,12 +6,18 @@
     </div>
 <script type="application/json" id="tour-attendance-content">[
       {"element":"[data-page-title]", "popover":{"title":"My Attendance", "description":"Your personal check-in history for meetings and events."}},
-      {"popover":{"title":"How Check-ins Work", "description":"Managers or event leads check you in at meetings and events \u2014 either by searching your name in the attendance panel or via QR code scan. You cannot self-check-in."}},
+      {"popover":{"title":"How Check-ins Work", "description":"You're checked in at meetings and events by the organisers, or by scanning the QR code (or using the kiosk) at the venue when your LUG uses them."}},
       {"popover":{"title":"Virtual vs In-Person", "description":"Meetings track whether attendance was virtual or in-person. Only in-person attendance counts toward \"verified member\" status for privacy purposes."}}
     ]</script>
     <button data-action="tour" data-tour="tour-attendance-content" class="inline-flex items-center gap-1 px-2 py-1 text-xs text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors" title="Page tour">
       <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
     </button>
+  </div>
+
+  <div class="grid grid-cols-3 gap-3">
+    <div class="bg-white rounded-xl border border-gray-200 p-4"><div class="text-2xl font-bold text-gray-900">{{year_meetings}}</div><div class="text-xs text-gray-500">meetings in {{this_year}}</div></div>
+    <div class="bg-white rounded-xl border border-gray-200 p-4"><div class="text-2xl font-bold text-gray-900">{{year_events}}</div><div class="text-xs text-gray-500">events in {{this_year}}</div></div>
+    <div class="bg-white rounded-xl border border-gray-200 p-4"><div class="text-2xl font-bold text-gray-900">{{history_count}}</div><div class="text-xs text-gray-500">check-ins in all</div></div>
   </div>
 
   <div class="bg-white rounded-xl border border-gray-200 overflow-hidden">
@@ -32,7 +38,7 @@
           <div class="text-sm font-medium text-gray-800">{{entity_title}}</div>
           <div class="text-xs text-gray-400 mt-0.5">
             <span class="capitalize">{{entity_label}}</span>
-            · {{checked_in_at}}
+            · {{when}}
             {{#is_virtual}} · <span class="text-indigo-600">Virtual</span>{{/is_virtual}}
             {{#multi_day}} · <span class="text-purple-600">{{days_attended}} days</span>{{/multi_day}}
           </div>

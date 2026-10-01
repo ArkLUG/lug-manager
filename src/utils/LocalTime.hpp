@@ -20,3 +20,18 @@ inline std::string local_iso(std::time_t t) {
     return b;
 }
 inline std::string local_iso_now() { return local_iso(std::time(nullptr)); }
+
+// "2026-06-06..." -> "Sat Jun 6, 2026" ("" stays "").
+inline std::string friendly_date(const std::string& iso) {
+    if (iso.size() < 10) return iso;
+    std::tm t{};
+    if (!strptime(iso.substr(0, 10).c_str(), "%Y-%m-%d", &t)) return iso.substr(0, 10);
+    t.tm_hour = 12;
+    t.tm_isdst = -1;
+    std::mktime(&t);
+    char b[32];
+    std::strftime(b, sizeof(b), "%a %b %d, %Y", &t);
+    std::string s = b;
+    if (s.size() > 8 && s[8] == '0') s.erase(8, 1);   // "Jun 06" -> "Jun 6"
+    return s;
+}

@@ -74,7 +74,7 @@
         <thead>
           <tr>
             <th>Name</th>
-            {{#can_see_pii}}<th class="hidden md:table-cell">Discord</th>{{/can_see_pii}}
+            {{#can_see_pii}}<th class="f-discord hidden 2xl:table-cell">Discord</th>{{/can_see_pii}}
             {{#can_see_pii}}<th class="hidden lg:table-cell">Email</th>{{/can_see_pii}}
             {{#can_see_dues}}{{#f_dues}}<th class="hidden lg:table-cell">Dues</th>{{/f_dues}}{{/can_see_dues}}
             <th class="hidden sm:table-cell">Role</th>
@@ -191,7 +191,7 @@
       render: function(data, type, row) {
         if (type !== 'display') return data;
         var full = escHtml((row.first_name || '') + ' ' + (row.last_name || '')).trim();
-        var html = '<div class="font-medium text-gray-800">'
+        var html = '<div class="font-medium text-gray-800 whitespace-nowrap">'
           + (canSeeDues ? '<input type="checkbox" class="bulk-sel mr-2 align-middle accent-yellow-400" value="' + row.id + '"'
                           + (window.bulkSelected && window.bulkSelected.has(String(row.id)) ? ' checked' : '') + '>' : '')
           + escHtml(data) + '</div>';
@@ -206,7 +206,7 @@
   if (canSeePii) {
     columns.push({
       data: 'discord_username',
-      className: 'hidden md:table-cell',
+      className: 'f-discord hidden 2xl:table-cell',
       render: function(data, type) {
         if (type !== 'display') return data || '';
         return data ? '<span class="text-gray-500">@' + escHtml(data) + '</span>' : '<span class="text-gray-300 text-xs">&mdash;</span>';
@@ -233,7 +233,9 @@
           ? '<span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-green-100 text-green-700">Paid</span>'
           : '<span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-red-100 text-red-700">Unpaid</span>';
         if (row.paid_until) {
-          badge += '<div class="text-xs text-gray-400 mt-0.5">until ' + escHtml(row.paid_until) + '</div>';
+          var today = new Date().toISOString().slice(0, 10);
+          var lapsed = !row.is_paid && row.paid_until < today;
+          badge += '<div class="text-xs text-gray-400 mt-0.5 whitespace-nowrap">' + (lapsed ? 'expired ' : 'until ') + escHtml(row.paid_until) + '</div>';
         }
         return badge;
       }
@@ -250,7 +252,8 @@
                 : data === 'chapter_lead' ? 'bg-blue-100 text-blue-600'
                 : data === 'moderator'    ? 'bg-purple-100 text-purple-700'
                 :                          'bg-gray-100 text-gray-600';
-        return '<span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium ' + cls + '">' + escHtml(data) + '</span>';
+        var label = {admin: 'Admin', chapter_lead: 'Chapter lead', moderator: 'Moderator', member: 'Member'}[data] || data;
+        return '<span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium whitespace-nowrap ' + cls + '">' + escHtml(label) + '</span>';
       }
     },
     {
@@ -289,10 +292,6 @@
         + ' class="text-xs px-2 py-1 text-gray-600 border border-gray-300 rounded hover:bg-gray-50">Edit</button>';
       if (featDues) html += '<button data-action="set-member-dues" data-member-id="' + row.id + '" data-member-name="' + escHtml(row.display_name) + '"'
         + ' class="text-xs px-2 py-1 text-gray-600 border border-gray-300 rounded hover:bg-gray-50">Dues</button>';
-      {{#is_admin}}
-      html += '<button hx-delete="/members/' + row.id + '" hx-confirm="Delete ' + escHtml(row.display_name) + '?' + (row.discord_username ? ' This also removes them from the Discord server.' : '') + ' This cannot be undone." hx-swap="none"'
-        + ' class="text-xs px-2 py-1 text-red-500 border border-red-300 rounded hover:bg-red-50">Delete</button>';
-      {{/is_admin}}
       {{/can_see_dues}}
       html += '</div>';
       return html;

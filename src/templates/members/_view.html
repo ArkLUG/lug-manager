@@ -125,6 +125,9 @@
     <button hx-post="/members/{{id}}/sessions/revoke" hx-target="#revoke-result-{{id}}" hx-swap="innerHTML"
             hx-confirm="Sign {{display_name}} out on all devices?"
             class="text-xs px-3 py-1.5 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50">Sign out all devices</button>
+    <button hx-delete="/members/{{id}}" hx-swap="none" data-after-success="close-modal"
+            hx-confirm="Delete {{display_name}}? Their attendance, RSVPs and dues history go too.{{#has_discord_username}} They are also removed from the Discord server.{{/has_discord_username}} This can't be undone."
+            class="ml-auto text-xs px-3 py-1.5 border border-red-300 text-red-600 rounded-lg hover:bg-red-50">Delete member</button>
     <span id="revoke-result-{{id}}"></span>
   </div>
   <div class="mt-2 flex flex-wrap items-center gap-2">

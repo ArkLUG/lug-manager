@@ -1,6 +1,10 @@
-<div class="space-y-6">
+<div class="space-y-6" data-page-title="Chapters">
   <div class="flex items-center justify-between">
     <div class="flex items-center gap-2">
+      <div>
+        <h2 class="text-xl font-semibold text-gray-800">Chapters</h2>
+        <p class="text-sm text-gray-500">The LUG's local groups, each with its own leads, meetings and channel.</p>
+      </div>
 <script type="application/json" id="tour-chapters-list">[
         {"popover":{"title":"Chapters", "description":"Chapters are sub-groups within the LUG. Each has its own leads, event managers, and Discord announcement channel."}},
         {{#is_admin}}{"element":"button[hx-get=\"/chapters/new\"]", "popover":{"title":"New Chapter", "description":"Create a new chapter. Set a name, shorthand code, and Discord announcement channel."}},{{/is_admin}}

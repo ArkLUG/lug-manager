@@ -1,4 +1,5 @@
 #include "routes/AttendanceRoutes.hpp"
+#include "utils/LocalTime.hpp"
 #include "services/PerkProgress.hpp"
 #include "utils/HtmlEscape.hpp"
 #include <crow.h>
@@ -322,6 +323,8 @@ void register_attendance_routes(LugApp& app, AttendanceService& attendance,
         ctx["member_id"] = ctx_auth.auth.member_id;
 
         crow::json::wvalue arr;
+        const std::string this_year = std::to_string(local_tm(std::time(nullptr)).tm_year + 1900);
+        int year_meetings = 0, year_events = 0;
         for (size_t i = 0; i < history.size(); ++i) {
             arr[i]["entity_type"]  = history[i].entity_type;
             arr[i]["entity_id"]    = history[i].entity_id;
@@ -337,19 +340,25 @@ void register_attendance_routes(LugApp& app, AttendanceService& attendance,
                                      std::to_string(history[i].entity_id);
 
             // Look up entity title
-            std::string title;
+            std::string title, start;
             if (history[i].entity_type == "meeting") {
                 auto m = meetings.get(history[i].entity_id);
-                if (m) title = m->title;
+                if (m) { title = m->title; start = m->start_time; }
             } else {
                 auto e = events.get(history[i].entity_id);
-                if (e) title = e->title;
+                if (e) { title = e->title; start = e->start_time; }
             }
+            arr[i]["when"] = friendly_date(start.empty() ? history[i].checked_in_at : start);
+            if ((start.empty() ? history[i].checked_in_at : start).substr(0, 4) == this_year)
+                ++(history[i].entity_type == "meeting" ? year_meetings : year_events);
             arr[i]["entity_title"] = title.empty() ? (history[i].entity_type + " #" + std::to_string(history[i].entity_id)) : title;
             arr[i]["entity_label"] = history[i].entity_type == "meeting" ? "Meeting" : "Event";
         }
         ctx["history"]       = std::move(arr);
         ctx["history_count"] = static_cast<int>(history.size());
+        ctx["this_year"]     = this_year;
+        ctx["year_meetings"] = year_meetings;
+        ctx["year_events"]   = year_events;
         ctx["has_history"]   = !history.empty();
 
         bool is_htmx = req.get_header_value("HX-Request") == "true";
