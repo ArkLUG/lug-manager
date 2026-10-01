@@ -402,3 +402,14 @@ TEST_F(IntegrationTest, DiscordCheckinLinkNeedsOwnLogin) {
     EXPECT_EQ(r.code, 200);
     EXPECT_FALSE(attendance_repo->is_checked_in(regular_member_id, "meeting", mtg.id));
 }
+
+TEST_F(IntegrationTest, PwaAssetsServed) {
+    auto sw = GET("/sw.js");
+    EXPECT_EQ(sw.code, 200);
+    EXPECT_NE(sw.headers.find("javascript"), std::string::npos);
+    auto mf = GET("/manifest.webmanifest");
+    EXPECT_EQ(mf.code, 200);
+    expect_contains(mf, "\"start_url\"");
+    auto page = GET("/login");
+    EXPECT_NE(page.headers.find("object-src 'none'"), std::string::npos);
+}

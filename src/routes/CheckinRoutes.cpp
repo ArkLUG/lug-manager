@@ -68,6 +68,25 @@ private:
     std::unordered_map<std::string, Window> windows_;
 };
 
+// "Tue, Sep 30 · 7:00 PM" from "2026-09-30T19:00:00" (LUG-local, shown as-is).
+std::string friendly_date(const std::string& iso) {
+    int y = 0, mo = 0, d = 0, h = 0, mi = 0;
+    int n = std::sscanf(iso.c_str(), "%d-%d-%dT%d:%d", &y, &mo, &d, &h, &mi);
+    if (n < 3 || mo < 1 || mo > 12) return iso;
+    std::tm t{};
+    t.tm_year = y - 1900; t.tm_mon = mo - 1; t.tm_mday = d; t.tm_hour = 12;
+    timegm(&t);
+    static const char* days[] = {"Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"};
+    static const char* months[] = {"Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"};
+    char buf[64];
+    if (n >= 5)
+        std::snprintf(buf, sizeof(buf), "%s, %s %d \u00b7 %d:%02d %s", days[t.tm_wday], months[mo - 1], d,
+                      h % 12 == 0 ? 12 : h % 12, mi, h >= 12 ? "PM" : "AM");
+    else
+        std::snprintf(buf, sizeof(buf), "%s, %s %d", days[t.tm_wday], months[mo - 1], d);
+    return buf;
+}
+
 } // namespace
 
 void register_checkin_routes(LugApp& app,
@@ -187,7 +206,7 @@ void register_checkin_routes(LugApp& app,
         const std::string& entity_type     = target->entity_type;
         const int64_t      entity_id       = target->entity_id;
         const std::string& entity_title    = target->title;
-        const std::string& entity_date     = target->date;
+        const std::string  entity_date     = friendly_date(target->date);
         const std::string& entity_location = target->location;
 
         // Check if user just came back from Discord OAuth

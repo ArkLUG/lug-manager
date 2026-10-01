@@ -26,6 +26,13 @@
     else if (media.addListener) media.addListener(apply);
   }
 
+  // Installable app (PWA): the service worker only provides an offline page.
+  if ('serviceWorker' in navigator && window.isSecureContext) {
+    window.addEventListener('load', function () {
+      navigator.serviceWorker.register('/sw.js').catch(function () {});
+    });
+  }
+
   // Called by the Light / System / Dark switcher in the sidebar.
   window.setTheme = function (pref) {
     try {

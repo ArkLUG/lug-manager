@@ -71,8 +71,11 @@ struct AuthMiddleware {
     }
 
     // Baseline security headers on every response (this middleware runs for
-    // all routes). A full script CSP isn't practical yet (inline scripts +
-    // CDN libraries), so framing is locked down via frame-ancestors alone.
+    // all routes). The CSP pins where scripts/styles may load from and blocks
+    // plugins, <base> hijacking, off-site form posts and framing. It still
+    // allows inline script ('unsafe-inline' + 'unsafe-eval' for htmx hx-on
+    // handlers) because the templates use inline handlers throughout - moving
+    // those into static files is what would let us drop them.
     void after_handle(crow::request& /*req*/, crow::response& res, context& /*ctx*/) {
         auto set_default = [&](const char* name, const char* value) {
             if (res.get_header_value(name).empty()) res.set_header(name, value);
@@ -81,7 +84,15 @@ struct AuthMiddleware {
         set_default("X-Frame-Options", "DENY");
         set_default("Referrer-Policy", "strict-origin-when-cross-origin");
         if (res.get_header_value("Content-Security-Policy").empty())
-            res.set_header("Content-Security-Policy", "frame-ancestors 'none'");
+            res.set_header("Content-Security-Policy",
+                "default-src 'self'; "
+                "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://cdn.jsdelivr.net https://unpkg.com https://cdn.tailwindcss.com; "
+                "style-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://unpkg.com https://maxcdn.bootstrapcdn.com; "
+                "font-src 'self' data: https://cdn.jsdelivr.net https://maxcdn.bootstrapcdn.com; "
+                "img-src 'self' data: blob: https:; "
+                "connect-src 'self'; "
+                "worker-src 'self'; manifest-src 'self'; "
+                "object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'");
     }
 };
 

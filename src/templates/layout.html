@@ -4,10 +4,13 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>{{page_title}} — LUG Manager</title>
-  {{#has_logo}}<link rel="icon" href="{{logo_url}}">{{/has_logo}}
+  {{#has_logo}}<link rel="icon" href="{{logo_url}}">{{/has_logo}}{{^has_logo}}<link rel="icon" href="/static/icon-192.png">{{/has_logo}}
   <link rel="stylesheet" href="/static/tailwind.min.css" id="tw-local">
   <script src="/static/theme.js"></script>
   <link rel="stylesheet" href="/static/theme.css">
+  <link rel="manifest" href="/manifest.webmanifest">
+  <meta name="theme-color" content="#111827">
+  <link rel="apple-touch-icon" href="/static/apple-touch-icon.png">
   <script>
     // Fall back to play CDN in local dev when CSS hasn't been generated yet
     document.getElementById('tw-local').addEventListener('error', function() {
@@ -121,6 +124,7 @@
   </style>
 </head>
 <body class="bg-gray-100 min-h-screen flex" hx-boost="false">
+  <a href="#main-content" class="skip-link">Skip to content</a>
 
   <!-- ===== SIDEBAR ===== -->
   <aside id="sidebar"
