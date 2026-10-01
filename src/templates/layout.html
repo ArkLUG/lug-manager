@@ -366,6 +366,16 @@
                     {{^active_branding}}nav-inactive{{/active_branding}}">
             Branding
           </a>
+          <a hx-get="/settings/backups"
+             hx-target="#main-content"
+             hx-push-url="true"
+             hx-swap="innerHTML"
+             hx-indicator="#nav-spinner"
+             class="block px-3 py-2 rounded-lg text-sm cursor-pointer transition-colors
+                    {{#active_backups}}nav-active{{/active_backups}}
+                    {{^active_backups}}nav-inactive{{/active_backups}}">
+            Backups
+          </a>
           <a hx-get="/settings/api-keys"
              hx-target="#main-content"
              hx-push-url="true"

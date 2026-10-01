@@ -56,6 +56,7 @@
 #include "routes/DuesRoutes.hpp"
 #include "routes/ExportRoutes.hpp"
 #include "routes/MemberBulkRoutes.hpp"
+#include "routes/BackupRoutes.hpp"
 #include <memory>
 
 struct Services {
@@ -95,6 +96,7 @@ struct Services {
     std::shared_ptr<RsvpRepository> rsvps;
     std::shared_ptr<DisplayRequestRepository> displays;
     std::shared_ptr<DuesRepository> dues;
+    std::shared_ptr<BackupService> backups;
 };
 
 void register_all_routes(LugApp& app, Services& svc);

@@ -95,6 +95,8 @@ The container uses `/app/data` as its data directory (SQLite database, plus an a
 
 The server runs as the unprivileged `lug` user. The entrypoint starts as root only to `chown` `/app/data` to that user (so volumes created by older, root-running images keep working), then drops privileges before starting the app. Don't start the container with `--user`: the entrypoint then can't fix the volume's ownership.
 
+The app also takes a daily snapshot into `/app/data/backups/` (Settings > Backups to configure, download, or back up on demand). Copy those off the server for real disaster recovery.
+
 ### Backup the database:
 ```bash
 # docker compose

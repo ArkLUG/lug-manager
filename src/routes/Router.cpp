@@ -13,6 +13,8 @@ void register_all_routes(LugApp& app, Services& svc) {
     if (!svc.dues) svc.dues = std::make_shared<DuesRepository>(svc.attendance_repo.db());
     register_dues_routes(app, svc.members, svc.dues, svc.audit);
     register_member_bulk_routes(app, svc.members, svc.audit);
+    if (!svc.backups) svc.backups = std::make_shared<BackupService>(svc.attendance_repo.db(), svc.data_dir);
+    register_backup_routes(app, svc.backups, svc.settings, svc.audit);
     register_export_routes(app, svc.member_repo, svc.attendance_repo, svc.perks, svc.audit);
     register_attendance_routes(app, svc.attendance, svc.events, svc.meetings, svc.members, svc.chapter_members, svc.perks, svc.audit);
     register_calendar_routes(app, svc.calendar, svc.perks, svc.attendance_repo, svc.member_repo);

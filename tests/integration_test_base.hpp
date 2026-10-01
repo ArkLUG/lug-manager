@@ -260,7 +260,8 @@ protected:
             "",      // public_url
             nullptr, // rsvps
             nullptr, // displays
-            nullptr  // dues
+            nullptr, // dues
+            nullptr  // backups
 
         };
         register_all_routes(*app, svc);

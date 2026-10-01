@@ -1,0 +1,39 @@
+<div class="max-w-2xl space-y-4" data-page-title="Backups">
+  <div class="bg-white rounded-xl border border-gray-200 p-6 space-y-4">
+    <div class="flex items-start justify-between gap-4">
+      <div>
+        <h2 class="text-lg font-semibold text-gray-900">Database Backups</h2>
+        <p class="text-sm text-gray-500">Consistent snapshots of the database, stored next to it in <code>data/backups</code>. Download one to keep an off-server copy - backups contain everyone's personal data, so store them safely.</p>
+      </div>
+      <button hx-post="/settings/backups" hx-target="#main-content" hx-swap="innerHTML"
+              class="shrink-0 px-4 py-2 bg-yellow-400 text-gray-900 rounded-lg text-sm font-semibold hover:bg-yellow-300">Back up now</button>
+    </div>
+    {{#flash}}<p class="text-sm text-gray-600">{{flash}}</p>{{/flash}}
+
+    <form hx-post="/settings/backups/schedule" hx-target="#main-content" hx-swap="innerHTML"
+          class="flex flex-wrap items-center gap-3 text-sm border-t border-gray-100 pt-4">
+      <label class="flex items-center gap-2 text-gray-700">
+        <input type="checkbox" name="backup_enabled" value="1" {{#enabled}}checked{{/enabled}} class="w-4 h-4 accent-yellow-400">
+        Daily automatic backup
+      </label>
+      <label class="flex items-center gap-2 text-gray-700">
+        keep the newest
+        <input type="number" name="backup_keep" min="1" max="365" value="{{keep}}" class="w-20 border border-gray-300 rounded-lg px-2 py-1">
+      </label>
+      <button class="px-3 py-1.5 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50">Save</button>
+    </form>
+
+    {{#has_backups}}
+    <table class="w-full text-sm">
+      <thead><tr class="text-left text-gray-500 text-xs"><th class="py-1">Taken</th><th>Size</th><th></th></tr></thead>
+      <tbody class="divide-y divide-gray-100">
+        {{#backups}}
+        <tr><td class="py-1.5 text-gray-800">{{when}}</td><td class="text-gray-500">{{size}}</td>
+            <td class="text-right"><a href="/settings/backups/{{name}}" class="text-indigo-600 hover:text-indigo-800">Download</a></td></tr>
+        {{/backups}}
+      </tbody>
+    </table>
+    {{/has_backups}}
+    {{^has_backups}}<p class="text-sm text-gray-400">No backups yet.</p>{{/has_backups}}
+  </div>
+</div>
