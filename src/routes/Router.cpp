@@ -26,6 +26,7 @@ void register_all_routes(LugApp& app, Services& svc) {
     register_gallery_routes(app, svc.attendance_repo.db(), svc.photos, svc.events, svc.chapter_members,
                             svc.discord, svc.audit);
     register_account_routes(app, svc.attendance_repo.db(), svc.members, svc.photos, svc.audit);
+    register_inventory_routes(app, svc.attendance_repo.db(), svc.audit);
     register_series_routes(app, svc.series, svc.chapters, svc.chapter_members, svc.audit);
     if (!svc.backups) svc.backups = std::make_shared<BackupService>(svc.attendance_repo.db(), svc.data_dir);
     register_backup_routes(app, svc.backups, svc.settings, svc.audit);

@@ -99,6 +99,8 @@ void register_account_routes(LugApp& app, SqliteDatabase& db, MemberService& mem
         out["volunteer_shifts"] = rows_json(db,
             "SELECT s.title, s.starts_at, s.ends_at, u.* FROM event_shift_signups u "
             "JOIN event_shifts s ON s.id=u.shift_id WHERE u.member_id=?", me);
+        out["inventory_loans"] = rows_json(db,
+            "SELECT i.name AS item, l.* FROM inventory_loans l JOIN inventory_items i ON i.id=l.item_id WHERE l.member_id=?", me);
         out["dues_payments"] = rows_json(db, "SELECT * FROM dues_payments WHERE member_id=?", me);
         out["event_photos"] = rows_json(db, "SELECT * FROM event_photos WHERE member_id=?", me);
         out["challenge_entries"] = rows_json(db, "SELECT * FROM challenge_entries WHERE member_id=?", me);
@@ -136,6 +138,15 @@ void register_account_routes(LugApp& app, SqliteDatabase& db, MemberService& mem
             if (st.step() && st.col_int(0) == 0) {
                 res.code = 409;
                 res.write("<p class=\"text-sm text-red-600\">You're the only admin. Make someone else an admin first.</p>");
+                return res;
+            }
+        }
+        {
+            auto st = db.prepare("SELECT COUNT(*) FROM inventory_loans WHERE member_id=? AND returned_at IS NULL");
+            st.bind(1, me);
+            if (st.step() && st.col_int(0) > 0) {
+                res.code = 409;
+                res.write("<p class=\"text-sm text-red-600\">You still have LUG items checked out. Return them first.</p>");
                 return res;
             }
         }

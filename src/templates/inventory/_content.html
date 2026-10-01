@@ -1,0 +1,114 @@
+<div id="inventory-page" class="max-w-6xl space-y-5" data-page-title="Inventory">
+  <div class="flex flex-wrap items-center justify-between gap-2">
+    <div>
+      <h2 class="text-xl font-semibold text-gray-800">Inventory</h2>
+      <p class="text-sm text-gray-500">LUG-owned tables, baseplates, display cases, banners and more - and who has them right now.</p>
+    </div>
+    {{#can_manage}}<a href="/inventory.csv" download class="px-3 py-1.5 border border-gray-300 rounded-lg text-sm text-gray-700 hover:bg-gray-50">Export CSV</a>{{/can_manage}}
+  </div>
+  {{#flash}}<div class="text-sm rounded-lg px-4 py-2 border {{#flash_error}}border-red-200 bg-red-50 text-red-700{{/flash_error}}{{^flash_error}}border-green-200 bg-green-50 text-green-700{{/flash_error}}">{{flash}}</div>{{/flash}}
+
+  <section class="bg-white rounded-xl border border-gray-200 p-5">
+    <h3 class="font-semibold text-gray-800 mb-3">{{#can_manage}}Checked out now{{/can_manage}}{{^can_manage}}Checked out to you{{/can_manage}}</h3>
+    {{#has_loans}}
+    <div class="overflow-x-auto">
+    <table class="w-full text-sm">
+      <thead><tr class="text-left text-xs text-gray-500 border-b border-gray-200">
+        <th class="py-2 pr-3">Item</th>{{#can_manage}}<th class="py-2 pr-3">Who</th>{{/can_manage}}<th class="py-2 pr-3">Qty</th><th class="py-2 pr-3">Since</th><th class="py-2 pr-3">Due</th><th class="py-2"></th>
+      </tr></thead>
+      <tbody class="divide-y divide-gray-100">
+      {{#loans}}
+        <tr>
+          <td class="py-2 pr-3 text-gray-900">{{item}}{{#notes}}<div class="text-xs text-gray-500">{{notes}}</div>{{/notes}}</td>
+          {{#can_manage}}<td class="py-2 pr-3">{{who}}</td>{{/can_manage}}
+          <td class="py-2 pr-3">{{quantity}}</td>
+          <td class="py-2 pr-3 text-gray-500">{{since}}</td>
+          <td class="py-2 pr-3">{{#overdue}}<span class="text-red-600 font-medium">{{due_on}} (overdue)</span>{{/overdue}}{{^overdue}}{{due_on}}{{^due_on}}<span class="text-gray-400">-</span>{{/due_on}}{{/overdue}}</td>
+          <td class="py-2 text-right">{{#can_manage}}
+            <button hx-post="/inventory/loans/{{id}}/return" hx-target="#inventory-page" hx-swap="outerHTML"
+                    class="text-xs px-2.5 py-1 border border-gray-300 rounded-lg hover:bg-gray-50">Returned</button>{{/can_manage}}</td>
+        </tr>
+      {{/loans}}
+      </tbody>
+    </table>
+    </div>
+    {{/has_loans}}
+    {{^has_loans}}<p class="text-sm text-gray-400">Nothing checked out.</p>{{/has_loans}}
+
+    {{#can_manage}}{{#has_item_options}}
+    <form hx-post="/inventory/checkout" hx-target="#inventory-page" hx-swap="outerHTML"
+          class="mt-4 pt-4 border-t border-gray-200 grid grid-cols-1 md:grid-cols-6 gap-2 text-sm items-end">
+      <label class="md:col-span-2">Item
+        <select name="item_id" required class="mt-1 w-full border border-gray-300 rounded-lg px-2 py-1.5">
+          {{#item_options}}<option value="{{id}}">{{label}}</option>{{/item_options}}
+        </select></label>
+      <label class="md:col-span-2">To
+        <select name="member_id" required data-tomselect="single" class="mt-1 w-full border border-gray-300 rounded-lg px-2 py-1.5">
+          <option value="">Choose a member…</option>
+          {{#members}}<option value="{{id}}">{{name}}</option>{{/members}}
+        </select></label>
+      <label>Qty <input type="number" name="quantity" value="1" min="1" class="mt-1 w-full border border-gray-300 rounded-lg px-2 py-1.5"></label>
+      <label>Due <input type="date" name="due_on" min="{{today}}" class="mt-1 w-full border border-gray-300 rounded-lg px-2 py-1.5"></label>
+      <input name="notes" maxlength="500" placeholder="Notes (e.g. for which show)" class="md:col-span-5 border border-gray-300 rounded-lg px-2 py-1.5">
+      <button class="px-4 py-2 bg-yellow-400 text-gray-900 rounded-lg font-semibold hover:bg-yellow-300">Check out</button>
+    </form>
+    {{/has_item_options}}{{/can_manage}}
+  </section>
+
+  <section class="bg-white rounded-xl border border-gray-200 p-5">
+    <h3 class="font-semibold text-gray-800 mb-3">Items</h3>
+    {{#has_items}}
+    <div class="overflow-x-auto">
+    <table class="w-full text-sm">
+      <thead><tr class="text-left text-xs text-gray-500 border-b border-gray-200">
+        <th class="py-2 pr-3">Item</th><th class="py-2 pr-3">Category</th><th class="py-2 pr-3">Available</th><th class="py-2 pr-3">Kept at</th>{{#can_manage}}<th class="py-2"></th>{{/can_manage}}
+      </tr></thead>
+      <tbody class="divide-y divide-gray-100">
+      {{#items}}
+        <tr>
+          <td class="py-2 pr-3 text-gray-900">{{name}}{{#notes}}<div class="text-xs text-gray-500">{{notes}}</div>{{/notes}}</td>
+          <td class="py-2 pr-3 text-gray-600">{{category}}</td>
+          <td class="py-2 pr-3"><span class="{{#all_out}}text-red-600{{/all_out}}">{{available}}</span> <span class="text-gray-400">of {{quantity}}</span></td>
+          <td class="py-2 pr-3 text-gray-600">{{location}}</td>
+          {{#can_manage}}<td class="py-2 text-right whitespace-nowrap">
+            <button type="button" data-action="toggle-next-row" class="text-xs text-gray-600 hover:text-gray-900">Edit</button>
+          </td>{{/can_manage}}
+        </tr>
+        {{#can_manage}}
+        <tr class="hidden">
+          <td colspan="5" class="py-3">
+            <form hx-post="/inventory/{{id}}" hx-target="#inventory-page" hx-swap="outerHTML" class="grid grid-cols-1 md:grid-cols-6 gap-2 text-sm">
+              <input name="name" value="{{name}}" required maxlength="150" class="md:col-span-2 border border-gray-300 rounded-lg px-2 py-1.5" aria-label="Name">
+              <input name="category" value="{{category}}" maxlength="60" placeholder="Category" class="border border-gray-300 rounded-lg px-2 py-1.5">
+              <input type="number" name="quantity" value="{{quantity}}" min="1" class="border border-gray-300 rounded-lg px-2 py-1.5" aria-label="Quantity">
+              <input name="location" value="{{location}}" maxlength="150" placeholder="Kept at" class="md:col-span-2 border border-gray-300 rounded-lg px-2 py-1.5">
+              <input name="notes" value="{{notes}}" maxlength="1000" placeholder="Notes" class="md:col-span-4 border border-gray-300 rounded-lg px-2 py-1.5">
+              <button class="px-3 py-1.5 bg-gray-800 text-white rounded-lg">Save</button>
+              <button type="button" hx-post="/inventory/{{id}}/archive" hx-target="#inventory-page" hx-swap="outerHTML"
+                      hx-confirm="Remove {{name}} from the inventory?" class="px-3 py-1.5 text-red-600 border border-red-200 rounded-lg hover:bg-red-50">Remove</button>
+            </form>
+          </td>
+        </tr>
+        {{/can_manage}}
+      {{/items}}
+      </tbody>
+    </table>
+    </div>
+    {{/has_items}}
+    {{^has_items}}<p class="text-sm text-gray-400">No items yet.</p>{{/has_items}}
+
+    {{#can_manage}}
+    <details class="mt-4 border border-gray-200 rounded-lg">
+      <summary class="cursor-pointer px-3 py-2 text-sm font-medium text-gray-700">Add an item</summary>
+      <form hx-post="/inventory" hx-target="#inventory-page" hx-swap="outerHTML" class="p-3 grid grid-cols-1 md:grid-cols-6 gap-2 text-sm">
+        <input name="name" required maxlength="150" placeholder="e.g. 6ft folding table" class="md:col-span-2 border border-gray-300 rounded-lg px-2 py-1.5">
+        <input name="category" maxlength="60" placeholder="Category" class="border border-gray-300 rounded-lg px-2 py-1.5">
+        <input type="number" name="quantity" value="1" min="1" class="border border-gray-300 rounded-lg px-2 py-1.5" aria-label="Quantity">
+        <input name="location" maxlength="150" placeholder="Kept at (storage unit, member's garage...)" class="md:col-span-2 border border-gray-300 rounded-lg px-2 py-1.5">
+        <input name="notes" maxlength="1000" placeholder="Notes" class="md:col-span-5 border border-gray-300 rounded-lg px-2 py-1.5">
+        <button class="px-3 py-1.5 bg-yellow-400 text-gray-900 rounded-lg font-semibold hover:bg-yellow-300">Add</button>
+      </form>
+    </details>
+    {{/can_manage}}
+  </section>
+</div>

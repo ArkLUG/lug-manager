@@ -98,7 +98,7 @@ errs("/meetings/new form")
 shot("meeting_form")
 
 # Settings (TomSelect), backups, attendance overview, help, audit
-for p in ("/settings", "/settings/backups", "/attendance/overview", "/help", "/audit", "/chapters", "/events", "/perks", "/challenges", "/account"):
+for p in ("/settings", "/settings/backups", "/attendance/overview", "/help", "/audit", "/chapters", "/events", "/perks", "/challenges", "/account", "/inventory"):
     visit(p, "#main-content")
     shot(p.strip("/").replace("/", "_"))
 

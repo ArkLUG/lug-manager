@@ -95,7 +95,16 @@
     if (!el || !el.dataset) return;
     if ('initSelects' in el.dataset) call('initChannelSelects');
     if (el.dataset.tomselect) initTomSelect(el);
+    // Selects inside swapped-in content whose options are already rendered
+    // (no hx-get of their own - those init when their options arrive).
+    if (el.querySelectorAll) el.querySelectorAll('select[data-tomselect]:not([hx-get])').forEach(initTomSelect);
   });
+
+  function initStaticSelects() {
+    document.querySelectorAll('select[data-tomselect]:not([hx-get])').forEach(initTomSelect);
+  }
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', initStaticSelects);
+  else initStaticSelects();
 
   document.addEventListener('htmx:afterRequest', function (e) {
     var el = e.detail && e.detail.elt;
