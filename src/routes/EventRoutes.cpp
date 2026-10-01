@@ -60,6 +60,14 @@ static crow::mustache::context build_event_list_ctx(
     for (const auto& ch : chapters_svc.list_all())
         chapter_names[ch.id] = ch.name;
 
+    // One grouped query for every row (was a count + check-in lookup per row).
+
+    std::vector<int64_t> row_ids;
+
+    for (const auto& x : event_list) row_ids.push_back(x.id);
+
+    auto counts = attendance.counts_for("event", row_ids);
+
     crow::json::wvalue arr;
     for (size_t i = 0; i < event_list.size(); ++i) {
         const auto& e = event_list[i];
@@ -102,7 +110,6 @@ static crow::mustache::context build_event_list_ctx(
         arr[i]["has_discord_thread"]= !e.discord_thread_id.empty();
         arr[i]["is_admin"]         = is_admin;
         arr[i]["has_notes"]        = !e.notes.empty();
-        arr[i]["notes_html"]       = e.notes.empty() ? "" : render_markdown(e.notes);
         arr[i]["has_report"]       = !e.notes_discord_post_id.empty();
 
         // Per-event can_manage: admin always, or chapter event_manager/lead
@@ -113,24 +120,8 @@ static crow::mustache::context build_event_list_ctx(
                 event_can_manage = chapter_role_rank(it->second) >= chapter_role_rank("event_manager");
         }
         arr[i]["can_manage"] = event_can_manage;
+        { auto c = counts.find(e.id); arr[i]["attendance_count"] = c == counts.end() ? 0 : c->second; }
 
-        int count = attendance.get_count("event", e.id);
-        arr[i]["attendance_count"] = count;
-
-        bool checked_in = current_member_id > 0 &&
-            attendance.is_checked_in(current_member_id, "event", e.id);
-        arr[i]["is_checked_in"] = checked_in;
-
-        // Spots left
-        if (e.max_attendees > 0) {
-            int spots_left = e.max_attendees - count;
-            arr[i]["spots_left"]   = spots_left > 0 ? spots_left : 0;
-            arr[i]["has_max"]      = true;
-            arr[i]["is_full"]      = (spots_left <= 0);
-        } else {
-            arr[i]["has_max"] = false;
-            arr[i]["is_full"] = false;
-        }
     }
     ctx["events"] = std::move(arr);
     return ctx;

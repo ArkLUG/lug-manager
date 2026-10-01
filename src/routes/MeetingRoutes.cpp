@@ -69,6 +69,14 @@ static crow::mustache::context build_meeting_list_ctx(
     for (const auto& ch : chapters_svc.list_all())
         chapter_names[ch.id] = ch.name;
 
+    // One grouped query for every row (was a count + check-in lookup per row).
+
+    std::vector<int64_t> row_ids;
+
+    for (const auto& x : meeting_list) row_ids.push_back(x.id);
+
+    auto counts = attendance.counts_for("meeting", row_ids);
+
     crow::json::wvalue arr;
     for (size_t i = 0; i < meeting_list.size(); ++i) {
         const auto& m = meeting_list[i];
@@ -106,7 +114,6 @@ static crow::mustache::context build_meeting_list_ctx(
         arr[i]["is_virtual"]       = m.is_virtual;
         arr[i]["discord_voice_channel_id"] = m.discord_voice_channel_id;
         arr[i]["has_notes"]        = !m.notes.empty();
-        arr[i]["notes_html"]       = m.notes.empty() ? "" : render_markdown(m.notes);
         arr[i]["has_report"]       = !m.notes_discord_post_id.empty();
 
         bool mtg_can_manage = is_admin;
@@ -116,13 +123,7 @@ static crow::mustache::context build_meeting_list_ctx(
                 mtg_can_manage = chapter_role_rank(it->second) >= chapter_role_rank("event_manager");
         }
         arr[i]["can_manage"] = mtg_can_manage;
-
-        int count = attendance.get_count("meeting", m.id);
-        arr[i]["attendance_count"] = count;
-
-        bool checked_in = current_member_id > 0 &&
-            attendance.is_checked_in(current_member_id, "meeting", m.id);
-        arr[i]["is_checked_in"] = checked_in;
+        { auto c = counts.find(m.id); arr[i]["attendance_count"] = c == counts.end() ? 0 : c->second; }
     }
     ctx["meetings"] = std::move(arr);
     return ctx;

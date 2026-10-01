@@ -121,8 +121,8 @@
             </td>
             <td class="px-4 py-3 whitespace-nowrap hidden md:table-cell">
               <span id="attendance-count-meeting-{{id}}" class="text-xs text-gray-500"
-                    hx-get="/attendance/count/meeting/{{id}}" hx-trigger="load, attendanceUpdated from:body" hx-swap="outerHTML">
-                ...
+                    hx-get="/attendance/count/meeting/{{id}}" hx-trigger="attendanceUpdated from:body" hx-swap="outerHTML">
+                <span class="font-semibold">{{attendance_count}}</span> checked in
               </span>
             </td>
             <td class="px-4 py-3 whitespace-nowrap text-right">

@@ -228,3 +228,22 @@ TEST_F(IntegrationTest, MeetingCreateNonAdminForbidden) {
 // Events — additional coverage
 // ═══════════════════════════════════════════════════════════════════════════
 
+
+// List pages render attendance counts inline (one grouped query) instead of
+// one /attendance/count request per row.
+TEST_F(IntegrationTest, MeetingListShowsCountsInline) {
+    Meeting m;
+    m.title = "Counted Meeting";
+    m.start_time = "2099-04-01T19:00:00";
+    m.end_time = "2099-04-01T21:00:00";
+    m.scope = "lug_wide";
+    auto mtg = meeting_svc->create(m);
+    attendance_repo->check_in(regular_member_id, "meeting", mtg.id);
+    attendance_repo->check_in(admin_member_id, "meeting", mtg.id);
+    auto counts = attendance_svc->counts_for("meeting", {mtg.id, 999999});
+    EXPECT_EQ(counts[mtg.id], 2);
+    EXPECT_EQ(counts.count(999999), 0u);
+    auto r = GET("/meetings?search=Counted", admin_token);
+    expect_contains(r, "<span class=\"font-semibold\">2</span> checked in");
+    EXPECT_EQ(r.body.find("hx-trigger=\"load, attendanceUpdated"), std::string::npos);
+}

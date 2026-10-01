@@ -8,6 +8,7 @@
 #include "models/Member.hpp"
 #include "models/Meeting.hpp"
 #include <vector>
+#include <unordered_map>
 #include <optional>
 
 class AttendanceService {
@@ -48,6 +49,10 @@ public:
 
     // Returns today's YYYY-MM-DD in local time.
     static std::string today_ymd();
+    // Attendance counts for many meetings/events in one query (list pages).
+    // Events count distinct members across days, like get_count().
+    std::unordered_map<int64_t, int> counts_for(const std::string& entity_type,
+                                                const std::vector<int64_t>& ids);
     // Whether members may check themselves in to this meeting right now (QR
     // link or the meeting page): not cancelled/virtual-QR rules aside, only
     // on the meeting's date, +/-1 day since meeting times are LUG-local and

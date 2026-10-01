@@ -172,3 +172,21 @@ std::vector<int> AttendanceService::get_attendance_years() {
 bool AttendanceService::check_in_to_day(int64_t member_id, int64_t event_day_id) {
     return event_day_attendance_repo_.check_in(event_day_id, member_id);
 }
+
+std::unordered_map<int64_t, int> AttendanceService::counts_for(const std::string& entity_type,
+                                                               const std::vector<int64_t>& ids) {
+    std::unordered_map<int64_t, int> out;
+    if (ids.empty()) return out;
+    std::string in = "(";
+    for (size_t i = 0; i < ids.size(); ++i) in += (i ? ",?" : "?");
+    in += ")";
+    auto& db = repo_.db();
+    auto stmt = db.prepare(entity_type == "event"
+        ? "SELECT ed.event_id, COUNT(DISTINCT eda.member_id) FROM event_day_attendance eda "
+          "JOIN event_days ed ON ed.id = eda.event_day_id WHERE ed.event_id IN " + in + " GROUP BY ed.event_id"
+        : "SELECT entity_id, COUNT(*) FROM attendance WHERE entity_type='meeting' AND entity_id IN " + in +
+          " GROUP BY entity_id");
+    for (size_t i = 0; i < ids.size(); ++i) stmt.bind(static_cast<int>(i + 1), ids[i]);
+    while (stmt.step()) out[stmt.col_int(0)] = static_cast<int>(stmt.col_int(1));
+    return out;
+}

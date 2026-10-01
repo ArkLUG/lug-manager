@@ -128,8 +128,8 @@
             <td class="px-4 py-3 whitespace-nowrap hidden md:table-cell">
               {{^scope_non_lug}}
               <span id="attendance-count-event-{{id}}" class="text-xs text-gray-500"
-                    hx-get="/attendance/count/event/{{id}}" hx-trigger="load, attendanceUpdated from:body" hx-swap="outerHTML">
-                ...
+                    hx-get="/attendance/count/event/{{id}}" hx-trigger="attendanceUpdated from:body" hx-swap="outerHTML">
+                <span class="font-semibold">{{attendance_count}}</span> checked in
               </span>
               {{/scope_non_lug}}
             </td>
