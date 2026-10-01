@@ -293,7 +293,7 @@ void register_attendance_routes(LugApp& app, AttendanceService& attendance,
             auto layout = crow::mustache::load("layout.html");
             res.write(layout.render(layout_ctx).dump());
         }
-        res.add_header("Content-Type", "text/html");
+        res.add_header("Content-Type", "text/html; charset=utf-8");
         return res;
     });
 
@@ -356,7 +356,7 @@ void register_attendance_routes(LugApp& app, AttendanceService& attendance,
             auto layout = crow::mustache::load("layout.html");
             res.write(layout.render(layout_ctx).dump());
         }
-        res.add_header("Content-Type", "text/html");
+        res.add_header("Content-Type", "text/html; charset=utf-8");
         return res;
     });
 
@@ -378,7 +378,7 @@ void register_attendance_routes(LugApp& app, AttendanceService& attendance,
             " hx-swap=\"outerHTML\">"
             "<span class=\"font-semibold\">" + std::to_string(count) + "</span> checked in"
             "</span>");
-        res.add_header("Content-Type", "text/html");
+        res.add_header("Content-Type", "text/html; charset=utf-8");
         return res;
     });
 
@@ -394,7 +394,7 @@ void register_attendance_routes(LugApp& app, AttendanceService& attendance,
         res.write(render_attendance_list(attendance, entity_type,
                                          static_cast<int64_t>(entity_id),
                                          can_manage, entity_type == "meeting"));
-        res.add_header("Content-Type", "text/html");
+        res.add_header("Content-Type", "text/html; charset=utf-8");
         return res;
     });
 
@@ -420,14 +420,14 @@ void register_attendance_routes(LugApp& app, AttendanceService& attendance,
         if (!is_entity_type(entity_type) || entity_id <= 0 || member_ids.empty()) {
             res.code = 400;
             res.write(R"(<span class="text-red-500 text-xs">Select at least one member</span>)");
-            res.add_header("Content-Type", "text/html");
+            res.add_header("Content-Type", "text/html; charset=utf-8");
             return res;
         }
 
         if (!can_manage_attendance(req, app, events, meetings, chapter_members, entity_type, entity_id)) {
             res.code = 403;
             res.write(R"(<span class="text-red-500 text-xs">Forbidden</span>)");
-            res.add_header("Content-Type", "text/html");
+            res.add_header("Content-Type", "text/html; charset=utf-8");
             return res;
         }
 
@@ -458,7 +458,7 @@ void register_attendance_routes(LugApp& app, AttendanceService& attendance,
         }
         res.write(render_attendance_list(attendance, entity_type, entity_id,
                                          true, entity_type == "meeting"));
-        res.add_header("Content-Type", "text/html");
+        res.add_header("Content-Type", "text/html; charset=utf-8");
         res.add_header("HX-Trigger", "attendanceUpdated");
         return res;
     });
@@ -471,7 +471,7 @@ void register_attendance_routes(LugApp& app, AttendanceService& attendance,
         [&](const crow::request& req, int id) {
         crow::response res;
         if (!require_auth(req, res, app)) return res;
-        res.add_header("Content-Type", "text/html");
+        res.add_header("Content-Type", "text/html; charset=utf-8");
 
         auto rec = attendance.repo().find_by_id(static_cast<int64_t>(id));
         if (!rec) {
@@ -502,7 +502,7 @@ void register_attendance_routes(LugApp& app, AttendanceService& attendance,
         [&](const crow::request& req, int id) {
         crow::response res;
         if (!require_auth(req, res, app)) return res;
-        res.add_header("Content-Type", "text/html");
+        res.add_header("Content-Type", "text/html; charset=utf-8");
 
         auto rec = attendance.repo().find_by_id(static_cast<int64_t>(id));
         if (!rec) {
@@ -613,7 +613,7 @@ void register_attendance_routes(LugApp& app, AttendanceService& attendance,
         auto day = attendance.event_day_repo().find_by_id(static_cast<int64_t>(day_id));
         if (!day) {
             res.code = 404;
-            res.add_header("Content-Type", "text/html");
+            res.add_header("Content-Type", "text/html; charset=utf-8");
             res.write(R"(<span class="text-red-500 text-xs">Day not found</span>)");
             return res;
         }
@@ -621,7 +621,7 @@ void register_attendance_routes(LugApp& app, AttendanceService& attendance,
 
         if (!can_manage_attendance(req, app, events, meetings, chapter_members, "event", event_id)) {
             res.code = 403;
-            res.add_header("Content-Type", "text/html");
+            res.add_header("Content-Type", "text/html; charset=utf-8");
             res.write(R"(<span class="text-red-500 text-xs">Forbidden</span>)");
             return res;
         }
@@ -644,7 +644,7 @@ void register_attendance_routes(LugApp& app, AttendanceService& attendance,
 
         res.write(render_attendance_list(attendance, "event", event_id,
                                          true, false));
-        res.add_header("Content-Type", "text/html");
+        res.add_header("Content-Type", "text/html; charset=utf-8");
         res.add_header("HX-Trigger", "attendanceUpdated");
         return res;
     });
@@ -658,7 +658,7 @@ void register_attendance_routes(LugApp& app, AttendanceService& attendance,
         auto row = attendance.event_day_attendance_repo().find_by_id(static_cast<int64_t>(id));
         if (!row) {
             res.code = 404;
-            res.add_header("Content-Type", "text/html");
+            res.add_header("Content-Type", "text/html; charset=utf-8");
             res.write(R"(<span class="text-red-500 text-xs">Record not found</span>)");
             return res;
         }
@@ -667,7 +667,7 @@ void register_attendance_routes(LugApp& app, AttendanceService& attendance,
 
         if (!can_manage_attendance(req, app, events, meetings, chapter_members, "event", event_id)) {
             res.code = 403;
-            res.add_header("Content-Type", "text/html");
+            res.add_header("Content-Type", "text/html; charset=utf-8");
             res.write(R"(<span class="text-red-500 text-xs">Forbidden</span>)");
             return res;
         }
@@ -677,7 +677,7 @@ void register_attendance_routes(LugApp& app, AttendanceService& attendance,
                   get_entity_title(events, meetings, "event", event_id),
                   "Admin removed event day attendance");
         res.write(render_attendance_list(attendance, "event", event_id, true, false));
-        res.add_header("Content-Type", "text/html");
+        res.add_header("Content-Type", "text/html; charset=utf-8");
         res.add_header("HX-Trigger", "attendanceUpdated");
         return res;
     });

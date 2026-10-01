@@ -951,7 +951,7 @@ void register_event_routes(LugApp& app, EventService& events, AttendanceService&
             if (!ok) {
                 res.code = 400;
                 res.write(R"(<div class="text-red-500 text-sm">Check-in is only available during the event's day range.</div>)");
-                res.add_header("Content-Type", "text/html");
+                res.add_header("Content-Type", "text/html; charset=utf-8");
                 return res;
             }
             audit.log(req, app, "event.self_checkin", "event", static_cast<int64_t>(id), ev_checkin_title, "Self check-in");
@@ -961,7 +961,7 @@ void register_event_routes(LugApp& app, EventService& events, AttendanceService&
                 "Cancel Sign-Up</button>");
         }
         res.add_header("HX-Trigger", "attendanceUpdated");
-        res.add_header("Content-Type", "text/html");
+        res.add_header("Content-Type", "text/html; charset=utf-8");
         return res;
     });
 
