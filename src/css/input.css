@@ -1,1 +1,4 @@
 @import "tailwindcss";
+
+/* Classes used in server-built HTML (src/routes/*.cpp) must be generated too. */
+@source "../routes";

@@ -6,6 +6,8 @@
   <title>{{page_title}} — LUG Manager</title>
   {{#has_logo}}<link rel="icon" href="{{logo_url}}">{{/has_logo}}
   <link rel="stylesheet" href="/static/tailwind.min.css" id="tw-local">
+  <script src="/static/theme.js"></script>
+  <link rel="stylesheet" href="/static/theme.css">
   <script>
     // Fall back to play CDN in local dev when CSS hasn't been generated yet
     document.getElementById('tw-local').addEventListener('error', function() {
@@ -48,8 +50,9 @@
     .htmx-request .htmx-indicator { opacity: 1; }
     .htmx-request.htmx-indicator  { opacity: 1; }
 
-    /* Smooth nav transitions */
-    #sidebar { transition: transform 200ms ease-in-out; }
+    /* Smooth nav transitions. The sidebar is dark in both themes, so its
+       native scrollbar should be too. */
+    #sidebar { transition: transform 200ms ease-in-out; color-scheme: dark; scrollbar-color: #4B5563 transparent; }
 
     /* Stud pattern for LEGO branding */
     .stud-pattern {
@@ -83,6 +86,13 @@
       background-color: #374151;
       color: #ffffff;
     }
+
+    /* Theme switcher (sidebar footer) - active state follows <html data-theme-pref> */
+    .theme-btn { padding: 0.3rem; border-radius: 0.375rem; color: #9CA3AF; }
+    .theme-btn:hover { color: #fff; background-color: #374151; }
+    html[data-theme-pref="light"]  .theme-btn[data-v="light"],
+    html[data-theme-pref="system"] .theme-btn[data-v="system"],
+    html[data-theme-pref="dark"]   .theme-btn[data-v="dark"] { color: #111827; background-color: #FFD700; }
 
     /* Nav accordion (Settings, Chapter Tools) */
     .nav-accordion-toggle {
@@ -430,6 +440,19 @@
 
     <!-- Bottom section: calendar link + logout -->
     <div class="px-4 py-4 border-t border-gray-700 space-y-1">
+      <!-- Theme: Light / System / Dark (see /static/theme.js) -->
+      <div class="flex items-center gap-1 px-3 pb-2" role="group" aria-label="Color theme">
+        <span class="text-xs text-gray-500 mr-auto">Theme</span>
+        <button type="button" class="theme-btn" data-v="light" onclick="setTheme('light')" title="Light" aria-label="Light theme">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><circle cx="12" cy="12" r="4" stroke-width="2"/><path stroke-linecap="round" stroke-width="2" d="M12 2v2m0 16v2M4.93 4.93l1.41 1.41m11.32 11.32l1.41 1.41M2 12h2m16 0h2M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41"/></svg>
+        </button>
+        <button type="button" class="theme-btn" data-v="system" onclick="setTheme('system')" title="Match system" aria-label="Match system theme">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="12" rx="2" stroke-width="2"/><path stroke-linecap="round" stroke-width="2" d="M8 20h8M12 16v4"/></svg>
+        </button>
+        <button type="button" class="theme-btn" data-v="dark" onclick="setTheme('dark')" title="Dark" aria-label="Dark theme">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 12.79A9 9 0 1111.21 3 7 7 0 0021 12.79z"/></svg>
+        </button>
+      </div>
       <a href="/calendar.ics" target="_blank"
          class="flex items-center gap-2 px-3 py-2 text-xs text-gray-400
                 hover:text-yellow-400 hover:bg-gray-800 rounded-lg transition-colors">
