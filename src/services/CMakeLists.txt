@@ -5,6 +5,7 @@ target_sources(lug_core PRIVATE
   BackupService.hpp
   FanCoLab.hpp
   Features.hpp
+  Palettes.hpp
   PhotoStore.hpp
 )
 add_subdirectory(events)

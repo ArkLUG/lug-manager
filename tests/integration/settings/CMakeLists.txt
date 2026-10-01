@@ -7,6 +7,7 @@ lug_add_tests(
   test_integration_coverage.cpp
   test_integration_features.cpp
   test_integration_help.cpp
+  test_integration_palettes.cpp
   test_integration_settings.cpp
   test_integration_settings2.cpp
   test_integration_setup.cpp

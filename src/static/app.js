@@ -4,7 +4,7 @@
 // attributes instead; this file (served from 'self') does the rest.
 //
 //   data-action="..."        click behaviours (see ACTIONS below)
-//   data-change="submit|bulk-action"
+//   data-change="submit|bulk-action|palette"   (palette: switch the colour theme now)
 //   data-after-success="close-modal reload:/path"   after a successful htmx request
 //   data-destroy-select="<id>"   destroy a Tom Select before an htmx request
 //   data-init-selects            re-init channel/role Tom Selects after settle
@@ -86,6 +86,12 @@
     if (!el || !el.dataset) return;
     if (el.dataset.change === 'submit' && el.form) el.form.requestSubmit();
     else if (el.dataset.change === 'bulk-action') call('bulkActionChanged');
+    else if (el.dataset.change === 'palette') {
+      document.documentElement.setAttribute('data-palette', el.value);
+      document.querySelectorAll('[data-change="palette"]').forEach(function (o) {
+        if (o !== el) { if (o.type === 'radio') o.checked = o.value === el.value; else o.value = el.value; }
+      });
+    }
   });
 
   function initTomSelect(el) {

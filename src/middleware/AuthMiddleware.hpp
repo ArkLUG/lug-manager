@@ -4,6 +4,7 @@
 #include "repositories/members/ChapterMemberRepository.hpp"
 #include "repositories/admin/SettingsRepository.hpp"
 #include "services/Features.hpp"
+#include "services/Palettes.hpp"
 #include "utils/web/AssetVersion.hpp"
 #include <crow.h>
 #include <string>
@@ -163,6 +164,13 @@ struct AuthMiddleware {
             const std::string tagged = "<script nonce=\"" + nonce + "\">";
             for (size_t p = 0; (p = res.body.find("<script>", p)) != std::string::npos; p += tagged.size())
                 res.body.replace(p, 8, tagged);
+            // Pages that don't pick a colour theme themselves (sign-in, public
+            // pages, check-in) get the LUG's default (palettes.css).
+            const std::string bare = "<html lang=\"en\">";
+            size_t html = res.body.find(bare);
+            if (html != std::string::npos && html < 200 && settings)
+                res.body.replace(html, bare.size(), "<html lang=\"en\" data-palette=\"" +
+                                 palettes::resolve("", settings->get("default_palette", "classic")) + "\">");
             size_t head = res.body.find("<head>");
             if (head != std::string::npos)
                 res.body.insert(head + 6, "<meta name=\"htmx-config\" content='{\"inlineScriptNonce\":\"" + nonce + "\"}'>");
@@ -205,6 +213,26 @@ inline void set_layout_auth(const crow::request& req, App& app,
     // than a function parameter, so every page picks this up automatically.
     auto& mw = app.template get_middleware<AuthMiddleware>();
     layout_ctx["lug_name"] = mw.settings ? mw.settings->get("lug_name", "LEGO fan community") : "LEGO fan community";
+    {
+        // Colour theme: theirs, else the LUG default (services/Palettes.hpp).
+        std::string mine;
+        if (mw.settings && ctx.auth.member_id > 0) {
+            auto st = mw.settings->db().prepare("SELECT palette FROM members WHERE id=?");
+            st.bind(1, ctx.auth.member_id);
+            if (st.step()) mine = st.col_text(0);
+        }
+        const std::string lug_default = mw.settings ? mw.settings->get("default_palette", "classic") : "classic";
+        const std::string palette = palettes::resolve(mine, lug_default);
+        layout_ctx["palette"] = palette;
+        crow::json::wvalue opts = crow::json::wvalue::list();
+        int i = 0;
+        for (const auto& p : palettes::all()) {
+            opts[i]["key"] = p.key; opts[i]["name"] = p.name;
+            opts[i]["selected"] = palette == p.key;
+            ++i;
+        }
+        layout_ctx["palettes"] = std::move(opts);
+    }
     if (mw.settings) {
         std::string ext = mw.settings->get("branding_logo_extension", "");
         if (!ext.empty()) {

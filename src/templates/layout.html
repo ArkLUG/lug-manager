@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" data-palette="{{palette}}">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -10,6 +10,7 @@
   <script src="/static/app.js?v={{asset_v}}" defer></script>
   <script src="/static/live.js?v={{asset_v}}" defer></script>
   <link rel="stylesheet" href="/static/theme.css?v={{asset_v}}">
+  <link rel="stylesheet" href="/static/palettes.css?v={{asset_v}}">
   <link rel="manifest" href="/manifest.webmanifest">
   <meta name="theme-color" content="#111827">
   <link rel="apple-touch-icon" href="/static/apple-touch-icon.png?v={{asset_v}}">
@@ -155,7 +156,7 @@
       </div>
       {{/has_logo}}
       {{^has_logo}}
-      <div class="w-10 h-10 bg-yellow-400 rounded-lg flex items-center justify-center
+      <div class="logo-tile w-10 h-10 bg-yellow-400 rounded-lg flex items-center justify-center
                   font-black text-gray-900 text-lg shadow-inner flex-shrink-0">L</div>
       {{/has_logo}}
       <div class="min-w-0">
@@ -624,6 +625,15 @@
           <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 12.79A9 9 0 1111.21 3 7 7 0 0021 12.79z"/></svg>
         </button>
       </div>
+      <!-- Colours: the member's colour theme (static/palettes.css) -->
+      <label class="flex items-center gap-2 px-3 pb-2">
+        <span class="text-xs text-gray-500 mr-auto">Colours</span>
+        <select name="palette" data-change="palette" hx-post="/account/palette" hx-trigger="change" hx-swap="none"
+                aria-label="Colour theme"
+                class="bg-gray-800 border border-gray-700 text-gray-200 text-xs rounded-md px-1.5 py-1 max-w-[9.5rem]">
+          {{#palettes}}<option value="{{key}}" {{#selected}}selected{{/selected}}>{{name}}</option>{{/palettes}}
+        </select>
+      </label>
       <a hx-get="/account" hx-target="#main-content" hx-push-url="true" hx-swap="innerHTML"
          class="flex items-center gap-2 px-3 py-2 text-sm rounded-lg cursor-pointer transition-colors
                 {{#active_account}}nav-active{{/active_account}}{{^active_account}}text-gray-400 hover:text-white hover:bg-gray-700{{/active_account}}">

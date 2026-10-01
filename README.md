@@ -55,7 +55,7 @@
 - Feature toggles: switch off anything your LUG doesn't use. Its data is kept.
 - First-run setup, an audit log of every change, CSV exports, daily backups (photos included) and a JSON API.
 - Live pages: when someone changes something, everyone else's open pages update by themselves. If you're in the middle of editing, an "Updated - refresh" button waits for you instead. (Behind a reverse proxy, allow websockets.)
-- Dark mode, phone-friendly pages, and installable as an app.
+- Dark mode, colour themes (Classic, plus LEGO Fan CoLab, Fan CoLab Creator and Fan CoLab Community in the colours of the Fan CoLab badges; each member picks theirs, admins set the default), phone-friendly pages, and installable as an app.
 
 ## Install
 

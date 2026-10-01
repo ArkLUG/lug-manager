@@ -1,0 +1,89 @@
+/* Colour themes (<html data-palette="...">), on top of light/dark mode.
+ *
+ * "classic" is the original look and has no rules here. The others recolour
+ * the brand accent (the yellow buttons, focus rings, checkboxes, active nav)
+ * and the sidebar. Warning colours (amber, the soft yellow tints) keep their
+ * meaning in every theme.
+ *
+ * The LEGO Fan CoLab themes use the colours of its recognition badges: the
+ * yellow minifigure head (#FED403), the Fan Creator pink and purple (#D992BE,
+ * #90388F, with peach #F6C5B6 and lavender #C1BCE5) and the Community
+ * Ambassador blue (#0070B0).
+ *
+ * To add a theme: a block of variables below, an entry in
+ * src/services/Palettes.hpp, and a swatch is drawn from the same variables.
+ */
+html[data-palette="fancolab"] {
+  --p-accent: #FED403; --p-accent-hover: #FFE14D; --p-accent-strong: #E5BE00; --p-ink: #111827;
+  --p-control: #90388F; --p-ring: #90388F;
+  --p-sidebar: linear-gradient(180deg, #5E1F5D 0%, #3B123A 100%);
+  --p-sidebar-top: #90388F; --p-sidebar-line: rgb(255 255 255 / 0.12); --p-sidebar-hover: rgb(255 255 255 / 0.10);
+  --p-brand: #F6C5B6;
+}
+html[data-palette="creator"] {
+  --p-accent: #D992BE; --p-accent-hover: #E6B1D2; --p-accent-strong: #C26FA6; --p-ink: #1F0B1C;
+  --p-control: #90388F; --p-ring: #D992BE;
+  --p-sidebar: linear-gradient(180deg, #3A1739 0%, #241023 100%);
+  --p-sidebar-top: #4E1F4D; --p-sidebar-line: rgb(255 255 255 / 0.12); --p-sidebar-hover: rgb(217 146 190 / 0.18);
+  --p-brand: #D992BE;
+}
+html[data-palette="community"] {
+  --p-accent: #5AB0EA; --p-accent-hover: #86C6F0; --p-accent-strong: #2F93D6; --p-ink: #0B1F33;
+  --p-control: #0070B0; --p-ring: #0070B0;
+  --p-sidebar: linear-gradient(180deg, #0B2E4C 0%, #071D31 100%);
+  --p-sidebar-top: #0D3A60; --p-sidebar-line: rgb(255 255 255 / 0.12); --p-sidebar-hover: rgb(90 176 234 / 0.18);
+  --p-brand: #FED403;
+}
+
+/* ── Accent ── */
+html[data-palette]:not([data-palette="classic"]) :is(.bg-yellow-400, .bg-yellow-300) { background-color: var(--p-accent); }
+html[data-palette]:not([data-palette="classic"]) .bg-yellow-500 { background-color: var(--p-accent-strong); }
+html[data-palette]:not([data-palette="classic"]) .hover\:bg-yellow-300:hover,
+html[data-palette]:not([data-palette="classic"]) .hover\:bg-yellow-400:hover { background-color: var(--p-accent-hover); }
+html[data-palette]:not([data-palette="classic"]) :is(.bg-yellow-300, .bg-yellow-400, .bg-yellow-500):is(.text-gray-900, .text-gray-800, .text-black) { color: var(--p-ink); }
+html[data-palette]:not([data-palette="classic"]) :is(.border-yellow-400, .border-yellow-300) { border-color: var(--p-accent); }
+html[data-palette]:not([data-palette="classic"]) .hover\:border-yellow-400:hover { border-color: var(--p-accent); }
+html[data-palette]:not([data-palette="classic"]) :is(.text-yellow-400, .text-yellow-300) { color: var(--p-accent); }
+html[data-palette]:not([data-palette="classic"]) .hover\:text-yellow-400:hover { color: var(--p-accent); }
+html[data-palette]:not([data-palette="classic"]) .text-yellow-600 { color: var(--p-accent-strong); }
+html[data-palette]:not([data-palette="classic"]) .bg-yellow-400\/10 { background-color: color-mix(in srgb, var(--p-accent) 10%, transparent); }
+html[data-palette]:not([data-palette="classic"]) .border-yellow-400\/20 { border-color: color-mix(in srgb, var(--p-accent) 20%, transparent); }
+html[data-palette]:not([data-palette="classic"]) :is(.focus\:ring-yellow-400:focus, .focus\:ring-yellow-300:focus, .ring-yellow-300, .ring-yellow-200) {
+  --tw-ring-color: var(--p-ring);
+}
+html[data-palette]:not([data-palette="classic"]) .accent-yellow-400 { accent-color: var(--p-control); }
+html[data-palette]:not([data-palette="classic"]) :is(input[type=checkbox], input[type=radio], input[type=range]) { accent-color: var(--p-control); }
+html[data-palette]:not([data-palette="classic"]) .from-yellow-400 { --tw-gradient-from: var(--p-accent); --tw-gradient-stops: var(--tw-gradient-from), var(--tw-gradient-to); }
+html[data-palette]:not([data-palette="classic"]) .to-yellow-400 { --tw-gradient-to: var(--p-accent); }
+html[data-palette]:not([data-palette="classic"]) :focus-visible { outline-color: var(--p-ring); }
+
+/* ── Sidebar ── */
+html[data-palette]:not([data-palette="classic"]) #sidebar { background: var(--p-sidebar); }
+html[data-palette]:not([data-palette="classic"]) #sidebar .bg-gray-800 { background-color: var(--p-sidebar-top); }
+html[data-palette]:not([data-palette="classic"]) #sidebar :is(.border-gray-700, .border-gray-800) { border-color: var(--p-sidebar-line); }
+html[data-palette]:not([data-palette="classic"]) #sidebar .bg-gray-700 { background-color: var(--p-sidebar-hover); }
+html[data-palette]:not([data-palette="classic"]) #sidebar .text-yellow-400 { color: var(--p-brand); }
+html[data-palette]:not([data-palette="classic"]) #sidebar .hover\:bg-gray-700:hover,
+html[data-palette]:not([data-palette="classic"]) .nav-inactive:hover,
+html[data-palette]:not([data-palette="classic"]) .theme-btn:hover { background-color: var(--p-sidebar-hover); }
+html[data-palette]:not([data-palette="classic"]) .nav-active,
+html[data-palette]:not([data-palette="classic"]) .theme-btn.is-on,
+html[data-palette="fancolab"][data-theme-pref="light"]  .theme-btn[data-v="light"],
+html[data-palette="fancolab"][data-theme-pref="system"] .theme-btn[data-v="system"],
+html[data-palette="fancolab"][data-theme-pref="dark"]   .theme-btn[data-v="dark"],
+html[data-palette="creator"][data-theme-pref="light"]  .theme-btn[data-v="light"],
+html[data-palette="creator"][data-theme-pref="system"] .theme-btn[data-v="system"],
+html[data-palette="creator"][data-theme-pref="dark"]   .theme-btn[data-v="dark"],
+html[data-palette="community"][data-theme-pref="light"]  .theme-btn[data-v="light"],
+html[data-palette="community"][data-theme-pref="system"] .theme-btn[data-v="system"],
+html[data-palette="community"][data-theme-pref="dark"]   .theme-btn[data-v="dark"] { background-color: var(--p-accent); color: var(--p-ink); }
+/* The "L" logo tile stays Fan CoLab yellow in every theme, like the minifig head. */
+html[data-palette]:not([data-palette="classic"]) #sidebar .logo-tile { background-color: #FED403; color: #111827; }
+
+/* ── Swatches (theme pickers) ── */
+.palette-swatch { display: inline-flex; width: 3.5rem; height: 2rem; border-radius: 0.5rem; overflow: hidden; border: 1px solid rgb(0 0 0 / 0.15); flex-shrink: 0; }
+.palette-swatch > span { flex: 1; }
+.palette-swatch[data-swatch="classic"]   > span:nth-child(1) { background: #111827; } .palette-swatch[data-swatch="classic"]   > span:nth-child(2) { background: #FACC15; } .palette-swatch[data-swatch="classic"]   > span:nth-child(3) { background: #F3F4F6; }
+.palette-swatch[data-swatch="fancolab"]  > span:nth-child(1) { background: #5E1F5D; } .palette-swatch[data-swatch="fancolab"]  > span:nth-child(2) { background: #FED403; } .palette-swatch[data-swatch="fancolab"]  > span:nth-child(3) { background: #F6C5B6; }
+.palette-swatch[data-swatch="creator"]   > span:nth-child(1) { background: #3A1739; } .palette-swatch[data-swatch="creator"]   > span:nth-child(2) { background: #D992BE; } .palette-swatch[data-swatch="creator"]   > span:nth-child(3) { background: #C1BCE5; }
+.palette-swatch[data-swatch="community"] > span:nth-child(1) { background: #0B2E4C; } .palette-swatch[data-swatch="community"] > span:nth-child(2) { background: #5AB0EA; } .palette-swatch[data-swatch="community"] > span:nth-child(3) { background: #FED403; }

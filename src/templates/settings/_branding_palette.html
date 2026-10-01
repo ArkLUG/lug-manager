@@ -1,0 +1,20 @@
+<div id="branding-palette" class="bg-white rounded-xl border border-gray-200 p-6">
+  <h2 class="text-xl font-bold text-gray-900 mb-1">Colours</h2>
+  <p class="text-sm text-gray-500 mb-4">The colour theme for everyone who hasn't picked their own (My Account &gt; Colours), and for the sign-in and public pages.</p>
+  <form hx-post="/settings/branding/palette" hx-target="#branding-palette" hx-swap="outerHTML" class="space-y-2">
+    {{#palettes}}
+    <label class="flex items-center gap-3 p-3 rounded-lg border border-gray-200 cursor-pointer hover:bg-gray-50">
+      <input type="radio" name="default_palette" value="{{key}}" {{#selected}}checked{{/selected}}>
+      <span class="palette-swatch" data-swatch="{{key}}" aria-hidden="true"><span></span><span></span><span></span></span>
+      <span class="min-w-0">
+        <span class="block text-sm font-medium text-gray-800">{{name}}</span>
+        <span class="block text-xs text-gray-500">{{description}}</span>
+      </span>
+    </label>
+    {{/palettes}}
+    <div class="flex items-center gap-3 pt-2">
+      <button class="px-4 py-2 bg-gray-800 text-white rounded-lg text-sm font-medium hover:bg-gray-700">Save</button>
+      {{#palette_flash}}<span class="text-sm text-green-700">{{palette_flash}}</span>{{/palette_flash}}
+    </div>
+  </form>
+</div>

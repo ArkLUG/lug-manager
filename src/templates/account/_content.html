@@ -17,6 +17,24 @@
   </section>
 
   <section class="bg-white rounded-xl border border-gray-200 p-6">
+    <h3 class="font-semibold text-gray-800">Colours</h3>
+    <p class="text-sm text-gray-500 mb-3">Your colour theme, on this and your other devices. Light or dark is separate (bottom of the sidebar).</p>
+    <div class="grid sm:grid-cols-2 gap-2">
+      {{#palettes}}
+      <label class="flex items-center gap-3 p-3 rounded-lg border border-gray-200 cursor-pointer hover:bg-gray-50">
+        <input type="radio" name="palette" value="{{key}}" {{#selected}}checked{{/selected}}
+               data-change="palette" hx-post="/account/palette" hx-trigger="change" hx-swap="none" data-live-ignore>
+        <span class="palette-swatch" data-swatch="{{key}}" aria-hidden="true"><span></span><span></span><span></span></span>
+        <span class="min-w-0">
+          <span class="block text-sm font-medium text-gray-800">{{name}}{{#lug_default}} <span class="text-xs font-normal text-gray-400">(LUG default)</span>{{/lug_default}}</span>
+          <span class="block text-xs text-gray-500">{{description}}</span>
+        </span>
+      </label>
+      {{/palettes}}
+    </div>
+  </section>
+
+  <section class="bg-white rounded-xl border border-gray-200 p-6">
     <h3 class="font-semibold text-gray-800 mb-3">Notifications</h3>
     {{{notifications}}}
   </section>

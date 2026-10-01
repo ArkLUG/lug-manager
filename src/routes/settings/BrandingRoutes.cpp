@@ -1,4 +1,5 @@
 #include "routes/settings/BrandingRoutes.hpp"
+#include "services/Palettes.hpp"
 #include <crow/multipart.h>
 #include <crow/mustache.h>
 #include <filesystem>
@@ -63,6 +64,19 @@ std::string logo_path(const std::string& data_dir, const std::string& extension)
     return (fs::path(data_dir) / ("logo" + extension)).string();
 }
 
+void add_palette_options(crow::mustache::context& ctx, SettingsRepository& settings, const std::string& flash = "") {
+    const std::string current = palettes::resolve("", settings.get("default_palette", "classic"));
+    crow::json::wvalue opts = crow::json::wvalue::list();
+    int i = 0;
+    for (const auto& p : palettes::all()) {
+        opts[i]["key"] = p.key; opts[i]["name"] = p.name; opts[i]["description"] = p.description;
+        opts[i]["selected"] = current == p.key;
+        ++i;
+    }
+    ctx["palettes"] = std::move(opts);
+    if (!flash.empty()) ctx["palette_flash"] = flash;
+}
+
 } // namespace
 
 void register_branding_routes(LugApp& app, SettingsRepository& settings,
@@ -84,8 +98,30 @@ void register_branding_routes(LugApp& app, SettingsRepository& settings,
         // replaces the same-named file - without this the browser (and any
         // proxy/CDN in front of it) would keep showing the old cached image.
         mctx["logo_url"] = "/branding/logo?v=" + settings.get("branding_logo_updated_at", "0");
+        {
+            crow::mustache::context pctx;
+            add_palette_options(pctx, settings);
+            mctx["palette_section"] = crow::mustache::load("settings/_branding_palette.html").render(pctx).dump();
+        }
 
         return html_page(req, app, crow::mustache::load("settings/_branding.html").render(mctx).dump(), "Branding Settings", "active_branding");
+    });
+
+    // POST /settings/branding/palette - the LUG's default colour theme (members
+    // who haven't picked one, and the public pages)
+    CROW_ROUTE(app, "/settings/branding/palette").methods("POST"_method)([&](const crow::request& req) {
+        crow::response res;
+        if (!require_auth(req, res, app, "admin")) return res;
+        auto p = crow::query_string("?" + req.body);
+        const char* v = p.get("default_palette");
+        if (!v || !palettes::valid(v)) { res.code = 400; return res; }
+        settings.set("default_palette", v);
+        audit.log(req, app, "settings.update", "settings", 0, "Branding", std::string("Default colours: ") + v);
+        crow::mustache::context mctx;
+        add_palette_options(mctx, settings, "Saved.");
+        res.add_header("Content-Type", "text/html; charset=utf-8");
+        res.write(crow::mustache::load("settings/_branding_palette.html").render(mctx).dump());
+        return res;
     });
 
     // POST /settings/branding - upload a new logo (multipart/form-data, field "logo")

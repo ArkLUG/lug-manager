@@ -1,4 +1,5 @@
 #include "routes/accounts/AccountRoutes.hpp"
+#include "services/Palettes.hpp"
 #include "repositories/members/NotificationPrefs.hpp"
 #include "services/events/AttendanceService.hpp"
 #include <crow/mustache.h>
@@ -55,6 +56,24 @@ void register_account_routes(LugApp& app, SqliteDatabase& db, MemberService& mem
         crow::mustache::context ctx;
         ctx["notifications"] = render_notifications(db, a.member_id);
         ctx["display_name"] = a.display_name;
+        {
+            std::string mine;
+            auto st = db.prepare("SELECT palette FROM members WHERE id=?");
+            st.bind(1, a.member_id);
+            if (st.step()) mine = st.col_text(0);
+            auto lug = db.prepare("SELECT value FROM lug_settings WHERE key='default_palette'");
+            std::string lug_default = lug.step() ? lug.col_text(0) : "classic";
+            const std::string current = palettes::resolve(mine, lug_default);
+            crow::json::wvalue opts = crow::json::wvalue::list();
+            int i = 0;
+            for (const auto& p : palettes::all()) {
+                opts[i]["key"] = p.key; opts[i]["name"] = p.name; opts[i]["description"] = p.description;
+                opts[i]["selected"] = current == p.key;
+                opts[i]["lug_default"] = palettes::resolve("", lug_default) == p.key;
+                ++i;
+            }
+            ctx["palettes"] = std::move(opts);
+        }
         std::string body = crow::mustache::load("account/_content.html").render(ctx).dump();
         return html_page(req, app, body, "My Account", "active_account");
     });
@@ -72,6 +91,22 @@ void register_account_routes(LugApp& app, SqliteDatabase& db, MemberService& mem
         }
         res.add_header("Content-Type", "text/html; charset=utf-8");
         res.write(render_notifications(db, me, "Saved."));
+        return res;
+    });
+
+    // POST /account/palette - their colour theme (palette=<key>; anything
+    // else = the LUG default). The page has already switched; this saves it.
+    CROW_ROUTE(app, "/account/palette").methods("POST"_method)([&app, &db](const crow::request& req) {
+        crow::response res;
+        if (!require_auth(req, res, app)) return res;
+        auto p = crow::query_string("?" + req.body);
+        const char* v = p.get("palette");
+        std::string key = v && palettes::valid(v) ? v : "";
+        auto st = db.prepare("UPDATE members SET palette=? WHERE id=?");
+        st.bind(1, key);
+        st.bind(2, app.get_context<AuthMiddleware>(req).auth.member_id);
+        st.step();
+        res.code = 204;
         return res;
     });
 
