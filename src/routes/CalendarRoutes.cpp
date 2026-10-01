@@ -1,5 +1,6 @@
 #include "routes/CalendarRoutes.hpp"
 #include "services/PerkProgress.hpp"
+#include "services/DuesService.hpp"
 #include "utils/LocalTime.hpp"
 #include <crow.h>
 #include <crow/mustache.h>
@@ -125,6 +126,22 @@ void register_calendar_routes(LugApp& app, CalendarGenerator& cal,
                 ctx["has_close_to_tier"] = !close.empty();
             }
             ctx["has_perks"]             = !levels.empty();
+        }
+
+        // Chapter leads+: dues expiring in the next 30 days
+        if (auth_ctx.auth.is_chapter_lead()) {
+            DuesRepository dues(attendance_repo.db());
+            std::time_t now_d = std::time(nullptr);
+            auto rows = dues.expiring_between(DuesService::ymd(now_d), DuesService::ymd(now_d + 30 * 86400));
+            crow::json::wvalue arr;
+            for (size_t i = 0; i < rows.size() && i < 15; ++i) {
+                arr[i]["id"]         = rows[i].member_id;
+                arr[i]["name"]       = rows[i].display_name;
+                arr[i]["paid_until"] = rows[i].paid_until;
+            }
+            ctx["dues_expiring"]       = std::move(arr);
+            ctx["has_dues_expiring"]   = !rows.empty();
+            ctx["dues_expiring_count"] = static_cast<int>(rows.size());
         }
 
         res.add_header("Content-Type", "text/html; charset=utf-8");

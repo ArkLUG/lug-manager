@@ -159,6 +159,23 @@
   </div>
   {{/has_perks}}
 
+  {{#has_dues_expiring}}
+  <!-- Chapter leads+: dues expiring soon -->
+  <div class="bg-white rounded-xl border border-gray-200 p-6">
+    <h3 class="font-semibold text-gray-800 mb-1">Dues Expiring Soon</h3>
+    <p class="text-xs text-gray-500 mb-3">{{dues_expiring_count}} member(s) in the next 30 days.</p>
+    <ul class="divide-y divide-gray-100 text-sm">
+      {{#dues_expiring}}
+      <li class="flex items-center justify-between py-1.5">
+        <button hx-get="/members/{{id}}/view" hx-target="#modal" hx-swap="innerHTML"
+                class="text-gray-800 hover:underline text-left">{{name}}</button>
+        <span class="text-xs text-amber-700">{{paid_until}}</span>
+      </li>
+      {{/dues_expiring}}
+    </ul>
+  </div>
+  {{/has_dues_expiring}}
+
   {{#has_close_to_tier}}
   <!-- Admin: members close to their next perk tier -->
   <div class="bg-white rounded-xl border border-gray-200 p-6">

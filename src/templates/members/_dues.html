@@ -1,0 +1,41 @@
+<div id="dues-panel-{{member_id}}" class="space-y-2">
+  {{#flash}}<p class="text-xs text-gray-500">{{flash}}</p>{{/flash}}
+  {{#has_payments}}
+  <table class="w-full text-xs">
+    <thead><tr class="text-left text-gray-500"><th class="py-1">Paid</th><th>Amount</th><th>Method</th><th>Covers until</th><th></th></tr></thead>
+    <tbody class="divide-y divide-gray-100">
+      {{#payments}}
+      <tr class="text-gray-700">
+        <td class="py-1">{{paid_on}}</td>
+        <td>{{amount}}</td>
+        <td>{{method}}</td>
+        <td>{{covers_until}}</td>
+        <td class="text-right">
+          {{#can_delete}}
+          <button hx-post="/members/{{member_id}}/dues/{{id}}/delete" hx-target="#dues-panel-{{member_id}}" hx-swap="outerHTML"
+                  hx-confirm="Delete this payment record?" class="text-red-600 hover:text-red-800">Delete</button>
+          {{/can_delete}}
+        </td>
+      </tr>
+      {{#note}}<tr><td colspan="5" class="pb-1 text-gray-500 italic">{{note}}{{#recorded_by}} — {{recorded_by}}{{/recorded_by}}</td></tr>{{/note}}
+      {{/payments}}
+    </tbody>
+  </table>
+  {{/has_payments}}
+  {{^has_payments}}<p class="text-xs text-gray-400">No payments recorded.</p>{{/has_payments}}
+
+  {{#can_record}}
+  <details class="border border-gray-200 rounded-lg">
+    <summary class="cursor-pointer px-3 py-1.5 text-xs font-medium text-gray-700">Record a payment</summary>
+    <form hx-post="/members/{{member_id}}/dues" hx-target="#dues-panel-{{member_id}}" hx-swap="outerHTML"
+          class="px-3 pb-3 grid grid-cols-2 gap-2 text-xs">
+      <label class="text-gray-600">Paid on<input type="date" name="paid_on" value="{{today}}" class="mt-0.5 w-full border border-gray-300 rounded px-2 py-1"></label>
+      <label class="text-gray-600">Covers until<input type="date" name="covers_until" required class="mt-0.5 w-full border border-gray-300 rounded px-2 py-1"></label>
+      <label class="text-gray-600">Amount<input name="amount" placeholder="25.00" inputmode="decimal" class="mt-0.5 w-full border border-gray-300 rounded px-2 py-1"></label>
+      <label class="text-gray-600">Method<input name="method" placeholder="cash, card, PayPal…" maxlength="50" class="mt-0.5 w-full border border-gray-300 rounded px-2 py-1"></label>
+      <label class="col-span-2 text-gray-600">Note<input name="note" maxlength="500" class="mt-0.5 w-full border border-gray-300 rounded px-2 py-1"></label>
+      <button class="col-span-2 py-1.5 bg-yellow-400 text-gray-900 rounded-lg font-semibold hover:bg-yellow-300">Record payment</button>
+    </form>
+  </details>
+  {{/can_record}}
+</div>

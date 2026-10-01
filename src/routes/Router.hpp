@@ -53,6 +53,7 @@
 #include "services/AuditService.hpp"
 #include "routes/RsvpRoutes.hpp"
 #include "routes/DisplayRoutes.hpp"
+#include "routes/DuesRoutes.hpp"
 #include <memory>
 
 struct Services {
@@ -91,6 +92,7 @@ struct Services {
     // handlers hold it by value (Services itself may be a short-lived local).
     std::shared_ptr<RsvpRepository> rsvps;
     std::shared_ptr<DisplayRequestRepository> displays;
+    std::shared_ptr<DuesRepository> dues;
 };
 
 void register_all_routes(LugApp& app, Services& svc);

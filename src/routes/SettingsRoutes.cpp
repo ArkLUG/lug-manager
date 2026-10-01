@@ -461,6 +461,7 @@ void register_settings_routes(LugApp& app, SettingsRepository& settings,
         mctx["reminders_enabled"]    = settings.get("discord_reminders_enabled") == "1";
         mctx["reminder_hours"]       = settings.get("discord_reminder_hours", "24");
         mctx["reminder_dm_rsvps"]    = settings.get("discord_reminder_dm_rsvps") == "1";
+        mctx["dues_reminder_days"]   = settings.get("dues_reminder_days", "0");
         mctx["event_reports_forum_id"]   = event_reports_forum;
         mctx["meeting_reports_forum_id"] = meeting_reports_forum;
         mctx["event_reports_forum_options"]   = event_reports_forum_options;
@@ -601,6 +602,9 @@ void register_settings_routes(LugApp& app, SettingsRepository& settings,
             int hours = static_cast<int>(parse_id(get_param("discord_reminder_hours")));
             if (hours < 1 || hours > 24 * 14) hours = 24;
             settings.set("discord_reminder_hours", std::to_string(hours));
+            int dues_days = static_cast<int>(parse_id(get_param("dues_reminder_days")));
+            if (dues_days > 90) dues_days = 90;
+            settings.set("dues_reminder_days", std::to_string(dues_days)); // 0 = off
         }
         settings.set("discord_event_reports_forum_channel_id",   ev_reports);
         settings.set("discord_meeting_reports_forum_channel_id", mtg_reports);

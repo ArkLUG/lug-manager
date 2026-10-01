@@ -38,6 +38,7 @@
 #include "auth/SessionStore.hpp"
 #include "middleware/AuthMiddleware.hpp"
 #include "services/ReminderService.hpp"
+#include "services/DuesService.hpp"
 #include "services/MemberSyncService.hpp"
 #include "routes/Router.hpp"
 
@@ -193,7 +194,8 @@ int main() {
             data_dir,
             config.public_url,
             nullptr, // rsvps: created by register_all_routes
-            nullptr  // displays: ditto
+            nullptr, // displays: ditto
+            nullptr  // dues: ditto
         };
         register_all_routes(app, svc);
 
@@ -246,10 +248,15 @@ int main() {
         // Discord reminders (opt-in via Settings): check every 10 minutes.
         ReminderService reminder_service(db, meeting_repo, event_repo, chapter_repo,
                                                 member_repo, settings_repo, discord_client);
-        std::thread reminder_thread([&reminder_service] {
+        DuesRepository dues_repo(db);
+        DuesService    dues_service(dues_repo, settings_repo, discord_client, audit_service);
+        std::thread reminder_thread([&reminder_service, &dues_service] {
             std::this_thread::sleep_for(std::chrono::seconds(60));
             while (true) {
                 try {
+                    auto d = dues_service.run_once();
+                    if (d.expired || d.reminded)
+                        std::cout << "[dues] " << d.expired << " lapsed, " << d.reminded << " reminded\n";
                     auto r = reminder_service.run_once();
                     if (r.meetings || r.events || r.dms)
                         std::cout << "[reminders] Sent " << r.meetings << " meeting, " << r.events

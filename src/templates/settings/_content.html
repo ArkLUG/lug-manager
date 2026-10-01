@@ -150,6 +150,12 @@
             Also DM members who RSVP'd to events
           </label>
         </div>
+        <label class="flex flex-wrap items-center gap-2 text-sm text-gray-700 pl-7">
+          DM a dues renewal reminder
+          <input type="number" name="dues_reminder_days" min="0" max="90" value="{{dues_reminder_days}}"
+                 class="w-20 border border-gray-300 rounded-lg px-2 py-1 text-sm">
+          days before dues expire <span class="text-xs text-gray-400">(0 = off)</span>
+        </label>
       </div>
 
       <!-- Event Thread Forum Channel -->

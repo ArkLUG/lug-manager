@@ -10,6 +10,8 @@ void register_all_routes(LugApp& app, Services& svc) {
     register_rsvp_routes(app, svc.events, svc.rsvps, svc.chapter_members, svc.audit);
     if (!svc.displays) svc.displays = std::make_shared<DisplayRequestRepository>(svc.attendance_repo.db());
     register_display_routes(app, svc.events, svc.displays, svc.chapter_members, svc.audit);
+    if (!svc.dues) svc.dues = std::make_shared<DuesRepository>(svc.attendance_repo.db());
+    register_dues_routes(app, svc.members, svc.dues, svc.audit);
     register_attendance_routes(app, svc.attendance, svc.events, svc.meetings, svc.members, svc.chapter_members, svc.perks, svc.audit);
     register_calendar_routes(app, svc.calendar, svc.perks, svc.attendance_repo, svc.member_repo);
     register_settings_routes(app, svc.settings, svc.discord, svc.member_sync, svc.calendar, svc.gcal, svc.events, svc.meetings, svc.members, svc.audit, svc.pending_discord_matches);

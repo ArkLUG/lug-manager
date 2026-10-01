@@ -259,7 +259,8 @@ protected:
             data_dir,
             "",      // public_url
             nullptr, // rsvps
-            nullptr  // displays
+            nullptr, // displays
+            nullptr  // dues
 
         };
         register_all_routes(*app, svc);

@@ -104,6 +104,9 @@
         {{/is_paid}}
       </dd>
     </div>
+    <div class="pt-1">
+      <div hx-get="/members/{{id}}/dues" hx-trigger="load" hx-swap="outerHTML"><p class="text-xs text-gray-400">Loading dues history…</p></div>
+    </div>
     {{/show_dues}}
   </dl>
 </div>
