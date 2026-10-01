@@ -27,6 +27,7 @@
   <script src="/static/jquery.min.js?v={{asset_v}}"></script>
   <script src="/static/dataTables.min.js?v={{asset_v}}"></script>
   <script src="/static/vendor/easymde-2.21.0.min.js?v={{asset_v}}"></script>
+  <script src="/static/rich_editor.js?v={{asset_v}}" defer></script>
   <script src="/static/vendor/qrcode-1.0.0.min.js?v={{asset_v}}"></script>
   <script src="/static/vendor/driver-1.3.1.iife.js?v={{asset_v}}"></script>
   <link rel="stylesheet" href="/static/vendor/driver-1.3.1.css?v={{asset_v}}">
@@ -367,6 +368,23 @@
       </a>
       {{/f_reports}}
 
+      {{#f_fancolab}}
+      <!-- LEGO Fan CoLab (admin) -->
+      <a hx-get="/fancolab"
+         hx-target="#main-content"
+         hx-push-url="true"
+         hx-swap="innerHTML"
+         hx-indicator="#nav-spinner"
+         class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm cursor-pointer transition-colors
+                {{#active_fancolab}}nav-active{{/active_fancolab}}
+                {{^active_fancolab}}nav-inactive{{/active_fancolab}}">
+        <svg class="w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11.48 3.5a.56.56 0 011.04 0l2.13 5.11 5.52.44c.5.04.7.66.32.99l-4.2 3.6 1.28 5.38a.56.56 0 01-.84.61L12 16.73l-4.73 2.89a.56.56 0 01-.84-.61l1.28-5.38-4.2-3.6a.56.56 0 01.32-.99l5.52-.44 2.13-5.11z"/>
+        </svg>
+        LEGO Fan CoLab
+      </a>
+      {{/f_fancolab}}
+
       {{#f_perks}}
       <!-- Perk Levels (admin) -->
       <a hx-get="/perks"
@@ -446,6 +464,16 @@
                     {{#active_features}}nav-active{{/active_features}}
                     {{^active_features}}nav-inactive{{/active_features}}">
             Features
+          </a>
+          <a hx-get="/settings/about"
+             hx-target="#main-content"
+             hx-push-url="true"
+             hx-swap="innerHTML"
+             hx-indicator="#nav-spinner"
+             class="block px-3 py-2 rounded-lg text-sm cursor-pointer transition-colors
+                    {{#active_about}}nav-active{{/active_about}}
+                    {{^active_about}}nav-inactive{{/active_about}}">
+            About page
           </a>
           <a hx-get="/settings/calendar"
              hx-target="#main-content"

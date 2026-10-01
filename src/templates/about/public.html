@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>{{title}}</title>
+  <meta name="description" content="{{description}}">
+  <meta property="og:type" content="website">
+  <meta property="og:title" content="{{title}}">
+  <meta property="og:description" content="{{description}}">
+  {{#has_logo}}<meta property="og:image" content="/branding/logo?v={{logo_v}}">{{/has_logo}}
+  <link rel="stylesheet" href="/static/tailwind.min.css?v={{asset_v}}">
+  <link rel="stylesheet" href="/static/theme.css?v={{asset_v}}">
+  <script src="/static/theme.js?v={{asset_v}}"></script>
+  <script type="application/ld+json">{{{json_ld}}}</script>
+</head>
+<body class="bg-gray-50 text-gray-900">
+  <main class="max-w-3xl mx-auto px-4 py-10 space-y-6">
+    <header class="flex items-center gap-4">
+      {{#has_logo}}<img src="/branding/logo?v={{logo_v}}" alt="{{lug_name}} logo" class="w-16 h-16 object-contain rounded-lg">{{/has_logo}}
+      <div>
+        <h1 class="text-3xl font-bold">{{title}}</h1>
+        {{#recognized}}<p class="text-sm text-gray-500 mt-1">A Recognized LEGO® Fan Community</p>{{/recognized}}
+      </div>
+    </header>
+
+    {{#has_body}}<article class="rich bg-white border border-gray-200 rounded-xl p-6">{{{body_html}}}</article>{{/has_body}}
+
+    {{#has_stats}}
+    <section aria-labelledby="stats-h">
+      <h2 id="stats-h" class="text-sm font-semibold text-gray-500 uppercase tracking-wide mb-2">The past twelve months</h2>
+      <div class="grid grid-cols-2 sm:grid-cols-4 gap-3">
+        {{#stats}}<div class="bg-white border border-gray-200 rounded-xl p-4"><div class="text-2xl font-bold">{{value}}</div><div class="text-xs text-gray-500">{{label}}</div></div>{{/stats}}
+      </div>
+    </section>
+    {{/has_stats}}
+
+    <nav class="flex flex-wrap gap-3 text-sm">
+      {{#shows_link}}<a href="/shows" class="px-4 py-2 rounded-lg bg-yellow-400 text-gray-900 font-semibold hover:bg-yellow-300">Upcoming shows</a>{{/shows_link}}
+      <a href="/login" class="px-4 py-2 rounded-lg border border-gray-300 text-gray-700 hover:bg-white">Members sign in</a>
+    </nav>
+    <p class="text-xs text-gray-400">LEGO® is a trademark of the LEGO Group, which does not sponsor, authorize or endorse this site.</p>
+  </main>
+</body>
+</html>

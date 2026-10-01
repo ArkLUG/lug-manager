@@ -202,6 +202,13 @@
   </div>
   {{/has_close_to_tier}}
 
+  {{#fancolab_todo}}
+  <a hx-get="/fancolab" hx-target="#main-content" hx-push-url="true" hx-swap="innerHTML"
+     class="block bg-yellow-50 border border-yellow-200 rounded-xl p-4 text-sm text-yellow-900 hover:bg-yellow-100 cursor-pointer">
+    <strong>LEGO Fan CoLab:</strong> {{fancolab_left}} of {{fancolab_total}} things left on the {{fancolab_year}} to-do list. Open the list &rarr;
+  </a>
+  {{/fancolab_todo}}
+
   {{#is_admin}}
   <!-- Admin quick actions -->
   <div class="bg-white rounded-xl border border-gray-200 p-6">

@@ -4,7 +4,7 @@
 
 **Who it's for:**
 - LEGO User Groups (LUGs), adult fan (AFOL) clubs, and other LEGO fan communities, big or small.
-- Groups recognized in **LEGO Fan CoLab** (formerly the LEGO Ambassador Network) as a *Recognized LEGO Fan Community*. You can record your Community Ambassador, and your reports show your recognition.
+- Groups recognized in **LEGO Fan CoLab** (formerly the LEGO Ambassador Network) as a *Recognized LEGO Fan Community*. You can record your Community Ambassador and their history, keep a yearly Fan CoLab to-do list, and print or download the year's activity summary. Your reports show your recognition.
 
 **[Try the demo →](https://arklug.github.io/lug-manager/)** It's a fictional "Brickton LUG". Switch between a member, a moderator and an admin from the yellow bar. Nothing you do there is saved.
 
@@ -31,11 +31,13 @@
 - Event photos, Markdown notes, and reports posted to a Discord forum.
 - A printable per-event report, suited to LEGO Fan CoLab reporting (formerly the LEGO Ambassador Network).
 - An annual report covering growth, retention, venues and a five-year trend.
+- A LEGO Fan CoLab page: Community Ambassador history, a yearly to-do list with a dashboard reminder, and the year's activity summary as a printable page or CSV.
 
 **Discord, calendars and the public**
 - Announcements, forum threads, scheduled events, reminders, role sync and DMs.
 - Google Calendar sync, a public iCal feed, per-chapter feeds and a private personal feed.
 - A public "upcoming shows" page you can embed on your website, with an "I plan to come" button.
+- A public About page about your group, written in the app with a what-you-see-is-what-you-get editor (headings, lists, links, photos), with the past year's highlights.
 - Email (optional SMTP) for members who aren't on Discord, with a no-login unsubscribe link in every message.
 - An optional weekly digest: one Monday message per member covering their week.
 
@@ -178,15 +180,17 @@ Features you can switch off:
 - Treasury
 - Recurring meetings
 - Reports
+- LEGO Fan CoLab
 - Kiosk and visitor counter
 - QR self check-in
 - Calendar feeds
 - Discord reports
 - Young-member consent
 
-These two start off and are opt-in:
+These start off and are opt-in:
 - Weekly digest
 - Public shows page
+- Public About page
 
 ## Backups and your data
 

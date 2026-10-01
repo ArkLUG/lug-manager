@@ -1,0 +1,53 @@
+<div id="about-editor" class="max-w-4xl space-y-4" data-page-title="About page">
+  <div class="flex flex-wrap items-center justify-between gap-2">
+    <div>
+      <h2 class="text-xl font-semibold text-gray-800">About page</h2>
+      <p class="text-sm text-gray-500">A public page about your group at <code>/about</code>. Anyone can read it, without signing in.</p>
+    </div>
+    {{#enabled}}<a href="/about" target="_blank" class="text-sm px-3 py-1.5 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50">View the page</a>{{/enabled}}
+  </div>
+
+  {{#flash}}<div role="status" class="text-sm rounded-lg px-4 py-2 {{#flash_error}}bg-red-50 text-red-700{{/flash_error}}{{^flash_error}}bg-green-50 text-green-700{{/flash_error}}">{{flash}}</div>{{/flash}}
+
+  <form hx-post="/settings/about" hx-target="#about-editor" hx-swap="outerHTML" class="bg-white rounded-xl border border-gray-200 p-5 space-y-4 text-sm">
+    <label class="flex items-center gap-2"><input type="checkbox" name="enabled" value="1" {{#enabled}}checked{{/enabled}} class="accent-yellow-400"> Show the page to everyone</label>
+    <label class="block">Page title
+      <input name="about_title" value="{{about_title}}" maxlength="120" placeholder="About {{lug_name}}" class="mt-1 w-full border border-gray-300 rounded-lg px-3 py-2"></label>
+
+    <div data-rich-editor data-upload="/settings/about/photo" data-max="{{max_chars}}">
+      <div class="text-gray-700 mb-1" id="about-text-label">Text</div>
+      <div class="rich-toolbar flex flex-wrap gap-1 border border-gray-300 border-b-0 rounded-t-lg bg-gray-50 p-1" role="toolbar" aria-label="Formatting">
+        <button type="button" data-cmd="p" title="Normal text">Text</button>
+        <button type="button" data-cmd="h2" title="Heading">Heading</button>
+        <button type="button" data-cmd="h3" title="Subheading">Subheading</button>
+        <span class="rich-sep" aria-hidden="true"></span>
+        <button type="button" data-cmd="bold" title="Bold (Ctrl+B)" aria-label="Bold"><strong>B</strong></button>
+        <button type="button" data-cmd="italic" title="Italic (Ctrl+I)" aria-label="Italic"><em>I</em></button>
+        <button type="button" data-cmd="strike" title="Strikethrough" aria-label="Strikethrough"><s>S</s></button>
+        <span class="rich-sep" aria-hidden="true"></span>
+        <button type="button" data-cmd="ul" title="Bulleted list">&bull; List</button>
+        <button type="button" data-cmd="ol" title="Numbered list">1. List</button>
+        <button type="button" data-cmd="quote" title="Quote">&ldquo; Quote</button>
+        <button type="button" data-cmd="hr" title="Divider line">&mdash;</button>
+        <span class="rich-sep" aria-hidden="true"></span>
+        <button type="button" data-cmd="link" title="Link (Ctrl+K)">Link</button>
+        <button type="button" data-cmd="unlink" title="Remove link">Unlink</button>
+        <button type="button" data-cmd="image" title="Add a photo">Photo</button>
+        <span class="rich-sep" aria-hidden="true"></span>
+        <button type="button" data-cmd="undo" title="Undo (Ctrl+Z)" aria-label="Undo">&#8630;</button>
+        <button type="button" data-cmd="redo" title="Redo (Ctrl+Y)" aria-label="Redo">&#8631;</button>
+      </div>
+      <div class="rich rich-area border border-gray-300 rounded-b-lg bg-white p-4 min-h-[18rem]" contenteditable="true" role="textbox" aria-multiline="true" aria-labelledby="about-text-label">{{{html}}}</div>
+      <textarea name="markdown" class="hidden" aria-hidden="true" tabindex="-1">{{markdown}}</textarea>
+      <input type="file" accept="image/jpeg,image/png,image/gif,image/webp" class="hidden" data-photo-input aria-hidden="true" tabindex="-1">
+      <p class="rich-status text-xs text-gray-500 mt-1" aria-live="polite"></p>
+    </div>
+
+    <label class="flex items-center gap-2"><input type="checkbox" name="show_numbers" value="1" {{#show_numbers}}checked{{/show_numbers}} class="accent-yellow-400"> Show the past twelve months in numbers (active members, meetings, public shows, visitors)</label>
+
+    <div class="flex items-center gap-3">
+      <button class="px-4 py-2 bg-gray-800 text-white rounded-lg font-medium hover:bg-gray-700">Save</button>
+      <span class="text-xs text-gray-500">Ideas: who you are, where and when you meet, what happens at a meeting, upcoming shows, and how to join. Pasting from a document keeps headings, lists, links, bold and italic.</span>
+    </div>
+  </form>
+</div>

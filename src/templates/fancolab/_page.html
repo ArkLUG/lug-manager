@@ -1,0 +1,131 @@
+<div id="fancolab-page" class="max-w-4xl space-y-5" data-page-title="LEGO Fan CoLab">
+  <div class="flex flex-wrap items-center justify-between gap-2">
+    <div>
+      <h2 class="text-xl font-semibold text-gray-800">LEGO Fan CoLab</h2>
+      <p class="text-sm text-gray-500">LEGO Fan CoLab replaced the LEGO Ambassador Network in 2026. Recognized groups are <em>Recognized LEGO Fan Communities</em>, each with a named Community Ambassador.</p>
+    </div>
+    <div class="flex items-center gap-2 text-sm">
+      <a hx-get="/fancolab?year={{prev_year}}" hx-target="#main-content" hx-push-url="true" hx-swap="innerHTML" class="px-3 py-1.5 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 cursor-pointer">&larr; {{prev_year}}</a>
+      <span class="px-2 font-semibold text-gray-800">{{year}}</span>
+      <a hx-get="/fancolab?year={{next_year}}" hx-target="#main-content" hx-push-url="true" hx-swap="innerHTML" class="px-3 py-1.5 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 cursor-pointer">{{next_year}} &rarr;</a>
+    </div>
+  </div>
+
+  {{#flash}}<div role="status" class="text-sm rounded-lg px-4 py-2 {{#flash_error}}bg-red-50 text-red-700{{/flash_error}}{{^flash_error}}bg-green-50 text-green-700{{/flash_error}}">{{flash}}</div>{{/flash}}
+
+  <!-- Recognition + current ambassador -->
+  <section class="bg-white rounded-xl border border-gray-200 p-5 space-y-3">
+    <h3 class="font-semibold text-gray-800">Recognition</h3>
+    <form hx-post="/fancolab/recognition" hx-target="#fancolab-page" hx-swap="outerHTML" class="grid grid-cols-1 md:grid-cols-2 gap-3 text-sm items-end">
+      <input type="hidden" name="year" value="{{year}}">
+      <label class="flex items-center gap-2 md:col-span-2"><input type="checkbox" name="fan_colab_recognized" value="1" {{#recognized}}checked{{/recognized}} class="accent-yellow-400"> {{lug_name}} is a Recognized LEGO Fan Community</label>
+      <label>Community Ambassador
+        <select name="community_ambassador_id" data-tomselect="single" class="mt-1 w-full">
+          <option value="">None</option>
+          {{#people}}<option value="{{id}}" {{#selected}}selected{{/selected}}>{{name}}</option>{{/people}}
+        </select></label>
+      <div><button class="px-4 py-2 bg-gray-800 text-white rounded-lg font-medium hover:bg-gray-700">Save</button></div>
+    </form>
+    <p class="text-xs text-gray-500">Changing the ambassador ends the current term today and starts a new one, so the history below stays up to date. Fan CoLab asks that the ambassador ideally isn't also your president or chair.</p>
+  </section>
+
+  <!-- Yearly to-do -->
+  <section class="bg-white rounded-xl border border-gray-200 p-5 space-y-3">
+    <div class="flex flex-wrap items-baseline justify-between gap-2">
+      <h3 class="font-semibold text-gray-800">{{year}} to-do</h3>
+      {{#has_tasks}}<span class="text-sm {{#all_done}}text-green-700{{/all_done}}{{^all_done}}text-gray-500{{/all_done}}">{{tasks_done}} of {{tasks_total}} done</span>{{/has_tasks}}
+    </div>
+    {{#has_tasks}}
+    <ul class="divide-y divide-gray-100 text-sm">
+      {{#tasks}}
+      <li class="flex items-center gap-3 py-2">
+        <form hx-post="/fancolab/tasks/{{id}}/toggle" hx-target="#fancolab-page" hx-swap="outerHTML">
+          <input type="hidden" name="year" value="{{year}}">
+          <button aria-label="{{#done}}Mark not done{{/done}}{{^done}}Mark done{{/done}}: {{title}}" aria-pressed="{{#done}}true{{/done}}{{^done}}false{{/done}}"
+                  class="w-6 h-6 rounded border flex items-center justify-center {{#done}}bg-green-600 border-green-600 text-white{{/done}}{{^done}}border-gray-400 hover:border-gray-600{{/done}}">{{#done}}&#10003;{{/done}}</button>
+        </form>
+        <div class="flex-1 min-w-0">
+          <div class="{{#done}}text-gray-500 line-through{{/done}}{{^done}}text-gray-800{{/done}}">{{title}}</div>
+          {{#done}}<div class="text-xs text-gray-400">Done {{done_on}}{{#done_by}} by {{done_by}}{{/done_by}}</div>{{/done}}
+        </div>
+        <form hx-post="/fancolab/tasks/{{id}}/delete" hx-target="#fancolab-page" hx-swap="outerHTML" hx-confirm="Remove &quot;{{title}}&quot; from the list for every year?">
+          <input type="hidden" name="year" value="{{year}}">
+          <button class="text-xs text-gray-400 hover:text-red-600" aria-label="Remove {{title}}">Remove</button>
+        </form>
+      </li>
+      {{/tasks}}
+    </ul>
+    {{/has_tasks}}
+    {{^has_tasks}}<p class="text-sm text-gray-400">Nothing on the list. Add the things your group does for Fan CoLab each year.</p>{{/has_tasks}}
+    <form hx-post="/fancolab/tasks" hx-target="#fancolab-page" hx-swap="outerHTML" class="flex gap-2 text-sm">
+      <input type="hidden" name="year" value="{{year}}">
+      <input name="title" maxlength="200" required placeholder="Add something to do every year" aria-label="New to-do" class="flex-1 min-w-0 border border-gray-300 rounded-lg px-3 py-2">
+      <button class="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50">Add</button>
+    </form>
+    <p class="text-xs text-gray-500">The list is the same every year; ticks are kept per year. Admins see a reminder on the dashboard until this year's list is done.</p>
+  </section>
+
+  <!-- Activity summary -->
+  <section class="bg-white rounded-xl border border-gray-200 p-5 space-y-2">
+    <h3 class="font-semibold text-gray-800">{{year}} activity summary</h3>
+    <p class="text-sm text-gray-600">Members, meetings, public shows, visitors and displays for {{year}}, ready to send to LEGO Fan CoLab or your members.</p>
+    <div class="flex flex-wrap gap-2 text-sm">
+      <a href="/fancolab/summary?year={{year}}" target="_blank" class="px-3 py-1.5 bg-gray-800 text-white rounded-lg hover:bg-gray-700">Open printable summary</a>
+      <a href="/fancolab/summary.csv?year={{year}}" class="px-3 py-1.5 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50">Summary CSV</a>
+      <a href="/fancolab/events.csv?year={{year}}" class="px-3 py-1.5 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50">Public events CSV</a>
+      <a hx-get="/reports/annual?year={{year}}" hx-target="#main-content" hx-push-url="true" hx-swap="innerHTML" class="f-reports px-3 py-1.5 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 cursor-pointer">Full annual report</a>
+    </div>
+  </section>
+
+  <!-- Ambassador history -->
+  <section class="bg-white rounded-xl border border-gray-200 p-5 space-y-3">
+    <h3 class="font-semibold text-gray-800">Community Ambassador history</h3>
+    {{#has_terms}}
+    <div class="overflow-x-auto">
+      <table class="w-full text-sm">
+        <thead><tr class="text-left text-xs text-gray-500 border-b border-gray-200"><th class="py-1">Ambassador</th><th class="py-1">From</th><th class="py-1">To</th><th></th></tr></thead>
+        <tbody class="divide-y divide-gray-100">
+          {{#terms}}
+          <tr>
+            <td class="py-2 text-gray-800">{{name}}{{#serving}} <span class="text-xs px-1.5 py-0.5 rounded bg-yellow-100 text-yellow-800">current</span>{{/serving}}</td>
+            <td colspan="3" class="py-2">
+              <form hx-post="/fancolab/terms/{{id}}" hx-target="#fancolab-page" hx-swap="outerHTML" class="flex flex-wrap items-center gap-2">
+                <input type="hidden" name="year" value="{{year}}">
+                <input type="date" name="started_on" value="{{started_on}}" required aria-label="{{name}}: from" class="border border-gray-300 rounded px-2 py-1">
+                {{#serving}}<span class="text-gray-500 px-2">now</span>{{/serving}}
+                {{^serving}}<input type="date" name="ended_on" value="{{ended_on}}" required aria-label="{{name}}: to" class="border border-gray-300 rounded px-2 py-1">{{/serving}}
+                <button class="text-xs px-2 py-1 border border-gray-300 rounded text-gray-700 hover:bg-gray-50">Save dates</button>
+                {{^serving}}<button hx-post="/fancolab/terms/{{id}}/delete" hx-confirm="Remove {{name}} from the history?" class="text-xs text-gray-400 hover:text-red-600">Remove</button>{{/serving}}
+              </form>
+            </td>
+          </tr>
+          {{/terms}}
+        </tbody>
+      </table>
+    </div>
+    {{/has_terms}}
+    {{^has_terms}}<p class="text-sm text-gray-400">No ambassadors recorded yet. Set the current one above, and add earlier ones below.</p>{{/has_terms}}
+    <details class="text-sm">
+      <summary class="cursor-pointer text-gray-700">Add an earlier ambassador</summary>
+      <form hx-post="/fancolab/terms" hx-target="#fancolab-page" hx-swap="outerHTML" class="grid grid-cols-1 md:grid-cols-4 gap-2 items-end mt-2">
+        <input type="hidden" name="year" value="{{year}}">
+        <label class="md:col-span-2">Member
+          <select name="member_id" data-tomselect="single" class="mt-1 w-full" required>
+            <option value="">Choose…</option>
+            {{#people}}<option value="{{id}}">{{name}}</option>{{/people}}
+          </select></label>
+        <label>From <input type="date" name="started_on" required max="{{today}}" class="mt-1 w-full border border-gray-300 rounded-lg px-2 py-1.5"></label>
+        <label>To <input type="date" name="ended_on" required max="{{today}}" class="mt-1 w-full border border-gray-300 rounded-lg px-2 py-1.5"></label>
+        <div class="md:col-span-4"><button class="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50">Add to history</button></div>
+      </form>
+    </details>
+  </section>
+
+  <!-- About page -->
+  <section class="bg-white rounded-xl border border-gray-200 p-5 space-y-2">
+    <h3 class="font-semibold text-gray-800">Public About page</h3>
+    <p class="text-sm text-gray-600">A page anyone can read at <code>/about</code>: who you are, when you meet and how to join, with photos and the year's highlights. Good for search engines and for people who find you at a show.</p>
+    <p class="text-sm">{{#about_on}}<span class="text-green-700">Public.</span> <a href="/about" target="_blank" class="underline text-gray-700">View it</a> &middot; {{/about_on}}{{^about_on}}<span class="text-gray-500">Hidden{{^has_about_text}}, not written yet{{/has_about_text}}.</span> {{/about_on}}
+      <a hx-get="/settings/about" hx-target="#main-content" hx-push-url="true" hx-swap="innerHTML" class="underline text-gray-700 cursor-pointer">Edit the About page</a></p>
+  </section>
+</div>

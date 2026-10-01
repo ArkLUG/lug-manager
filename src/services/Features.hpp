@@ -50,6 +50,8 @@ public:
                            R"(^/meetings/series(/.*)?$)"},
             {"reports",    "Reports", "Annual report and printable per-event reports.",
                            R"(^/(reports/.*|events/\d+/report)$)"},
+            {"fancolab",   "LEGO Fan CoLab", "Community Ambassador history, a yearly to-do list and the year's activity summary (print and CSV) for LEGO Fan CoLab.",
+                           R"(^/fancolab(/.*)?$)"},
             {"kiosk",      "Kiosk & visitor counter", "Venue-screen check-in kiosk and the public visitor tap counter.",
                            R"(^/(events/\d+/(kiosk|counter)(/.*)?|meetings/\d+/kiosk|kiosk/.*)$)"},
             {"qr_checkin", "QR self check-in", "Members scan a QR code to check themselves in (also used by the kiosk).",
@@ -64,6 +66,8 @@ public:
                            "", false},
             {"public_shows", "Public shows page", "A no-login page (/shows) listing upcoming public events, with an embed and JSON feed. Set its title and intro under Settings > Discord.",
                            R"(^/shows(\.json|/.*)?$)", false, "public_shows_enabled"},
+            {"about_page", "Public About page", "A no-login page (/about) about your group: your own text and photos, written in the app, plus the year's highlights. Edit it under Settings > About page.",
+                           R"(^/about$)", false},
         };
         return f;
     }

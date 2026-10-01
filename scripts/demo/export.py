@@ -32,12 +32,14 @@ START = ["/dashboard", "/members", "/meetings", "/events", "/chapters", "/attend
          "/challenges", "/inventory", "/treasury", "/account", "/help", "/reports/annual", "/perks",
          "/settings", "/settings/features", "/settings/backups", "/settings/roles", "/settings/calendar",
          "/settings/branding", "/settings/api-keys", "/settings/discord-matches", "/setup", "/audit",
-         "/meetings/series", "/members/me", "/account/sessions", "/members/merge"]
+         "/meetings/series", "/members/me", "/account/sessions", "/members/merge", "/fancolab", "/settings/about"]
 # Endpoints whose query strings only page/sort/filter: one file serves all.
 IGNORE_QUERY = {"/api/members/datatable", "/api/discord/forum-threads", "/api/chapter-options", "/api/member-options", "/api/discord/role-options",
                 "/api/discord/channel-options", "/audit/data", "/attendance/overview/data"}
 SKIP = re.compile(r"^/(static|uploads|branding|auth|api/v1|login|logout|checkin|kiosk|calendar/me|"
-                  r"settings/backups/lug-|settings/backups/photos\.zip|account/export|shows)")
+                  r"settings/backups/lug-|settings/backups/photos\.zip|account/export|shows|about)")
+# No-login pages, exported once at the top of the site.
+PUBLIC_PAGES = {"/shows", "/about"}
 ATTR = re.compile(r'''(href|src|action|hx-get|data-url)=(["'])(/[^"'#]*)\2''')
 LIMIT_PER_ROLE = 1500
 
@@ -64,9 +66,11 @@ def rel_path(path, frag):
 
 def site_url(role, path):
     """URL of the saved full page for an app path."""
-    p, _ = split(path)
+    p, qs = split(path)
     if re.match(r"^/(static|uploads|branding)/", p):
         return BASE + path
+    if p in PUBLIC_PAGES and not qs:
+        return f"{BASE}{p}/"
     return f"{BASE}/{role}/{rel_path(path, False)}/"
 
 
@@ -105,6 +109,9 @@ def rewrite(text, role, full_page, page_role=None):
         attr, quote, url = m.group(1), m.group(2), html.unescape(m.group(3))
         if attr in ("hx-get", "data-url"):
             return m.group(0)                       # mapped at runtime by demo.js
+        photo = re.match(r"^/about/photos/([A-Za-z0-9._-]+)$", url)
+        if attr in ("src", "href") and photo:
+            return f'{attr}={quote}{BASE}/uploads/{photo.group(1)}{quote}'     # About page photos are uploads
         if attr in ("src", "href") and re.match(r"^/(static|uploads|branding)/", url):
             return f'{attr}={quote}{BASE}{html.escape(url)}{quote}'
         if attr == "action":
@@ -203,11 +210,14 @@ def main():
         shutil.copytree(UPLOADS_DIR, os.path.join(OUT, "uploads"))
     for role, token in TOKENS.items():
         crawl(role, token)
-    # Public pages (no login): the shows page
+    # Public pages (no login): the shows and About pages
     status, _, body = fetch("/shows", "", False)
     if status == 200:
         # A visitor's page: demo.js on, links into the member view.
         save("shows", rewrite(body.decode("utf-8", "replace"), "member", True, page_role="public").encode())
+    status, _, body = fetch("/about", "", False)
+    if status == 200:
+        save("about", rewrite(body.decode("utf-8", "replace"), "member", True, page_role="public").encode())
     shutil.copy(os.path.join(HERE, "demo.js"), os.path.join(OUT, "demo.js"))
     with open(os.path.join(HERE, "index.html"), encoding="utf-8") as f:
         landing = f.read().replace("{{BASE}}", BASE)

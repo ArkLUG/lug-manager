@@ -3,6 +3,8 @@
 #include "utils/Crypto.hpp"
 #include "services/PerkProgress.hpp"
 #include "services/DuesService.hpp"
+#include "services/FanCoLab.hpp"
+#include "services/Features.hpp"
 #include "utils/LocalTime.hpp"
 #include <crow.h>
 #include <crow/mustache.h>
@@ -216,6 +218,18 @@ void register_calendar_routes(LugApp& app, CalendarGenerator& cal,
         if (auto* st = app.get_middleware<AuthMiddleware>().settings;
             st && auth_ctx.auth.is_admin() && st->get("setup_completed", "") != "1")
             ctx["show_setup_banner"] = true;
+        // Admins: this year's LEGO Fan CoLab to-do list, until it's done.
+        if (auto* st = app.get_middleware<AuthMiddleware>().settings;
+            st && auth_ctx.auth.is_admin() && Features::on("fancolab") && st->get("fan_colab_recognized", "") == "1") {
+            int year = local_tm(std::time(nullptr)).tm_year + 1900;
+            auto [done, total] = fan_colab_todo(st->db(), year);
+            if (done < total) {
+                ctx["fancolab_todo"] = true;
+                ctx["fancolab_left"] = total - done;
+                ctx["fancolab_total"] = total;
+                ctx["fancolab_year"] = year;
+            }
+        }
         // Sections of switched-off features (Settings > Features)
         Features::add_flags(ctx);
         if (!Features::on("chapters")) ctx["member_has_chapter"] = false;

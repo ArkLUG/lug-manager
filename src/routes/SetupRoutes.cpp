@@ -1,6 +1,7 @@
 #include "routes/SetupRoutes.hpp"
 #include "services/Features.hpp"
 #include "services/FanCoLab.hpp"
+#include "services/AttendanceService.hpp"
 #include "auth/SessionStore.hpp"
 #include "utils/HtmlEscape.hpp"
 #include <crow/mustache.h>
@@ -225,6 +226,7 @@ void register_setup_routes(LugApp& app, SqliteDatabase& db, SettingsRepository& 
             st.bind(1, amb_id);
             if (!st.step()) return page(req, app, render_checklist(settings, db, "That member doesn't exist."), true, 400);
         }
+        record_ambassador_change(db, amb_id, AttendanceService::today_ymd());
         settings.set("fan_colab_recognized", recognized ? "1" : "0");
         settings.set("community_ambassador_id", amb_id > 0 ? std::to_string(amb_id) : "");
         audit.log(req, app, "settings.update", "settings", 0, "LEGO Fan CoLab",

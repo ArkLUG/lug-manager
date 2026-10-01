@@ -14,3 +14,10 @@ SE_AVOID_STATS=true /tmp/lm-venv/bin/python tests/e2e/smoke.py <raw-session-toke
 
 Exit output ends with `PROBLEMS: 0` when everything passed; screenshots of
 each page land in the given directory.
+
+Other checks, run the same way:
+- `mobile.py <token> <dir> [paths...]`: phone width (390px), sideways scrolling, JS errors.
+- `editor_check.py <admin-token> <dir>`: the About page's WYSIWYG editor (HTML to Markdown
+  conversion cases, toolbar formatting, a hostile paste, photo upload, save, the public
+  `/about` page, and reopening without changes). It saves the About page, so use a scratch DB.
+- `demo_check.py <url> <dir>`: the exported static demo (see the file for how to serve it).

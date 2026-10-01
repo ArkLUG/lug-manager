@@ -181,6 +181,32 @@ q("UPDATE members SET discord_user_id=NULL, discord_username='' WHERE id=?", (me
 q("UPDATE members SET is_treasurer=1 WHERE id=?", (MOD,))
 # A Recognized LEGO Fan Community (LEGO Fan CoLab) with Ben as Community Ambassador
 q("INSERT OR REPLACE INTO lug_settings (key, value) VALUES ('fan_colab_recognized', '1'), ('community_ambassador_id', ?)", (str(BEN),))
+# Ambassador history: Priya before Ben
+q("DELETE FROM community_ambassador_terms")
+q("INSERT INTO community_ambassador_terms (member_id, member_name, started_on, ended_on) "
+  "SELECT id, display_name, ?, ? FROM members WHERE id=?", (d(-1500), d(-420), PRIYA))
+q("INSERT INTO community_ambassador_terms (member_id, member_name, started_on) "
+  "SELECT id, display_name, ? FROM members WHERE id=?", (d(-420), BEN))
+# This year's Fan CoLab to-do: the ambassador is confirmed, the rest is still to do
+q("INSERT INTO fan_colab_task_done (task_id, year, done_by, done_at) "
+  "SELECT id, ?, ?, ? FROM fan_colab_tasks ORDER BY sort_order LIMIT 1", (TODAY.year, ADMIN, ts(-20)))
+# Public About page, with a photo
+about_pic = save_picture(77)
+q("INSERT INTO about_photos (file) VALUES (?)", (about_pic,))
+q("INSERT OR REPLACE INTO lug_settings (key, value) VALUES ('feature_about_page', '1'), ('about_markdown', ?)", (
+    "## Who we are\n\n"
+    "Brickton LUG is a group of adult LEGO fans in and around Brickton. We're a **Recognized LEGO Fan Community** "
+    "in LEGO Fan CoLab, and everyone 18 and over is welcome - whether you build castles, trains, spaceships or "
+    "something nobody has a name for yet.\n\n"
+    "## When we meet\n\n"
+    "- **Monthly meetings** on the second Tuesday, 7 PM, at the Brickton Public Library\n"
+    "- **Build nights** in between, at members' homes and online\n"
+    "- **Public shows** through the year - come and say hello\n\n"
+    "![Members' layouts at last year's Brick Fest](/about/photos/" + about_pic + ")\n\n"
+    "## Join us\n\n"
+    "Come to any meeting: no need to sign up first. Younger builders are welcome at our public shows, "
+    "and families can see our [upcoming shows](/shows).\n\n"
+    "> \"I came to one meeting to look at the trains and I've been here six years.\" - a member",))
 
 # ── Perk levels (this year) ──
 year = TODAY.year

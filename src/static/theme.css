@@ -375,3 +375,31 @@ html[data-theme="dark"] .driver-popover-arrow { border-color: var(--lm-surface);
 html[data-theme="dark"] .prose { --tw-prose-body: var(--lm-text-3); --tw-prose-headings: var(--lm-text-1); --tw-prose-links: #facc15; --tw-prose-bold: var(--lm-text-1); --tw-prose-code: var(--lm-text-1); color: var(--lm-text-3); }
 html[data-theme="dark"] .prose :is(h1,h2,h3,h4,strong) { color: var(--lm-text-1); }
 html[data-theme="dark"] .prose a { color: #facc15; }
+
+/* Rich text: the About page and its editor look the same */
+.rich { line-height: 1.65; overflow-wrap: anywhere; }
+.rich > :first-child { margin-top: 0; }
+.rich > :last-child { margin-bottom: 0; }
+.rich p, .rich ul, .rich ol, .rich blockquote { margin: 0 0 1em; }
+.rich h2 { font-size: 1.4rem; font-weight: 700; line-height: 1.3; margin: 1.4em 0 .5em; }
+.rich h3 { font-size: 1.15rem; font-weight: 600; line-height: 1.35; margin: 1.2em 0 .4em; }
+.rich ul { list-style: disc; padding-left: 1.5em; }
+.rich ol { list-style: decimal; padding-left: 1.5em; }
+.rich li > ul, .rich li > ol, .rich ul ul, .rich ol ol, .rich ul ol, .rich ol ul { margin: .25em 0 0; }
+.rich blockquote { border-left: 4px solid #facc15; padding: .25em 0 .25em 1em; color: #4b5563; }
+.rich a { color: #1d4ed8; text-decoration: underline; }
+.rich img { max-width: 100%; height: auto; border-radius: .5rem; margin: .5em 0; }
+.rich hr { border: 0; border-top: 1px solid #e5e7eb; margin: 1.5em 0; }
+.rich code { font-family: ui-monospace, monospace; font-size: .9em; background: #f3f4f6; padding: 0 .25em; border-radius: .25rem; }
+.rich-area:focus { outline: 2px solid #facc15; outline-offset: -1px; }
+.rich-toolbar button { padding: .25rem .55rem; border-radius: .375rem; font-size: .8125rem; color: #374151; }
+.rich-toolbar button:hover, .rich-toolbar button:focus-visible { background: #e5e7eb; }
+.rich-sep { width: 1px; background: #d1d5db; margin: .2rem .25rem; }
+html[data-theme="dark"] .rich blockquote { color: var(--lm-text-4); }
+html[data-theme="dark"] .rich a { color: #facc15; }
+html[data-theme="dark"] .rich hr { border-top-color: var(--lm-border-3); }
+html[data-theme="dark"] .rich code { background: var(--lm-surface-3); }
+html[data-theme="dark"] .rich :is(h2,h3,strong) { color: var(--lm-text-1); }
+html[data-theme="dark"] .rich-toolbar button { color: var(--lm-text-3); }
+html[data-theme="dark"] .rich-toolbar button:hover, html[data-theme="dark"] .rich-toolbar button:focus-visible { background: var(--lm-surface-4); }
+html[data-theme="dark"] .rich-sep { background: var(--lm-border-3); }

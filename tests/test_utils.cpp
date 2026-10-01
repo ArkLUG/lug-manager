@@ -591,3 +591,32 @@ TEST(Config, EnvironmentWinsOverDotenvAndDotenvCanBeSkipped) {
     std::filesystem::current_path(old);
     std::filesystem::remove_all(dir);
 }
+
+// 067: the ambassador already set becomes the first, open history entry;
+// the yearly to-do list starts with three items.
+TEST(Migrations, Migration067SeedsAmbassadorHistory) {
+    SqliteDatabase db(":memory:");
+    apply_migrations_up_to(db, 67);
+    db.execute("INSERT INTO members (discord_user_id, discord_username, display_name, role) VALUES ('a1','amb','Amb A.','member')");
+    db.execute("INSERT OR REPLACE INTO lug_settings (key, value) VALUES ('community_ambassador_id', '1')");
+    apply_single_migration(db, 67);
+    auto st = db.prepare("SELECT member_id, member_name, started_on = date('now'), ended_on IS NULL FROM community_ambassador_terms");
+    ASSERT_TRUE(st.step());
+    EXPECT_EQ(st.col_int(0), 1);
+    EXPECT_EQ(st.col_text(1), "Amb A.");
+    EXPECT_EQ(st.col_int(2), 1);
+    EXPECT_EQ(st.col_int(3), 1);
+    EXPECT_FALSE(st.step());
+    auto tasks = db.prepare("SELECT COUNT(*) FROM fan_colab_tasks");
+    tasks.step();
+    EXPECT_EQ(tasks.col_int(0), 3);
+
+    // No ambassador set (or a stale id): no history row
+    SqliteDatabase db2(":memory:");
+    apply_migrations_up_to(db2, 67);
+    db2.execute("INSERT OR REPLACE INTO lug_settings (key, value) VALUES ('community_ambassador_id', '42')");
+    apply_single_migration(db2, 67);
+    auto n = db2.prepare("SELECT COUNT(*) FROM community_ambassador_terms");
+    n.step();
+    EXPECT_EQ(n.col_int(0), 0);
+}
