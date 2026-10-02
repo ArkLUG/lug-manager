@@ -149,35 +149,7 @@
       </fieldset>
       <p class="text-xs text-gray-400">Each meeting and event can also turn parts off for itself (in its form, under Discord). Changing these doesn't remove anything already posted.</p>
 
-      <!-- Reminders -->
-      <div class="space-y-2">
-        <label class="flex items-center gap-3 cursor-pointer">
-          <input type="checkbox" name="discord_reminders_enabled" value="1"
-                 {{#reminders_enabled}}checked{{/reminders_enabled}}
-                 class="w-4 h-4 accent-yellow-400 rounded">
-          <div>
-            <span class="text-sm font-medium text-gray-700">Post reminders before meetings and events</span>
-            <p class="text-xs text-gray-400">Meetings get a reminder in the channel they were announced in; events in their thread. Skips cancelled and Discord-suppressed items.</p>
-          </div>
-        </label>
-        <div class="flex flex-wrap items-center gap-4 pl-7">
-          <label class="flex items-center gap-2 text-sm text-gray-700">
-            <input type="number" name="discord_reminder_hours" min="1" max="336" value="{{reminder_hours}}"
-                   class="w-20 border border-gray-300 rounded-lg px-2 py-1 text-sm"> hours before
-          </label>
-          <label class="flex items-center gap-2 text-sm text-gray-700 cursor-pointer">
-            <input type="checkbox" name="discord_reminder_dm_rsvps" value="1"
-                   {{#reminder_dm_rsvps}}checked{{/reminder_dm_rsvps}} class="w-4 h-4 accent-yellow-400 rounded">
-            Also DM members who RSVP'd to events
-          </label>
-        </div>
-        <label class="flex flex-wrap items-center gap-2 text-sm text-gray-700 pl-7">
-          DM a dues renewal reminder
-          <input type="number" name="dues_reminder_days" min="0" max="90" value="{{dues_reminder_days}}"
-                 class="w-20 border border-gray-300 rounded-lg px-2 py-1 text-sm">
-          days before dues expire <span class="text-xs text-gray-400">(0 = off)</span>
-        </label>
-      </div>
+      <p class="text-xs text-gray-400">Reminders before meetings and events are under <a hx-get="/settings/reminders" hx-target="#main-content" hx-push-url="true" hx-swap="innerHTML" class="underline cursor-pointer">Settings &gt; Reminders</a>.</p>
 
       <!-- Event Thread Forum Channel -->
       <div>

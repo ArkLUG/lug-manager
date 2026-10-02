@@ -50,6 +50,7 @@ void register_all_routes(LugApp& app, Services& svc) {
     register_chat_settings_routes(app, svc.attendance_repo.db(), svc.chat, svc.notifier, svc.audit);
     register_account_security_routes(app, svc.attendance_repo.db(), svc.settings, svc.auth, svc.notifier, svc.audit, svc.public_url);
     register_feature_routes(app, svc.settings, svc.audit);
+    register_reminder_settings_routes(app, svc.settings, svc.audit);
     register_setup_routes(app, svc.attendance_repo.db(), svc.settings, svc.discord, svc.calendar, svc.audit, svc.public_url);
     register_series_routes(app, svc.series, svc.chapters, svc.chapter_members, svc.audit);
     if (!svc.backups) svc.backups = std::make_shared<BackupService>(svc.attendance_repo.db(), svc.data_dir);

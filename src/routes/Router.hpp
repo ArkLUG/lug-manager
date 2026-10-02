@@ -1,6 +1,7 @@
 #pragma once
 #include "chat/ChatHub.hpp"
 #include "live/LiveRoutes.hpp"
+#include "routes/settings/ReminderSettingsRoutes.hpp"
 #include "integrations/discord/DiscordProvider.hpp"
 #include <string>
 #include "routes/accounts/AuthRoutes.hpp"

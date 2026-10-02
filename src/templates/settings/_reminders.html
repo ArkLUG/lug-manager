@@ -1,0 +1,35 @@
+<div class="max-w-2xl space-y-4" data-page-title="Reminders">
+  <div>
+    <h2 class="text-xl font-semibold text-gray-800">Reminders</h2>
+    <p class="text-sm text-gray-500">Reminders before meetings and events, and before dues run out. Members get theirs as a Discord DM, or by email if they're not on Discord (or Discord is switched off); each member can turn them off under My Account.</p>
+  </div>
+  <form hx-post="/settings/reminders" hx-target="#main-content" hx-swap="innerHTML" class="bg-white rounded-xl border border-gray-200 p-6 space-y-4 text-sm">
+    <label class="flex items-start gap-3 cursor-pointer">
+      <input type="checkbox" name="reminders_enabled" value="1" {{#reminders_enabled}}checked{{/reminders_enabled}} class="mt-0.5 w-4 h-4 accent-yellow-400">
+      <span>
+        <span class="font-medium text-gray-800">Send reminders before meetings and events</span>
+        <span class="block text-xs text-gray-500">{{#discord_on}}Posted on Discord: meetings in the channel they were announced in, events in their thread.{{/discord_on}}{{^discord_on}}Discord is switched off, so there's nothing to post; the reminders to members below still go out by email.{{/discord_on}} Cancelled items are skipped.</span>
+      </span>
+    </label>
+    <label class="flex items-center gap-2 pl-7 text-gray-700">
+      <input type="number" name="reminder_hours" min="1" max="336" value="{{reminder_hours}}" class="w-20 border border-gray-300 rounded-lg px-2 py-1"> hours before they start
+    </label>
+    {{#rsvps_on}}
+    <label class="flex items-start gap-3 pl-7 cursor-pointer">
+      <input type="checkbox" name="reminder_dm_rsvps" value="1" {{#reminder_dm_rsvps}}checked{{/reminder_dm_rsvps}} class="mt-0.5 w-4 h-4 accent-yellow-400">
+      <span class="text-gray-700">Also remind members who RSVP'd "going" and volunteers before their shift</span>
+    </label>
+    {{/rsvps_on}}
+    {{#dues_on}}
+    <label class="flex flex-wrap items-center gap-2 text-gray-700 border-t border-gray-100 pt-4">
+      Remind members to renew their dues
+      <input type="number" name="dues_reminder_days" min="0" max="90" value="{{dues_reminder_days}}" class="w-20 border border-gray-300 rounded-lg px-2 py-1">
+      days before they run out <span class="text-xs text-gray-400">(0 = off)</span>
+    </label>
+    {{/dues_on}}
+    <div class="flex items-center gap-3 pt-2">
+      <button class="px-4 py-2 bg-gray-800 text-white rounded-lg font-medium hover:bg-gray-700">Save</button>
+      {{#flash}}<span class="text-green-700">{{flash}}</span>{{/flash}}
+    </div>
+  </form>
+</div>

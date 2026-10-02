@@ -1,4 +1,5 @@
 #include "integration_test_base.hpp"
+#include "services/Features.hpp"
 
 // ═══════════════════════════════════════════════════════════════════════════
 // Settings Routes — additional coverage
@@ -261,4 +262,26 @@ TEST_F(IntegrationTest, ChannelPreviewKeepsRoleConfig) {
     EXPECT_EQ(discord_client->get_announcement_role_id(), "333333333333333333");
     EXPECT_EQ(discord_client->get_non_lug_event_role_id(), "444444444444444444");
     EXPECT_EQ(discord_client->get_guild_id(), "111111111111111111");
+}
+
+// Reminders have their own page, usable with Discord switched off.
+TEST_F(IntegrationTest, ReminderSettingsPage) {
+    EXPECT_EQ(GET("/settings/reminders", member_token).code, 403);
+    Features::set("discord", false);
+    auto page = GET("/settings/reminders", admin_token);
+    EXPECT_EQ(page.code, 200);
+    expect_contains(page, "Send reminders before meetings and events");
+    expect_contains(page, "go out by email");
+    auto saved = POST("/settings/reminders", "reminders_enabled=1&reminder_hours=48&reminder_dm_rsvps=1&dues_reminder_days=14", admin_token);
+    EXPECT_EQ(saved.code, 200);
+    expect_contains(saved, "Saved.");
+    EXPECT_EQ(settings_repo->get("discord_reminders_enabled"), "1");
+    EXPECT_EQ(settings_repo->get("discord_reminder_hours"), "48");
+    EXPECT_EQ(settings_repo->get("discord_reminder_dm_rsvps"), "1");
+    EXPECT_EQ(settings_repo->get("dues_reminder_days"), "14");
+    POST("/settings/reminders", "reminder_hours=9999&dues_reminder_days=500", admin_token);
+    EXPECT_EQ(settings_repo->get("discord_reminders_enabled"), "0");
+    EXPECT_EQ(settings_repo->get("discord_reminder_hours"), "24");
+    EXPECT_EQ(settings_repo->get("dues_reminder_days"), "90");
+    Features::set("discord", true);
 }

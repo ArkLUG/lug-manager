@@ -478,6 +478,16 @@
                     {{^active_messages}}nav-inactive{{/active_messages}}">
             Message wording
           </a>
+          <a hx-get="/settings/reminders"
+             hx-target="#main-content"
+             hx-push-url="true"
+             hx-swap="innerHTML"
+             hx-indicator="#nav-spinner"
+             class="block px-3 py-2 rounded-lg text-sm cursor-pointer transition-colors
+                    {{#active_reminders}}nav-active{{/active_reminders}}
+                    {{^active_reminders}}nav-inactive{{/active_reminders}}">
+            Reminders
+          </a>
           <a hx-get="/settings/sign-in"
              hx-target="#main-content"
              hx-push-url="true"
