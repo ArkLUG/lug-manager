@@ -50,7 +50,7 @@ inline const char* kGroupSignIn = "Sign-in emails";
     {"location", "Full location", "Expo Hall, 1 Main St, Little Rock, AR"}, \
     {"location_short", "City, state", "Little Rock, AR"}, \
     {"description", "Event description", "Two days of LEGO for everyone."}, \
-    {"non_lug", "\"[Non-LUG] \" for events run by others, else empty", ""}, \
+    {"non_lug", "\"[External] \" for events run by others, else empty", ""}, \
     {"link", "Link to the event in LUG Manager (needs the public URL set)", "https://lug.example.org/events/12"}, \
     {"fee", "Entrance fee", "$5"}
 
@@ -77,7 +77,7 @@ inline const std::vector<TemplateDef>& all_templates() {
          "Posted in the event's thread when the event is edited (unless update notes are off).",
          "", "**Event Updated** — {title} has been updated.", {LUGM_EVENT_PH}, {}, 2000},
         {"meeting.announcement", kGroupChannel, "Meeting announcement",
-         "Posted in the announcements channel (LUG-wide) or the chapter's channel when a meeting is published; edited when it changes.",
+         "Posted in the announcements channel (group-wide) or the chapter's channel when a meeting is published; edited when it changes.",
          "", "{pings}\n**{title}**\nWhen: {when_range}\nWhere: {location}[[\n\n{description}]]",
          {{"title", "Meeting name", "October meeting"}, {"when_range", "Start and end, like 10/14 7:00 PM CDT – 10/14 9:00 PM CDT (on Discord, in each reader's own time zone)",
            "10/14 7:00 PM CDT – 10/14 9:00 PM CDT"},
@@ -85,7 +85,7 @@ inline const std::vector<TemplateDef>& all_templates() {
           {"when_relative", "How long until it starts, like \"in 3 days\" (Discord only; empty elsewhere)", "in 3 days"},
           {"location", "Where", "Brickton Library"}, {"description", "Meeting description", "Bring a build to show."},
           {"pings", "Role mention (empty when pings are off)", "@LUG Members"},
-          {"chapter", "Chapter name (empty for LUG-wide)", "North Chapter"},
+          {"chapter", "Chapter name (empty for group-wide)", "North Chapter"},
           {"link", "Link to the meeting in LUG Manager", "https://lug.example.org/meetings/7"}}, {}, 2000},
         {"reminder.meeting", kGroupChannel, "Meeting reminder",
          "Posted before a meeting when Discord reminders are on.",
@@ -116,7 +116,7 @@ inline const std::vector<TemplateDef>& all_templates() {
              "**Public teens:** {public_teens}\n**Public adults:** {public_adults}"
              "[[\n**Social media links, {lug_name} mentions, announcements for show:** {social_links}]]\n"
              "**What you liked best about event:** {feedback}[[\n\n## Description\n{description}]][[\n\n## Notes\n{notes}]]",
-         {{"title", "Event name", "Brick Fest"}, {"chapter", "Chapter, or LUG Wide", "LUG Wide"},
+         {{"title", "Event name", "Brick Fest"}, {"chapter", "Chapter, or Group-wide", "Group-wide"},
           {"start_date", "Start date", "2026-10-14"}, {"end_date", "End date", "2026-10-15"}, {"location", "Where", "Expo Hall"},
           {"lead", "Event lead", "Ann B."}, {"fee", "Entrance fee", "$5"},
           {"attendance", "Members who came, listed day by day", "**Member names day1:**\n- Ann B.\n- Ben C."},
@@ -131,7 +131,7 @@ inline const std::vector<TemplateDef>& all_templates() {
          "Posted to the meeting reports forum with \"Post report to Discord\" (edited if posted again).",
          "", "**Meeting:** {title}\n**Chapter:** {chapter}\n**Meeting date:** {date}\n**Format:** {format}\n**Location:** {location}\n"
              "**Members by name:**\n{attendance}[[\n\n## Description\n{description}]][[\n\n## Notes\n{notes}]]",
-         {{"title", "Meeting name", "October meeting"}, {"chapter", "Chapter, or LUG Wide", "LUG Wide"},
+         {{"title", "Meeting name", "October meeting"}, {"chapter", "Chapter, or Group-wide", "Group-wide"},
           {"date", "Meeting date", "2026-10-14"}, {"format", "\"Virtual\" for online meetings, else empty", ""},
           {"location", "Where (empty for virtual meetings)", "Brickton Library"},
           {"attendance", "Members who came, one per line", "- Ann B.\n- Ben C. (virtual)"},

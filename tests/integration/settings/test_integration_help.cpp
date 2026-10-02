@@ -161,6 +161,6 @@ TEST_F(IntegrationTest, HelpFollowsTheChaptersToggle) {
     expect_not_contains(off, "Manage chapters");
     expect_not_contains(off, "navStep('/chapters'");
     expect_not_contains(off, "select your chapter");
-    expect_contains(off, "Choose scope: LUG Wide, or Non-LUG.");
+    expect_contains(off, "Choose scope: Group-wide, or External.");
     expect_contains(GET("/help", chapter_lead_token), "Moderator Powers");
 }

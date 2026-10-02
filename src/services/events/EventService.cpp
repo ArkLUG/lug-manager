@@ -70,8 +70,8 @@ LugEvent EventService::with_calendar_title(const LugEvent& e) const {
     // Status
     if (e.status == "tentative") prefix += "[Tentative] ";
     // Scope
-    if (e.scope == "non_lug")        prefix += "[Non-LUG] ";
-    else if (e.scope == "lug_wide")  prefix += "[LUG Wide] ";
+    if (e.scope == "non_lug")        prefix += "[External] ";
+    else if (e.scope == "lug_wide")  prefix += "[Group-wide] ";
     // Chapter shorthand
     if (e.chapter_id > 0 && chapter_repo_) {
         auto ch = chapter_repo_->find_by_id(e.chapter_id);

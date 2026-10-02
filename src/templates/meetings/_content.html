@@ -96,8 +96,8 @@
             </td>
             <td class="px-4 py-3">
               <div class="font-medium text-gray-800 {{#is_cancelled}}line-through{{/is_cancelled}}">{{title}}
-                {{#scope_lug_wide}}<span class="ml-1 px-1.5 py-0.5 rounded text-xs font-medium bg-indigo-100 text-indigo-700">LUG Wide</span>{{/scope_lug_wide}}
-                {{#scope_non_lug}}<span class="ml-1 px-1.5 py-0.5 rounded text-xs font-medium bg-amber-100 text-amber-700">Non-LUG</span>{{/scope_non_lug}}
+                {{#scope_lug_wide}}<span class="ml-1 px-1.5 py-0.5 rounded text-xs font-medium bg-indigo-100 text-indigo-700">Group-wide</span>{{/scope_lug_wide}}
+                {{#scope_non_lug}}<span class="ml-1 px-1.5 py-0.5 rounded text-xs font-medium bg-amber-100 text-amber-700">External</span>{{/scope_non_lug}}
                 {{^scope_lug_wide}}{{^scope_non_lug}}{{#chapter_name}}<span class="f-chapters ml-1 text-xs text-gray-500">{{chapter_name}}</span>{{/chapter_name}}{{/scope_non_lug}}{{/scope_lug_wide}}</div>
               {{#description}}<div class="text-xs text-gray-400 truncate max-w-xs hidden sm:block">{{description}}</div>{{/description}}
             </td>

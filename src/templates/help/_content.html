@@ -95,7 +95,7 @@
     // --- Auto-navigate to Events ---
     steps.push(
       navStep('/events', 'Going to Events...'),
-      { element: '#main-content', popover: { title: 'Events Page', description: 'Events are date-based activities (no specific times). They can be Chapter-scoped, LUG Wide, or Non-LUG. Each event can have an assigned Event Lead who gets management permissions for that event. Click "View" for details and attendance tracking.' }}
+      { element: '#main-content', popover: { title: 'Events Page', description: 'Events are date-based activities (no specific times). They can be Chapter-scoped, Group-wide, or External. Each event can have an assigned Event Lead who gets management permissions for that event. Click "View" for details and attendance tracking.' }}
     );
 
     if (isEventManager) {
@@ -251,7 +251,7 @@
       </div>
       <div class="flex gap-3">
         <span class="flex-shrink-0 w-6 h-6 bg-blue-500 text-white rounded-full flex items-center justify-center text-xs font-bold">2</span>
-        <div><strong>Create events</strong> — Go to Events and click "New Event". Events are date-based (no times). Choose scope: {{#f_chapters}}Chapter, {{/f_chapters}}LUG Wide, or Non-LUG. Non-LUG events don't have status tracking. You can assign an event lead to delegate management of the event.</div>
+        <div><strong>Create events</strong> — Go to Events and click "New Event". Events are date-based (no times). Choose scope: {{#f_chapters}}Chapter, {{/f_chapters}}Group-wide, or External. External events don't have status tracking. You can assign an event lead to delegate management of the event.</div>
       </div>
       <div class="flex gap-3">
         <span class="flex-shrink-0 w-6 h-6 bg-blue-500 text-white rounded-full flex items-center justify-center text-xs font-bold">3</span>

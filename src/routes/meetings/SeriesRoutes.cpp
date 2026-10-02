@@ -103,7 +103,7 @@ void register_series_routes(LugApp& app, std::shared_ptr<SeriesService> series,
             return fail(400, "Check the start/end dates.");
         if (s.scope == "chapter" && s.chapter_id <= 0) return fail(400, "Pick a chapter (or make it LUG-wide).");
         if (!can_manage_series(app.get_context<AuthMiddleware>(req).auth, chapter_members, s.scope, s.chapter_id))
-            return fail(403, "You can only create series for chapters you manage (LUG-wide series need an admin).");
+            return fail(403, "You can only create series for chapters you manage (group-wide series need an admin).");
 
         int64_t id = series->create(s);
         s.id = id;

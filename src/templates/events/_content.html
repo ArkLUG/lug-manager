@@ -7,7 +7,7 @@
         <p class="text-sm text-gray-500 mt-0.5">{{total_count}} total</p>
       </div>
 <script type="application/json" id="tour-events-content">[
-        {"element":"[data-page-title]", "popover":{"title":"Events", "description":"All events listed by date. Events are date-based (no specific times) and can be Chapter, LUG Wide, or Non-LUG scope."}},
+        {"element":"[data-page-title]", "popover":{"title":"Events", "description":"All events listed by date. Events are date-based (no specific times) and can be Chapter, Group-wide, or External scope."}},
         {"element":"input[name=\"search\"]", "popover":{"title":"Search", "description":"Filter events by title, location, or any text."}},
         {{#can_create}}{"element":"button[hx-get=\"/events/new\"]", "popover":{"title":"New Event", "description":"Create a new event. You can assign an Event Lead who gets edit, attendance, and QR permissions for that specific event."}},{{/can_create}}
         {"popover":{"title":"Event Leads", "description":"Any member can be assigned as an Event Lead for a specific event. The lead can edit the event, take attendance, generate QR codes, and publish reports \u2014 even if they are not an event manager."}},
@@ -101,8 +101,8 @@
             </td>
             <td class="px-4 py-3">
               <div class="font-medium text-gray-800 {{#is_cancelled}}line-through{{/is_cancelled}}">{{title}}
-                {{#scope_lug_wide}}<span class="ml-1 px-1.5 py-0.5 rounded text-xs font-medium bg-indigo-100 text-indigo-700">LUG Wide</span>{{/scope_lug_wide}}
-                {{#scope_non_lug}}<span class="ml-1 px-1.5 py-0.5 rounded text-xs font-medium bg-amber-100 text-amber-700">Non-LUG</span>{{/scope_non_lug}}
+                {{#scope_lug_wide}}<span class="ml-1 px-1.5 py-0.5 rounded text-xs font-medium bg-indigo-100 text-indigo-700">Group-wide</span>{{/scope_lug_wide}}
+                {{#scope_non_lug}}<span class="ml-1 px-1.5 py-0.5 rounded text-xs font-medium bg-amber-100 text-amber-700">External</span>{{/scope_non_lug}}
                 {{^scope_lug_wide}}{{^scope_non_lug}}{{#chapter_name}}<span class="f-chapters ml-1 text-xs text-gray-500">{{chapter_name}}</span>{{/chapter_name}}{{/scope_non_lug}}{{/scope_lug_wide}}</div>
               {{#has_event_lead}}<div class="text-xs text-gray-400">Lead: {{event_lead_name}}</div>{{/has_event_lead}}
               {{#description}}<div class="text-xs text-gray-400 truncate max-w-xs hidden sm:block">{{description}}</div>{{/description}}

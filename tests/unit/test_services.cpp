@@ -265,7 +265,7 @@ TEST_F(ServiceFixture, EventCalendarTitleNonLug) {
     e.scope  = "non_lug";
     auto created = event_svc->create(e);
     auto cal = event_svc->with_calendar_title(created);
-    EXPECT_NE(cal.title.find("[Non-LUG]"), std::string::npos);
+    EXPECT_NE(cal.title.find("[External]"), std::string::npos);
 }
 
 TEST_F(ServiceFixture, EventCalendarTitleLugWide) {
@@ -277,7 +277,7 @@ TEST_F(ServiceFixture, EventCalendarTitleLugWide) {
     e.scope  = "lug_wide";
     auto created = event_svc->create(e);
     auto cal = event_svc->with_calendar_title(created);
-    EXPECT_NE(cal.title.find("[LUG Wide]"), std::string::npos);
+    EXPECT_NE(cal.title.find("[Group-wide]"), std::string::npos);
 }
 
 // Regression coverage for the new is_private redaction: with_calendar_title()
@@ -332,7 +332,7 @@ TEST_F(ServiceFixture, MeetingCalendarTitlePrivateRedactsEverything) {
     EXPECT_EQ(cal.description, "");
     EXPECT_EQ(cal.location, "");
     EXPECT_EQ(cal.title.find("Budget"), std::string::npos);
-    EXPECT_EQ(cal.title.find("LUG Wide"), std::string::npos);
+    EXPECT_EQ(cal.title.find("Group-wide"), std::string::npos);
 }
 
 // The iCal feed (calendar.ics) has no auth at all, so it needs the same

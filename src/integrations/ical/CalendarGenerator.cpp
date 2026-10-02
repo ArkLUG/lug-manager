@@ -291,8 +291,8 @@ std::string CalendarGenerator::generate_ics(const Filter& f) const {
                                   int64_t chapter_id, const std::string& status = "") -> std::string {
         std::string prefix;
         if (status == "tentative") prefix += "[Tentative] ";
-        if (scope == "non_lug")        prefix += "[Non-LUG] ";
-        else if (scope == "lug_wide")  prefix += "[LUG Wide] ";
+        if (scope == "non_lug")        prefix += "[External] ";
+        else if (scope == "lug_wide")  prefix += "[Group-wide] ";
         if (chapter_id > 0) {
             auto it = shorthand.find(chapter_id);
             if (it != shorthand.end() && !it->second.empty()) prefix = "[" + it->second + "] " + prefix;

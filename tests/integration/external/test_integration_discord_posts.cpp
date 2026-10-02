@@ -153,7 +153,7 @@ TEST_F(DiscordPostsTest, EventVariants) {
     auto nl = event_svc->create(new_event("non_lug"));
     auto c = nlohmann::json::parse(body_of("^POST /api/v10/channels/" + LUG_CH + "/messages$"));
     EXPECT_NE(c["content"].get<std::string>().find("<@&" + NONLUG_ROLE + ">"), std::string::npos);
-    EXPECT_NE(c["content"].get<std::string>().find("[Non-LUG] **Brick Fest**"), std::string::npos);
+    EXPECT_NE(c["content"].get<std::string>().find("[External] **Brick Fest**"), std::string::npos);
 
     // A user-picked thread is used, not created, and never deleted
     fake->clear();

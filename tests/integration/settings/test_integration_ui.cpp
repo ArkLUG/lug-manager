@@ -31,7 +31,7 @@ TEST_F(IntegrationTest, EventCardShowsBadges) {
     EXPECT_EQ(r.code, 200);
     expect_contains(r, "Badge Test Event");
     expect_contains(r, "Tentative");
-    expect_contains(r, "LUG Wide");
+    expect_contains(r, "Group-wide");
 }
 
 TEST_F(IntegrationTest, NonLugEventHidesStatusButtons) {
@@ -46,7 +46,7 @@ TEST_F(IntegrationTest, NonLugEventHidesStatusButtons) {
     auto r = GET_HTMX("/events", admin_token);
     EXPECT_EQ(r.code, 200);
     expect_contains(r, "Non-LUG Test");
-    expect_contains(r, "Non-LUG");
+    expect_contains(r, "External");
     // Non-LUG events should NOT show attendance or status buttons
     // (can't easily test per-card, but the page should have the event)
 }

@@ -222,7 +222,7 @@ Values ChatHub::event_values(const LugEvent& e, const Provider& p) const {
     v["location"] = p.inert(e.location);
     v["location_short"] = p.inert(fmt::short_place(e.location));
     v["description"] = p.inert(e.description);
-    v["non_lug"] = e.scope == "non_lug" ? "[Non-LUG] " : "";
+    v["non_lug"] = e.scope == "non_lug" ? "[External] " : "";
     v["fee"] = p.inert(e.entrance_fee);
     v["link"] = public_url().empty() || e.id <= 0 ? "" : public_url() + "/events/" + std::to_string(e.id);
     v["signup_deadline"] = e.signup_deadline.empty() ? "" : fmt::md(e.signup_deadline);
@@ -652,10 +652,10 @@ Result ChatHub::publish_report(Provider& p, Place forum_place, const std::string
 
 namespace {
 std::string chapter_name_of(SqliteDatabase& db, int64_t chapter_id) {
-    if (chapter_id <= 0) return "LUG Wide";
+    if (chapter_id <= 0) return "Group-wide";
     auto st = db.prepare("SELECT name FROM chapters WHERE id=?");
     st.bind(1, chapter_id);
-    return st.step() ? st.col_text(0) : "LUG Wide";
+    return st.step() ? st.col_text(0) : "Group-wide";
 }
 }
 

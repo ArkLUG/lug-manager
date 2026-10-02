@@ -129,7 +129,7 @@ TEST_F(ChatHubTest, PingsOffNonLugAndChapterCopy) {
         EXPECT_TRUE(c.roles.empty()) << c.op;
     }
     EXPECT_NE(rec->first("forum_thread")->text.find("Lead: Lee D."), std::string::npos);
-    EXPECT_NE(rec->first("post")->text.find("[Non-LUG] **Spring Showcase**"), std::string::npos);
+    EXPECT_NE(rec->first("post")->text.find("[External] **Spring Showcase**"), std::string::npos);
     int posts = 0;
     for (const auto& c : rec->calls) if (c.op == "post") ++posts;
     EXPECT_EQ(posts, 2);                                   // LUG channel + the chapter's

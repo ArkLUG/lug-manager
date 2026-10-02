@@ -66,8 +66,8 @@ Meeting MeetingService::with_calendar_title(const Meeting& m) const {
         return copy;
     }
     std::string prefix;
-    if (m.scope == "non_lug")        prefix += "[Non-LUG] ";
-    else if (m.scope == "lug_wide")  prefix += "[LUG Wide] ";
+    if (m.scope == "non_lug")        prefix += "[External] ";
+    else if (m.scope == "lug_wide")  prefix += "[Group-wide] ";
     if (m.chapter_id > 0 && chapter_repo_) {
         auto ch = chapter_repo_->find_by_id(m.chapter_id);
         if (ch && !ch->shorthand.empty()) prefix = "[" + ch->shorthand + "] " + prefix;
