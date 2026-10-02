@@ -181,7 +181,7 @@ check(len(d.find_elements(By.CSS_SELECTOR, "#kiosk-qr canvas, #kiosk-qr img")) >
 errs("kiosk")
 shot("kiosk")
 
-# Public check-in page (htmx 2): tabs switch via data-action
+# Public check-in page: tabs switch via data-action
 html = d.execute_script(f"""
   var x = new XMLHttpRequest(); x.open('POST', '/meetings/{MEETING_ID}/generate-checkin', false); x.send(); return x.responseText;""")
 import re as _re
@@ -192,6 +192,14 @@ if m:
         btn = d.find_elements(By.CSS_SELECTOR, f'[data-action="show-tab"][data-tab="{tab}"]')
         if btn:
             btn[0].click(); time.sleep(0.2)
+    # Name search: typing asks the server (htmx) and fills the list
+    sb = d.find_elements(By.CSS_SELECTOR, '[data-action="show-tab"][data-tab="search"]')
+    if sb:
+        sb[0].click(); time.sleep(0.2)
+        d.find_element(By.CSS_SELECTOR, '#panel-search input[name=q]').send_keys("Ma")
+        time.sleep(1.2)
+        first = d.find_element(By.CSS_SELECTOR, '#member-search-options option').text
+        check(first != "Type your name above to search...", "check-in name search didn't answer: " + first)
     errs("/checkin")
     shot("checkin")
 
