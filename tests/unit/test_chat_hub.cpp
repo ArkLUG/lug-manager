@@ -1,6 +1,7 @@
 // chat::ChatHub with a recording provider: what gets sent for events,
 // meetings and DMs, with the default templates and the switches.
 // (Replaces the old DiscordClient content-builder tests.)
+#include "integrations/discord/DiscordClient.hpp"
 #include "test_helper.hpp"
 #include "chat/ChatHub.hpp"
 
@@ -169,4 +170,23 @@ TEST_F(ChatHubTest, DirectMessagesAndQuietMode) {
     size_t before = rec->calls.size();
     hub->event_published(show());
     EXPECT_EQ(rec->calls.size(), before);                 // nothing new while quiet
+}
+
+// Discord timestamps are exact moments, so daylight saving must be applied
+// when turning the LUG's local times into them (US Central: CDT from
+// 2026-03-08 2 AM to 2026-11-01 2 AM).
+TEST(ChatTimes, DaylightSavingIsApplied) {
+    const char* tz = "America/Chicago";
+    auto utc = [](int y, int mo, int d, int h, int mi) {
+        std::tm t{}; t.tm_year = y - 1900; t.tm_mon = mo - 1; t.tm_mday = d; t.tm_hour = h; t.tm_min = mi;
+        return timegm(&t);
+    };
+    EXPECT_EQ(DiscordClient::local_to_epoch("2026-03-07T19:00:00", tz), utc(2026, 3, 8, 1, 0));    // CST, UTC-6
+    EXPECT_EQ(DiscordClient::local_to_epoch("2026-03-08T19:00:00", tz), utc(2026, 3, 9, 0, 0));    // CDT, UTC-5 (same day it starts)
+    EXPECT_EQ(DiscordClient::local_to_epoch("2026-08-22T14:00:00", tz), utc(2026, 8, 22, 19, 0));  // CDT
+    EXPECT_EQ(DiscordClient::local_to_epoch("2026-10-31T19:00:00", tz), utc(2026, 11, 1, 0, 0));   // last CDT evening
+    EXPECT_EQ(DiscordClient::local_to_epoch("2026-11-01T19:00:00", tz), utc(2026, 11, 2, 1, 0));   // CST again
+    EXPECT_EQ(DiscordClient::local_to_epoch("2026-12-12T10:00:00", tz), utc(2026, 12, 12, 16, 0)); // CST
+    // A meeting spanning the change keeps its real length: 11 PM -> 3 AM is 5 hours that night.
+    EXPECT_EQ(DiscordClient::local_to_epoch("2026-11-01T03:00:00", tz) - DiscordClient::local_to_epoch("2026-10-31T23:00:00", tz), 5 * 3600);
 }
