@@ -1,5 +1,6 @@
 // Recurring meetings: creation, materialization, permissions, stopping.
 #include "integration_test_base.hpp"
+#include "utils/LocalTime.hpp"
 
 TEST_F(IntegrationTest, CreateSeriesSchedulesMeetings) {
     std::string body = "title=Build+Night&location=Library&rule=weekly&interval_weeks=1&weekday=2"
@@ -42,7 +43,9 @@ TEST_F(IntegrationTest, StopSeriesRemovesFutureMeetings) {
     auto r = POST("/meetings/series/" + std::to_string(sid) + "/stop", "", admin_token);
     EXPECT_EQ(r.code, 200);
     expect_contains(r, "stopped");
-    auto left = db->prepare("SELECT COUNT(*) FROM meetings WHERE title='Stoppable'");
+    // Future ones go; one earlier today (the weekday is today and 19:00 has passed) stays.
+    auto left = db->prepare("SELECT COUNT(*) FROM meetings WHERE title='Stoppable' AND start_time > ?");
+    left.bind(1, local_iso_now());
     ASSERT_TRUE(left.step());
     EXPECT_EQ(left.col_int(0), 0);
 }
