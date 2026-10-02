@@ -1,3 +1,4 @@
+#include "auth/AccountSecurity.hpp"
 #include "auth/AuthService.hpp"
 #include "integrations/discord/sync/RoleSync.hpp"
 #include <stdexcept>
@@ -14,6 +15,12 @@ std::string AuthService::login_with_discord(const std::string& code, const std::
                                             const std::string& user_agent) {
     Member member = discord_member(code, redirect_uri);
     return sessions_.create(member.id, member.role, member.display_name, 24, user_agent);
+}
+
+static std::string auth_setting(SqliteDatabase& db, const char* key, const std::string& def) {
+    auto st = db.prepare("SELECT value FROM lug_settings WHERE key=?");
+    st.bind(1, std::string(key));
+    return st.step() ? st.col_text(0) : def;
 }
 
 Member AuthService::discord_member(const std::string& code, const std::string& redirect_uri) {
@@ -82,6 +89,15 @@ Member AuthService::discord_member(const std::string& code, const std::string& r
 
     // 5. Sync name changes
     bool needs_update = false;
+    // A member with no email gets their Discord account's verified one, so they
+    // can also sign in with a password or email link and get emails. Never
+    // overwrites an email they have, and never takes one another member uses.
+    if (member.email.empty() && user_info.verified && user_info.email.find('@') != std::string::npos &&
+        auth_setting(members_.db(), "auth_discord_email", "1") == "1" &&
+        !AccountSecurity(members_.db()).email_taken(user_info.email, member.id)) {
+        member.email = AccountSecurity::lower(user_info.email);
+        needs_update = true;
+    }
     if (member.discord_username != user_info.username) {
         member.discord_username = user_info.username;
         needs_update = true;

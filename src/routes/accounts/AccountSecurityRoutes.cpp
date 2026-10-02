@@ -188,6 +188,7 @@ void register_account_security_routes(LugApp& app, SqliteDatabase& db, SettingsR
         crow::mustache::context ctx;
         ctx["password_on"] = settings.get("auth_password_enabled", "1") != "0";
         ctx["links_on"] = settings.get("auth_email_links", "1") != "0";
+        ctx["discord_email_on"] = settings.get("auth_discord_email", "1") != "0";
         std::string r = settings.get("auth_require_2fa", "off");
         ctx["req_off"] = r != "staff" && r != "everyone";
         ctx["req_staff"] = r == "staff";
@@ -219,6 +220,7 @@ void register_account_security_routes(LugApp& app, SqliteDatabase& db, SettingsR
         if (r != "staff" && r != "everyone") r = "off";
         settings.set("auth_password_enabled", f.get("password", 2) == "1" ? "1" : "0");
         settings.set("auth_email_links", f.get("links", 2) == "1" ? "1" : "0");
+        settings.set("auth_discord_email", f.get("discord_email", 2) == "1" ? "1" : "0");
         settings.set("auth_require_2fa", r);
         audit.log(req, app, "settings.update", "settings", 0, "Sign-in",
                   std::string("Passwords ") + (f.get("password", 2) == "1" ? "on" : "off") + ", email links " +

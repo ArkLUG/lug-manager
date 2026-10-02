@@ -11,6 +11,8 @@
         <span><strong>Email and password.</strong> Members set a password under My Account &gt; Password &amp; two-factor (they need an email on their profile), or you send them a set-password link from their member page.</span></label>
       <label class="flex items-start gap-2"><input type="checkbox" name="links" value="1" {{#links_on}}checked{{/links_on}} class="mt-1 accent-yellow-400">
         <span><strong>Emailed sign-in links.</strong> "Email me a link" on the sign-in page. Only works when the server has email set up.</span></label>
+      <label class="f-discord flex items-start gap-2"><input type="checkbox" name="discord_email" value="1" {{#discord_email_on}}checked{{/discord_email_on}} class="mt-1 accent-yellow-400">
+        <span><strong>Fill in emails from Discord.</strong> When a member without an email signs in with Discord, use their Discord account's verified email, so they can also use a password, email links and email notifications. Never replaces an email they have, or takes one another member uses.</span></label>
       <p class="text-gray-500">Discord sign-in is set under Settings &gt; Discord.</p>
     </fieldset>
     <fieldset class="space-y-2">

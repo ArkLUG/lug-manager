@@ -234,3 +234,36 @@ TEST_F(DiscordFakeTest, PagesLoadWhenDiscordUnreachable) {
     EXPECT_EQ(POST("/settings/roles", "", admin_token).code, 502);
     EXPECT_EQ(role_mapping_repo->find_all().size(), 2u);             // nothing removed
 }
+
+// Signing in with Discord fills in a missing email from the Discord account's
+// verified one - never an unverified one, never over an existing email, never
+// one another member uses - and the admin can turn it off.
+TEST_F(DiscordFakeTest, DiscordSignInFillsMissingEmail) {
+    auto start = GET("/auth/login");
+    EXPECT_NE(start.location.find("scope=identify%20email"), std::string::npos) << start.location;
+    auto p = start.headers.find("oauth_state=");
+    ASSERT_NE(p, std::string::npos);
+    std::string nonce = start.headers.substr(p + 12, start.headers.find(';', p) - p - 12);
+    auto sign_in = [&](const std::string& id, const std::string& email, bool verified) {
+        fake->oauth_user_id = id; fake->oauth_email = email; fake->oauth_verified = verified;
+        return http("GET", "/auth/callback?code=abc&state=" + nonce, "", "", false, "", false, {"Cookie: oauth_state=" + nonce});
+    };
+    auto email_of = [&](const std::string& id) { return member_repo->find_by_discord_id(id)->email; };
+    fake->add_member("100000000000000031", "ann", {MEMBER_ROLE});
+    fake->add_member("100000000000000032", "bob", {MEMBER_ROLE});
+
+    sign_in("100000000000000031", "Ann@Example.org", false);               // unverified: not used
+    EXPECT_EQ(email_of("100000000000000031"), "");
+    sign_in("100000000000000031", "Ann@Example.org", true);                // verified: filled in
+    EXPECT_EQ(email_of("100000000000000031"), "ann@example.org");
+    sign_in("100000000000000031", "new@example.org", true);                // already has one: kept
+    EXPECT_EQ(email_of("100000000000000031"), "ann@example.org");
+    sign_in("100000000000000032", "ann@example.org", true);                // someone else's: skipped
+    EXPECT_EQ(email_of("100000000000000032"), "");
+    settings_repo->set("auth_discord_email", "0");                          // switched off
+    sign_in("100000000000000032", "bob@example.org", true);
+    EXPECT_EQ(email_of("100000000000000032"), "");
+    settings_repo->set("auth_discord_email", "1");
+    sign_in("100000000000000032", "bob@example.org", true);
+    EXPECT_EQ(email_of("100000000000000032"), "bob@example.org");
+}

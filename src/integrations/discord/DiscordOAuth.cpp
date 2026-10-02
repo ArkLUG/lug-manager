@@ -35,7 +35,7 @@ std::string DiscordOAuth::get_auth_url(const std::string& state, const std::stri
            "?client_id=" + url_encode(config_.discord_client_id) +
            "&redirect_uri=" + url_encode(uri) +
            "&response_type=code"
-           "&scope=identify"
+           "&scope=identify%20email"
            "&state=" + url_encode(state);
     // prompt=none: skip the consent screen when the user already authorized
     // this app+scope. Omitted (not prompt=consent) on retry so Discord falls
@@ -113,6 +113,8 @@ DiscordUserInfo DiscordOAuth::get_user_info(const std::string& access_token) con
                                ? j["global_name"].get<std::string>()
                                : info.username;
         info.avatar      = j.value("avatar", "");
+        if (j.contains("email") && j["email"].is_string()) info.email = j["email"].get<std::string>();
+        info.verified    = j.value("verified", false);
         return info;
     } catch (const json::exception& e) {
         throw std::runtime_error(std::string("Failed to parse user info: ") + e.what());

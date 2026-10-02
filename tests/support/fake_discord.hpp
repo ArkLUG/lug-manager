@@ -19,6 +19,8 @@ public:
     std::vector<json> channels;
     // OAuth: the user /api/users/@me returns
     std::string oauth_user_id = "", oauth_username = "oauthuser";
+    std::string oauth_email = "";      // with the email scope
+    bool oauth_verified = true;
     // Scheduled events and channel messages the fake remembers (GET returns
     // them, PATCH updates them). Keyed by event id / "channel/message".
     std::map<std::string, json> scheduled_events;
@@ -70,7 +72,8 @@ protected:
         // OAuth
         if (method == "POST" && path == "/api/oauth2/token") return reply(200, {{"access_token", "fake-access-token"}, {"token_type", "Bearer"}});
         if (method == "GET" && path == "/api/users/@me")
-            return reply(200, {{"id", oauth_user_id}, {"username", oauth_username}, {"global_name", nullptr}});
+            return reply(200, {{"id", oauth_user_id}, {"username", oauth_username}, {"global_name", nullptr},
+                               {"email", oauth_email.empty() ? json(nullptr) : json(oauth_email)}, {"verified", oauth_verified}});
 
         // Guild members
         if (method == "GET" && path == g + "/members") {

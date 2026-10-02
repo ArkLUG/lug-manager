@@ -7,6 +7,8 @@ struct DiscordUserInfo {
     std::string username;
     std::string global_name;
     std::string avatar;
+    std::string email;        // with the "email" scope; only trusted when verified
+    bool        verified = false;
 };
 
 class DiscordOAuth {
