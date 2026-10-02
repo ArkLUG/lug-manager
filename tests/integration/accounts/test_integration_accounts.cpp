@@ -390,3 +390,39 @@ TEST_F(AccountsTest, EmailedLinksIgnoreRequestHost) {
         EXPECT_NE(m.body.find("http://lug.test/auth/"), std::string::npos) << m.body;
     }
 }
+
+// An email a member types in themselves must be confirmed before it signs in
+// or gets mail; admins' edits and Discord-verified emails count as confirmed.
+TEST_F(AccountsTest, SelfEnteredEmailNeedsConfirming) {
+    mailer->clear_outbox();
+    EXPECT_EQ(POST("/members/me", "first_name=Reg&last_name=User&email=Reg.New%40example.org", member_token).code, 200);
+    EXPECT_EQ(num(*db, "SELECT email_confirmed FROM members WHERE id=" + std::to_string(regular_member_id)), 0);
+    auto out = mailer->outbox();
+    ASSERT_EQ(out.size(), 1u);
+    EXPECT_EQ(out[0].subject, "Confirm your email for LUG Manager");
+    std::string token = after(out[0].body, "/account/confirm-email/");
+    ASSERT_EQ(token.size(), 64u);
+    expect_contains(GET("/account", member_token), "Please confirm your email");
+
+    // Not usable yet: no sign-in link goes out for it
+    mailer->clear_outbox();
+    POST("/auth/email", "email=reg.new%40example.org");
+    EXPECT_TRUE(mailer->outbox().empty());
+
+    // Opening the link shows a button (link scanners can't confirm); posting confirms
+    auto page = GET("/account/confirm-email/" + token);
+    EXPECT_EQ(page.code, 200);
+    expect_contains(page, "Confirm my email");
+    EXPECT_EQ(num(*db, "SELECT email_confirmed FROM members WHERE id=" + std::to_string(regular_member_id)), 0);
+    auto done = POST("/account/confirm-email/" + token, "");
+    EXPECT_EQ(done.code, 200);
+    expect_contains(done, "Email confirmed");
+    EXPECT_EQ(num(*db, "SELECT email_confirmed FROM members WHERE id=" + std::to_string(regular_member_id)), 1);
+    EXPECT_EQ(POST("/account/confirm-email/" + token, "").code, 400);   // once only
+    POST("/auth/email", "email=reg.new%40example.org");
+    EXPECT_EQ(mailer->outbox().size(), 1u);                              // now it signs in
+
+    // An admin setting an email: confirmed straight away
+    POST("/members/" + std::to_string(regular_member_id), "first_name=Reg&last_name=User&email=admin.set%40example.org", admin_token);
+    EXPECT_EQ(num(*db, "SELECT email_confirmed FROM members WHERE id=" + std::to_string(regular_member_id)), 1);
+}

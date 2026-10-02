@@ -21,7 +21,9 @@
     {{^password_login}}<p class="text-sm text-gray-500">Password sign-in is turned off for this LUG.</p>{{/password_login}}
     {{#password_login}}
       {{^has_email}}<p class="text-sm text-gray-600">To sign in with a password, first add your email address to your profile (My Account &gt; Edit my profile). You'll sign in with that email.</p>{{/has_email}}
-      {{#email_shared}}<p class="text-sm text-amber-800">Another member has the same email address ({{email}}), so it can't be used to sign in. Ask an admin to fix it.</p>{{/email_shared}}
+      {{#email_unconfirmed}}<div class="text-sm text-amber-800 space-y-2"><p>Please confirm your email, {{email}}: we sent a link to it. Until you click it, it can't be used to sign in or get emails.</p>
+        <form hx-post="/account/confirm-email" hx-target="#main-content" hx-swap="innerHTML"><button class="px-3 py-1.5 border border-amber-300 rounded-lg hover:bg-amber-50">Send the link again</button></form></div>{{/email_unconfirmed}}
+      {{^email_unconfirmed}}{{#email_shared}}<p class="text-sm text-amber-800">Another member has the same email address ({{email}}), so it can't be used to sign in. Ask an admin to fix it.</p>{{/email_shared}}{{/email_unconfirmed}}
       {{#email_unique}}
       <p class="text-sm text-gray-600">{{#has_password}}You can sign in with <strong>{{email}}</strong> and your password{{#password_changed}} (set {{password_changed}}){{/password_changed}}.{{/has_password}}{{^has_password}}Set a password to sign in with <strong>{{email}}</strong> without Discord.{{/has_password}}</p>
       <form hx-post="/account/password" hx-target="#account-security" hx-swap="outerHTML" class="grid grid-cols-1 md:grid-cols-3 gap-3 text-sm items-end">

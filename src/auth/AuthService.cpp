@@ -97,6 +97,7 @@ Member AuthService::discord_member(const std::string& code, const std::string& r
         !AccountSecurity(members_.db()).email_taken(user_info.email, member.id)) {
         member.email = AccountSecurity::lower(user_info.email);
         needs_update = true;
+        AccountSecurity(members_.db()).set_email_confirmed(member.id, true);   // Discord verified it
     }
     if (member.discord_username != user_info.username) {
         member.discord_username = user_info.username;

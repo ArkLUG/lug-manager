@@ -31,7 +31,8 @@ public:
         if (!prefs.wants(member_id, kind)) return false;
         std::string email, name;
         {
-            auto st = db_.prepare("SELECT COALESCE(email,''), display_name FROM members WHERE id=?");
+            // Unconfirmed emails (typed in, link not clicked yet) get nothing.
+            auto st = db_.prepare("SELECT CASE WHEN email_confirmed=1 THEN COALESCE(email,'') ELSE '' END, display_name FROM members WHERE id=?");
             st.bind(1, member_id);
             if (!st.step()) return false;
             email = st.col_text(0); name = st.col_text(1);

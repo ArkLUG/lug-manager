@@ -51,17 +51,20 @@ public:
     std::optional<Account> by_email(const std::string& email) {
         std::string e = lower(email);
         if (e.find('@') == std::string::npos || e.size() > 254) return std::nullopt;
-        auto st = db_.prepare("SELECT id FROM members WHERE lower(COALESCE(email,''))=? LIMIT 2");
+        // Only a confirmed email signs in (members.email_confirmed, migration 071).
+        auto st = db_.prepare("SELECT id, email_confirmed FROM members WHERE lower(COALESCE(email,''))=? AND email_confirmed=1 LIMIT 2");
         st.bind(1, e);
         std::vector<int64_t> ids;
-        while (st.step()) ids.push_back(st.col_int(0));
-        if (ids.size() != 1) return std::nullopt;
+        bool confirmed = false;
+        while (st.step()) { ids.push_back(st.col_int(0)); confirmed = st.col_int(1) != 0; }
+        if (ids.size() != 1 || !confirmed) return std::nullopt;
         return by_id(ids[0]);
     }
 
     // Another member already has this email (so it can't be a sign-in email).
     bool email_taken(const std::string& email, int64_t except_id) {
-        auto st = db_.prepare("SELECT 1 FROM members WHERE lower(COALESCE(email,''))=? AND id<>? LIMIT 1");
+        // Unconfirmed copies don't count: typing someone's address in can't block them.
+        auto st = db_.prepare("SELECT 1 FROM members WHERE lower(COALESCE(email,''))=? AND id<>? AND email_confirmed=1 LIMIT 1");
         st.bind(1, lower(email)); st.bind(2, except_id);
         return st.step();
     }
@@ -244,6 +247,52 @@ public:
         st.bind(1, id);
         return st.step() ? static_cast<int>(st.col_int(0)) : 0;
     }
+    // ── Confirming an email a member typed in themselves ──
+    bool email_confirmed(int64_t id) {
+        auto st = db_.prepare("SELECT email_confirmed FROM members WHERE id=?");
+        st.bind(1, id);
+        return st.step() && st.col_int(0) != 0;
+    }
+    void set_email_confirmed(int64_t id, bool yes) {
+        auto st = db_.prepare("UPDATE members SET email_confirmed=? WHERE id=?");
+        st.bind(1, static_cast<int64_t>(yes ? 1 : 0)); st.bind(2, id);
+        st.step();
+    }
+    // A link (48 hours) that confirms `email` for member `id`.
+    std::string create_confirm_token(int64_t id, const std::string& email) {
+        std::string token = generate_random_hex(32);
+        auto st = db_.prepare("INSERT INTO email_confirm_tokens (token_hash, member_id, email, expires_at) VALUES (?,?,?,?)");
+        st.bind(1, sha256_hex(token)); st.bind(2, id); st.bind(3, lower(email)); st.bind(4, utc_in(48 * 3600));
+        st.step();
+        return token;
+    }
+    int recent_confirm_tokens(int64_t id) {
+        auto st = db_.prepare("SELECT COUNT(*) FROM email_confirm_tokens WHERE member_id=? AND created_at > ?");
+        st.bind(1, id); st.bind(2, utc_in(-3600));
+        return st.step() ? static_cast<int>(st.col_int(0)) : 0;
+    }
+    // Who the link is for, if it's live and the member still has that email.
+    std::optional<int64_t> confirm_token_member(const std::string& token) {
+        if (token.size() != 64) return std::nullopt;
+        auto st = db_.prepare("SELECT t.member_id FROM email_confirm_tokens t JOIN members m ON m.id = t.member_id "
+                              "WHERE t.token_hash=? AND t.used_at IS NULL AND t.expires_at > ? "
+                              "AND lower(COALESCE(m.email,'')) = t.email "
+                              "AND NOT EXISTS (SELECT 1 FROM members o WHERE o.id <> m.id AND o.email_confirmed = 1 "
+                              "                AND lower(COALESCE(o.email,'')) = t.email)");
+        st.bind(1, sha256_hex(token)); st.bind(2, utc_in(0));
+        if (!st.step()) return std::nullopt;
+        return st.col_int(0);
+    }
+    bool use_confirm_token(const std::string& token) {
+        auto id = confirm_token_member(token);
+        if (!id) return false;
+        auto st = db_.prepare("UPDATE email_confirm_tokens SET used_at=? WHERE token_hash=? AND used_at IS NULL RETURNING member_id");
+        st.bind(1, utc_in(0)); st.bind(2, sha256_hex(token));
+        if (!st.step()) return false;
+        set_email_confirmed(*id, true);
+        return true;
+    }
+
     // Email changed, password set, or 2FA reset: links that were sent are void.
     void invalidate_reset_tokens(int64_t id) {
         auto st = db_.prepare("UPDATE password_reset_tokens SET used_at=? WHERE member_id=? AND used_at IS NULL");

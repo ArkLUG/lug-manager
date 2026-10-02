@@ -8,6 +8,12 @@
             class="px-4 py-2 bg-gray-800 text-white rounded-lg text-sm font-medium hover:bg-gray-700">Edit my profile &amp; privacy</button>
   </div>
 
+  {{#unconfirmed_email}}
+  <section class="rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-800 flex flex-wrap items-center justify-between gap-3">
+    <span>Please confirm your email, <strong>{{unconfirmed_email}}</strong>: click the link we sent to it. Until then it can't be used to sign in or get emails.</span>
+    <form hx-post="/account/confirm-email" hx-target="#main-content" hx-swap="innerHTML"><button class="px-3 py-1.5 border border-amber-300 rounded-lg hover:bg-amber-100">Send the link again</button></form>
+  </section>
+  {{/unconfirmed_email}}
   <section class="bg-white rounded-xl border border-gray-200 p-6 flex flex-wrap items-center justify-between gap-3">
     <div>
       <h3 class="font-semibold text-gray-800">Password &amp; two-factor</h3>

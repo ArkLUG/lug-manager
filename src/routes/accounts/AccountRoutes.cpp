@@ -1,4 +1,5 @@
 #include "routes/accounts/AccountRoutes.hpp"
+#include "auth/AccountSecurity.hpp"
 #include "services/Palettes.hpp"
 #include "repositories/members/NotificationPrefs.hpp"
 #include "services/events/AttendanceService.hpp"
@@ -56,6 +57,11 @@ void register_account_routes(LugApp& app, SqliteDatabase& db, MemberService& mem
         crow::mustache::context ctx;
         ctx["notifications"] = render_notifications(db, a.member_id);
         ctx["display_name"] = a.display_name;
+        {
+            AccountSecurity sec(db);
+            auto acct = sec.by_id(a.member_id);
+            if (acct && !acct->email.empty() && !sec.email_confirmed(a.member_id)) ctx["unconfirmed_email"] = acct->email;
+        }
         {
             std::string mine;
             auto st = db.prepare("SELECT palette FROM members WHERE id=?");

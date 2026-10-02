@@ -1,6 +1,7 @@
 #include "routes/accounts/AccountSecurityRoutes.hpp"
 #include "utils/web/FormBody.hpp"
 #include "auth/AccountSecurity.hpp"
+#include "utils/web/AssetVersion.hpp"
 #include <crow/mustache.h>
 
 namespace {
@@ -27,8 +28,10 @@ std::string render(SqliteDatabase& db, SettingsRepository& settings, int64_t id,
     if (!a) return "";
     ctx["email"] = a->email;
     ctx["has_email"] = !a->email.empty();
+    const bool confirmed = sec.email_confirmed(id);
     bool unique = !a->email.empty() && !sec.email_taken(a->email, id);
-    ctx["email_unique"] = unique;
+    ctx["email_unconfirmed"] = !a->email.empty() && !confirmed;
+    ctx["email_unique"] = unique && confirmed;
     ctx["email_shared"] = !a->email.empty() && !unique;
     ctx["has_password"] = !a->password_hash.empty();
     ctx["password_login"] = settings.get("auth_password_enabled", "1") != "0";
@@ -71,6 +74,21 @@ crow::response reply(const crow::request& req, LugApp& app, const std::string& h
 
 } // namespace
 
+bool request_email_confirmation(SqliteDatabase& db, Notifier* notifier, const std::string& public_url, int64_t member_id) {
+    AccountSecurity sec(db);
+    auto a = sec.by_id(member_id);
+    if (!a || a->email.empty()) return false;
+    if (!notifier || !notifier->email_enabled() || public_url.empty()) {   // no way to confirm: trust it
+        sec.set_email_confirmed(member_id, true);
+        return false;
+    }
+    sec.set_email_confirmed(member_id, false);
+    if (sec.recent_confirm_tokens(member_id) >= 3) return false;
+    std::string link = public_url + "/account/confirm-email/" + sec.create_confirm_token(member_id, a->email);
+    notifier->send_email_template(member_id, a->email, a->display_name, "email.confirm", {{"link", link}});
+    return true;
+}
+
 void register_account_security_routes(LugApp& app, SqliteDatabase& db, SettingsRepository& settings, AuthService& auth,
                                       std::shared_ptr<Notifier> notifier, AuditService& audit, const std::string& public_url) {
 
@@ -84,6 +102,54 @@ void register_account_security_routes(LugApp& app, SqliteDatabase& db, SettingsR
         if (req.url_params.get("recovery_used"))
             v.flash = "You signed in with a recovery code; that code can't be used again.";
         return reply(req, app, render(db, settings, a.member_id, v));
+    });
+
+    // GET /account/confirm-email/<token> - a page with a button (mail scanners
+    // that open links can't confirm); POST does it. No sign-in needed.
+    auto confirm_page = [&db](const std::string& token, bool done) {
+        AccountSecurity sec(db);
+        crow::mustache::context ctx;
+        ctx["asset_v"] = asset_version();
+        ctx["token"] = token;
+        ctx["done"] = done;
+        auto id = done ? std::nullopt : sec.confirm_token_member(token);
+        ctx["valid"] = id.has_value();
+        if (id) { auto a = sec.by_id(*id); if (a) { ctx["email"] = a->email; ctx["name"] = a->display_name; } }
+        return crow::mustache::load("auth_confirm.html").render(ctx).dump();
+    };
+    CROW_ROUTE(app, "/account/confirm-email/<string>")([confirm_page](const crow::request&, const std::string& token) {
+        crow::response res;
+        res.add_header("Content-Type", "text/html; charset=utf-8");
+        res.add_header("Cache-Control", "no-store");
+        res.add_header("Referrer-Policy", "no-referrer");
+        res.write(confirm_page(token, false));
+        return res;
+    });
+    CROW_ROUTE(app, "/account/confirm-email/<string>").methods("POST"_method)([&db, &audit, confirm_page](const crow::request&, const std::string& token) {
+        crow::response res;
+        res.add_header("Content-Type", "text/html; charset=utf-8");
+        res.add_header("Cache-Control", "no-store");
+        AccountSecurity sec(db);
+        auto id = sec.confirm_token_member(token);
+        if (!id || !sec.use_confirm_token(token)) { res.code = 400; res.write(confirm_page(token, false)); return res; }
+        auto a = sec.by_id(*id);
+        audit.log_system("member.email_confirmed", "member", *id, a ? a->display_name : "", a ? a->email : "");
+        crow::mustache::context ctx;
+        ctx["asset_v"] = asset_version();
+        ctx["done"] = true;
+        ctx["email"] = a ? a->email : "";
+        res.write(crow::mustache::load("auth_confirm.html").render(ctx).dump());
+        return res;
+    });
+    // POST /account/confirm-email - send the link again
+    CROW_ROUTE(app, "/account/confirm-email").methods("POST"_method)([&app, &db, &settings, notifier, public_url](const crow::request& req) {
+        crow::response res;
+        if (!require_auth(req, res, app)) return res;
+        auto& me = app.get_context<AuthMiddleware>(req).auth;
+        View v;
+        if (request_email_confirmation(db, notifier.get(), public_url, me.member_id)) v.flash = "Sent. Check your inbox (and spam folder).";
+        else if (!AccountSecurity(db).email_confirmed(me.member_id)) v.error = "Couldn't send another link just now; try again in an hour.";
+        return reply(req, app, render(db, settings, me.member_id, v));
     });
 
     // POST /account/password - set or change your password

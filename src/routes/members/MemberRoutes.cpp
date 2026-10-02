@@ -1,4 +1,6 @@
 #include "routes/members/MemberRoutes.hpp"
+#include "routes/accounts/AccountSecurityRoutes.hpp"
+#include "auth/AccountSecurity.hpp"
 #include "utils/AuditDiff.hpp"
 #include "utils/text/JsonEscape.hpp"
 #include "utils/text/HtmlEscape.hpp"
@@ -98,7 +100,8 @@ static std::optional<MemberRepository::Guardian> guardian_from_form(GetParam get
     return g;
 }
 
-void register_member_routes(LugApp& app, MemberService& members, AttendanceRepository& attendance_repo, AuditService& audit) {
+void register_member_routes(LugApp& app, MemberService& members, AttendanceRepository& attendance_repo, AuditService& audit,
+                            std::shared_ptr<Notifier> notifier, const std::string& public_url) {
     MemberRepository& member_repo = members.repo();
 
     // GET /members - members page (table shell; data loaded via AJAX)
@@ -217,7 +220,7 @@ void register_member_routes(LugApp& app, MemberService& members, AttendanceRepos
 
     // POST /members/me - update own PII (any authenticated member)
     CROW_ROUTE(app, "/members/me").methods("POST"_method)(
-        [&](const crow::request& req) {
+        [&, notifier, public_url](const crow::request& req) {   // by value: they're this function's parameters
         crow::response res;
         if (!require_auth(req, res, app)) return res;
 
@@ -264,6 +267,10 @@ void register_member_routes(LugApp& app, MemberService& members, AttendanceRepos
         auto before_self = members.get(auth.member_id);
         try {
             auto after_self = members.update(auth.member_id, updates);
+            // Their own new email: ask them to confirm it's theirs.
+            if (before_self && !after_self.email.empty() &&
+                AccountSecurity::lower(before_self->email) != AccountSecurity::lower(after_self.email))
+                request_email_confirmation(members.repo().db(), notifier.get(), public_url, auth.member_id);
             {
                 AuditDiff diff;
                 if (before_self) {

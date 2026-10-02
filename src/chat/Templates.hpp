@@ -190,6 +190,13 @@ inline const std::vector<TemplateDef>& all_templates() {
          "If you didn't ask for this, you can ignore this email.",
          {{"link", "The one-time sign-in link", "https://lug.example.org/auth/email/..."}, {"name", "Member's name", "Ann B."}},
          {"link"}, 0},
+        {"email.confirm", kGroupSignIn, "Confirm an email address",
+         "Emailed when a member adds or changes their own email, to check it's theirs.",
+         "Confirm your email for LUG Manager",
+         "Please confirm that this is your email address for LUG Manager. The link works for 48 hours:\n\n{link}\n\n"
+         "Until you do, it can't be used to sign in or get emails. If you didn't add it, you can ignore this email.",
+         {{"link", "The confirmation link", "https://lug.example.org/account/confirm-email/..."}, {"name", "Member's name", "Ann B."}},
+         {"link"}, 0},
         {"email.password_reset", kGroupSignIn, "Forgot password",
          "Emailed when a member asks to reset their password.",
          "Set a new LUG Manager password",

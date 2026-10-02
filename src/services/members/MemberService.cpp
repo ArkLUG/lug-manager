@@ -169,8 +169,13 @@ Member MemberService::update(int64_t id, const Member& updates) {
 
     repo_.update(m);
     // The sign-in email changed: links already sent to the old address stop working.
-    if (AccountSecurity::lower(existing->email) != AccountSecurity::lower(m.email))
-        AccountSecurity(repo_.db()).invalidate_reset_tokens(id);
+    if (AccountSecurity::lower(existing->email) != AccountSecurity::lower(m.email)) {
+        AccountSecurity sec(repo_.db());
+        sec.invalidate_reset_tokens(id);
+        // Set by an admin or the API: trusted. A member's own edit asks them
+        // to confirm it instead (MemberRoutes, /members/me).
+        sec.set_email_confirmed(id, true);
+    }
     // A role changed through the service is a human decision - see RoleSync.hpp.
     if (!updates.role.empty() && updates.role != existing->role)
         repo_.set_role_source(id, "manual");

@@ -17,7 +17,7 @@ void register_all_routes(LugApp& app, Services& svc) {
     register_auth_routes(app, svc.auth, svc.oauth, svc.public_url);
     register_email_auth_routes(app, svc.auth, svc.attendance_repo.db(), svc.notifier, svc.audit);
     register_chapter_routes(app, svc.chapters, svc.chapter_members, svc.members, svc.discord, svc.audit);
-    register_member_routes(app, svc.members, svc.attendance_repo, svc.audit);
+    register_member_routes(app, svc.members, svc.attendance_repo, svc.audit, svc.notifier, svc.public_url);
     register_meeting_routes(app, svc.meetings, svc.attendance, svc.chapter_members, svc.chapters, svc.discord, svc.audit);
     register_event_routes(app, svc.events, svc.attendance, svc.chapter_members, svc.discord, svc.members, svc.meetings, svc.chapters, svc.audit);
     if (!svc.rsvps) svc.rsvps = std::make_shared<RsvpRepository>(svc.attendance_repo.db());
