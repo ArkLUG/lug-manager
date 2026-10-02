@@ -52,6 +52,7 @@ void register_live_routes(LugApp& app, AuthService& auth, const std::string& pub
             delete v;
             if (!ok) conn.close("too many connections");
         })
+        .max_payload(4096)   // pages never send anything that big
         .onmessage([](crow::websocket::connection&, const std::string&, bool) {})   // nothing to say back
         .onerror([](crow::websocket::connection& conn, const std::string&) { live::Hub::get().remove(&conn); })
         .onclose([](crow::websocket::connection& conn, const std::string&) { live::Hub::get().remove(&conn); });

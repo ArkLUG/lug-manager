@@ -524,3 +524,15 @@ TEST_F(IntegrationTest, EmailMustBeUnique) {
     EXPECT_EQ(POST("/members/me", "first_name=Reg&last_name=User&email=reg%40example.org", member_token).code, 200);
     EXPECT_EQ(member_repo->find_by_id(regular_member_id)->email, "reg@example.org");
 }
+
+// Request bodies over 25 MB are refused before they're read into memory
+// (cmake/patch_crow_body_limit.cmake); normal ones still work.
+TEST_F(IntegrationTest, OversizedRequestRefused) {
+    std::string huge(26 * 1024 * 1024, 'a');
+    auto r = POST("/auth/password", "email=x%40example.org&password=" + huge);
+    EXPECT_NE(r.code, 200);
+    EXPECT_NE(r.code, 303);
+    EXPECT_EQ(GET("/login").code, 200);   // the server is fine
+    auto ok = POST("/members/me", "first_name=Reg&last_name=User&email=reg2%40example.org", member_token);
+    EXPECT_EQ(ok.code, 200);
+}

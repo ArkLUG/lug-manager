@@ -20,6 +20,7 @@ FetchContent_Declare(Crow
   GIT_TAG        v1.2.0
   GIT_SHALLOW    TRUE
   PATCH_COMMAND  ${CMAKE_COMMAND} -P ${CMAKE_CURRENT_SOURCE_DIR}/cmake/patch_crow_mustache.cmake
+                 COMMAND ${CMAKE_COMMAND} -P ${CMAKE_CURRENT_SOURCE_DIR}/cmake/patch_crow_body_limit.cmake
 )
 FetchContent_MakeAvailable(Crow)
 
