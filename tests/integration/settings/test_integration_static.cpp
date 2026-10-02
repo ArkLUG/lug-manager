@@ -45,3 +45,19 @@ TEST_F(IntegrationTest, HealthCheck) {
     EXPECT_EQ(run_healthcheck(), 1);
     unsetenv("LUG_PORT");
 }
+
+// The logo and its credit (Brigs; Alexandria B, ROCLUG).
+TEST_F(IntegrationTest, LogoAndCredit) {
+    EXPECT_EQ(GET("/favicon.ico").code, 200);
+    auto svg = GET("/static/logo.svg");
+    EXPECT_EQ(svg.code, 200);
+    expect_contains(svg, "<svg");
+    auto login = GET("/login");
+    expect_contains(login, "/static/logo.svg");
+    expect_contains(login, "Logo Concept by Brigs");
+    expect_contains(login, "Final Design by Alexandria B (ROCLUG)");
+    auto help = GET("/help", member_token);
+    expect_contains(help, "Logo Concept by Brigs");
+    expect_contains(help, "Final Design by Alexandria B (ROCLUG)");
+    expect_contains(GET("/dashboard", member_token), "/static/logo.svg");
+}

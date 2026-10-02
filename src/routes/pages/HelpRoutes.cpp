@@ -1,4 +1,5 @@
 #include "routes/pages/HelpRoutes.hpp"
+#include "utils/web/AssetVersion.hpp"
 #include <crow.h>
 #include <crow/mustache.h>
 
@@ -26,6 +27,7 @@ void register_help_routes(LugApp& app, ChapterMemberRepository& chapter_members)
         }
 
         crow::mustache::context ctx;
+        ctx["asset_v"] = asset_version();
         ctx["is_admin"] = is_admin;
         ctx["is_chapter_lead_role"] = is_chapter_lead;
         ctx["is_event_manager"] = is_event_manager;

@@ -1,3 +1,5 @@
+<p align="center"><img src="src/static/logo.svg" alt="LUG Manager logo" width="160"></p>
+
 # LUG Manager
 
 **Run your LEGO® User Group in one place**: members, meetings, shows, check-ins, dues, volunteers, build challenges, inventory and money, with Discord (optional) and Google Calendar built in. Self-hosted, open source, and light enough for a small home server.
@@ -324,6 +326,12 @@ unraid/               Unraid Community Applications template
 deploy/               one-paste cloud-init setup for VPS providers
 fly.toml, render.yaml cloud hosting configs (see HOSTING.md)
 ```
+
+## Credits
+
+The LUG Manager logo:
+- Logo Concept by Brigs
+- Final Design by Alexandria B (ROCLUG)
 
 ## Troubleshooting
 

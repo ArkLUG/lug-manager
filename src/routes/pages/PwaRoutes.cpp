@@ -18,6 +18,8 @@ crow::response serve(const std::string& file, const std::string& type) {
 
 void register_pwa_routes(LugApp& app) {
     CROW_ROUTE(app, "/sw.js")([] { return serve("sw.js", "text/javascript; charset=utf-8"); });
+    // Browsers ask for /favicon.ico on their own (e.g. for JSON or PDF tabs): the logo.
+    CROW_ROUTE(app, "/favicon.ico")([] { return serve("favicon-32.png", "image/png"); });
     CROW_ROUTE(app, "/manifest.webmanifest")([] {
         return serve("manifest.webmanifest", "application/manifest+json");
     });

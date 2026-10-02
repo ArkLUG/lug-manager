@@ -3,7 +3,7 @@
 // per-user and must stay fresh) - only the offline fallback itself.
 const OFFLINE = '/static/offline.html';
 self.addEventListener('install', (e) => {
-  e.waitUntil(caches.open('lm-v1').then((c) => c.add(OFFLINE)));
+  e.waitUntil(caches.open('lm-v2').then((c) => c.add(OFFLINE)));
   self.skipWaiting();
 });
 self.addEventListener('activate', (e) => e.waitUntil(self.clients.claim()));

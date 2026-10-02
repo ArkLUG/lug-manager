@@ -1,5 +1,5 @@
 // Integration tests for the admin-uploaded logo (BrandingRoutes.cpp): page
-// access, valid upload + sidebar/favicon propagation, rejection of
+// access, valid upload + sidebar propagation (the favicon stays ours), rejection of
 // non-image/oversized uploads, and removal reverting to default branding.
 #include "integration_test_base.hpp"
 
@@ -41,13 +41,13 @@ TEST_F(IntegrationTest, BrandingUploadPngSucceedsAndIsServed) {
     expect_contains(page, "Remove Logo");
 }
 
-TEST_F(IntegrationTest, BrandingUploadPropagatesToSidebarAndFavicon) {
+TEST_F(IntegrationTest, BrandingUploadPropagatesToSidebar) {
     auto up = POST_FILE("/settings/branding", "logo", "mylogo.png", kTinyPng, admin_token);
     EXPECT_EQ(up.code, 200);
 
     // Any authenticated page (not just the branding settings page itself)
-    // should now show the custom logo in the sidebar and reference it as
-    // the favicon - this is the whole point of the feature, and it's built
+    // should now show the custom logo in the sidebar - this is the whole
+    // point of the feature, and it's built
     // via a shared middleware pointer rather than being wired per-page, so
     // this specifically exercises that it actually reaches an unrelated page.
     auto dash = GET("/dashboard", admin_token);
@@ -56,7 +56,9 @@ TEST_F(IntegrationTest, BrandingUploadPropagatesToSidebarAndFavicon) {
     // = -> &#x3D;), which is fine for an href - browsers decode entities in
     // attribute values normally. Assert on the escaped form actually emitted.
     expect_contains(dash, "branding&#x2F;logo");
-    expect_contains(dash, "rel=\"icon\"");
+    // The tab icon stays LUG Manager's own logo
+    expect_contains(dash, "<link rel=\"icon\" href=\"/static/logo.svg");
+    expect_not_contains(dash, "<link rel=\"icon\" href=\"&#x2F;branding");
 }
 
 TEST_F(IntegrationTest, BrandingUploadRejectsNonImage) {

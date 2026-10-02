@@ -85,8 +85,6 @@ html[data-palette]:not([data-palette="classic"]) .nav-active,
 html[data-palette]:not([data-palette="classic"])[data-theme-pref="light"]  .theme-btn[data-v="light"],
 html[data-palette]:not([data-palette="classic"])[data-theme-pref="system"] .theme-btn[data-v="system"],
 html[data-palette]:not([data-palette="classic"])[data-theme-pref="dark"]   .theme-btn[data-v="dark"] { background-color: var(--p-accent); color: var(--p-ink); }
-/* The "L" logo tile stays minifigure yellow in every theme. */
-html[data-palette]:not([data-palette="classic"]) #sidebar .logo-tile { background-color: #FED403; color: #111827; }
 
 /* ── Page: the section tint fading in at the top, as on fancolab.lego.com ── */
 html[data-palette]:not([data-palette="classic"]) #main-content {

@@ -212,8 +212,8 @@ void register_branding_routes(LugApp& app, SettingsRepository& settings,
         return res;
     });
 
-    // GET /branding/logo - serves the uploaded logo (also used as the favicon
-    // - see layout.html's <link rel="icon">). Public, unauthenticated: this
+    // GET /branding/logo - serves the uploaded logo (sidebar and public
+    // pages; the favicon stays LUG Manager's logo). Public, unauthenticated: this
     // is exactly the same trust level as any other static asset the app
     // serves (CSS/JS under /static/*), not member data.
     CROW_ROUTE(app, "/branding/logo")([&](const crow::request& /*req*/) {

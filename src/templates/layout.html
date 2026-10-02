@@ -4,7 +4,9 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>{{page_title}} — LUG Manager</title>
-  {{#has_logo}}<link rel="icon" href="{{logo_url}}">{{/has_logo}}{{^has_logo}}<link rel="icon" href="/static/icon-192.png?v={{asset_v}}">{{/has_logo}}
+  <!-- The tab icon is always LUG Manager's own logo (a LUG's uploaded logo is for the sidebar) -->
+  <link rel="icon" href="/static/logo.svg?v={{asset_v}}" type="image/svg+xml">
+  <link rel="icon" href="/static/favicon-32.png?v={{asset_v}}" sizes="32x32" type="image/png">
   <link rel="stylesheet" href="/static/tailwind.min.css?v={{asset_v}}" id="tw-local">
   <script src="/static/theme.js?v={{asset_v}}"></script>
   <script src="/static/app.js?v={{asset_v}}" defer></script>
@@ -156,8 +158,7 @@
       </div>
       {{/has_logo}}
       {{^has_logo}}
-      <div class="logo-tile w-10 h-10 bg-yellow-400 rounded-lg flex items-center justify-center
-                  font-black text-gray-900 text-lg shadow-inner flex-shrink-0">L</div>
+      <img src="/static/logo.svg?v={{asset_v}}" alt="LUG Manager" class="w-10 h-10 flex-shrink-0">
       {{/has_logo}}
       <div class="min-w-0">
         <div class="font-bold text-white text-sm leading-tight">LUG Manager</div>
