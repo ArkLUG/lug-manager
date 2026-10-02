@@ -1,3 +1,4 @@
+#include "utils/LocalTime.hpp"
 #include "test_helper.hpp"
 #include "services/events/MeetingService.hpp"
 #include "services/events/EventService.hpp"
@@ -550,4 +551,28 @@ TEST_F(ServiceFixture, AsyncPublishingDoesNotBlockCreate) {
     EXPECT_EQ(u.title, "Async Meeting 2");
     meeting_svc->set_async_pool(nullptr);
     // ThreadPool's destructor drains queued jobs before repos go away.
+}
+
+// Feeds carry a VTIMEZONE for their TZID (Outlook needs it): the zone's real
+// daylight-saving changes from the time-zone database.
+TEST_F(ServiceFixture, CalendarHasVtimezone) {
+    calendar->set_timezone("America/Chicago");
+    Meeting m;
+    m.title = "Zoned"; m.start_time = "2026-11-10T19:00:00"; m.end_time = "2026-11-10T21:00:00"; m.scope = "lug_wide";
+    meeting_svc->create(m);
+    std::string ics = calendar->get_ics();
+    EXPECT_NE(ics.find("BEGIN:VTIMEZONE\r\nTZID:America/Chicago\r\n"), std::string::npos);
+    // US Central: daylight time starts 2 AM on the 2nd Sunday of March, ends 2 AM on the 1st Sunday of November.
+    const std::string y = std::to_string(local_year());
+    auto changes = [&](const std::string& kind, const std::string& month) {
+        size_t n = 0;
+        for (size_t p = 0; (p = ics.find("BEGIN:" + kind + "\r\nDTSTART:" + y + month, p)) != std::string::npos; ++p) ++n;
+        return n;
+    };
+    EXPECT_EQ(changes("DAYLIGHT", "03"), 1u);
+    EXPECT_EQ(changes("STANDARD", "11"), 1u);
+    EXPECT_NE(ics.find("T020000\r\nTZOFFSETFROM:-0600\r\nTZOFFSETTO:-0500\r\nTZNAME:CDT"), std::string::npos);
+    EXPECT_NE(ics.find("T020000\r\nTZOFFSETFROM:-0500\r\nTZOFFSETTO:-0600\r\nTZNAME:CST"), std::string::npos);
+    EXPECT_LT(ics.find("END:VTIMEZONE"), ics.find("BEGIN:VEVENT"));
+    EXPECT_NE(ics.find("DTSTART;TZID=America/Chicago:20261110T190000"), std::string::npos);
 }

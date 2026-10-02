@@ -1,4 +1,6 @@
 #include "integrations/ical/CalendarGenerator.hpp"
+#include "utils/LocalTime.hpp"
+#include <cstdio>
 #include <unordered_map>
 #include <sstream>
 #include <iostream>
@@ -160,14 +162,14 @@ std::string CalendarGenerator::make_vevent(const std::string& uid,
         if (!timezone.empty() && timezone != "UTC") {
             block += fold_line("DTSTART;TZID=" + timezone, ical_start);
         } else {
-            block += fold_line("DTSTART", ical_start);
+            block += fold_line("DTSTART", ical_start + "Z");   // UTC: say so (no suffix = "floating")
         }
         if (!end.empty()) {
             std::string ical_end = iso_to_ical_dt(end);
             if (!timezone.empty() && timezone != "UTC") {
                 block += fold_line("DTEND;TZID=" + timezone, ical_end);
             } else {
-                block += fold_line("DTEND", ical_end);
+                block += fold_line("DTEND", ical_end + "Z");
             }
         }
     }
@@ -196,6 +198,73 @@ std::string CalendarGenerator::get_ics(const Filter& f) {
     return ics;
 }
 
+// The VTIMEZONE block that TZID=<zone> refers to. Google and Apple know IANA
+// zone names anyway, but Outlook and some others need the rules spelled out:
+// here, every UTC-offset change (daylight saving) from two years back to three
+// years ahead, read from the time-zone database.
+static std::string vtimezone(const std::string& tz) {
+    if (tz.empty() || tz == "UTC") return "";
+    struct Change { std::time_t at; long from, to; bool dst; std::string name; };
+    std::vector<Change> changes;
+    long first_offset = 0;
+    bool first_dst = false;
+    std::string first_name;
+    {
+        std::lock_guard<std::mutex> l(tz_env_mutex());
+        const char* old = std::getenv("TZ");
+        std::string saved = old ? old : "";
+        setenv("TZ", tz.c_str(), 1);
+        tzset();
+        std::tm now{};
+        std::time_t t0 = std::time(nullptr);
+        gmtime_r(&t0, &now);
+        std::tm from{}; from.tm_year = now.tm_year - 2; from.tm_mon = 0; from.tm_mday = 1;
+        std::tm to{};   to.tm_year = now.tm_year + 4;   to.tm_mon = 0; to.tm_mday = 1;
+        std::time_t a = timegm(&from), b = timegm(&to);
+        std::tm lt{};
+        localtime_r(&a, &lt);
+        long prev = lt.tm_gmtoff;
+        first_offset = prev; first_dst = lt.tm_isdst > 0; first_name = lt.tm_zone ? lt.tm_zone : "";
+        for (std::time_t t = a + 1800; t < b; t += 1800) {
+            localtime_r(&t, &lt);
+            if (lt.tm_gmtoff != prev) {
+                changes.push_back({t, prev, lt.tm_gmtoff, lt.tm_isdst > 0, lt.tm_zone ? lt.tm_zone : ""});
+                prev = lt.tm_gmtoff;
+            }
+        }
+        if (old) setenv("TZ", saved.c_str(), 1); else unsetenv("TZ");
+        tzset();
+    }
+    auto off = [](long s) {
+        char b[24];
+        long a = s < 0 ? -s : s;
+        std::snprintf(b, sizeof(b), "%c%02ld%02ld", s < 0 ? '-' : '+', (a / 3600) % 100, (a % 3600) / 60);
+        return std::string(b);
+    };
+    auto wall = [](std::time_t t, long offset) {   // the local clock just before the change
+        std::time_t w = t + offset;
+        std::tm g{};
+        gmtime_r(&w, &g);
+        char b[20];
+        std::strftime(b, sizeof(b), "%Y%m%dT%H%M%S", &g);
+        return std::string(b);
+    };
+    std::string out = "BEGIN:VTIMEZONE\r\nTZID:" + tz + "\r\n";
+    if (changes.empty()) {
+        out += std::string("BEGIN:STANDARD\r\nDTSTART:19700101T000000\r\nTZOFFSETFROM:") + off(first_offset) +
+               "\r\nTZOFFSETTO:" + off(first_offset) + "\r\n" + (first_name.empty() ? "" : "TZNAME:" + first_name + "\r\n") +
+               "END:STANDARD\r\n";
+    }
+    (void)first_dst;
+    for (const auto& c : changes) {
+        const char* kind = c.dst ? "DAYLIGHT" : "STANDARD";
+        out += std::string("BEGIN:") + kind + "\r\nDTSTART:" + wall(c.at, c.from) + "\r\nTZOFFSETFROM:" + off(c.from) +
+               "\r\nTZOFFSETTO:" + off(c.to) + "\r\n" + (c.name.empty() ? "" : "TZNAME:" + c.name + "\r\n") +
+               "END:" + kind + "\r\n";
+    }
+    return out + "END:VTIMEZONE\r\n";
+}
+
 std::string CalendarGenerator::generate_ics() const {
     return generate_ics(Filter());
 }
@@ -210,6 +279,7 @@ std::string CalendarGenerator::generate_ics(const Filter& f) const {
     oss << fold_line("X-WR-TIMEZONE", timezone_);
     oss << "CALSCALE:GREGORIAN\r\n";
     oss << "METHOD:PUBLISH\r\n";
+    oss << vtimezone(timezone_);
 
     // Helper to build prefixed calendar title
     // Chapter shorthands, loaded once per feed (was one lookup per item).
