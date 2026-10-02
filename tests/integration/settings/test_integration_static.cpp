@@ -46,18 +46,24 @@ TEST_F(IntegrationTest, HealthCheck) {
     unsetenv("LUG_PORT");
 }
 
-// The logo and its credit (Brigs; Alexandria B, ROCLUG).
-TEST_F(IntegrationTest, LogoAndCredit) {
+// The logo, and the About LUG Manager page: version, GitHub, credits.
+TEST_F(IntegrationTest, LogoAboutAndCredit) {
     EXPECT_EQ(GET("/favicon.ico").code, 200);
     auto svg = GET("/static/logo.svg");
     EXPECT_EQ(svg.code, 200);
     expect_contains(svg, "<svg");
     auto login = GET("/login");
     expect_contains(login, "/static/logo.svg");
-    expect_contains(login, "Logo Concept by Brigs");
-    expect_contains(login, "Final Design by Alexandria B (ROCLUG)");
-    auto help = GET("/help", member_token);
-    expect_contains(help, "Logo Concept by Brigs");
-    expect_contains(help, "Final Design by Alexandria B (ROCLUG)");
+    expect_contains(login, "github.com/ArkLUG/lug-manager");
+    expect_not_contains(login, "Alexandria");                      // credit lives on the About page
+    EXPECT_NE(GET("/about-lug-manager").code, 200);                 // signed in only
+    auto about = GET("/about-lug-manager", member_token);
+    EXPECT_EQ(about.code, 200);
+    expect_contains(about, "Version ");
+    expect_contains(about, "github.com");
+    expect_contains(about, "Logo Concept by Brigs");
+    expect_contains(about, "Final Design by Alexandria B (ROCLUG)");
+    expect_contains(about, "trademark of the LEGO Group");
+    expect_contains(GET("/help", member_token), "About LUG Manager");
     expect_contains(GET("/dashboard", member_token), "/static/logo.svg");
 }

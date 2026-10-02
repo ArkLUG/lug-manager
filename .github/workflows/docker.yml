@@ -131,6 +131,9 @@ jobs:
           push: ${{ github.event_name != 'pull_request' }}
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
+          # Shown on the app's About page: the tag for releases, else the commit
+          build-args: |
+            LUG_VERSION=${{ startsWith(github.ref, 'refs/tags/') && github.ref_name || steps.sha.outputs.short_sha }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
 

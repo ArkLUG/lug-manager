@@ -66,6 +66,16 @@ target_include_directories(lug_core PUBLIC
 # handler is disabled. Compression gzips dynamic responses and text assets.
 target_compile_definitions(lug_core PUBLIC CROW_DISABLE_STATIC_DIR CROW_ENABLE_COMPRESSION)
 target_compile_options(lug_core PRIVATE -Wall -Wextra -O2)
+# Version for the About page: -DLUG_VERSION=v2.0.2 (CI/Docker), else git describe, else "dev".
+if(NOT LUG_VERSION)
+  execute_process(COMMAND git describe --tags --always --dirty WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
+                  OUTPUT_VARIABLE LUG_VERSION OUTPUT_STRIP_TRAILING_WHITESPACE ERROR_QUIET)
+  if(NOT LUG_VERSION)
+    set(LUG_VERSION "dev")
+  endif()
+endif()
+set_source_files_properties(${CMAKE_SOURCE_DIR}/src/routes/pages/HelpRoutes.cpp PROPERTIES
+                            COMPILE_DEFINITIONS "LUG_VERSION=\"${LUG_VERSION}\"")
 target_link_libraries(lug_core PUBLIC
   Crow::Crow
   nlohmann_json::nlohmann_json
