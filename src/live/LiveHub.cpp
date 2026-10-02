@@ -54,6 +54,12 @@ void Hub::remove(crow::websocket::connection* conn) {
     conns_.erase(conn);
 }
 
+void Hub::clear() {
+    std::lock_guard<std::mutex> l(mu_);
+    conns_.clear();
+    pending_.clear();
+}
+
 size_t Hub::connections() {
     std::lock_guard<std::mutex> l(mu_);
     return conns_.size();

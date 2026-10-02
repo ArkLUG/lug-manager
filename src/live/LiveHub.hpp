@@ -42,6 +42,12 @@ public:
     void remove(crow::websocket::connection* conn);
     size_t connections();
 
+    // Forget every connection without touching it. For when the server that
+    // owns them stops: Crow doesn't always call the close handler then, and the
+    // connections can't be written to once its I/O loop is gone. Called when
+    // routes are registered (a new server) and by tests before they stop one.
+    void clear();
+
     // Closes connections whose session has ended (signed out, expired,
     // revoked). Checked every heartbeat.
     void set_session_check(std::function<bool(const std::string& session)> check);

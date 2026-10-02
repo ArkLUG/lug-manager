@@ -45,6 +45,7 @@
 #include "middleware/ApiKeyMiddleware.hpp"
 #include "services/AuditService.hpp"
 #include "routes/Router.hpp"
+#include "live/LiveHub.hpp"
 #include "utils/Crypto.hpp"
 
 // A valid 1x1 PNG, for upload tests.
@@ -314,6 +315,7 @@ protected:
     }
 
     void TearDown() override {
+        live::Hub::get().clear();   // its websocket connections die with the app
         app->stop();
         if (server_thread.joinable()) server_thread.join();
         std::error_code ec;

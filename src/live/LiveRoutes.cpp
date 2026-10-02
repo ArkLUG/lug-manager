@@ -24,6 +24,7 @@ bool origin_ok(const crow::request& req, const std::string& public_url) {
 } // namespace
 
 void register_live_routes(LugApp& app, AuthService& auth, const std::string& public_url) {
+    live::Hub::get().clear();   // any connections belonged to a previous server
     live::Hub::get().set_session_check([&auth](const std::string& session) {
         return auth.validate_session(session).has_value();
     });
