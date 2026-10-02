@@ -12,8 +12,12 @@ public:
     explicit SessionStore(SqliteDatabase& db);
 
     // Create new session, returns token
+    // Sessions last kSessionHours from their last use: each day a session is
+    // used, it's extended (see find()), so people who use the site stay signed
+    // in and an unused session ends after 30 days.
+    static constexpr int kSessionHours = 30 * 24;
     std::string create(int64_t member_id, const std::string& role,
-                       const std::string& display_name = "", int hours = 24,
+                       const std::string& display_name = "", int hours = kSessionHours,
                        const std::string& user_agent = "");
 
     struct Info {

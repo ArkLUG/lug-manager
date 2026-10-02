@@ -121,6 +121,17 @@ std::string SessionStore::create(int64_t member_id, const std::string& role,
     return token;
 }
 
+// Push the expiry out to a full kSessionHours again, at most once a day.
+static void renew(SqliteDatabase& db, const std::string& token, Session& s) {
+    if (s.expires_at > now_plus_hours(SessionStore::kSessionHours - 24)) return;
+    s.expires_at = now_plus_hours(SessionStore::kSessionHours);
+    auto up = db.prepare("UPDATE sessions SET expires_at=? WHERE token=?");
+    up.bind(1, s.expires_at);
+    up.bind(2, sha256_hex(token));
+    up.step();
+    s.renewed = true;
+}
+
 std::optional<Session> SessionStore::find(const std::string& token) {
     if (token.empty()) return std::nullopt;
 
@@ -141,6 +152,8 @@ std::optional<Session> SessionStore::find(const std::string& token) {
             cache_.erase(it);
             return std::nullopt;
         }
+        it->second.renewed = false;
+        renew(db_, token, it->second);
         return it->second;
     }
 
@@ -168,6 +181,7 @@ std::optional<Session> SessionStore::find(const std::string& token) {
     }
 
     if (!refresh_from_member(db_, s)) return std::nullopt;
+    renew(db_, token, s);
     cache_[s.token] = s;
     return s;
 }

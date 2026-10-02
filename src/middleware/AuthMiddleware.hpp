@@ -64,6 +64,7 @@ struct AuthMiddleware {
     struct context {
         AuthContext auth;
         std::string csp_nonce; // per-request nonce for inline <script> (see after_handle)
+        std::string renewed_session;   // the session was extended: re-send its cookie (after_handle)
     };
 
     void before_handle(crow::request& req, crow::response& res, context& ctx) {
@@ -99,6 +100,7 @@ struct AuthMiddleware {
         ctx.auth.role          = session_opt->role;
         ctx.auth.display_name  = session_opt->display_name;
         ctx.auth.treasurer     = session_opt->treasurer;
+        if (session_opt->renewed) ctx.renewed_session = token;
 
         // Two-factor required for this member but not set up yet: everything
         // except the setup page (and signing out) sends them there.
@@ -157,6 +159,13 @@ struct AuthMiddleware {
         set_default("X-Content-Type-Options", "nosniff");
         set_default("X-Frame-Options", "DENY");
         set_default("Referrer-Policy", "strict-origin-when-cross-origin");
+        // A session in use is extended (SessionStore::find); the browser's
+        // cookie gets the same new lifetime, unless this response signs out.
+        if (!ctx.renewed_session.empty() && res.get_header_value("Set-Cookie").find("session=") == std::string::npos) {
+            const bool https = req.get_header_value("X-Forwarded-Proto") == "https";
+            res.add_header("Set-Cookie", "session=" + ctx.renewed_session + "; HttpOnly; Path=/; Max-Age=" +
+                           std::to_string(SessionStore::kSessionHours * 3600) + "; SameSite=Lax" + (https ? "; Secure" : ""));
+        }
 
         const std::string& nonce = ctx.csp_nonce;
         if (!nonce.empty() && res.get_header_value("Content-Type").find("text/html") != std::string::npos &&

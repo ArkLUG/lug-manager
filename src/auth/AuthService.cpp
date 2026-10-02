@@ -14,7 +14,7 @@ AuthService::AuthService(SessionStore& sessions, MemberRepository& members, Disc
 std::string AuthService::login_with_discord(const std::string& code, const std::string& redirect_uri,
                                             const std::string& user_agent) {
     Member member = discord_member(code, redirect_uri);
-    return sessions_.create(member.id, member.role, member.display_name, 24, user_agent);
+    return sessions_.create(member.id, member.role, member.display_name, SessionStore::kSessionHours, user_agent);
 }
 
 static std::string auth_setting(SqliteDatabase& db, const char* key, const std::string& def) {

@@ -67,8 +67,9 @@ static std::string secure_attr(const crow::request& req) {
 static crow::response start_session(const crow::request& req, AuthService& auth, int64_t id, const std::string& role,
                                     const std::string& name, const std::string& next) {
     crow::response res;
-    std::string session = auth.sessions().create(id, role, name, 24, req.get_header_value("User-Agent"));
-    res.add_header("Set-Cookie", "session=" + session + "; HttpOnly; Path=/; Max-Age=86400; SameSite=Lax" + secure_attr(req));
+    std::string session = auth.sessions().create(id, role, name, SessionStore::kSessionHours, req.get_header_value("User-Agent"));
+    res.add_header("Set-Cookie", "session=" + session + "; HttpOnly; Path=/; Max-Age=" +
+                   std::to_string(SessionStore::kSessionHours * 3600) + "; SameSite=Lax" + secure_attr(req));
     res.add_header("Set-Cookie", "mfa=; HttpOnly; Path=/auth/2fa; Max-Age=0; SameSite=Lax");
     if (next.rfind("checkin:", 0) == 0) {
         std::string tok = next.substr(8);
