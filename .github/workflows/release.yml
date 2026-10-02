@@ -17,7 +17,26 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: Create GitHub Release
+      # Hand-written notes in docs/releases/<tag>.md when there are some
+      # (what's new, what to do when upgrading); otherwise GitHub's generated list.
+      - name: Find release notes
+        id: notes
+        run: |
+          if [ -f "docs/releases/${{ github.ref_name }}.md" ]; then
+            echo "path=docs/releases/${{ github.ref_name }}.md" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Create GitHub Release (written notes)
+        if: steps.notes.outputs.path != ''
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ github.ref_name }}
+          name: ${{ github.ref_name }}
+          body_path: ${{ steps.notes.outputs.path }}
+          prerelease: ${{ contains(github.ref_name, '-') }}
+
+      - name: Create GitHub Release (generated notes)
+        if: steps.notes.outputs.path == ''
         uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ github.ref_name }}
