@@ -1,3 +1,4 @@
+#include "utils/LocalTime.hpp"
 #include <gtest/gtest.h>
 #include <sstream>
 #include "db/SqliteDatabase.hpp"
@@ -619,4 +620,20 @@ TEST(Migrations, Migration067SeedsAmbassadorHistory) {
     auto n = db2.prepare("SELECT COUNT(*) FROM community_ambassador_terms");
     n.step();
     EXPECT_EQ(n.col_int(0), 0);
+}
+
+// The server's local time follows the LUG's time zone setting (whatever TZ
+// the container has), so "today" and "upcoming" match what people enter.
+TEST(LocalTime, ProcessTimezoneFollowsTheLug) {
+    const char* old = std::getenv("TZ");
+    std::string saved = old ? old : "";
+    ASSERT_TRUE(set_process_timezone("America/Chicago"));
+    std::time_t t = 1787425200;                       // 2026-08-22T19:00:00Z
+    EXPECT_EQ(local_iso(t), "2026-08-22T14:00:00");   // 2 PM CDT
+    ASSERT_TRUE(set_process_timezone("UTC"));
+    EXPECT_EQ(local_iso(t), "2026-08-22T19:00:00");
+    EXPECT_FALSE(set_process_timezone("Not/A_Zone"));
+    EXPECT_FALSE(set_process_timezone("../../etc/passwd"));
+    if (old) setenv("TZ", saved.c_str(), 1); else unsetenv("TZ");
+    tzset();
 }

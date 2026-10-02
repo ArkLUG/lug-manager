@@ -1,5 +1,29 @@
 #pragma once
+#include <cstdlib>
 #include <ctime>
+#include <filesystem>
+#include <mutex>
+#include <string>
+
+// Changing the process time zone (TZ) is a process-wide act: every change
+// takes this lock (also DiscordClient's per-call time-zone conversions).
+inline std::mutex& tz_env_mutex() {
+    static std::mutex m;
+    return m;
+}
+
+// The server's "local time" is the LUG's time zone (Settings > Calendar), not
+// whatever TZ the container happens to have: "today", "upcoming", reminder
+// windows and SQLite's 'localtime' then match the times people enter. Called
+// at start-up and when the setting changes. Unknown zones are ignored.
+inline bool set_process_timezone(const std::string& tz) {
+    if (tz.empty() || tz.find("..") != std::string::npos) return false;
+    if (tz != "UTC" && !std::filesystem::exists("/usr/share/zoneinfo/" + tz)) return false;
+    std::lock_guard<std::mutex> l(tz_env_mutex());
+    setenv("TZ", tz.c_str(), 1);
+    tzset();
+    return true;
+}
 
 // Thread-safe replacement for std::localtime (which returns a pointer to a
 // shared static buffer - a data race under Crow's multithreaded handlers).

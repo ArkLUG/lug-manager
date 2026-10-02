@@ -1,4 +1,5 @@
 #include "routes/settings/SetupRoutes.hpp"
+#include "utils/LocalTime.hpp"
 #include "services/Features.hpp"
 #include "services/FanCoLab.hpp"
 #include "services/events/AttendanceService.hpp"
@@ -200,6 +201,7 @@ void register_setup_routes(LugApp& app, SqliteDatabase& db, SettingsRepository& 
             settings.set("lug_timezone", tz);
             discord.set_timezone(tz);
             calendar.set_timezone(tz);
+            set_process_timezone(tz);
         }
         audit.log(req, app, "settings.update", "settings", 0, "Setup", "Name and time zone");
         return page(req, app, render_checklist(settings, db, "Saved."), true);

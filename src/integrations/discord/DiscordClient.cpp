@@ -1,5 +1,6 @@
 #include "utils/Offline.hpp"
 #include "integrations/discord/DiscordClient.hpp"
+#include "utils/LocalTime.hpp"
 #include "services/Features.hpp"
 #include "utils/text/Utf8.hpp"
 #include <regex>
@@ -281,7 +282,6 @@ std::string DiscordClient::discord_api_request_uncached(const std::string& metho
 // Thread-safe conversion: interpret `iso` as local time in `tz_name` (IANA), return UTC ISO + tz abbreviation.
 // Uses a global mutex around setenv/tzset to avoid races in multi-threaded context.
 struct TzConvResult { std::string utc_iso; std::string abbrev; };
-static std::mutex s_tz_mutex;
 static TzConvResult tz_convert(const std::string& iso, const std::string& tz_name) {
     TzConvResult r;
     if (iso.size() < 16) { r.utc_iso = iso + "Z"; return r; }
@@ -296,7 +296,7 @@ static TzConvResult tz_convert(const std::string& iso, const std::string& tz_nam
 
     time_t utc_t;
     {
-        std::lock_guard<std::mutex> lock(s_tz_mutex);
+        std::lock_guard<std::mutex> lock(tz_env_mutex());
         // Save and override TZ environment variable
         const char* old_env = getenv("TZ");
         std::string saved_tz = old_env ? old_env : "";

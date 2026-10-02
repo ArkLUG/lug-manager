@@ -1,4 +1,5 @@
 #include "routes/settings/SettingsRoutes.hpp"
+#include "utils/LocalTime.hpp"
 #include "utils/web/ParseId.hpp"
 #include "utils/text/HtmlEscape.hpp"
 #include "integrations/discord/Snowflake.hpp"
@@ -646,6 +647,7 @@ void register_settings_routes(LugApp& app, SettingsRepository& settings,
             settings.set("lug_timezone", timezone);
             discord.set_timezone(timezone);
             calendar.set_timezone(timezone);
+            set_process_timezone(timezone);
         }
         if (!cal_name.empty()) settings.set("ical_calendar_name", cal_name);
 

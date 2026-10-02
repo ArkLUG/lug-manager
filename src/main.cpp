@@ -1,4 +1,5 @@
 #include "routes/pages/HealthRoutes.hpp"
+#include "utils/LocalTime.hpp"
 #include "live/LiveHub.hpp"
 #include "utils/Offline.hpp"
 #include <crow.h>
@@ -126,6 +127,10 @@ int main(int argc, char** argv) {
                 timezone = config.ical_timezone;
             }
             if (timezone.empty()) timezone = "UTC";
+            if (set_process_timezone(timezone))
+                std::cout << "[lug-manager] Local time: " << timezone << "\n";
+            else
+                std::cerr << "[lug-manager] Unknown time zone \"" << timezone << "\" - check Settings > Calendar\n";
             std::string cal_name = settings_repo.get("ical_calendar_name");
             if (cal_name.empty() && !config.ical_calendar_name.empty()) {
                 settings_repo.set("ical_calendar_name", config.ical_calendar_name);
