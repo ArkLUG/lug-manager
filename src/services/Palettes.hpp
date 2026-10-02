@@ -11,10 +11,10 @@ struct Palette { const char* key; const char* name; const char* description; };
 
 inline const std::vector<Palette>& all() {
     static const std::vector<Palette> list = {
-        {"classic",   "Classic",            "The original LUG Manager look: yellow on charcoal."},
-        {"fancolab",  "LEGO Fan CoLab",     "Fan CoLab purple with the minifigure-head yellow."},
-        {"creator",   "Fan CoLab Creator",  "The pink and purple of the Recognized Fan Creator badge."},
-        {"community", "Fan CoLab Community","The blue of the Recognized Community Ambassador badge."},
+        {"classic",   "Classic",                 "The original LUG Manager look: yellow on charcoal."},
+        {"creator",   "Fan CoLab - Creators",    "LEGO Fan CoLab's Creators purple, with its black navigation."},
+        {"community", "Fan CoLab - Communities", "LEGO Fan CoLab's Communities green, with its black navigation."},
+        {"event",     "Fan CoLab - Events",      "LEGO Fan CoLab's Events blue, with its black navigation."},
     };
     return list;
 }

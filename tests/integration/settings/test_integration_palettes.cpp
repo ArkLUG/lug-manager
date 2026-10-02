@@ -21,12 +21,12 @@ TEST_F(IntegrationTest, MemberPicksTheirOwnPalette) {
 TEST_F(IntegrationTest, LugDefaultPalette) {
     EXPECT_EQ(POST("/settings/branding/palette", "default_palette=community", member_token).code, 403);
     EXPECT_EQ(POST("/settings/branding/palette", "default_palette=bogus", admin_token).code, 400);
-    auto r = POST("/settings/branding/palette", "default_palette=fancolab", admin_token);
+    auto r = POST("/settings/branding/palette", "default_palette=event", admin_token);
     EXPECT_EQ(r.code, 200);
     expect_contains(r, "Saved.");
-    expect_contains(GET("/dashboard", member_token), "data-palette=\"fancolab\"");   // hasn't picked one
-    expect_contains(GET("/login"), "data-palette=\"fancolab\"");                     // public pages too
+    expect_contains(GET("/dashboard", member_token), "data-palette=\"event\"");   // hasn't picked one
+    expect_contains(GET("/login"), "data-palette=\"event\"");                     // public pages too
     POST("/account/palette", "palette=classic", member_token);
     expect_contains(GET("/dashboard", member_token), "data-palette=\"classic\"");    // their choice wins
-    expect_contains(GET("/settings/branding", admin_token), "LEGO Fan CoLab");
+    expect_contains(GET("/settings/branding", admin_token), "Fan CoLab - Events");
 }

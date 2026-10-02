@@ -627,10 +627,10 @@
       </div>
       <!-- Colours: the member's colour theme (static/palettes.css) -->
       <label class="flex items-center gap-2 px-3 pb-2">
-        <span class="text-xs text-gray-500 mr-auto">Colours</span>
+        <span class="text-xs text-gray-500 flex-shrink-0">Colours</span>
         <select name="palette" data-change="palette" hx-post="/account/palette" hx-trigger="change" hx-swap="none"
                 aria-label="Colour theme"
-                class="bg-gray-800 border border-gray-700 text-gray-200 text-xs rounded-md px-1.5 py-1 max-w-[9.5rem]">
+                class="min-w-0 flex-1 bg-gray-800 border border-gray-700 text-gray-200 text-xs rounded-md px-1.5 py-1">
           {{#palettes}}<option value="{{key}}" {{#selected}}selected{{/selected}}>{{name}}</option>{{/palettes}}
         </select>
       </label>
