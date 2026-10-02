@@ -16,7 +16,7 @@
 
 **Members**
 - Member records with age range (KFOL/TFOL/AFOL), contact details and per-field privacy. Each member decides who sees their email, phone, address, birthday and Discord name.
-- Sign in with an email and password, with Discord, or with an emailed link. Two-factor codes from an authenticator app (with recovery codes), and an option to require them for organisers or everyone. Forgot-password emails and admin-made set-password links.
+- Sign in with an email and password, with Discord, or with an emailed link. Two-factor codes from an authenticator app (with recovery codes), and an option to require them for organisers or everyone. Forgot-password emails and admin-made set-password links. Members who sign in with Discord get their verified email filled in, emails members enter themselves are confirmed by a link, and people stay signed in while they keep using the site (30 days after their last visit).
 - With Discord: anyone in your server can sign in, and Discord roles can map to admin. Without Discord: add members with their email address and send them a set-password link.
 - Dues: a payment history, automatic expiry, an "expiring soon" list, renewal reminders and bulk updates.
 - Perk levels: yearly attendance tiers that hand out Discord roles automatically.
