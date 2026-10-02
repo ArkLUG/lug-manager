@@ -264,7 +264,8 @@ void register_meeting_routes(LugApp& app, MeetingService& meetings, AttendanceSe
             mctx["chapter_options"] = opts.str();
         }
         {
-            auto voice_chs = discord.fetch_voice_channels();
+            std::string err;
+            auto voice_chs = discord_list([&] { return discord.fetch_voice_channels(); }, &err);
             std::ostringstream vopts;
             vopts << "<option value=\"\">-- No voice channel --</option>\n";
             for (auto& ch : voice_chs)
@@ -324,13 +325,17 @@ void register_meeting_routes(LugApp& app, MeetingService& meetings, AttendanceSe
         mctx["is_virtual"]                 = m->is_virtual;
         mctx["discord_voice_channel_id"]   = m->discord_voice_channel_id;
         {
-            auto voice_chs = discord.fetch_voice_channels();
+            std::string err;
+            auto voice_chs = discord_list([&] { return discord.fetch_voice_channels(); }, &err);
             std::ostringstream vopts;
             vopts << "<option value=\"\">-- No voice channel --</option>\n";
             for (auto& ch : voice_chs)
                 vopts << "<option value=\"" << ch.id << "\""
                       << (ch.id == m->discord_voice_channel_id ? " selected" : "")
                       << ">" << html_escape(ch.name) << "</option>\n";
+            if (!err.empty() && !m->discord_voice_channel_id.empty())   // keep the saved channel
+                vopts << "<option value=\"" << html_escape(m->discord_voice_channel_id) << "\" selected>(saved: "
+                      << html_escape(m->discord_voice_channel_id) << ")</option>\n";
             mctx["voice_channel_options"] = vopts.str();
         }
         mctx["suppress_discord"]  = m->suppress_discord;

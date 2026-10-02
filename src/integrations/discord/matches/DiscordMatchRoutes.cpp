@@ -91,10 +91,11 @@ void register_discord_match_routes(LugApp& app,
             std::string guild_id = settings.get("discord_guild_id", discord.get_guild_id());
             std::string no_guild = "Enter a Guild ID first on the Discord settings page";
 
+            std::string discord_error;
             std::string matches_channel = settings.get("discord_matches_notification_channel_id", "");
             std::string matches_channel_options = guild_id.empty()
                 ? "<option value=\"\">" + no_guild + "</option>"
-                : build_channel_options(discord.fetch_text_channels(), matches_channel,
+                : build_channel_options(discord_list([&] { return discord.fetch_text_channels(); }, &discord_error), matches_channel,
                                         "-- Select a channel --",
                                         "No text channels found (check guild ID &amp; bot permissions)");
             mctx["matches_channel_id"]      = matches_channel;
@@ -108,12 +109,16 @@ void register_discord_match_routes(LugApp& app,
                 std::string rid;
                 while (std::getline(ss, rid, ',')) if (!rid.empty()) authorized_role_ids.insert(rid);
             }
-            auto all_roles = guild_id.empty() ? std::vector<DiscordRole>{} : discord.fetch_guild_roles();
+            auto all_roles = guild_id.empty() ? std::vector<DiscordRole>{}
+                                              : discord_list([&] { return discord.fetch_guild_roles(); }, &discord_error);
             std::ostringstream authorized_role_options;
             for (auto& r : all_roles) {
                 authorized_role_options << "<option value=\"" << r.id << "\""
                     << (authorized_role_ids.count(r.id) ? " selected" : "") << ">@" << html_escape(r.name) << "</option>\n";
             }
+            if (!discord_error.empty())   // keep the saved roles selected
+                for (const auto& id : authorized_role_ids)
+                    authorized_role_options << "<option value=\"" << html_escape(id) << "\" selected>(saved: " << html_escape(id) << ")</option>\n";
             mctx["authorized_role_options"] = authorized_role_options.str();
         }
 

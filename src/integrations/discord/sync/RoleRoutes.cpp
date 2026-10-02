@@ -17,7 +17,14 @@ void register_role_routes(LugApp& app,
         crow::response res;
         if (!require_auth(req, res, app, "admin")) return res;
 
-        auto guild_roles  = discord.fetch_guild_roles();
+        std::string err;
+        auto guild_roles  = discord_list([&] { return discord.fetch_guild_roles(); }, &err);
+        if (!err.empty()) {
+            res.code = 502;
+            res.add_header("Content-Type", "application/json");
+            res.write(R"({"error":"couldn't reach Discord"})");
+            return res;
+        }
         auto existing     = role_mappings.find_all();
 
         // Build a lookup: discord_role_id -> lug_role
@@ -71,7 +78,8 @@ void register_role_routes(LugApp& app,
         auto& ctx = app.get_context<AuthMiddleware>(req);
         if (ctx.auth.role != "admin") { res.redirect("/dashboard"); return res; }
 
-        auto guild_roles = discord.fetch_guild_roles();
+        std::string discord_error;
+        auto guild_roles = discord_list([&] { return discord.fetch_guild_roles(); }, &discord_error);
         auto existing    = role_mappings.find_all();
 
         // Build lookup: discord_role_id -> lug_role
@@ -95,6 +103,7 @@ void register_role_routes(LugApp& app,
         mctx["member_roles"]    = build_options("member");
         mctx["guild_configured"]= !discord.get_guild_id().empty();
         mctx["has_discord_roles"]= !guild_roles.empty();
+        if (!discord_error.empty()) mctx["discord_error"] = discord_error;
 
         return html_page(req, app, crow::mustache::load("settings/_roles.html").render(mctx).dump(), "Role Mappings", "active_settings");
     });
@@ -113,7 +122,15 @@ void register_role_routes(LugApp& app,
         for (auto* id : params.get_list("lug_admin", false))  if (id) admin_ids.insert(id);
         for (auto* id : params.get_list("lug_member", false)) if (id) member_ids.insert(id);
 
-        auto guild_roles = discord.fetch_guild_roles();
+        // Without Discord's role list nothing can be matched up: change nothing.
+        std::string err;
+        auto guild_roles = discord_list([&] { return discord.fetch_guild_roles(); }, &err);
+        if (!err.empty()) {
+            res.code = 502;
+            res.add_header("Content-Type", "text/html; charset=utf-8");
+            res.write("<div class=\"text-red-600 text-sm p-2\">Couldn't reach Discord, so nothing was changed. Try again in a moment.</div>");
+            return res;
+        }
         for (auto& gr : guild_roles) {
             if (admin_ids.count(gr.id)) {
                 role_mappings.upsert(gr.id, gr.name, "admin");

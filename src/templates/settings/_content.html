@@ -22,6 +22,11 @@
     {{/discord_on}}
 
     {{#discord_on}}
+    {{#discord_error}}
+    <div class="mb-4 rounded-lg bg-amber-50 border border-amber-200 p-4 text-sm text-amber-800">
+      <strong>Couldn't reach Discord</strong> ({{discord_error}}). Your saved channels and roles are kept; use Refresh to try again.
+    </div>
+    {{/discord_error}}
     <div class="flex flex-wrap gap-2 mb-5 text-sm">
       <a hx-get="/settings/messages" hx-target="#main-content" hx-push-url="true" hx-swap="innerHTML" class="px-3 py-1.5 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 cursor-pointer">Message wording</a>
       <a hx-get="/settings/chat-activity" hx-target="#main-content" hx-push-url="true" hx-swap="innerHTML" class="px-3 py-1.5 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 cursor-pointer">Activity log{{#recent_failures}} <span class="ml-1 px-1.5 rounded-full bg-red-100 text-red-700 text-xs">{{recent_failures}} failed</span>{{/recent_failures}}</a>

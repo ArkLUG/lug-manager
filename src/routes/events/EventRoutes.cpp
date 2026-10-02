@@ -224,7 +224,13 @@ void register_event_routes(LugApp& app, EventService& events, AttendanceService&
         crow::response res;
         if (!require_auth(req, res, app, "admin")) return res;
 
-        auto threads = discord.fetch_forum_threads();
+        std::string err;
+        auto threads = discord_list([&] { return discord.fetch_forum_threads(); }, &err);
+        if (!err.empty()) {
+            res.add_header("Content-Type", "text/html; charset=utf-8");
+            res.write(kDiscordUnreachableOption);
+            return res;
+        }
         std::ostringstream html;
         html << "<option value=\"\">-- Select a thread --</option>\n";
         for (auto& t : threads)
@@ -322,7 +328,7 @@ void register_event_routes(LugApp& app, EventService& events, AttendanceService&
             mctx["member_options"] = opts.str();
         }
         {
-            auto roles = discord.fetch_guild_roles();
+            auto roles = discord_list([&] { return discord.fetch_guild_roles(); });
             std::ostringstream opts;
             for (auto& r : roles)
                 opts << "<option value=\"" << r.id << "\">@" << html_escape(r.name) << "</option>\n";
@@ -386,13 +392,19 @@ void register_event_routes(LugApp& app, EventService& events, AttendanceService&
                 while (std::getline(ss, rid, ','))
                     if (!rid.empty()) selected_ids.insert(rid);
             }
-            auto roles = discord.fetch_guild_roles();
+            // Discord unreachable: keep the saved roles selected, so saving
+            // the form doesn't drop them.
+            std::string err;
+            auto roles = discord_list([&] { return discord.fetch_guild_roles(); }, &err);
             std::ostringstream opts;
             for (auto& r : roles) {
                 opts << "<option value=\"" << r.id << "\"";
                 if (selected_ids.count(r.id)) opts << " selected";
                 opts << ">@" << html_escape(r.name) << "</option>\n";
             }
+            if (!err.empty())
+                for (const auto& id : selected_ids)
+                    opts << "<option value=\"" << html_escape(id) << "\" selected>(saved: " << html_escape(id) << ")</option>\n";
             mctx["role_ping_options"] = opts.str();
         }
 

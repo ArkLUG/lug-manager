@@ -191,3 +191,19 @@ private:
     std::string scheduled_json(const ScheduledEvent& e) const;
     Result call(const std::string& method, const std::string& endpoint, const std::string& body, bool want_id);
 };
+
+// For pages that list Discord channels or roles (pickers, role mappings):
+// runs the fetch and, when Discord can't be reached, returns an empty list
+// with `error` set instead of throwing - so the page still loads and can say
+// so. Usage: auto roles = discord_list([&] { return discord.fetch_guild_roles(); }, &err);
+template <typename Fetch>
+auto discord_list(Fetch&& fetch, std::string* error = nullptr) -> decltype(fetch()) {
+    try {
+        return fetch();
+    } catch (const std::exception& e) {
+        if (error && error->empty()) *error = e.what();
+        return {};
+    }
+}
+inline const char* kDiscordUnreachableOption = "<option value=\"\">Couldn't reach Discord - try Refresh</option>";
+

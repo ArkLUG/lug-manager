@@ -7,6 +7,15 @@
 #include <sstream>
 #include <unordered_set>
 
+// The picker when Discord can't be reached: keeps the saved choice (so saving
+// the form doesn't clear it) and says what happened.
+static std::string unreachable_options(const std::string& selected) {
+    std::string out = kDiscordUnreachableOption;
+    if (!selected.empty())
+        out = "<option value=\"" + html_escape(selected) + "\" selected>(saved: " + html_escape(selected) + ")</option>" + out;
+    return out;
+}
+
 void register_settings_routes(LugApp& app, SettingsRepository& settings,
                                DiscordClient& discord, MemberSyncService& member_sync,
                                CalendarGenerator& calendar, GoogleCalendarClient& gcal,
@@ -38,7 +47,8 @@ void register_settings_routes(LugApp& app, SettingsRepository& settings,
         // Preview channels for a typed-but-unsaved guild id without touching the
         // shared client's configuration (the old temporary reconfigure() wiped
         // the announcement/non-LUG role ids and raced other requests).
-        auto channels = discord.fetch_text_channels(override_guild.empty() ? discord.get_guild_id() : override_guild);
+        std::string err;
+        auto channels = discord_list([&] { return discord.fetch_text_channels(override_guild.empty() ? discord.get_guild_id() : override_guild); }, &err);
 
         std::ostringstream html;
         html << "<option value=\"\">-- Select a channel --</option>\n";
@@ -52,6 +62,7 @@ void register_settings_routes(LugApp& app, SettingsRepository& settings,
             html.str("");
             html << "<option value=\"\">No text channels found (check guild ID &amp; bot permissions)</option>";
         }
+        if (!err.empty()) html.str(unreachable_options(selected));
 
         res.add_header("Content-Type", "text/html; charset=utf-8");
         res.write(html.str());
@@ -73,7 +84,8 @@ void register_settings_routes(LugApp& app, SettingsRepository& settings,
             if (s) selected = s;
         }
 
-        auto channels = discord.fetch_forum_channels();
+        std::string err;
+        auto channels = discord_list([&] { return discord.fetch_forum_channels(); }, &err);
         std::ostringstream html;
         html << "<option value=\"\">-- Select a forum channel --</option>\n";
         for (auto& ch : channels) {
@@ -85,6 +97,7 @@ void register_settings_routes(LugApp& app, SettingsRepository& settings,
             html.str("");
             html << "<option value=\"\">No forum channels found (check guild ID &amp; bot permissions)</option>";
         }
+        if (!err.empty()) html.str(unreachable_options(selected));
 
         res.add_header("Content-Type", "text/html; charset=utf-8");
         res.write(html.str());
@@ -108,7 +121,8 @@ void register_settings_routes(LugApp& app, SettingsRepository& settings,
             if (s) selected = s;
         }
 
-        auto channels = discord.fetch_voice_channels();
+        std::string err;
+        auto channels = discord_list([&] { return discord.fetch_voice_channels(); }, &err);
         std::ostringstream html;
         html << "<option value=\"\">-- No voice channel --</option>\n";
         for (auto& ch : channels) {
@@ -120,6 +134,7 @@ void register_settings_routes(LugApp& app, SettingsRepository& settings,
             html.str("");
             html << "<option value=\"\">No voice channels found</option>";
         }
+        if (!err.empty()) html.str(unreachable_options(selected));
 
         res.add_header("Content-Type", "text/html; charset=utf-8");
         res.write(html.str());
@@ -159,7 +174,8 @@ void register_settings_routes(LugApp& app, SettingsRepository& settings,
             const char* s = qs.get("selected"); if (s) selected = s;
         }
 
-        auto roles = discord.fetch_guild_roles();
+        std::string err;
+        auto roles = discord_list([&] { return discord.fetch_guild_roles(); }, &err);
         std::ostringstream html;
         html << "<option value=\"\">-- No role --</option>\n";
         for (auto& r : roles)
@@ -167,6 +183,7 @@ void register_settings_routes(LugApp& app, SettingsRepository& settings,
                  << (r.id == selected ? " selected" : "") << ">@" << html_escape(r.name) << "</option>\n";
         if (roles.empty())
             html.str("<option value=\"\">No roles found (check guild ID &amp; bot permissions)</option>");
+        if (!err.empty()) html.str(unreachable_options(selected));
 
         res.add_header("Content-Type", "text/html; charset=utf-8");
         res.write(html.str());
@@ -422,23 +439,32 @@ void register_settings_routes(LugApp& app, SettingsRepository& settings,
         const bool discord_on = Features::on("discord");
         const bool fetch = discord_on && !guild_id.empty();   // no Discord calls when it's off
         std::string no_guild = "Enter a Guild ID first, then refresh";
+        // One fetch of each list; if Discord can't be reached the page still
+        // loads, keeps the saved choices and says so.
+        std::string discord_error;
+        std::vector<DiscordChannel> text_channels, forum_channels;
+        std::vector<DiscordRole> all_roles;
+        if (fetch) {
+            text_channels  = discord_list([&] { return discord.fetch_text_channels(); }, &discord_error);
+            forum_channels = discord_list([&] { return discord.fetch_forum_channels(); }, &discord_error);
+            all_roles      = discord_list([&] { return discord.fetch_guild_roles(); }, &discord_error);
+        }
         std::string channel_options = !fetch ? "<option value=\"\">" + no_guild + "</option>"
-            : build_options(discord.fetch_text_channels(), lug_channel,
+            : build_options(text_channels, lug_channel,
                             "-- Select a channel --",
                             "No text channels found (check guild ID &amp; bot permissions)");
         std::string forum_options = !fetch ? "<option value=\"\">" + no_guild + "</option>"
-            : build_options(discord.fetch_forum_channels(), forum_channel,
+            : build_options(forum_channels, forum_channel,
                             "-- Select a forum channel --",
                             "No forum channels found (check guild ID &amp; bot permissions)");
         std::string event_reports_forum_options = !fetch ? "<option value=\"\">" + no_guild + "</option>"
-            : build_options(discord.fetch_forum_channels(), event_reports_forum,
+            : build_options(forum_channels, event_reports_forum,
                             "-- Select a forum channel --",
                             "No forum channels found (check guild ID &amp; bot permissions)");
         std::string meeting_reports_forum_options = !fetch ? "<option value=\"\">" + no_guild + "</option>"
-            : build_options(discord.fetch_forum_channels(), meeting_reports_forum,
+            : build_options(forum_channels, meeting_reports_forum,
                             "-- Select a forum channel --",
                             "No forum channels found (check guild ID &amp; bot permissions)");
-        auto all_roles = !fetch ? std::vector<DiscordRole>{} : discord.fetch_guild_roles();
         std::string role_options = !fetch
             ? "<option value=\"\">" + no_guild + "</option>"
             : build_role_options(all_roles, announce_role_id);
@@ -447,6 +473,7 @@ void register_settings_routes(LugApp& app, SettingsRepository& settings,
             : build_role_options(all_roles, non_lug_role_id);
 
         crow::mustache::context mctx;
+        if (!discord_error.empty()) mctx["discord_error"] = discord_error;
         mctx["guild_id"]              = guild_id;
         mctx["lug_channel_id"]        = lug_channel;
         mctx["forum_channel_id"]      = forum_channel;

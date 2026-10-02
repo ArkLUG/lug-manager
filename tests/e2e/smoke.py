@@ -166,8 +166,8 @@ def first_id(list_path, prefix, env):
     visit(list_path, "#main-content")
     ids = _re.findall(prefix + r"(\d+)", d.page_source)
     return ids[0] if ids else "1"
-EVENT_ID = first_id("/events", r'/events/', "LUG_EVENT_ID")
-MEETING_ID = first_id("/meetings", r'/meetings/', "LUG_MEETING_ID")
+EVENT_ID = first_id("/events?when=all", r'/events/', "LUG_EVENT_ID")
+MEETING_ID = first_id("/meetings?when=all", r'/meetings/', "LUG_MEETING_ID")
 visit(f"/events/{EVENT_ID}", "#main-content")
 time.sleep(1.0)
 check(len(d.find_elements(By.CSS_SELECTOR, '[id^="rsvp-panel-"]')) > 0, "rsvp panel loads")

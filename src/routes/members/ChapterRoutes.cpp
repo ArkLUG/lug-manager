@@ -12,8 +12,18 @@
 #include <unordered_set>
 
 // Helper: build <option> HTML for Discord role picker
+// Discord can't be reached: keep the saved choice so saving doesn't clear it.
+static std::string unreachable(const std::string& selected) {
+    std::string out = kDiscordUnreachableOption;
+    if (!selected.empty())
+        out = "<option value=\"" + html_escape(selected) + "\" selected>(saved: " + html_escape(selected) + ")</option>" + out;
+    return out;
+}
+
 static std::string build_role_options(DiscordClient& discord, const std::string& selected) {
-    auto roles = discord.fetch_guild_roles();
+    std::string err;
+    auto roles = discord_list([&] { return discord.fetch_guild_roles(); }, &err);
+    if (!err.empty()) return unreachable(selected);
     std::ostringstream oss;
     oss << "<option value=\"\">-- No role --</option>\n";
     for (auto& r : roles) {
@@ -30,7 +40,9 @@ static std::string build_role_options(DiscordClient& discord, const std::string&
 
 // Helper: build <option> HTML for channel picker
 static std::string build_channel_options(DiscordClient& discord, const std::string& selected) {
-    auto channels = discord.fetch_text_channels();
+    std::string err;
+    auto channels = discord_list([&] { return discord.fetch_text_channels(); }, &err);
+    if (!err.empty()) return unreachable(selected);
     std::ostringstream oss;
     oss << "<option value=\"\">-- Select a channel --</option>\n";
     for (auto& ch : channels) {

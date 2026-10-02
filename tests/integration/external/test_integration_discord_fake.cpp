@@ -214,3 +214,23 @@ TEST_F(DiscordFakeTest, UnsafeIdsNeverReachDiscord) {
     EXPECT_FALSE(discord_client->send_dm(created.discord_user_id, "hi"));
     EXPECT_TRUE(fake->matching("channels/1").empty());
 }
+
+// Discord down (or unreachable): the settings pages still load, keep the saved
+// choices and say so; saving role mappings changes nothing.
+TEST_F(DiscordFakeTest, PagesLoadWhenDiscordUnreachable) {
+    unsetenv("LUG_DISCORD_BASE");   // real discord.com, which LUG_OFFLINE blocks
+    discord_client->clear_cache();
+    auto s = GET("/settings", admin_token);
+    EXPECT_EQ(s.code, 200);
+    expect_contains(s, "Couldn't reach Discord");
+    expect_contains(s, "(saved: " + LUG_CH + ")");                  // the saved channel stays selected
+    auto opts = GET("/api/discord/role-options?selected=" + ADMIN_ROLE, admin_token);
+    EXPECT_EQ(opts.code, 200);
+    expect_contains(opts, "Couldn't reach Discord");
+    expect_contains(opts, "value=\"" + ADMIN_ROLE + "\" selected");
+    auto roles = GET("/settings/roles", admin_token);
+    EXPECT_EQ(roles.code, 200);
+    expect_contains(roles, "Couldn't reach Discord");
+    EXPECT_EQ(POST("/settings/roles", "", admin_token).code, 502);
+    EXPECT_EQ(role_mapping_repo->find_all().size(), 2u);             // nothing removed
+}

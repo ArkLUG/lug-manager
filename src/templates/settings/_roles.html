@@ -23,6 +23,12 @@
       Multiple Discord roles can map to the same LUG role.
     </p>
 
+    {{#discord_error}}
+    <div class="rounded-lg bg-amber-50 border border-amber-200 p-4 text-sm text-amber-800">
+      <strong>Couldn't reach Discord</strong> ({{discord_error}}), so the roles can't be shown. Your mappings are unchanged; reload to try again.
+    </div>
+    {{/discord_error}}
+    {{^discord_error}}
     {{^has_discord_roles}}
     <div class="text-sm text-gray-500 py-4 text-center">
       No Discord roles found — make sure the bot is in the server and the Guild ID is correct in
@@ -30,6 +36,7 @@
          class="underline cursor-pointer">Settings</a>.
     </div>
     {{/has_discord_roles}}
+    {{/discord_error}}
 
     {{#has_discord_roles}}
     <form hx-post="/settings/roles" hx-target="#roles-feedback" hx-swap="innerHTML" class="space-y-6">
