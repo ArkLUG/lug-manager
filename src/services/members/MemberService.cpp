@@ -99,6 +99,10 @@ Member MemberService::create(const Member& m) {
     if (!m.discord_user_id.empty() && !is_safe_discord_id(m.discord_user_id)) {
         throw std::invalid_argument("discord_user_id contains invalid characters");
     }
+    // An email is a sign-in address: it must belong to one member only (a
+    // second copy would lock the first member out of email sign-in).
+    if (!m.email.empty() && AccountSecurity(repo_.db()).email_taken(m.email, 0))
+        throw std::invalid_argument("Another member already uses that email address.");
     Member to_create = m;
     to_create.phone = normalize_phone(to_create.phone);
     to_create.state = normalize_state(to_create.state);
@@ -130,6 +134,9 @@ Member MemberService::update(int64_t id, const Member& updates) {
     }
     Member m = *existing;
     std::string old_display_name = m.display_name;
+    if (!updates.email.empty() && AccountSecurity::lower(updates.email) != AccountSecurity::lower(existing->email) &&
+        AccountSecurity(repo_.db()).email_taken(updates.email, id))
+        throw std::invalid_argument("Another member already uses that email address.");
 
     if (!updates.discord_username.empty()) m.discord_username = updates.discord_username;
     if (!updates.first_name.empty())       m.first_name       = updates.first_name;

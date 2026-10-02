@@ -507,3 +507,20 @@ TEST_F(IntegrationTest, JsonMemberEditKeepsOtherFields) {
     EXPECT_FALSE(after.phone.empty());
     EXPECT_TRUE(after.is_paid);
 }
+
+// A member can't copy someone else's email onto their own record: two
+// members with one email can't use it to sign in, so that would lock the
+// other one (an admin, say) out of email sign-in.
+TEST_F(IntegrationTest, EmailMustBeUnique) {
+    Member admin = *member_repo->find_by_id(admin_member_id);
+    admin.email = "boss@example.org";
+    member_repo->update(admin);
+    auto self = POST("/members/me", "first_name=Reg&last_name=User&email=BOSS%40example.org", member_token);
+    EXPECT_EQ(self.code, 400);
+    expect_contains(self, "already uses that email");
+    EXPECT_NE(member_repo->find_by_id(regular_member_id)->email, "BOSS@example.org");
+    EXPECT_EQ(POST("/members", "first_name=New&last_name=Person&email=boss%40example.org", admin_token).code, 400);
+    // Their own email, or a new one, is fine
+    EXPECT_EQ(POST("/members/me", "first_name=Reg&last_name=User&email=reg%40example.org", member_token).code, 200);
+    EXPECT_EQ(member_repo->find_by_id(regular_member_id)->email, "reg@example.org");
+}
