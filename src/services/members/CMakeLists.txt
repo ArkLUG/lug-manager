@@ -2,6 +2,7 @@
 target_sources(lug_core PRIVATE
   ChapterService.cpp
   ChapterService.hpp
+  DuesProration.hpp
   DuesService.hpp
   MemberMerge.hpp
   MemberService.cpp

@@ -1,0 +1,31 @@
+<div class="max-w-2xl space-y-4" data-page-title="Dues">
+  <div>
+    <h2 class="text-xl font-semibold text-gray-800">Dues</h2>
+    <p class="text-sm text-gray-500">What a year of dues costs and when the dues year ends. These fill in the amount and "covers until" date when someone records a payment on a member's Dues panel; they can always change them before saving.</p>
+  </div>
+  {{^dues_on}}<p class="text-sm text-amber-700 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2">Dues are switched off under Settings &gt; Features.</p>{{/dues_on}}
+  <form hx-post="/settings/dues" hx-target="#main-content" hx-swap="innerHTML" class="bg-white rounded-xl border border-gray-200 p-6 space-y-4 text-sm">
+    <label class="block text-gray-700">Yearly dues
+      <span class="flex items-center gap-1 mt-1">$<input name="dues_amount" value="{{amount}}" placeholder="20.00" inputmode="decimal" class="w-28 border border-gray-300 rounded-lg px-2 py-1"></span>
+      <span class="block text-xs text-gray-400 mt-1">Leave empty for no standard amount.</span>
+    </label>
+    <label class="block text-gray-700">The dues year ends at the end of
+      <select name="dues_year_end_month" class="ml-1 border border-gray-300 rounded-lg px-2 py-1">
+        {{#months}}<option value="{{value}}" {{#selected}}selected{{/selected}}>{{name}}</option>{{/months}}
+      </select>
+      <span class="block text-xs text-gray-400 mt-1">December means the calendar year: everyone's dues run to December 31.</span>
+    </label>
+    <label class="flex items-start gap-3 cursor-pointer">
+      <input type="checkbox" name="dues_prorate" value="1" {{#prorate}}checked{{/prorate}} class="mt-0.5 w-4 h-4 accent-yellow-400">
+      <span>
+        <span class="font-medium text-gray-800">Prorate part-year payments</span>
+        <span class="block text-xs text-gray-500">Someone joining part-way through pays for the months left, counting the month they join, rounded up to whole dollars. For example $20 a year, joining in July: 6 of 12 months, $10. Someone already paid for this year is offered the next full year instead.</span>
+      </span>
+    </label>
+    {{#example}}<p class="text-xs text-gray-500" id="dues-example">{{example}}</p>{{/example}}
+    <div class="flex items-center gap-3 pt-2">
+      <button class="px-4 py-2 bg-gray-800 text-white rounded-lg font-medium hover:bg-gray-700">Save</button>
+      {{#flash}}<span class="text-green-700">{{flash}}</span>{{/flash}}
+    </div>
+  </form>
+</div>

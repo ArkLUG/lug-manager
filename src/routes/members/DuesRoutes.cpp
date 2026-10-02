@@ -1,6 +1,9 @@
 #include "routes/members/DuesRoutes.hpp"
 #include "utils/LocalTime.hpp"
 #include "utils/text/Money.hpp"
+#include "services/members/DuesProration.hpp"
+#include "services/Features.hpp"
+#include "utils/web/FormBody.hpp"
 #include <crow/mustache.h>
 #include <algorithm>
 #include <cstdio>
@@ -21,14 +24,37 @@ bool is_ymd(const std::string& s) {
 }
 
 
+dues::Config dues_config(SettingsRepository& settings) {
+    dues::Config c;
+    c.amount_cents = std::max<int64_t>(0, parse_cents(settings.get("dues_amount", "")));
+    try { c.year_end_month = std::stoi(settings.get("dues_year_end_month", "12")); } catch (...) {}
+    if (c.year_end_month < 1 || c.year_end_month > 12) c.year_end_month = 12;
+    c.prorate = settings.get("dues_prorate", "1") == "1";
+    return c;
+}
+
+// The amount and "covers until" fields of the record-a-payment form, filled
+// in from Settings > Dues for a payment made on `paid_on`. Re-fetched when
+// the date changes (GET /members/<id>/dues/suggest).
+std::string render_suggestion(const Member& m, SettingsRepository& settings, const std::string& paid_on) {
+    auto sug = dues::suggest(dues_config(settings), paid_on, m.paid_until);
+    crow::mustache::context ctx;
+    ctx["member_id"] = m.id;
+    ctx["covers_until"] = sug.covers_until;
+    ctx["amount"] = sug.cents > 0 ? money(sug.cents).substr(1) : "";   // "11.00", no "$"
+    ctx["explain"] = sug.explain;
+    return crow::mustache::load("members/_dues_suggest.html").render(ctx).dump();
+}
+
 std::string render_panel(const crow::request& req, LugApp& app, const Member& m,
-                         DuesRepository& dues, const std::string& flash = "") {
+                         DuesRepository& dues, SettingsRepository& settings, const std::string& flash = "") {
     auto& a = app.get_context<AuthMiddleware>(req).auth;
     crow::mustache::context ctx;
     ctx["member_id"]  = m.id;
     ctx["can_record"] = a.is_chapter_lead();
     ctx["can_delete"] = a.is_admin();
     ctx["today"]      = today_ymd();
+    ctx["suggestion"] = render_suggestion(m, settings, today_ymd());
     ctx["flash"]      = flash;
     ctx["is_paid"]    = m.is_paid;
     ctx["paid_until"] = m.paid_until;
@@ -52,11 +78,11 @@ std::string render_panel(const crow::request& req, LugApp& app, const Member& m,
 
 } // namespace
 
-void register_dues_routes(LugApp& app, MemberService& members,
-                          std::shared_ptr<DuesRepository> dues, AuditService& audit) {
+void register_dues_routes(LugApp& app, MemberService& members, std::shared_ptr<DuesRepository> dues,
+                          SettingsRepository& settings, AuditService& audit) {
 
     // GET /members/<id>/dues - payment history (chapter lead+, or the member themselves)
-    CROW_ROUTE(app, "/members/<int>/dues")([&app, &members, dues](const crow::request& req, int id) {
+    CROW_ROUTE(app, "/members/<int>/dues")([&app, &members, dues, &settings](const crow::request& req, int id) {
         crow::response res;
         if (!require_auth(req, res, app)) return res;
         auto& a = app.get_context<AuthMiddleware>(req).auth;
@@ -64,13 +90,13 @@ void register_dues_routes(LugApp& app, MemberService& members,
         auto m = members.get(id);
         if (!m) { res.code = 404; return res; }
         res.add_header("Content-Type", "text/html; charset=utf-8");
-        res.write(render_panel(req, app, *m, *dues));
+        res.write(render_panel(req, app, *m, *dues, settings));
         return res;
     });
 
     // POST /members/<id>/dues - record a payment (chapter lead+)
     CROW_ROUTE(app, "/members/<int>/dues").methods("POST"_method)(
-        [&app, &members, dues, &audit](const crow::request& req, int id) {
+        [&app, &members, dues, &settings, &audit](const crow::request& req, int id) {
         crow::response res;
         if (!require_auth(req, res, app, "chapter_lead")) return res;
         auto m = members.get(id);
@@ -83,7 +109,7 @@ void register_dues_routes(LugApp& app, MemberService& members,
         res.add_header("Content-Type", "text/html; charset=utf-8");
         if (!is_ymd(paid_on) || !is_ymd(covers) || cents < 0) {
             res.code = 400;
-            res.write(render_panel(req, app, *m, *dues, "Enter a valid paid date, 'covers until' date and amount."));
+            res.write(render_panel(req, app, *m, *dues, settings, "Enter a valid paid date, 'covers until' date and amount."));
             return res;
         }
         dues->record(m->id, paid_on, cents, gp("method").substr(0, 50), covers, gp("note").substr(0, 500),
@@ -92,13 +118,13 @@ void register_dues_routes(LugApp& app, MemberService& members,
                   "Recorded payment " + money(cents) + " covering until " + covers);
         auto fresh = members.get(id);
         res.add_header("HX-Trigger", "duesUpdated");
-        res.write(render_panel(req, app, fresh ? *fresh : *m, *dues, "Payment recorded."));
+        res.write(render_panel(req, app, fresh ? *fresh : *m, *dues, settings, "Payment recorded."));
         return res;
     });
 
     // POST /members/<id>/dues/<pid>/delete - admin; doesn't change paid_until
     CROW_ROUTE(app, "/members/<int>/dues/<int>/delete").methods("POST"_method)(
-        [&app, &members, dues, &audit](const crow::request& req, int id, int pid) {
+        [&app, &members, dues, &settings, &audit](const crow::request& req, int id, int pid) {
         crow::response res;
         if (!require_auth(req, res, app, "admin")) return res;
         auto m = members.get(id);
@@ -107,8 +133,66 @@ void register_dues_routes(LugApp& app, MemberService& members,
             audit.log(req, app, "member.dues_payment_delete", "member", m->id, m->display_name,
                       "Deleted dues payment record #" + std::to_string(pid));
         res.add_header("Content-Type", "text/html; charset=utf-8");
-        res.write(render_panel(req, app, *m, *dues,
+        res.write(render_panel(req, app, *m, *dues, settings,
                                "Record deleted. Paid-until is unchanged - adjust it with Dues if needed."));
         return res;
+    });
+
+    // GET /members/<id>/dues/suggest?paid_on=YYYY-MM-DD - the suggested amount
+    // and "covers until" for that date (record-a-payment form)
+    CROW_ROUTE(app, "/members/<int>/dues/suggest")([&app, &members, &settings](const crow::request& req, int id) {
+        crow::response res;
+        if (!require_auth(req, res, app, "chapter_lead")) return res;
+        auto m = members.get(id);
+        if (!m) { res.code = 404; return res; }
+        const char* d = req.url_params.get("paid_on");
+        std::string paid_on = d && is_ymd(d) ? d : today_ymd();
+        res.add_header("Content-Type", "text/html; charset=utf-8");
+        res.write(render_suggestion(*m, settings, paid_on));
+        return res;
+    });
+
+    // Settings > Dues
+    auto settings_page = [&settings](const std::string& flash) {
+        auto c = dues_config(settings);
+        crow::mustache::context ctx;
+        ctx["amount"] = c.amount_cents > 0 ? money(c.amount_cents).substr(1) : "";
+        ctx["prorate"] = c.prorate;
+        static const char* names[] = {"January", "February", "March", "April", "May", "June", "July",
+                                      "August", "September", "October", "November", "December"};
+        crow::json::wvalue months = crow::json::wvalue::list();
+        for (int i = 0; i < 12; ++i) {
+            months[i]["value"] = i + 1;
+            months[i]["name"] = names[i];
+            months[i]["selected"] = c.year_end_month == i + 1;
+        }
+        ctx["months"] = std::move(months);
+        ctx["dues_on"] = Features::on("dues");
+        // An example: what someone joining today would be asked for
+        auto ex = dues::suggest(c, today_ymd(), "");
+        ctx["example"] = c.amount_cents > 0 ? "Someone joining today: " + money(ex.cents) + " covering until " +
+                                                  ex.covers_until + (ex.explain.empty() ? "" : " (" + ex.explain + ")") : "";
+        if (!flash.empty()) ctx["flash"] = flash;
+        return crow::mustache::load("settings/_dues.html").render(ctx).dump();
+    };
+    CROW_ROUTE(app, "/settings/dues")([&app, settings_page](const crow::request& req) {
+        crow::response res;
+        if (!require_auth(req, res, app, "admin")) return res;
+        return html_page(req, app, settings_page(""), "Dues", "active_dues_settings");
+    });
+    CROW_ROUTE(app, "/settings/dues").methods("POST"_method)([&app, &settings, &audit, settings_page](const crow::request& req) {
+        crow::response res;
+        if (!require_auth(req, res, app, "admin")) return res;
+        FormBody f(req);
+        int64_t cents = parse_cents(f.get("dues_amount"));
+        if (cents < 0) return html_page(req, app, settings_page("Enter the amount like 20 or 20.00."), "Dues", "active_dues_settings", 400);
+        int month = 12;
+        try { month = std::stoi(f.get("dues_year_end_month")); } catch (...) {}
+        if (month < 1 || month > 12) month = 12;
+        settings.set("dues_amount", cents > 0 ? money(cents).substr(1) : "");
+        settings.set("dues_year_end_month", std::to_string(month));
+        settings.set("dues_prorate", f.get("dues_prorate") == "1" ? "1" : "0");
+        audit.log(req, app, "settings.update", "settings", 0, "Dues", "Updated dues settings");
+        return html_page(req, app, settings_page("Saved."), "Dues", "active_dues_settings");
     });
 }

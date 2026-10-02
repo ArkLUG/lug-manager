@@ -473,6 +473,16 @@
                     {{^active_reminders}}nav-inactive{{/active_reminders}}">
             Reminders
           </a>
+          <a hx-get="/settings/dues"
+             hx-target="#main-content"
+             hx-push-url="true"
+             hx-swap="innerHTML"
+             hx-indicator="#nav-spinner"
+             class="f-dues block px-3 py-2 rounded-lg text-sm cursor-pointer transition-colors
+                    {{#active_dues_settings}}nav-active{{/active_dues_settings}}
+                    {{^active_dues_settings}}nav-inactive{{/active_dues_settings}}">
+            Dues
+          </a>
           <a hx-get="/settings/site"
              hx-target="#main-content"
              hx-push-url="true"

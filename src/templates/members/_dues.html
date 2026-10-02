@@ -29,9 +29,10 @@
     <summary class="cursor-pointer px-3 py-1.5 text-xs font-medium text-gray-700">Record a payment</summary>
     <form hx-post="/members/{{member_id}}/dues" hx-target="#dues-panel-{{member_id}}" hx-swap="outerHTML"
           class="px-3 pb-3 grid grid-cols-2 gap-2 text-xs">
-      <label class="text-gray-600">Paid on<input type="date" name="paid_on" value="{{today}}" class="mt-0.5 w-full border border-gray-300 rounded px-2 py-1"></label>
-      <label class="text-gray-600">Covers until<input type="date" name="covers_until" required class="mt-0.5 w-full border border-gray-300 rounded px-2 py-1"></label>
-      <label class="text-gray-600">Amount<input name="amount" placeholder="25.00" inputmode="decimal" class="mt-0.5 w-full border border-gray-300 rounded px-2 py-1"></label>
+      <label class="text-gray-600">Paid on<input type="date" name="paid_on" value="{{today}}"
+             hx-get="/members/{{member_id}}/dues/suggest" hx-trigger="change" hx-target="#dues-suggest-{{member_id}}" hx-swap="outerHTML"
+             class="mt-0.5 w-full border border-gray-300 rounded px-2 py-1"></label>
+      {{{suggestion}}}
       <label class="text-gray-600">Method<input name="method" placeholder="cash, card, PayPal…" maxlength="50" class="mt-0.5 w-full border border-gray-300 rounded px-2 py-1"></label>
       <label class="col-span-2 text-gray-600">Note<input name="note" maxlength="500" class="mt-0.5 w-full border border-gray-300 rounded px-2 py-1"></label>
       <button class="col-span-2 py-1.5 bg-yellow-400 text-gray-900 rounded-lg font-semibold hover:bg-yellow-300">Record payment</button>

@@ -5,6 +5,7 @@ lug_add_tests(
   test_chat_templates.cpp
   test_discord_content.cpp
   test_discord_signature.cpp
+  test_dues_proration.cpp
   test_html_escape.cpp
   test_live_hub.cpp
   test_markdown.cpp

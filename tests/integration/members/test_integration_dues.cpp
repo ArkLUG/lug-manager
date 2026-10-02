@@ -33,3 +33,47 @@ TEST_F(IntegrationTest, LapsedDuesAreExpired) {
     EXPECT_GE(r.expired, 1);
     EXPECT_FALSE(member_repo->find_by_id(regular_member_id)->is_paid);
 }
+
+TEST_F(IntegrationTest, DuesSettingsFillInTheRecordForm) {
+    const std::string id = std::to_string(regular_member_id);
+    // No standard amount yet: the date is still filled in
+    auto empty = GET("/members/" + id + "/dues/suggest?paid_on=2026-07-02", chapter_lead_token);
+    EXPECT_EQ(empty.code, 200);
+    expect_contains(empty, "value=\"2026-12-31\"");
+    expect_not_contains(empty, "Prorated");
+
+    // Settings > Dues: admins only
+    EXPECT_NE(GET("/settings/dues", chapter_lead_token).code, 200);
+    EXPECT_EQ(GET("/settings/dues", admin_token).code, 200);
+    EXPECT_EQ(POST("/settings/dues", "dues_amount=abc&dues_year_end_month=12", admin_token).code, 400);
+    auto saved = POST("/settings/dues", "dues_amount=%2420&dues_year_end_month=12&dues_prorate=1", admin_token);
+    EXPECT_EQ(saved.code, 200);
+    expect_contains(saved, "Someone joining today");
+    EXPECT_EQ(settings_repo->get("dues_amount"), "20.00");
+    EXPECT_EQ(settings_repo->get("dues_prorate"), "1");
+
+    // Joining in July: half the year
+    auto jul = GET("/members/" + id + "/dues/suggest?paid_on=2026-07-02", chapter_lead_token);
+    expect_contains(jul, "name=\"amount\" value=\"10.00\"");
+    expect_contains(jul, "Prorated: 6 of 12 months of $20.00, rounded up");
+    // The panel's form starts from today's suggestion
+    auto panel = GET("/members/" + id + "/dues", chapter_lead_token);
+    expect_contains(panel, "dues-suggest-" + id);
+    expect_contains(panel, "/dues/suggest\"");
+    // Members can't ask for suggestions
+    EXPECT_NE(GET("/members/" + id + "/dues/suggest", member_token).code, 200);
+
+    // Already paid this year: the next full year
+    member_repo->set_paid(regular_member_id, true, "2026-12-31");
+    auto renew = GET("/members/" + id + "/dues/suggest?paid_on=2026-11-20", chapter_lead_token);
+    expect_contains(renew, "value=\"2027-12-31\"");
+    expect_contains(renew, "value=\"20.00\"");
+
+    // Proration off; a June year end
+    POST("/settings/dues", "dues_amount=24&dues_year_end_month=6", admin_token);
+    EXPECT_EQ(settings_repo->get("dues_prorate"), "0");
+    member_repo->set_paid(regular_member_id, false, "");
+    auto june = GET("/members/" + id + "/dues/suggest?paid_on=2026-08-01", chapter_lead_token);
+    expect_contains(june, "value=\"2027-06-30\"");
+    expect_contains(june, "value=\"24.00\"");
+}

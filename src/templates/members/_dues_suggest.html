@@ -1,0 +1,5 @@
+<div id="dues-suggest-{{member_id}}" class="col-span-2 grid grid-cols-2 gap-2">
+  <label class="text-gray-600">Amount<input name="amount" value="{{amount}}" placeholder="25.00" inputmode="decimal" class="mt-0.5 w-full border border-gray-300 rounded px-2 py-1"></label>
+  <label class="text-gray-600">Covers until<input type="date" name="covers_until" value="{{covers_until}}" required class="mt-0.5 w-full border border-gray-300 rounded px-2 py-1"></label>
+  {{#explain}}<p class="col-span-2 text-gray-500" data-dues-explain>{{explain}}. You can change the amount and date.</p>{{/explain}}
+</div>

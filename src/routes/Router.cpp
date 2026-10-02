@@ -27,7 +27,7 @@ void register_all_routes(LugApp& app, Services& svc) {
     if (!svc.displays) svc.displays = std::make_shared<DisplayRequestRepository>(svc.attendance_repo.db());
     register_display_routes(app, svc.events, svc.displays, svc.chapter_members, svc.audit);
     if (!svc.dues) svc.dues = std::make_shared<DuesRepository>(svc.attendance_repo.db());
-    register_dues_routes(app, svc.members, svc.dues, svc.audit);
+    register_dues_routes(app, svc.members, svc.dues, svc.settings, svc.audit);
     register_member_bulk_routes(app, svc.members, svc.audit);
     register_session_routes(app, svc.auth, svc.audit);
     register_pwa_routes(app);
