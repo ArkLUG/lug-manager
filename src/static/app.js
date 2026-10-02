@@ -148,6 +148,7 @@
         m365: 'https://outlook.office.com/calendar/0/addfromweb?url=' + encodeURIComponent(url) + '&name=' + name
       };
       el.querySelectorAll('[data-cal-link]').forEach(function (a) { a.href = links[a.getAttribute('data-cal-link')]; });
+      // (a [data-cal-fixed] Google button already points at the shared Google calendar)
       var input = el.querySelector('[data-cal-url]');
       if (input) input.value = url;
       var qr = el.querySelector('[data-cal-qr]');

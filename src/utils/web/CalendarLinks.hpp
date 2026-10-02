@@ -1,4 +1,5 @@
 #pragma once
+#include "db/SqliteDatabase.hpp"
 #include "utils/LocalTime.hpp"
 #include "utils/text/HtmlEscape.hpp"
 #include "utils/text/UrlEncode.hpp"
@@ -80,18 +81,34 @@ inline void add_to(crow::mustache::context& ctx, const Item& it) {
     ctx["cal_ics"] = it.ics_path;
 }
 
+// The LUG's shared Google calendar ID when Settings > Google Calendar says it
+// is public, else "". Google shows its own calendars' changes right away,
+// while it re-reads a subscribed feed only about once a day.
+inline std::string public_google_calendar(SqliteDatabase& db) {
+    std::string id, pub;
+    auto st = db.prepare("SELECT key, value FROM lug_settings WHERE key IN ('google_calendar_id','google_calendar_public')");
+    while (st.step()) (st.col_text(0) == "google_calendar_id" ? id : pub) = st.col_text(1);
+    return pub == "1" ? id : "";
+}
+
 // The subscribe block for a feed at `path` (site-relative). static/app.js
 // turns the path into full links for the page's own address: webcal:// for
 // Apple and phones, Google "add by URL", Outlook.com and Microsoft 365 "add
-// from web", a copyable link and a QR code.
-inline std::string subscribe_html(const std::string& path, const std::string& name, const std::string& id) {
+// from web", a copyable link and a QR code. With `google_calendar` (the whole
+// schedule only, see public_google_calendar), the Google button adds that
+// shared calendar instead of the feed.
+inline std::string subscribe_html(const std::string& path, const std::string& name, const std::string& id,
+                                  const std::string& google_calendar = "") {
     const std::string p = html_escape(path), n = html_escape(name), i = html_escape(id);
+    const std::string google = google_calendar.empty()
+        ? "<a data-cal-link=\"google\" href=\"" + p + "\""
+        : "<a data-cal-fixed href=\"" + html_escape("https://calendar.google.com/calendar/render?cid=" + url_encode_component(google_calendar)) + "\"";
     const std::string btn = "inline-flex items-center gap-1 px-3 py-1.5 text-xs font-medium border border-gray-300 "
                             "text-gray-700 rounded-lg hover:bg-gray-50";
     return "<div class=\"cal-subscribe space-y-2\" data-cal-feed=\"" + p + "\" data-cal-name=\"" + n + "\">"
            "<div class=\"flex flex-wrap gap-2\">"
            "<a data-cal-link=\"webcal\" href=\"" + p + "\" class=\"" + btn + "\">Apple / iPhone</a>"
-           "<a data-cal-link=\"google\" href=\"" + p + "\" target=\"_blank\" rel=\"noopener\" class=\"" + btn + "\">Google Calendar</a>"
+           + google + " target=\"_blank\" rel=\"noopener\" class=\"" + btn + "\">Google Calendar</a>"
            "<a data-cal-link=\"outlook\" href=\"" + p + "\" target=\"_blank\" rel=\"noopener\" class=\"" + btn + "\">Outlook.com</a>"
            "<a data-cal-link=\"m365\" href=\"" + p + "\" target=\"_blank\" rel=\"noopener\" class=\"" + btn + "\">Microsoft 365</a>"
            "<button type=\"button\" data-action=\"copy\" data-copy-target=\"#" + i + "-url\" class=\"" + btn + "\">Copy link</button>"
@@ -100,8 +117,10 @@ inline std::string subscribe_html(const std::string& path, const std::string& na
            "class=\"w-full bg-gray-50 rounded-lg px-3 py-1.5 font-mono text-xs text-gray-700 border border-gray-200\">"
            "<details class=\"text-xs text-gray-500\"><summary class=\"cursor-pointer\">QR code for a phone</summary>"
            "<div data-cal-qr class=\"mt-2 inline-block bg-white p-2 rounded\"></div></details>"
-           "<p class=\"text-xs text-gray-400\">A subscription stays up to date by itself. Google Calendar can take up to a day "
-           "to pick up changes; Apple and Outlook check more often.</p>"
+           "<p class=\"text-xs text-gray-400\">A subscription stays up to date by itself." +
+           std::string(google_calendar.empty() ? " Google Calendar can take up to a day to pick up changes; Apple and Outlook check more often."
+                                               : " The Google Calendar button adds our shared Google calendar, which updates right away.") +
+           "</p>"
            "</div>";
 }
 

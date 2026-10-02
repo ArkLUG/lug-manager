@@ -25,6 +25,11 @@
                class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-yellow-400 focus:border-transparent font-mono">
         <p class="text-xs text-gray-400 mt-1">Found in Google Calendar → Settings → Calendar ID. Share the calendar with the service account email as an editor.</p>
       </div>
+      <label class="flex items-start gap-2 text-sm text-gray-700">
+        <input type="checkbox" name="google_calendar_public" value="1" {{#google_calendar_public}}checked{{/google_calendar_public}} class="mt-0.5">
+        <span>This calendar is public: members' "Google Calendar" subscribe button adds it directly
+          <span class="block text-xs text-gray-400">Google shows changes to its own calendars right away, but re-reads our calendar link only about once a day. Turn this on only after making the calendar public (Google Calendar → Settings for the calendar → Access permissions → Make available to public), or members will see an error. Chapter and private feeds keep using the link.</span></span>
+      </label>
 
       <div class="flex items-center gap-3 pt-2">
         <button type="submit"

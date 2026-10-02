@@ -81,7 +81,8 @@ void register_account_routes(LugApp& app, SqliteDatabase& db, MemberService& mem
             }
             ctx["palettes"] = std::move(opts);
         }
-        ctx["subscribe_html"] = cal_links::subscribe_html("/calendar.ics", "LUG Manager", "account-cal");
+        ctx["subscribe_html"] = cal_links::subscribe_html("/calendar.ics", "LUG Manager", "account-cal",
+                                                          cal_links::public_google_calendar(db));
         std::string body = crow::mustache::load("account/_content.html").render(ctx).dump();
         return html_page(req, app, body, "My Account", "active_account");
     });

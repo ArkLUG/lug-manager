@@ -540,6 +540,7 @@ void register_settings_routes(LugApp& app, SettingsRepository& settings,
         crow::mustache::context mctx;
         mctx["google_sa_path"]     = settings.get("google_service_account_json_path");
         mctx["google_calendar_id"] = settings.get("google_calendar_id");
+        mctx["google_calendar_public"] = settings.get("google_calendar_public") == "1";
         mctx["gcal_configured"]    = gcal.is_configured();
 
         return html_page(req, app, crow::mustache::load("settings/_google_calendar.html").render(mctx).dump(), "Google Calendar Settings", "active_google_calendar");
@@ -675,6 +676,7 @@ void register_settings_routes(LugApp& app, SettingsRepository& settings,
 
         settings.set("google_service_account_json_path", gcal_sa_path);
         settings.set("google_calendar_id", gcal_cal_id);
+        settings.set("google_calendar_public", get_param("google_calendar_public") == "1" ? "1" : "0");
         gcal.reconfigure(gcal_sa_path, gcal_cal_id, settings.get("lug_timezone", "UTC"));
 
         audit.log(req, app, "settings.update", "settings", 0, "", "Updated Google Calendar settings");

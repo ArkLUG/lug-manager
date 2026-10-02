@@ -95,3 +95,28 @@ TEST_F(IntegrationTest, SubscribeBlocksOnPages) {
     EXPECT_EQ(priv.code, 200);
     expect_contains(priv, "data-cal-feed=\"/calendar/me/");
 }
+
+TEST_F(IntegrationTest, GoogleButtonUsesPublicSharedCalendar) {
+    const std::string cid = "cid=cal-id%40group.calendar.google.com";
+    settings_repo->set("google_calendar_id", "cal-id@group.calendar.google.com");
+    expect_not_contains(GET("/schedule", member_token), cid);         // not public: the feed link
+    settings_repo->set("google_calendar_public", "1");
+    for (const char* page : {"/schedule", "/dashboard", "/account"}) {
+        auto r = GET(page, member_token);
+        expect_contains(r, "https://calendar.google.com/calendar/render?" + cid);
+        expect_contains(r, "data-cal-fixed");
+        expect_contains(r, "updates right away");
+    }
+    // A chapter's feed isn't the shared calendar, so its Google button stays on the feed
+    expect_not_contains(GET("/schedule?scope=chapter:" + std::to_string(test_chapter_id), member_token), cid);
+    expect_not_contains(GET("/chapters/" + std::to_string(test_chapter_id), member_token), cid);
+    expect_not_contains(POST("/account/calendar-token", "", member_token), cid);
+
+    // Settings > Google Calendar: the checkbox
+    expect_contains(GET("/settings/google-calendar", admin_token), "name=\"google_calendar_public\" value=\"1\" checked");
+    POST_HTMX("/settings/google-calendar", "google_service_account_json_path=&google_calendar_id=cal-id%40group.calendar.google.com", admin_token);
+    EXPECT_EQ(settings_repo->get("google_calendar_public"), "0");
+    expect_not_contains(GET("/schedule", member_token), cid);
+    POST_HTMX("/settings/google-calendar", "google_service_account_json_path=&google_calendar_id=cal-id%40group.calendar.google.com&google_calendar_public=1", admin_token);
+    EXPECT_EQ(settings_repo->get("google_calendar_public"), "1");
+}

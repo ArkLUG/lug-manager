@@ -217,12 +217,14 @@ void register_schedule_routes(LugApp& app, SqliteDatabase& db, ChapterMemberRepo
             auto st = db.prepare("SELECT value FROM lug_settings WHERE key = 'lug_name'");
             if (st.step() && !st.col_text(0).empty()) lug_name = st.col_text(0);
             std::string feed = "/calendar.ics", label = lug_name;
-            if (f.scope.rfind("chapter:", 0) == 0) {
+            const bool one_chapter = f.scope.rfind("chapter:", 0) == 0;
+            if (one_chapter) {
                 feed = "/calendar/chapter/" + f.scope.substr(8) + "/feed.ics";
                 ctx["subscribe_chapter"] = true;
             }
             ctx["f_calendar"] = Features::on("calendar");
-            ctx["subscribe_html"] = cal_links::subscribe_html(feed, label, "sched-cal");
+            ctx["subscribe_html"] = cal_links::subscribe_html(feed, label, "sched-cal",
+                                                              one_chapter ? "" : cal_links::public_google_calendar(db));
         }
         // Who can add meetings/events: admins and chapter event managers/leads
         bool can_create = auth.is_admin();

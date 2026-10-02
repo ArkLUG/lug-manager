@@ -247,7 +247,8 @@ void register_calendar_routes(LugApp& app, CalendarGenerator& cal,
         if (!Features::on("dues"))     ctx["has_dues_expiring"] = false;
 
         res.add_header("Content-Type", "text/html; charset=utf-8");
-        ctx["subscribe_html"] = cal_links::subscribe_html("/calendar.ics", "LUG Manager", "dash-cal");
+        ctx["subscribe_html"] = cal_links::subscribe_html("/calendar.ics", "LUG Manager", "dash-cal",
+                                                          cal_links::public_google_calendar(member_repo.db()));
         return html_page(req, app, crow::mustache::load("dashboard/_content.html").render(ctx).dump(), "Dashboard", "active_dashboard");
     });
 }
