@@ -41,6 +41,8 @@ SKIP = re.compile(r"^/(static|uploads|branding|auth|api/v1|login|logout|checkin|
 # No-login pages, exported once at the top of the site.
 PUBLIC_PAGES = {"/shows", "/about"}
 ATTR = re.compile(r'''(href|src|action|hx-get|data-url)=(["'])(/[^"'#]*)\2''')
+# The same, HTML-escaped by the template engine ("&#x2F;schedule?view&#x3D;list")
+ATTR_ESC = re.compile(r'''(href|src|hx-get|data-url)=(["'])(&#x2F;[^"']*)\2''')
 LIMIT_PER_ROLE = 1500
 
 
@@ -99,6 +101,8 @@ def links(text):
     found = set()
     for m in ATTR.finditer(text):
         found.add(html.unescape(m.group(3)))
+    for m in ATTR_ESC.finditer(text):
+        found.add(html.unescape(m.group(3)).split("#")[0])
     # hx-get built in inline scripts, e.g. DataTables row buttons: '/members/' + row.id + '/view'
     return found
 
