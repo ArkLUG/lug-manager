@@ -9,4 +9,5 @@ target_sources(lug_core PRIVATE
   MeetingService.hpp
   SeriesService.cpp
   SeriesService.hpp
+  TimeCheck.hpp
 )

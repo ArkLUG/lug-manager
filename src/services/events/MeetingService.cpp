@@ -1,4 +1,5 @@
 #include "services/events/MeetingService.hpp"
+#include "services/events/TimeCheck.hpp"
 #include <iostream>
 #include <stdexcept>
 #include <cstdio>
@@ -92,6 +93,7 @@ Meeting MeetingService::create_imported(const Meeting& m) {
 }
 
 Meeting MeetingService::create(const Meeting& m) {
+    check_start_end(m.start_time, m.end_time);
     Meeting to_create = m;
     to_create.ical_uid = generate_uuid();
 
@@ -135,6 +137,7 @@ Meeting MeetingService::update(int64_t id, const Meeting& updates, bool replace_
     if (replace_text_fields || !updates.location.empty())    updated.location    = updates.location;
     if (!updates.start_time.empty())  updated.start_time  = updates.start_time;
     if (!updates.end_time.empty())    updated.end_time    = updates.end_time;
+    check_start_end(updated.start_time, updated.end_time);
     if (!updates.status.empty())      updated.status      = updates.status;
     if (!updates.scope.empty())       updated.scope       = updates.scope;
     if (updates.chapter_id > 0)       updated.chapter_id  = updates.chapter_id;

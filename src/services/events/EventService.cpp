@@ -1,4 +1,5 @@
 #include "services/events/EventService.hpp"
+#include "services/events/TimeCheck.hpp"
 #include <openssl/rand.h>
 #include <iostream>
 #include <stdexcept>
@@ -101,6 +102,7 @@ LugEvent EventService::create_imported(const LugEvent& e) {
 }
 
 LugEvent EventService::create(const LugEvent& e) {
+    check_start_end(e.start_time, e.end_time);
     LugEvent to_create = e;
     to_create.ical_uid = generate_uuid();
 
@@ -152,6 +154,7 @@ LugEvent EventService::update(int64_t id, const LugEvent& updates, bool replace_
     if (replace_text_fields || !updates.location.empty())    updated.location    = updates.location;
     if (!updates.start_time.empty())      updated.start_time      = updates.start_time;
     if (!updates.end_time.empty())        updated.end_time        = updates.end_time;
+    check_start_end(updated.start_time, updated.end_time);
     if (!updates.status.empty())          updated.status          = updates.status;
     if (!updates.signup_deadline.empty()) updated.signup_deadline = updates.signup_deadline;
     if (!updates.scope.empty())            updated.scope           = updates.scope;

@@ -268,3 +268,15 @@ TEST_F(IntegrationTest, MeetingListUpcomingPastAll) {
     expect_contains(all, "Far ahead");
     expect_contains(all, "&when=all");                        // sort/page links keep the tab
 }
+
+// An end before the start is refused (Discord and calendars can't show it).
+TEST_F(IntegrationTest, MeetingEndBeforeStartRefused) {
+    auto r = POST("/meetings", "title=Backwards&location=Room&start_time=2026-05-01T19%3A00&end_time=2026-05-01T18%3A00&scope=lug_wide",
+                  admin_token);
+    EXPECT_GE(r.code, 400);
+    expect_contains(r, "The end is before the start");
+    for (const auto& m : meeting_repo->find_all()) EXPECT_NE(m.title, "Backwards");
+    auto e = POST("/events", "title=Backwards+show&location=Hall&start_time=2026-05-03T10%3A00&end_time=2026-05-02T10%3A00&scope=lug_wide",
+                  admin_token);
+    EXPECT_GE(e.code, 400);
+}
