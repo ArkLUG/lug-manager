@@ -41,7 +41,8 @@
 **Discord, calendars and the public**
 - Discord (optional): announcements, forum threads, scheduled events, reminders, role sync and DMs, all kept in step as meetings and events change. Choose what's posted (per area, and per meeting or event), a quiet mode, an activity log of everything sent with retry for failures, and nickname options. Switch Discord off entirely and messages go by email. Times in Discord messages are Discord timestamps, so each member sees them in their own time zone.
 - Your own wording for every message: Discord posts, messages to members and sign-in emails, with placeholders and a live preview (Settings > Message wording).
-- Google Calendar sync, a public iCal feed, per-chapter feeds and a private personal feed.
+- A Schedule page with meetings and events together, as a list or a month calendar, filtered by type, dates, scope (chapter, Group-wide, External), status, "Mine" and search.
+- Google Calendar sync, a public iCal feed, per-chapter feeds and a private personal feed, with one-click subscribe buttons (Apple/iPhone, Google, Outlook.com, Microsoft 365, QR code). Each meeting and event has "Add to calendar", and reminder emails carry an .ics attachment.
 - A public "upcoming shows" page you can embed on your website, with an "I plan to come" button.
 - A public About page about your group, written in the app with a what-you-see-is-what-you-get editor (headings, lists, links, photos), with the past year's highlights.
 - Email (optional SMTP) for members who aren't on Discord, with a no-login unsubscribe link in every message.

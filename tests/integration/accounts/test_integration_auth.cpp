@@ -6,8 +6,7 @@ TEST_F(IntegrationTest, DashboardLoads) {
     expect_contains(r, "Edit Profile");
     expect_contains(r, "calendar.ics");
     expect_contains(r, "Members");
-    expect_contains(r, "Meetings");
-    expect_contains(r, "Events");
+    expect_contains(r, "Schedule");                 // meetings and events
 }
 
 TEST_F(IntegrationTest, DashboardHtmxPartial) {

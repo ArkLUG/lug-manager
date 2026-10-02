@@ -1,4 +1,5 @@
 #include "routes/meetings/MeetingRoutes.hpp"
+#include "utils/web/CalendarLinks.hpp"
 #include "routes/ChatFormHelpers.hpp"
 #include "utils/text/HtmlText.hpp"
 #include "utils/LocalTime.hpp"
@@ -423,6 +424,8 @@ void register_meeting_routes(LugApp& app, MeetingService& meetings, AttendanceSe
         ctx["attendees"]         = std::move(att_arr);
         ctx["attendance_count"]  = static_cast<int>(attendees.size());
 
+        cal_links::add_to(ctx, {m->title, m->description, m->location, m->start_time, m->end_time,
+                                false, "/meetings/" + std::to_string(id) + "/calendar.ics"});
         return html_page(req, app, crow::mustache::load("meetings/_detail.html").render(ctx).dump(), m->title, "active_meetings");
     });
 

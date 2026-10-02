@@ -264,6 +264,8 @@ inline std::string render_in_layout(const crow::request& req, App& app,
     layout_ctx["content"]    = content;
     layout_ctx["page_title"] = page_title;
     layout_ctx[active_key]   = true;
+    // Meetings and events live under Schedule in the sidebar
+    if (active_key == "active_meetings" || active_key == "active_events") layout_ctx["active_schedule"] = true;
     set_layout_auth(req, app, layout_ctx);
     return crow::mustache::load("layout.html").render(layout_ctx).dump();
 }

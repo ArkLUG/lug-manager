@@ -3,6 +3,7 @@
 #include "repositories/events/MeetingRepository.hpp"
 #include "repositories/events/EventRepository.hpp"
 #include "repositories/members/ChapterRepository.hpp"
+#include <optional>
 #include <string>
 #include <mutex>
 #include <unordered_map>
@@ -33,6 +34,19 @@ public:
         std::string name_suffix;   // appended to X-WR-CALNAME
     };
     std::string get_ics(const Filter& f);
+
+    // One meeting or event as its own calendar file (full details - for
+    // signed-in members' "Add to calendar" and email attachments). Same UID as
+    // in the feeds, so importing it next to a subscription doesn't duplicate.
+    std::optional<std::string> meeting_ics(int64_t id) const;
+    std::optional<std::string> event_ics(int64_t id) const;
+    std::string tz() const;
+    static std::string ics_for(const Meeting& m, const std::string& timezone);
+    static std::string ics_for(const LugEvent& e, const std::string& timezone);
+    static std::string single_ics(const std::string& uid, const std::string& summary, const std::string& description,
+                                  const std::string& location, const std::string& start, const std::string& end,
+                                  const std::string& status, const std::string& last_modified,
+                                  const std::string& timezone, bool all_day);
 
 private:
     MeetingRepository&  meetings_;

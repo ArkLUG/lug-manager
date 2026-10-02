@@ -1,4 +1,5 @@
 #include "routes/events/EventRoutes.hpp"
+#include "utils/web/CalendarLinks.hpp"
 #include "routes/ChatFormHelpers.hpp"
 #include "utils/text/HtmlText.hpp"
 #include "utils/LocalTime.hpp"
@@ -554,6 +555,8 @@ void register_event_routes(LugApp& app, EventService& events, AttendanceService&
         ctx["attendees"] = std::move(att_arr);
 
         res.add_header("Content-Type", "text/html; charset=utf-8");
+        cal_links::add_to(ctx, {ev->title, ev->description, ev->location, ev->start_time, ev->end_time,
+                                true, "/events/" + std::to_string(id) + "/calendar.ics"});
         auto content_tmpl = crow::mustache::load("events/_detail.html");
         std::string content = content_tmpl.render(ctx).dump();
         return html_page(req, app, content, ev->title, "active_events");

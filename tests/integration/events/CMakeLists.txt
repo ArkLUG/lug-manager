@@ -6,6 +6,7 @@ lug_add_tests(
   test_integration_gallery.cpp
   test_integration_meetings.cpp
   test_integration_rsvp.cpp
+  test_integration_schedule.cpp
   test_integration_series.cpp
   test_integration_shifts.cpp
   test_integration_shows.cpp

@@ -40,6 +40,21 @@
     </div>
   </section>
 
+  <section class="f-calendar bg-white rounded-xl border border-gray-200 p-6 space-y-3" id="account-calendar">
+    <h3 class="font-semibold text-gray-800">Calendar</h3>
+    <p class="text-sm text-gray-500">Subscribe once and meetings and events stay up to date in your own calendar app.</p>
+    {{{subscribe_html}}}
+    <div class="pt-2 border-t border-gray-100">
+      <p class="text-sm text-gray-500 mb-2">Your private feed also has the details of private meetings and events.</p>
+      <div id="private-cal"></div>
+      <button hx-post="/account/calendar-token" hx-target="#private-cal" hx-swap="innerHTML"
+              hx-confirm="Create a new private calendar link? Any previous private link stops working."
+              class="text-xs px-3 py-1.5 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50">
+        Get my private feed
+      </button>
+    </div>
+  </section>
+
   <section class="bg-white rounded-xl border border-gray-200 p-6">
     <h3 class="font-semibold text-gray-800 mb-3">Notifications</h3>
     {{{notifications}}}

@@ -1,4 +1,5 @@
 #include "routes/accounts/AccountRoutes.hpp"
+#include "utils/web/CalendarLinks.hpp"
 #include "auth/AccountSecurity.hpp"
 #include "services/Palettes.hpp"
 #include "repositories/members/NotificationPrefs.hpp"
@@ -80,6 +81,7 @@ void register_account_routes(LugApp& app, SqliteDatabase& db, MemberService& mem
             }
             ctx["palettes"] = std::move(opts);
         }
+        ctx["subscribe_html"] = cal_links::subscribe_html("/calendar.ics", "LUG Manager", "account-cal");
         std::string body = crow::mustache::load("account/_content.html").render(ctx).dump();
         return html_page(req, app, body, "My Account", "active_account");
     });

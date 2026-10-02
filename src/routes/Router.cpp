@@ -70,6 +70,7 @@ void register_all_routes(LugApp& app, Services& svc) {
                             svc.member_repo, svc.chapter_members, svc.oauth, svc.audit);
     register_audit_routes(app, svc.audit);
     register_help_routes(app, svc.chapter_members);
+    register_schedule_routes(app, svc.attendance_repo.db(), svc.chapter_members);
 
     register_api_key_routes(app, svc.api_keys, svc.audit);
     register_discord_match_routes(app, svc.pending_discord_matches, svc.member_repo, svc.audit,

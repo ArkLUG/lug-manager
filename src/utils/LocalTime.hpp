@@ -1,4 +1,5 @@
 #pragma once
+#include <cstdio>
 #include <cstdlib>
 #include <ctime>
 #include <filesystem>
@@ -23,6 +24,24 @@ inline bool set_process_timezone(const std::string& tz) {
     setenv("TZ", tz.c_str(), 1);
     tzset();
     return true;
+}
+
+// The LUG's time zone name as set by set_process_timezone ("" if never set).
+inline std::string process_timezone() {
+    std::lock_guard<std::mutex> l(tz_env_mutex());
+    const char* tz = std::getenv("TZ");
+    return tz ? tz : "";
+}
+
+// A stored local "YYYY-MM-DDTHH:MM[:SS]" as a UTC epoch (DST-aware), or -1.
+inline std::time_t local_iso_to_epoch(const std::string& iso) {
+    std::tm t{};
+    int y = 0, mo = 0, d = 0, h = 0, mi = 0, sec = 0;
+    if (std::sscanf(iso.c_str(), "%d-%d-%dT%d:%d:%d", &y, &mo, &d, &h, &mi, &sec) < 5) return -1;
+    t.tm_year = y - 1900; t.tm_mon = mo - 1; t.tm_mday = d; t.tm_hour = h; t.tm_min = mi; t.tm_sec = sec;
+    t.tm_isdst = -1;
+    std::lock_guard<std::mutex> l(tz_env_mutex());
+    return std::mktime(&t);
 }
 
 // Thread-safe replacement for std::localtime (which returns a pointer to a

@@ -1,0 +1,151 @@
+<div class="space-y-4" id="main-content" data-page-title="Schedule">
+  <!-- Header -->
+  <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+    <div>
+      <h2 class="text-xl font-semibold text-gray-800">Schedule</h2>
+      <p class="text-sm text-gray-500 mt-0.5">Meetings and events.
+        <a hx-get="/meetings" hx-target="#main-content" hx-push-url="true" hx-swap="innerHTML" class="underline cursor-pointer">Meetings table</a> &middot;
+        <a hx-get="/events" hx-target="#main-content" hx-push-url="true" hx-swap="innerHTML" class="underline cursor-pointer">Events table</a>
+      </p>
+    </div>
+    <div class="flex items-center gap-2">
+      <div class="inline-flex rounded-lg border border-gray-300 overflow-hidden text-sm" role="tablist" aria-label="View">
+        <a role="tab" id="sched-view-list" aria-selected="{{#is_list}}true{{/is_list}}{{^is_list}}false{{/is_list}}" hx-get="{{list_url}}" hx-target="#main-content" hx-swap="innerHTML" hx-push-url="true"
+           class="px-3 py-2 cursor-pointer {{#is_list}}bg-gray-800 text-white{{/is_list}}{{^is_list}}text-gray-700 hover:bg-gray-50{{/is_list}}">List</a>
+        <a role="tab" id="sched-view-calendar" aria-selected="{{#is_calendar}}true{{/is_calendar}}{{^is_calendar}}false{{/is_calendar}}" hx-get="{{calendar_url}}" hx-target="#main-content" hx-swap="innerHTML" hx-push-url="true"
+           class="px-3 py-2 border-l border-gray-300 cursor-pointer {{#is_calendar}}bg-gray-800 text-white{{/is_calendar}}{{^is_calendar}}text-gray-700 hover:bg-gray-50{{/is_calendar}}">Calendar</a>
+      </div>
+      {{#can_create}}
+      <details class="relative" id="sched-new">
+        <summary class="list-none inline-flex items-center gap-2 px-4 py-2 bg-gray-800 text-white rounded-lg text-sm font-medium hover:bg-gray-700 cursor-pointer">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
+          New
+        </summary>
+        <div class="absolute right-0 mt-1 w-44 bg-white border border-gray-200 rounded-lg shadow-lg z-20 py-1 text-sm">
+          <button type="button" hx-get="/meetings/new" hx-target="#modal" hx-swap="innerHTML" class="block w-full text-left px-3 py-2 text-gray-700 hover:bg-gray-50">Meeting</button>
+          <button type="button" hx-get="/events/new" hx-target="#modal" hx-swap="innerHTML" class="block w-full text-left px-3 py-2 text-gray-700 hover:bg-gray-50">Event</button>
+          <button type="button" hx-get="/meetings/series" hx-target="#main-content" hx-push-url="true" hx-swap="innerHTML" class="f-series block w-full text-left px-3 py-2 text-gray-700 hover:bg-gray-50">Recurring meetings</button>
+        </div>
+      </details>
+      {{/can_create}}
+    </div>
+  </div>
+
+  {{#f_calendar}}
+  <details class="bg-white rounded-xl border border-gray-200 px-4 py-3" id="sched-subscribe">
+    <summary class="cursor-pointer text-sm font-medium text-gray-700">Add {{#subscribe_chapter}}this chapter's{{/subscribe_chapter}}{{^subscribe_chapter}}the whole{{/subscribe_chapter}} schedule to your calendar</summary>
+    <div class="mt-3">{{{subscribe_html}}}</div>
+    <p class="text-xs text-gray-400 mt-2">Private meetings show as "busy" in this feed. Your private feed, with every detail, is on <a hx-get="/account" hx-target="#main-content" hx-push-url="true" class="underline cursor-pointer">My Account</a>.</p>
+  </details>
+  {{/f_calendar}}
+
+  <!-- Filters (kept in the URL) -->
+  <form id="sched-filters" hx-get="/schedule" hx-target="#main-content" hx-swap="innerHTML" hx-push-url="true"
+        hx-trigger="change, search, keyup changed delay:400ms from:#sched-q"
+        class="flex flex-wrap items-center gap-2 text-sm">
+    <input type="hidden" name="view" value="{{view}}">
+    {{#is_calendar}}<input type="hidden" name="month" value="{{month}}">{{/is_calendar}}
+    <label class="sr-only" for="sched-type">Type</label>
+    <select id="sched-type" name="type" class="px-3 py-2 border border-gray-300 rounded-lg bg-white">
+      <option value="all" {{#type_all}}selected{{/type_all}}>Meetings &amp; events</option>
+      <option value="meetings" {{#type_meetings}}selected{{/type_meetings}}>Meetings</option>
+      <option value="events" {{#type_events}}selected{{/type_events}}>Events</option>
+    </select>
+    {{#is_list}}
+    <label class="sr-only" for="sched-when">When</label>
+    <select id="sched-when" name="when" class="px-3 py-2 border border-gray-300 rounded-lg bg-white">
+      <option value="upcoming" {{#when_upcoming}}selected{{/when_upcoming}}>Upcoming</option>
+      <option value="past" {{#when_past}}selected{{/when_past}}>Past</option>
+      <option value="all" {{#when_all}}selected{{/when_all}}>All dates</option>
+    </select>
+    {{/is_list}}
+    <label class="sr-only" for="sched-scope">Scope</label>
+    <select id="sched-scope" name="scope" class="px-3 py-2 border border-gray-300 rounded-lg bg-white">
+      <option value="all" {{#scope_all}}selected{{/scope_all}}>Any scope</option>
+      <option value="group" {{#scope_group}}selected{{/scope_group}}>Group-wide</option>
+      <option value="external" {{#scope_external}}selected{{/scope_external}}>External</option>
+      {{#chapters_on}}
+      <option value="chapters" {{#scope_chapters}}selected{{/scope_chapters}}>Any chapter</option>
+      {{#chapters}}<option value="{{value}}" {{#selected}}selected{{/selected}}>{{name}}</option>{{/chapters}}
+      {{/chapters_on}}
+    </select>
+    <label class="sr-only" for="sched-status">Status</label>
+    <select id="sched-status" name="status" class="px-3 py-2 border border-gray-300 rounded-lg bg-white">
+      <option value="active" {{#status_active}}selected{{/status_active}}>Not cancelled</option>
+      <option value="tentative" {{#status_tentative}}selected{{/status_tentative}}>Tentative</option>
+      <option value="cancelled" {{#status_cancelled}}selected{{/status_cancelled}}>Cancelled</option>
+      <option value="all" {{#status_all}}selected{{/status_all}}>Any status</option>
+    </select>
+    <label class="inline-flex items-center gap-1.5 px-3 py-2 border border-gray-300 rounded-lg bg-white cursor-pointer" title="Your chapters' meetings, and events you're going to, volunteering at or leading">
+      <input type="checkbox" name="mine" value="1" {{#mine}}checked{{/mine}}> Mine
+    </label>
+    <input type="search" id="sched-q" name="q" value="{{q}}" placeholder="Search..." aria-label="Search"
+           class="flex-1 min-w-[10rem] px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-yellow-400">
+  </form>
+
+  {{#is_list}}
+  <!-- List, grouped by month -->
+  {{^has_items}}
+  <div class="bg-white rounded-xl border border-gray-200 p-8 text-center text-sm text-gray-500" id="sched-empty">Nothing matches these filters.</div>
+  {{/has_items}}
+  {{#groups}}
+  <section class="space-y-2">
+    <h3 class="text-xs font-semibold uppercase tracking-wide text-gray-500">{{heading}}</h3>
+    <ul class="bg-white rounded-xl border border-gray-200 divide-y divide-gray-100">
+      {{#items}}
+      <li>
+        <button type="button" hx-get="{{url}}" hx-target="#modal" hx-swap="innerHTML" data-kind="{{kind}}"
+                class="sched-item w-full text-left px-4 py-3 hover:bg-gray-50 flex items-start gap-3">
+          <span class="mt-0.5 shrink-0 inline-flex items-center px-2 py-0.5 rounded text-xs font-medium {{#is_meeting}}bg-blue-50 text-blue-700{{/is_meeting}}{{^is_meeting}}bg-amber-50 text-amber-700{{/is_meeting}}">{{#is_meeting}}Meeting{{/is_meeting}}{{^is_meeting}}Event{{/is_meeting}}</span>
+          <span class="min-w-0 flex-1">
+            <span class="block font-medium text-gray-800 truncate {{#cancelled}}line-through text-gray-400{{/cancelled}}">{{title}}</span>
+            <span class="block text-xs text-gray-500">{{when}}{{#location}} &middot; {{location}}{{/location}}</span>
+          </span>
+          <span class="shrink-0 flex flex-col items-end gap-1">
+            <span class="text-xs text-gray-500">{{scope_label}}</span>
+            {{#tentative}}<span class="text-xs px-1.5 py-0.5 rounded bg-yellow-50 text-yellow-700">Tentative</span>{{/tentative}}
+            {{#cancelled}}<span class="text-xs px-1.5 py-0.5 rounded bg-red-50 text-red-700">Cancelled</span>{{/cancelled}}
+          </span>
+        </button>
+      </li>
+      {{/items}}
+    </ul>
+  </section>
+  {{/groups}}
+  {{#capped}}<p class="text-xs text-gray-500">Showing the first {{count}}. Narrow the filters to see the rest.</p>{{/capped}}
+  {{/is_list}}
+
+  {{#is_calendar}}
+  <!-- Month calendar -->
+  <div class="bg-white rounded-xl border border-gray-200 overflow-hidden" id="sched-calendar">
+    <div class="flex items-center justify-between px-3 py-2 border-b border-gray-200">
+      <a hx-get="{{prev_url}}" hx-target="#main-content" hx-swap="innerHTML" hx-push-url="true" class="px-2 py-1 rounded hover:bg-gray-100 cursor-pointer" aria-label="Previous month">&larr;</a>
+      <div class="flex items-center gap-2">
+        <h3 class="font-semibold text-gray-800">{{month_title}}</h3>
+        <a hx-get="{{today_url}}" hx-target="#main-content" hx-swap="innerHTML" hx-push-url="true" class="text-xs px-2 py-0.5 border border-gray-300 rounded cursor-pointer hover:bg-gray-50">Today</a>
+      </div>
+      <a hx-get="{{next_url}}" hx-target="#main-content" hx-swap="innerHTML" hx-push-url="true" class="px-2 py-1 rounded hover:bg-gray-100 cursor-pointer" aria-label="Next month">&rarr;</a>
+    </div>
+    <div class="grid grid-cols-7 text-center text-[11px] font-medium text-gray-500 border-b border-gray-200">
+      <div class="py-1">Sun</div><div class="py-1">Mon</div><div class="py-1">Tue</div><div class="py-1">Wed</div><div class="py-1">Thu</div><div class="py-1">Fri</div><div class="py-1">Sat</div>
+    </div>
+    {{#weeks}}
+    <div class="grid grid-cols-7 border-b border-gray-100 last:border-b-0">
+      {{#days}}
+      {{#blank}}<div class="min-h-[4.5rem] bg-gray-50"></div>{{/blank}}
+      {{^blank}}
+      <div class="min-h-[4.5rem] min-w-0 p-0.5 sm:p-1 border-l border-gray-100 first:border-l-0">
+        <div class="text-[11px] mb-0.5 {{#today}}inline-flex items-center justify-center w-5 h-5 rounded-full bg-gray-800 text-white font-semibold{{/today}}{{^today}}text-gray-500{{/today}}">{{day}}</div>
+        {{#items}}
+        <button type="button" hx-get="{{url}}" hx-target="#modal" hx-swap="innerHTML" title="{{title}} - {{when}}"
+                class="sched-chip block w-full text-left truncate rounded px-1 py-0.5 mb-0.5 text-[10px] sm:text-xs leading-tight {{#is_meeting}}bg-blue-50 text-blue-800{{/is_meeting}}{{^is_meeting}}bg-amber-50 text-amber-800{{/is_meeting}} {{#cancelled}}line-through opacity-60{{/cancelled}} {{#tentative}}border border-dashed border-current{{/tentative}}">{{#continues}}&rarr; {{/continues}}{{^continues}}{{#time}}<span class="hidden sm:inline">{{time}} </span>{{/time}}{{/continues}}{{title}}</button>
+        {{/items}}
+      </div>
+      {{/blank}}
+      {{/days}}
+    </div>
+    {{/weeks}}
+  </div>
+  <p class="text-xs text-gray-500"><span class="inline-block w-3 h-3 rounded bg-blue-50 border border-blue-200 align-middle"></span> Meeting &nbsp; <span class="inline-block w-3 h-3 rounded bg-amber-50 border border-amber-200 align-middle"></span> Event &nbsp; Dashed: tentative</p>
+  {{/is_calendar}}
+</div>

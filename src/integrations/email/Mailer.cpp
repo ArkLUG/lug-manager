@@ -4,6 +4,7 @@
 #include <curl/curl.h>
 #include <openssl/evp.h>
 #include <cstdlib>
+#include <functional>
 #include <cstring>
 #include <ctime>
 #include <iostream>
@@ -87,8 +88,14 @@ std::string Mailer::build(const Message& m, const std::string& date, const std::
     h += "Subject: " + encode_header(one_line(m.subject)) + "\r\n";
     h += "Message-ID: " + message_id + "\r\n";
     h += "MIME-Version: 1.0\r\n";
-    h += "Content-Type: text/plain; charset=UTF-8\r\n";
-    h += "Content-Transfer-Encoding: 8bit\r\n";
+    // With a calendar file: multipart/mixed, the text then the .ics
+    const std::string boundary = "lugmgr-" + std::to_string(std::hash<std::string>{}(message_id + m.subject));
+    if (m.ics.empty()) {
+        h += "Content-Type: text/plain; charset=UTF-8\r\n";
+        h += "Content-Transfer-Encoding: 8bit\r\n";
+    } else {
+        h += "Content-Type: multipart/mixed; boundary=\"" + boundary + "\"\r\n";
+    }
     h += "Auto-Submitted: auto-generated\r\n";
     if (!m.unsubscribe_url.empty()) {
         h += "List-Unsubscribe: <" + one_line(m.unsubscribe_url) + ">\r\n";
@@ -100,7 +107,19 @@ std::string Mailer::build(const Message& m, const std::string& date, const std::
         if (c == '\r') continue;
         if (c == '\n') body += "\r\n"; else body += c;
     }
-    return h + "\r\n" + body + "\r\n";
+    if (m.ics.empty()) return h + "\r\n" + body + "\r\n";
+    std::string out = h + "\r\n";
+    out += "--" + boundary + "\r\n";
+    out += "Content-Type: text/plain; charset=UTF-8\r\nContent-Transfer-Encoding: 8bit\r\n\r\n";
+    out += body + "\r\n";
+    out += "--" + boundary + "\r\n";
+    out += "Content-Type: text/calendar; charset=UTF-8; method=PUBLISH; name=\"event.ics\"\r\n";
+    out += "Content-Disposition: attachment; filename=\"event.ics\"\r\n";
+    out += "Content-Transfer-Encoding: base64\r\n\r\n";
+    const std::string enc = b64(m.ics);
+    for (size_t i = 0; i < enc.size(); i += 76) out += enc.substr(i, 76) + "\r\n";
+    out += "--" + boundary + "--\r\n";
+    return out;
 }
 
 void Mailer::send(Message m) {

@@ -169,8 +169,7 @@ TEST_F(IntegrationTest, DashboardShowsMeetingAndEventCounts) {
     auto r = GET("/dashboard", admin_token);
     EXPECT_EQ(r.code, 200);
     expect_contains(r, "Members");
-    expect_contains(r, "Meetings");
-    expect_contains(r, "Events");
+    expect_contains(r, "Schedule");                 // meetings and events
 }
 
 TEST_F(IntegrationTest, MeetingCardShowsEditButtonForAdmin) {

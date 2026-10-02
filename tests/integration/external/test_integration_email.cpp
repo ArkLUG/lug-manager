@@ -99,6 +99,15 @@ TEST_F(IntegrationTest, EmailNotificationsAndUnsubscribe) {
     EXPECT_NE(out[0].body.find("Full Show"), std::string::npos);
     EXPECT_EQ(out[0].body.find("**"), std::string::npos);              // markdown stripped
     EXPECT_NE(out[0].unsubscribe_url.find("?kind=waitlist"), std::string::npos);
+    // The event is attached as a calendar file
+    EXPECT_NE(out[0].ics.find("SUMMARY:Full Show"), std::string::npos);
+    EXPECT_NE(out[0].ics.find("DTSTART;VALUE=DATE:20990801"), std::string::npos);
+    std::string raw = mailer->build(out[0], "Thu, 01 Oct 2026 00:00:00 +0000", "<abc@example.test>");
+    EXPECT_NE(raw.find("Content-Type: multipart/mixed; boundary="), std::string::npos);
+    EXPECT_NE(raw.find("Content-Type: text/calendar; charset=UTF-8; method=PUBLISH"), std::string::npos);
+    EXPECT_NE(raw.find("filename=\"event.ics\""), std::string::npos);
+    EXPECT_NE(raw.find("QkVHSU46VkNBTEVOREFS"), std::string::npos);    // base64 of "BEGIN:VCALENDAR"
+    EXPECT_NE(raw.find("You're in: Full Show"), std::string::npos);
     std::string unsub = out[0].unsubscribe_url.substr(std::string("http://lug.test").size());
 
     // No-login unsubscribe page, then RFC 8058 one-click POST

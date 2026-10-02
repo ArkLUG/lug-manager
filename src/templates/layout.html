@@ -199,37 +199,21 @@
         Dashboard
       </a>
 
-      <!-- Meetings -->
-      <a hx-get="/meetings"
+      <!-- Schedule: meetings and events together -->
+      <a hx-get="/schedule"
+         data-nav-also="/meetings /events"
          hx-target="#main-content"
          hx-push-url="true"
          hx-swap="innerHTML"
          hx-indicator="#nav-spinner"
          class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm cursor-pointer transition-colors
-                {{#active_meetings}}nav-active{{/active_meetings}}
-                {{^active_meetings}}nav-inactive{{/active_meetings}}">
+                {{#active_schedule}}nav-active{{/active_schedule}}
+                {{^active_schedule}}nav-inactive{{/active_schedule}}">
         <svg class="w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                 d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/>
         </svg>
-        Meetings
-      </a>
-
-      <!-- Events -->
-      <a hx-get="/events"
-         hx-target="#main-content"
-         hx-push-url="true"
-         hx-swap="innerHTML"
-         hx-indicator="#nav-spinner"
-         class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm cursor-pointer transition-colors
-                {{#active_events}}nav-active{{/active_events}}
-                {{^active_events}}nav-inactive{{/active_events}}">
-        <svg class="w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2
-                   2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"/>
-        </svg>
-        Events
+        Schedule
       </a>
 
       <!-- Members -->
@@ -867,6 +851,9 @@
               (path === other || path.startsWith(other + '/'));
           });
         }
+        // A link can also own other paths (Schedule owns /meetings and /events)
+        var also = (a.getAttribute('data-nav-also') || '').split(' ').filter(Boolean);
+        if (!isActive) isActive = also.some(function(p) { return path === p || path.startsWith(p + '/'); });
         a.classList.toggle('nav-active', isActive);
         a.classList.toggle('nav-inactive', !isActive);
         if (isActive) {

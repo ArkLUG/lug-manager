@@ -15,6 +15,18 @@
     {{#scope_lug_wide}}<span class="px-2 py-0.5 rounded text-xs font-medium bg-indigo-100 text-indigo-700">Group-wide</span>{{/scope_lug_wide}}
     {{#scope_non_lug}}<span class="px-2 py-0.5 rounded text-xs font-medium bg-amber-100 text-amber-700">External</span>{{/scope_non_lug}}
     {{^scope_lug_wide}}{{^scope_non_lug}}<span class="f-chapters px-2 py-0.5 rounded text-xs font-medium bg-gray-100 text-gray-500">Chapter</span>{{/scope_non_lug}}{{/scope_lug_wide}}
+    <details class="relative ml-auto" data-cal-add>
+      <summary class="list-none inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-medium border border-gray-300 text-gray-700 hover:bg-gray-50 cursor-pointer">
+        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
+        Add to calendar
+      </summary>
+      <div class="absolute right-0 mt-1 w-44 bg-white border border-gray-200 rounded-lg shadow-lg z-20 py-1 text-sm">
+        <a href="{{cal_google}}" target="_blank" rel="noopener" class="block px-3 py-2 text-gray-700 hover:bg-gray-50">Google Calendar</a>
+        <a href="{{cal_outlook}}" target="_blank" rel="noopener" class="block px-3 py-2 text-gray-700 hover:bg-gray-50">Outlook.com</a>
+        <a href="{{cal_m365}}" target="_blank" rel="noopener" class="block px-3 py-2 text-gray-700 hover:bg-gray-50">Microsoft 365</a>
+        <a href="{{cal_ics}}" download class="block px-3 py-2 text-gray-700 hover:bg-gray-50">Apple / other (.ics)</a>
+      </div>
+    </details>
   </div>
 
   <!-- Details grid -->

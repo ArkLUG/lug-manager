@@ -27,7 +27,10 @@ public:
     // are on, otherwise an email (when SMTP and the public URL are set up and
     // they haven't turned email off). {name} is filled in. async: on the
     // integration worker pool (request handlers); returns true once queued.
-    bool notify(int64_t member_id, const std::string& kind, const std::string& key, chat::Values v, bool async = false) {
+    // `ics`, when given, is attached to the email as a calendar file (a chat
+    // DM has the item's link instead).
+    bool notify(int64_t member_id, const std::string& kind, const std::string& key, chat::Values v, bool async = false,
+                std::string ics = "") {
         NotificationPrefs prefs(db_);
         if (!prefs.wants(member_id, kind)) return false;
         std::string email, name;
@@ -39,12 +42,12 @@ public:
             email = st.col_text(0); name = st.col_text(1);
         }
         if (!v.count("name")) v["name"] = name;
-        auto deliver = [this, member_id, kind, key, v, email, name]() {
+        auto deliver = [this, member_id, kind, key, v, email, name, ics]() {
             if (chat_ && chat_->direct_message(member_id, key, v)) return true;
             NotificationPrefs p(db_);
             if (email.empty() || !email_enabled() || !p.wants(member_id, "email")) return false;
             chat::TemplateStore t(db_);
-            send_email(member_id, email, name, kind, t.render_subject(key, v), t.render_body(key, v));
+            send_email(member_id, email, name, kind, t.render_subject(key, v), t.render_body(key, v), ics);
             return true;
         };
         if (async && chat_ && chat_->can_dm(member_id)) { discord_.run_async(deliver); return true; }
@@ -61,7 +64,7 @@ public:
 
     // Emails a member directly (sign-in links etc.) - no preference check.
     void send_email(int64_t member_id, const std::string& email, const std::string& name, const std::string& kind,
-                    const std::string& subject, const std::string& text) {
+                    const std::string& subject, const std::string& text, const std::string& ics = "") {
         if (!mailer_ || !mailer_->enabled()) return;
         const std::string base = url();
         std::string unsub = base.empty() ? "" : base + "/unsubscribe/" + email_token(db_, member_id) +
@@ -70,7 +73,7 @@ public:
         if (!unsub.empty())
             body += "\n--\nYou're getting this because you're a member of the LUG. "
                     "Stop these emails (no login needed): " + unsub + "\n";
-        mailer_->send({email, subject, body, unsub});
+        mailer_->send({email, subject, body, unsub, ics});
     }
 
     // The member's unsubscribe token, created on first use.

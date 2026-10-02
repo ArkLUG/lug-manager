@@ -349,3 +349,48 @@ std::string CalendarGenerator::generate_ics(const Filter& f) const {
     oss << "END:VCALENDAR\r\n";
     return oss.str();
 }
+
+std::string CalendarGenerator::single_ics(const std::string& uid, const std::string& summary, const std::string& description,
+                                          const std::string& location, const std::string& start, const std::string& end,
+                                          const std::string& status, const std::string& last_modified,
+                                          const std::string& timezone, bool all_day) {
+    std::ostringstream oss;
+    oss << "BEGIN:VCALENDAR\r\n";
+    oss << "VERSION:2.0\r\n";
+    oss << "PRODID:-//LUG-Manager//LUG-Manager 1.0//EN\r\n";
+    oss << "CALSCALE:GREGORIAN\r\n";
+    oss << "METHOD:PUBLISH\r\n";
+    oss << vtimezone(timezone);
+    oss << make_vevent(uid, summary, description, location, start, end, status, last_modified, timezone, all_day);
+    oss << "END:VCALENDAR\r\n";
+    return oss.str();
+}
+
+std::string CalendarGenerator::tz() const {
+    std::lock_guard<std::mutex> lock(mutex_);
+    return timezone_;
+}
+
+std::string CalendarGenerator::ics_for(const Meeting& m, const std::string& timezone) {
+    std::string uid = m.ical_uid.empty() ? ("meeting-" + std::to_string(m.id) + "@lug-manager") : m.ical_uid;
+    return single_ics(uid, m.title, m.description, m.location, m.start_time, m.end_time,
+                      m.status, m.updated_at, timezone, false);
+}
+
+std::string CalendarGenerator::ics_for(const LugEvent& e, const std::string& timezone) {
+    std::string uid = e.ical_uid.empty() ? ("event-" + std::to_string(e.id) + "@lug-manager") : e.ical_uid;
+    return single_ics(uid, e.title, e.description, e.location, e.start_time, e.end_time,
+                      e.status, e.updated_at, timezone, true);
+}
+
+std::optional<std::string> CalendarGenerator::meeting_ics(int64_t id) const {
+    auto m = meetings_.find_by_id(id);
+    if (!m) return std::nullopt;
+    return ics_for(*m, tz());
+}
+
+std::optional<std::string> CalendarGenerator::event_ics(int64_t id) const {
+    auto e = events_.find_by_id(id);
+    if (!e) return std::nullopt;
+    return ics_for(*e, tz());
+}

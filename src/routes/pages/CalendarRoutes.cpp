@@ -7,6 +7,7 @@
 #include "routes/pages/DashboardWidgets.hpp"
 #include "services/Features.hpp"
 #include "utils/LocalTime.hpp"
+#include "utils/web/CalendarLinks.hpp"
 #include <crow.h>
 #include <crow/mustache.h>
 #include <ctime>
@@ -59,6 +60,26 @@ void register_calendar_routes(LugApp& app, CalendarGenerator& cal,
     });
 
     // POST /account/calendar-token - (re)generate the personal feed URL
+    // GET /meetings/<id>/calendar.ics, /events/<id>/calendar.ics - one item
+    // as a calendar file ("Add to calendar" > Apple / other). Signed in only:
+    // it has the full details of private items.
+    auto one = [&app](const crow::request& req, std::optional<std::string> ics, const std::string& name) {
+        crow::response res;
+        if (!require_auth(req, res, app)) return res;
+        if (!ics) { res.code = 404; return res; }
+        res.write(*ics);
+        res.add_header("Content-Type", "text/calendar; charset=utf-8");
+        res.add_header("Content-Disposition", "attachment; filename=\"" + name + "\"");
+        res.add_header("Cache-Control", "private, no-store");
+        return res;
+    };
+    CROW_ROUTE(app, "/meetings/<int>/calendar.ics")([&cal, one](const crow::request& req, int id) {
+        return one(req, cal.meeting_ics(id), "meeting-" + std::to_string(id) + ".ics");
+    });
+    CROW_ROUTE(app, "/events/<int>/calendar.ics")([&cal, one](const crow::request& req, int id) {
+        return one(req, cal.event_ics(id), "event-" + std::to_string(id) + ".ics");
+    });
+
     CROW_ROUTE(app, "/account/calendar-token").methods("POST"_method)([&](const crow::request& req) {
         crow::response res;
         if (!require_auth(req, res, app)) return res;
@@ -67,13 +88,10 @@ void register_calendar_routes(LugApp& app, CalendarGenerator& cal,
         member_repo.set_calendar_token_hash(a.member_id, sha256_hex(token));
         std::string url = "/calendar/me/" + token + "/feed.ics";
         res.add_header("Content-Type", "text/html; charset=utf-8");
-        res.write("<div class=\"space-y-1\"><p class=\"text-xs text-gray-600\">Your private feed (includes private "
-                  "meetings/events - don't share it). Copy it now; it won't be shown again. Generating a new one "
-                  "disables the old link.</p><input readonly data-action=\"select-self\" "
-                  "class=\"w-full text-xs font-mono border border-gray-300 rounded px-2 py-1\" "
-                  "data-path=\"" + url + "\" id=\"private-cal-url\"></div>"
-                  "<script>(function(){var i=document.getElementById('private-cal-url');"
-                  "i.value=window.location.origin+i.dataset.path;})();</script>");
+        res.write("<div class=\"space-y-2\"><p class=\"text-xs text-gray-600\">Your private feed (includes private "
+                  "meetings/events - don't share it). Add it now; the link won't be shown again. Generating a new one "
+                  "disables the old link.</p>" +
+                  cal_links::subscribe_html(url, "LUG Manager (private)", "private-cal") + "</div>");
         return res;
     });
 
@@ -229,6 +247,7 @@ void register_calendar_routes(LugApp& app, CalendarGenerator& cal,
         if (!Features::on("dues"))     ctx["has_dues_expiring"] = false;
 
         res.add_header("Content-Type", "text/html; charset=utf-8");
+        ctx["subscribe_html"] = cal_links::subscribe_html("/calendar.ics", "LUG Manager", "dash-cal");
         return html_page(req, app, crow::mustache::load("dashboard/_content.html").render(ctx).dump(), "Dashboard", "active_dashboard");
     });
 }

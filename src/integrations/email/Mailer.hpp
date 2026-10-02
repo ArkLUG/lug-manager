@@ -5,7 +5,7 @@
 #include <string>
 #include <vector>
 
-// Plain-text email over SMTP (libcurl). Configured in Settings > Email &
+// Plain-text email (optionally with a calendar file attached) over SMTP (libcurl). Configured in Settings > Email &
 // address, or by the environment, which wins per field (services/SiteSettings.hpp):
 //   LUG_SMTP_URL       e.g. smtps://smtp.example.com:465 or smtp://host:587 (STARTTLS required)
 //   LUG_SMTP_USER / LUG_SMTP_PASSWORD (the password: environment only)
@@ -18,6 +18,7 @@ public:
     struct Message {
         std::string to, subject, body;
         std::string unsubscribe_url;   // adds List-Unsubscribe (+ one-click) headers when set
+        std::string ics;               // attached as event.ics (text/calendar) when set
     };
 
     static Config from_env();

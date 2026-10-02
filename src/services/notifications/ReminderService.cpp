@@ -1,4 +1,5 @@
 #include "services/notifications/ReminderService.hpp"
+#include "integrations/ical/CalendarGenerator.hpp"
 #include "repositories/members/NotificationPrefs.hpp"
 #include "services/Features.hpp"
 #include <iostream>
@@ -53,10 +54,12 @@ ReminderService::Result ReminderService::run_once(std::time_t now) {
         if (hub->remind_event(e) > 0) ++r.events;
 
         if (dm_rsvps && Features::on("rsvps")) {
+            const std::string ics = CalendarGenerator::ics_for(e, tz);   // attached to reminder emails
             for (const auto& rs : rsvps_.list(e.id)) {
                 if (rs.status != "going") continue;
                 if (notifier().notify(rs.member_id, "event_reminder", "dm.event_reminder",
-                                      {{"title", e.title}, {"when", when}, {"when_at", e.start_time}, {"location", e.location}}))
+                                      {{"title", e.title}, {"when", when}, {"when_at", e.start_time}, {"location", e.location}},
+                                      false, ics))
                     ++r.dms;
             }
         }

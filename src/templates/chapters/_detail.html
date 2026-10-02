@@ -7,8 +7,10 @@
           {{#has_shorthand}}<span class="px-2 py-0.5 rounded text-sm font-medium bg-gray-100 text-gray-600">{{shorthand}}</span>{{/has_shorthand}}
         </div>
         {{#description}}<p class="text-gray-600 mt-2">{{description}}</p>{{/description}}
-        <p class="f-calendar text-sm mt-3"><a href="/calendar/chapter/{{id}}/feed.ics" class="text-indigo-600 hover:underline">Subscribe to this chapter's calendar</a>
-          <span class="text-xs text-gray-400">(add the link to Google Calendar, Apple Calendar or Outlook)</span></p>
+        <details class="f-calendar text-sm mt-3" id="chapter-subscribe">
+          <summary class="cursor-pointer text-indigo-600 hover:underline">Add this chapter's calendar to yours</summary>
+          <div class="mt-2">{{{subscribe_html}}}</div>
+        </details>
       </div>
       <div class="flex gap-2">
         {{#can_manage}}

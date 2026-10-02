@@ -127,9 +127,37 @@
       new QRCode(el, { text: el.getAttribute('data-qr'), width: 192, height: 192 });
     });
   }
-  document.addEventListener('htmx:load', function (e) { initQr(e.detail && e.detail.elt); });
-  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', function () { initQr(document); });
-  else initQr(document);
+
+  // Calendar subscribe blocks: <div data-cal-feed="/path.ics" data-cal-name="..">
+  // (utils/web/CalendarLinks.hpp). The feed path becomes full links for this
+  // site's address: webcal://, Google "add by URL", Outlook.com and Microsoft
+  // 365 "add from web", the copyable link and a QR code.
+  function initCalFeeds(root) {
+    if (!root || !root.querySelectorAll) return;
+    var blocks = Array.prototype.slice.call(root.querySelectorAll('[data-cal-feed]:not([data-cal-done])'));
+    if (root.matches && root.matches('[data-cal-feed]:not([data-cal-done])')) blocks.push(root);
+    blocks.forEach(function (el) {
+      el.setAttribute('data-cal-done', '1');
+      var url = window.location.origin + el.getAttribute('data-cal-feed');
+      var webcal = url.replace(/^https?:/, 'webcal:');
+      var name = encodeURIComponent(el.getAttribute('data-cal-name') || 'Calendar');
+      var links = {
+        webcal: webcal,
+        google: 'https://calendar.google.com/calendar/render?cid=' + encodeURIComponent(webcal),
+        outlook: 'https://outlook.live.com/calendar/0/addfromweb?url=' + encodeURIComponent(url) + '&name=' + name,
+        m365: 'https://outlook.office.com/calendar/0/addfromweb?url=' + encodeURIComponent(url) + '&name=' + name
+      };
+      el.querySelectorAll('[data-cal-link]').forEach(function (a) { a.href = links[a.getAttribute('data-cal-link')]; });
+      var input = el.querySelector('[data-cal-url]');
+      if (input) input.value = url;
+      var qr = el.querySelector('[data-cal-qr]');
+      if (qr) qr.setAttribute('data-qr', url);
+    });
+  }
+  function initLinks(root) { initCalFeeds(root); initQr(root); }
+  document.addEventListener('htmx:load', function (e) { initLinks(e.detail && e.detail.elt); });
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', function () { initLinks(document); });
+  else initLinks(document);
 
   function initStaticSelects() {
     document.querySelectorAll('select[data-tomselect]:not([hx-get])').forEach(initTomSelect);

@@ -1,4 +1,5 @@
 #include "routes/members/ChapterRoutes.hpp"
+#include "utils/web/CalendarLinks.hpp"
 #include <tuple>
 #include <ctime>
 #include <algorithm>
@@ -364,6 +365,8 @@ void register_chapter_routes(LugApp& app, ChapterService& chapters,
         mctx["add_lead_options"]= add_lead_opts.str();
         mctx["has_non_leads"]   = has_non_leads;
         add_chapter_overview(mctx, members.repo().db(), *ch, ch_members, can_manage);
+        mctx["subscribe_html"] = cal_links::subscribe_html("/calendar/chapter/" + std::to_string(ch->id) + "/feed.ics",
+                                                           ch->name, "chapter-cal");
 
         res.add_header("Content-Type", "text/html; charset=utf-8");
         return html_page(req, app, crow::mustache::load("chapters/_detail.html").render(mctx).dump(), ch->name, "active_chapters");

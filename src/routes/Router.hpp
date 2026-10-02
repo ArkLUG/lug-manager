@@ -20,6 +20,7 @@
 #include "routes/attendance/CheckinRoutes.hpp"
 #include "routes/settings/AuditRoutes.hpp"
 #include "routes/pages/HelpRoutes.hpp"
+#include "routes/pages/ScheduleRoutes.hpp"
 #include "routes/accounts/ApiKeyRoutes.hpp"
 #include "integrations/discord/matches/DiscordMatchRoutes.hpp"
 #include "integrations/discord/matches/DiscordInteractionsRoutes.hpp"

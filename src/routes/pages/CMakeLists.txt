@@ -9,6 +9,8 @@ target_sources(lug_core PRIVATE
   HelpRoutes.hpp
   PwaRoutes.cpp
   PwaRoutes.hpp
+  ScheduleRoutes.cpp
+  ScheduleRoutes.hpp
   StaticRoutes.cpp
   StaticRoutes.hpp
 )
