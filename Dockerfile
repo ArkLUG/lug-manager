@@ -71,5 +71,9 @@ VOLUME /app/data
 
 EXPOSE 8080
 
+# /healthz answers "ok" when the server and its database work (Unraid and
+# docker ps show the container as healthy / unhealthy).
+HEALTHCHECK --interval=60s --timeout=5s --start-period=60s --retries=3 CMD ["/app/lug_manager", "--healthcheck"]
+
 ENTRYPOINT ["/usr/local/bin/docker-entrypoint.sh"]
 CMD ["./lug_manager"]

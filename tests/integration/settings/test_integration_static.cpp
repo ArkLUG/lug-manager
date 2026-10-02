@@ -1,5 +1,6 @@
 // /static serving: caching, ETags, compression, path safety.
 #include "integration_test_base.hpp"
+#include "routes/pages/HealthRoutes.hpp"
 
 TEST_F(IntegrationTest, StaticVersionedAssetsAreImmutable) {
     auto r = GET("/static/theme.js?v=123");
@@ -30,4 +31,17 @@ TEST_F(IntegrationTest, StaticRejectsTraversal) {
     EXPECT_EQ(GET("/static/../CMakeLists.txt").code, 404);
     EXPECT_EQ(GET("/static/%2e%2e/CMakeLists.txt").code, 404);
     EXPECT_EQ(GET("/static/nope.css").code, 404);
+}
+
+// /healthz for Docker's HEALTHCHECK: public, plain, no details; and
+// `lug_manager --healthcheck` reads it.
+TEST_F(IntegrationTest, HealthCheck) {
+    auto r = GET("/healthz");
+    EXPECT_EQ(r.code, 200);
+    EXPECT_EQ(r.body, "ok\n");
+    setenv("LUG_PORT", std::to_string(port).c_str(), 1);
+    EXPECT_EQ(run_healthcheck(), 0);
+    setenv("LUG_PORT", "1", 1);          // nothing listening there
+    EXPECT_EQ(run_healthcheck(), 1);
+    unsetenv("LUG_PORT");
 }

@@ -143,6 +143,10 @@ docker build -t lug-manager .
 docker run -p 8080:8080 -v lug-data:/app/data --env-file .env lug-manager
 ```
 
+## Health check
+
+The image has a `HEALTHCHECK`: every minute it runs `lug_manager --healthcheck`, which asks the server's `/healthz` page. That page answers `ok` when the server and its database work, and gives no other details, so it's safe to leave public. Unraid and `docker ps` show the container as healthy or unhealthy, and a reverse proxy or uptime monitor can use `/healthz` too.
+
 ## Production Deployment
 
 ### Reverse Proxy (nginx)

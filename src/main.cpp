@@ -1,3 +1,4 @@
+#include "routes/pages/HealthRoutes.hpp"
 #include "live/LiveHub.hpp"
 #include "utils/Offline.hpp"
 #include <crow.h>
@@ -49,7 +50,9 @@
 #include "integrations/discord/sync/MemberSyncService.hpp"
 #include "routes/Router.hpp"
 
-int main() {
+int main(int argc, char** argv) {
+    // Docker HEALTHCHECK: ask the running server, don't start one.
+    if (argc > 1 && std::string(argv[1]) == "--healthcheck") return run_healthcheck();
     try {
         // Load configuration from environment / config file
         Config config = load_config();

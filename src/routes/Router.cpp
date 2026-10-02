@@ -29,6 +29,7 @@ void register_all_routes(LugApp& app, Services& svc) {
     register_member_bulk_routes(app, svc.members, svc.audit);
     register_session_routes(app, svc.auth, svc.audit);
     register_pwa_routes(app);
+    register_health_routes(app, svc.attendance_repo.db());
     register_live_routes(app, svc.auth, svc.public_url);
     register_static_routes(app);
     if (!svc.series) svc.series = std::make_shared<SeriesService>(svc.attendance_repo.db(), svc.meetings);
