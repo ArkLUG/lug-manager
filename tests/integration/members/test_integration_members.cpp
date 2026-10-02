@@ -5,6 +5,10 @@ TEST_F(IntegrationTest, MembersPageLoads) {
     EXPECT_EQ(r.code, 200);
     expect_contains(r, "Members");
     expect_contains(r, "members-table");
+    // Phones: the header buttons wrap instead of running off the screen, and
+    // the table isn't given fixed pixel widths
+    expect_contains(r, "<div class=\"flex flex-wrap items-center gap-2\">\n      <button hx-get=\"/members/me\"");
+    expect_contains(r, "autoWidth: false");
 }
 
 TEST_F(IntegrationTest, MembersNewForm) {
