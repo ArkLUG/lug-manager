@@ -122,6 +122,8 @@ def rewrite(text, role, full_page, page_role=None):
     # in the static demo the exported JSON holds every row, so let DataTables
     # do it in the browser instead.
     text = text.replace("serverSide: true,", "serverSide: false,")
+    # No server behind the static demo: no live updates.
+    text = text.replace(' data-live="1"', '')
     if full_page:
         cfg = html.escape(json.dumps({"base": BASE, "role": page_role or role}), quote=True)
         inject = (f'<meta name="lug-demo" content="{cfg}">'

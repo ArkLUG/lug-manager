@@ -81,8 +81,29 @@
   }
   if (navigator.serviceWorker) navigator.serviceWorker.register = function () { return Promise.resolve(); };
 
+  // Colour themes work in the demo too: the choice is kept in this browser
+  // (the app saves it to the member's account).
+  var PALETTE_KEY = 'lm-demo-palette';
+  function storedPalette() { try { return localStorage.getItem(PALETTE_KEY); } catch (err) { return null; } }
+  function showPalette() {
+    var p = storedPalette();
+    if (!p) return;
+    document.documentElement.setAttribute('data-palette', p);
+    document.querySelectorAll('[data-change="palette"]').forEach(function (o) {
+      if (o.type === 'radio') o.checked = o.value === p; else o.value = p;
+    });
+  }
+  showPalette();
+  document.addEventListener('DOMContentLoaded', showPalette);
+  document.addEventListener('htmx:afterSettle', showPalette);
+
   document.addEventListener('htmx:configRequest', function (e) {
     var d = e.detail;
+    if (d.verb !== 'get' && d.path === '/account/palette') {
+      e.preventDefault();
+      try { localStorage.setItem(PALETTE_KEY, (d.parameters && d.parameters.palette) || 'classic'); } catch (err) {}
+      return;
+    }
     if (d.verb !== 'get') { e.preventDefault(); notice(); return; }
     if (isApp(d.path)) d.path = map(d.path, true);
     Object.keys(d.parameters || {}).forEach(function (k) { delete d.parameters[k]; });
