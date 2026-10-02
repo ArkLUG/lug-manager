@@ -1,4 +1,5 @@
 #include "live/LiveRoutes.hpp"
+#include "services/SiteSettings.hpp"
 #include "live/LiveHub.hpp"
 #include "middleware/AuthMiddleware.hpp"
 
@@ -13,7 +14,8 @@ std::string host_of(const std::string& url) {
 // A browser always sends Origin on a websocket handshake. Without this check
 // any other site could open one with the visitor's cookie (cross-site
 // websocket hijacking); it would only hear change topics, but still.
-bool origin_ok(const crow::request& req, const std::string& public_url) {
+bool origin_ok(const crow::request& req) {
+    const std::string public_url = site::public_url();
     const std::string origin = req.get_header_value("Origin");
     if (origin.empty()) return true;   // not a browser
     const std::string h = host_of(origin);
@@ -23,15 +25,15 @@ bool origin_ok(const crow::request& req, const std::string& public_url) {
 
 } // namespace
 
-void register_live_routes(LugApp& app, AuthService& auth, const std::string& public_url) {
+void register_live_routes(LugApp& app, AuthService& auth) {
     live::Hub::get().clear();   // any connections belonged to a previous server
     live::Hub::get().set_session_check([&auth](const std::string& session) {
         return auth.validate_session(session).has_value();
     });
 
     CROW_WEBSOCKET_ROUTE(app, "/live")
-        .onaccept([&auth, public_url](const crow::request& req, void** userdata) {
-            if (!origin_ok(req, public_url)) return false;
+        .onaccept([&auth](const crow::request& req, void** userdata) {
+            if (!origin_ok(req)) return false;
             const std::string token = get_cookie(req, "session");
             auto session = token.empty() ? std::nullopt : auth.validate_session(token);
             if (!session) return false;

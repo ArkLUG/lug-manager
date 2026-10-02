@@ -2,7 +2,9 @@
 
 void register_all_routes(LugApp& app, Services& svc) {
     Features::bind(&svc.settings);
-    if (!svc.mailer) svc.mailer = std::make_shared<Mailer>(Mailer::from_env());
+    // The public address and SMTP server: the environment wins, else Settings.
+    site::bind(&svc.settings, svc.public_url, Mailer::from_env());
+    if (!svc.mailer) svc.mailer = std::make_shared<Mailer>(site::smtp());
     if (!svc.notifier)
         svc.notifier = std::make_shared<Notifier>(svc.attendance_repo.db(), svc.discord, svc.mailer, svc.public_url);
     if (!svc.chat) {
@@ -14,10 +16,10 @@ void register_all_routes(LugApp& app, Services& svc) {
     svc.events.set_chat(svc.chat);
     svc.meetings.set_chat(svc.chat);
     svc.notifier->set_chat(svc.chat);
-    register_auth_routes(app, svc.auth, svc.oauth, svc.public_url);
+    register_auth_routes(app, svc.auth, svc.oauth);
     register_email_auth_routes(app, svc.auth, svc.attendance_repo.db(), svc.notifier, svc.audit);
     register_chapter_routes(app, svc.chapters, svc.chapter_members, svc.members, svc.discord, svc.audit);
-    register_member_routes(app, svc.members, svc.attendance_repo, svc.audit, svc.notifier, svc.public_url);
+    register_member_routes(app, svc.members, svc.attendance_repo, svc.audit, svc.notifier);
     register_meeting_routes(app, svc.meetings, svc.attendance, svc.chapter_members, svc.chapters, svc.discord, svc.audit);
     register_event_routes(app, svc.events, svc.attendance, svc.chapter_members, svc.discord, svc.members, svc.meetings, svc.chapters, svc.audit);
     if (!svc.rsvps) svc.rsvps = std::make_shared<RsvpRepository>(svc.attendance_repo.db());
@@ -30,7 +32,7 @@ void register_all_routes(LugApp& app, Services& svc) {
     register_session_routes(app, svc.auth, svc.audit);
     register_pwa_routes(app);
     register_health_routes(app, svc.attendance_repo.db());
-    register_live_routes(app, svc.auth, svc.public_url);
+    register_live_routes(app, svc.auth);
     register_static_routes(app);
     if (!svc.series) svc.series = std::make_shared<SeriesService>(svc.attendance_repo.db(), svc.meetings);
     register_report_routes(app, svc.attendance_repo.db(), svc.events, svc.event_day_repo,
@@ -49,10 +51,11 @@ void register_all_routes(LugApp& app, Services& svc) {
     register_fan_colab_routes(app, svc.attendance_repo.db(), svc.settings, svc.photos, svc.audit);
     register_discord_time_repair_routes(app, svc.attendance_repo.db(), svc.discord, svc.audit);
     register_chat_settings_routes(app, svc.attendance_repo.db(), svc.chat, svc.notifier, svc.audit);
-    register_account_security_routes(app, svc.attendance_repo.db(), svc.settings, svc.auth, svc.notifier, svc.audit, svc.public_url);
+    register_account_security_routes(app, svc.attendance_repo.db(), svc.settings, svc.auth, svc.notifier, svc.audit);
     register_feature_routes(app, svc.settings, svc.audit);
     register_reminder_settings_routes(app, svc.settings, svc.audit);
-    register_setup_routes(app, svc.attendance_repo.db(), svc.settings, svc.discord, svc.calendar, svc.audit, svc.public_url);
+    register_site_settings_routes(app, svc.settings, svc.mailer, svc.audit);
+    register_setup_routes(app, svc.attendance_repo.db(), svc.settings, svc.discord, svc.calendar, svc.audit);
     register_series_routes(app, svc.series, svc.chapters, svc.chapter_members, svc.audit);
     if (!svc.backups) svc.backups = std::make_shared<BackupService>(svc.attendance_repo.db(), svc.data_dir);
     register_backup_routes(app, svc.backups, svc.settings, svc.audit);

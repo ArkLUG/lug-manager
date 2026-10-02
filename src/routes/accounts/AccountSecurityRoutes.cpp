@@ -1,4 +1,5 @@
 #include "routes/accounts/AccountSecurityRoutes.hpp"
+#include "services/SiteSettings.hpp"
 #include "utils/web/FormBody.hpp"
 #include "auth/AccountSecurity.hpp"
 #include "utils/web/AssetVersion.hpp"
@@ -8,8 +9,8 @@ namespace {
 
 using Form = FormBody;
 
-std::string base_url(const std::string& public_url, const crow::request& req) {
-    if (!public_url.empty()) return public_url;
+std::string base_url(const crow::request& req) {
+    if (std::string u = site::public_url(); !u.empty()) return u;
     std::string proto = req.get_header_value("X-Forwarded-Proto");
     std::string host = req.get_header_value("X-Forwarded-Host");
     if (host.empty()) host = req.get_header_value("Host");
@@ -74,7 +75,8 @@ crow::response reply(const crow::request& req, LugApp& app, const std::string& h
 
 } // namespace
 
-bool request_email_confirmation(SqliteDatabase& db, Notifier* notifier, const std::string& public_url, int64_t member_id) {
+bool request_email_confirmation(SqliteDatabase& db, Notifier* notifier, int64_t member_id) {
+    const std::string public_url = site::public_url();
     AccountSecurity sec(db);
     auto a = sec.by_id(member_id);
     if (!a || a->email.empty()) return false;
@@ -90,7 +92,7 @@ bool request_email_confirmation(SqliteDatabase& db, Notifier* notifier, const st
 }
 
 void register_account_security_routes(LugApp& app, SqliteDatabase& db, SettingsRepository& settings, AuthService& auth,
-                                      std::shared_ptr<Notifier> notifier, AuditService& audit, const std::string& public_url) {
+                                      std::shared_ptr<Notifier> notifier, AuditService& audit) {
 
     // GET /account/security - password and two-factor (also where members are
     // sent when two-factor is required and they haven't set it up yet)
@@ -142,12 +144,12 @@ void register_account_security_routes(LugApp& app, SqliteDatabase& db, SettingsR
         return res;
     });
     // POST /account/confirm-email - send the link again
-    CROW_ROUTE(app, "/account/confirm-email").methods("POST"_method)([&app, &db, &settings, notifier, public_url](const crow::request& req) {
+    CROW_ROUTE(app, "/account/confirm-email").methods("POST"_method)([&app, &db, &settings, notifier](const crow::request& req) {
         crow::response res;
         if (!require_auth(req, res, app)) return res;
         auto& me = app.get_context<AuthMiddleware>(req).auth;
         View v;
-        if (request_email_confirmation(db, notifier.get(), public_url, me.member_id)) v.flash = "Sent. Check your inbox (and spam folder).";
+        if (request_email_confirmation(db, notifier.get(), me.member_id)) v.flash = "Sent. Check your inbox (and spam folder).";
         else if (!AccountSecurity(db).email_confirmed(me.member_id)) v.error = "Couldn't send another link just now; try again in an hour.";
         return reply(req, app, render(db, settings, me.member_id, v));
     });
@@ -250,7 +252,7 @@ void register_account_security_routes(LugApp& app, SqliteDatabase& db, SettingsR
     // ── Admin ──
 
     // GET/POST /settings/sign-in - which sign-in methods, and who must use 2FA
-    auto sign_in_page = [&db, &settings, public_url](const std::string& flash) {
+    auto sign_in_page = [&db, &settings](const std::string& flash) {
         crow::mustache::context ctx;
         ctx["password_on"] = settings.get("auth_password_enabled", "1") != "0";
         ctx["links_on"] = settings.get("auth_email_links", "1") != "0";
@@ -269,7 +271,7 @@ void register_account_security_routes(LugApp& app, SqliteDatabase& db, SettingsR
                            "GROUP BY lower(email) HAVING COUNT(*) > 1)");
         ctx["shared_emails"] = shared;
         ctx["has_shared"] = shared > 0;
-        ctx["no_public_url"] = public_url.empty();
+        ctx["no_public_url"] = site::public_url().empty();
         if (!flash.empty()) ctx["flash"] = flash;
         return crow::mustache::load("settings/_sign_in.html").render(ctx).dump();
     };
@@ -298,7 +300,7 @@ void register_account_security_routes(LugApp& app, SqliteDatabase& db, SettingsR
 
     // POST /members/<id>/password-link[?email=1] - a one-time "set your password" link (24 h)
     CROW_ROUTE(app, "/members/<int>/password-link").methods("POST"_method)(
-        [&app, &db, notifier, &audit, public_url](const crow::request& req, int id) {
+        [&app, &db, notifier, &audit](const crow::request& req, int id) {
         crow::response res;
         if (!require_auth(req, res, app, "admin")) return res;
         res.add_header("Content-Type", "text/html; charset=utf-8");
@@ -311,7 +313,7 @@ void register_account_security_routes(LugApp& app, SqliteDatabase& db, SettingsR
             return res;
         }
         auto& me = app.get_context<AuthMiddleware>(req).auth;
-        std::string link = base_url(public_url, req) + "/auth/reset/" + sec.create_reset_token(id, me.member_id, 24);
+        std::string link = base_url(req) + "/auth/reset/" + sec.create_reset_token(id, me.member_id, 24);
         bool send = req.url_params.get("email") && notifier && notifier->mailer() && notifier->mailer()->enabled();
         if (send)
             notifier->send_email_template(a->id, a->email, a->display_name, "email.password_link", {{"link", link}, {"email", a->email}});

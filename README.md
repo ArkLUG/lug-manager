@@ -80,7 +80,7 @@ Then:
    - your Discord server and announcements channel
    - which Discord roles are admins
    - optionally, your LEGO Fan CoLab recognition and Community Ambassador
-3. **Put it behind HTTPS** with a reverse proxy, and set `LUG_PUBLIC_URL`. Cookies are marked secure when that URL is `https://`.
+3. **Put it behind HTTPS** with a reverse proxy, and set the public address (Settings > Email & address, or `LUG_PUBLIC_URL`). Cookies are marked secure when it's `https://`.
 
 Data lives in the `/app/data` volume: the database, uploads and backups.
 
@@ -95,17 +95,18 @@ Data lives in the `/app/data` volume: the database, uploads and backups.
 
 ## Configuration
 
-Secrets and start-up options are environment variables, read from the environment or from `.env`. Real environment variables always take precedence over `.env`. Everything else is configured in the app under **Settings**.
+Everything that isn't a secret or needed before the server starts is set in the app under **Settings**. The public address, the email server and the Discord interactions key can also come from environment variables: then the environment wins, and Settings shows that field as set on the server. Environment variables are read from the environment or from `.env`; real environment variables always take precedence over `.env`.
 
 | Variable | Needed | What it's for |
 |---|---|---|
 | `DISCORD_CLIENT_ID`, `DISCORD_CLIENT_SECRET` | With Discord | Discord sign-in (OAuth2 app) |
-| `DISCORD_REDIRECT_URI` | With Discord | `https://your-host/auth/callback` |
+| `DISCORD_REDIRECT_URI` | Optional | Defaults to the public address + `/auth/callback` |
 | `DISCORD_BOT_TOKEN` | With Discord | Bot for announcements, roles, DMs and member sync |
-| `LUG_PUBLIC_URL` | Recommended | e.g. `https://lug.example.org`. Used for links in emails and redirects. Emailed sign-in and password-reset links are only sent when it is set. |
+| `LUG_PUBLIC_URL` | Optional | The public address, e.g. `https://lug.example.org`; or set it in Settings > Email & address. Emailed links (sign-in, password reset, email confirmation) are only sent once there is one. |
 | `BOOTSTRAP_ADMIN_DISCORD_ID` | Optional | Makes this Discord account admin on first sign-in. The `/setup` link works too. |
-| `DISCORD_PUBLIC_KEY`, `DISCORD_APPLICATION_ID` | Optional | Lets duplicate-member matches be resolved from Discord buttons |
-| `LUG_SMTP_URL`, `LUG_SMTP_USER`, `LUG_SMTP_PASSWORD`, `LUG_SMTP_FROM` | Optional | Email sign-in and email notifications for members without Discord |
+| `DISCORD_PUBLIC_KEY` | Optional | Lets duplicate-member matches be resolved from Discord buttons; or set it in Settings > Discord matches |
+| `LUG_SMTP_PASSWORD` | With email | The email server's password (a secret, so environment only) |
+| `LUG_SMTP_URL`, `LUG_SMTP_USER`, `LUG_SMTP_FROM` | Optional | The email server; or set it in Settings > Email & address |
 | `LUG_PORT`, `LUG_DB_PATH`, `LUG_TEMPLATES_DIR` | Optional | Defaults `8080`, `./lug.db`, `./src/templates`. The Docker image sets these. |
 | `ICAL_TIMEZONE`, `ICAL_CALENDAR_NAME`, `DISCORD_GUILD_ID` | Optional | Starting values; change them later in Settings |
 | `LUG_OFFLINE` | Never in production | `1` blocks every outbound request (Discord, Google, email). Use it for testing and copies of real data. |
@@ -116,7 +117,7 @@ Secrets and start-up options are environment variables, read from the environmen
 Switch **Discord** off under Settings > Features (or untick it in the setup checklist). Then:
 - Create the first admin from the `/setup` link with an email address and a password.
 - Add members with their email addresses, and send each one a set-password link from their member page (Settings > Sign-in has the options, including required two-factor).
-- Notifications go by email if `LUG_SMTP_*` is set.
+- Notifications go by email once an email server is set up (Settings > Email & address).
 
 ### Discord
 
@@ -148,7 +149,7 @@ Private meetings and events still appear on the calendar, but only as "Private L
 
 ### Email (optional)
 
-Set the four `LUG_SMTP_*` variables and `LUG_PUBLIC_URL`. Then:
+Set the email server and the public address under **Settings > Email & address** (or with the `LUG_SMTP_*` and `LUG_PUBLIC_URL` variables), and the server's password with `LUG_SMTP_PASSWORD`. "Send me a test email" there checks it works. Then:
 - **Email me a link** and **Forgot it?** work on the sign-in page (single use, short-lived, rate limited);
 - members who can't get a Discord DM (no Discord, DMs off, or Discord switched off) get reminders, waitlist notices, digests and dues reminders by email.
 

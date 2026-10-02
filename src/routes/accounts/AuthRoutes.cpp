@@ -1,4 +1,5 @@
 #include "routes/accounts/AuthRoutes.hpp"
+#include "services/SiteSettings.hpp"
 #include "utils/web/ClientIp.hpp"
 #include "utils/web/AssetVersion.hpp"
 #include "utils/Crypto.hpp"
@@ -12,7 +13,6 @@
 #include <iostream>
 
 // Canonical base URL from LUG_PUBLIC_URL; empty = derive from headers.
-static std::string g_public_url;
 // Set by register_email_auth_routes when email sign-in is available.
 static bool g_email_login = false;
 // Set by register_email_auth_routes: the DB (accounts, 2FA, settings) and audit log.
@@ -33,7 +33,7 @@ static bool email_links_on()    { return g_email_login && auth_setting("auth_ema
 // X-Forwarded-* headers are client-controllable unless the reverse proxy
 // overwrites them, so they're only a fallback for unconfigured installs.
 static std::string build_url(const crow::request& req, const std::string& path) {
-    if (!g_public_url.empty()) return g_public_url + path;
+    if (std::string base = site::public_url(); !base.empty()) return base + path;
     std::string proto = req.get_header_value("X-Forwarded-Proto");
     if (proto.empty()) proto = "http";
     std::string host = req.get_header_value("X-Forwarded-Host");
@@ -42,22 +42,24 @@ static std::string build_url(const crow::request& req, const std::string& path) 
     return proto + "://" + host + path;
 }
 
-// Links that go out by email use LUG_PUBLIC_URL only. Built from the request's
+// Links that go out by email use the configured public address only
+// (Settings > Email & address, or LUG_PUBLIC_URL). Built from the request's
 // Host header, anyone could ask for a reset link to someone else's account
 // with their own host in it ("reset poisoning") and collect the token when
-// the owner clicks. Without LUG_PUBLIC_URL these emails aren't sent.
+// the owner clicks. Without it these emails aren't sent.
 static std::string emailed_url(const std::string& path) {
-    if (g_public_url.empty()) {
-        std::cerr << "[auth] LUG_PUBLIC_URL isn't set: sign-in and password-reset emails are off\n";
+    std::string base = site::public_url();
+    if (base.empty()) {
+        std::cerr << "[auth] No public address set (Settings > Email & address): sign-in and password-reset emails are off\n";
         return "";
     }
-    return g_public_url + path;
+    return base + path;
 }
 
 // "; Secure" when the client reached us over HTTPS (directly or via the
 // reverse proxy), so session/state cookies never travel over plain HTTP.
 static std::string secure_attr(const crow::request& req) {
-    bool https = g_public_url.rfind("https://", 0) == 0 ||
+    bool https = site::public_url().rfind("https://", 0) == 0 ||
                  req.get_header_value("X-Forwarded-Proto") == "https";
     return https ? "; Secure" : "";
 }
@@ -132,9 +134,7 @@ static OAuthState parse_state(const std::string& state) {
     return st;
 }
 
-void register_auth_routes(LugApp& app, AuthService& auth, DiscordOAuth& oauth,
-                          const std::string& public_url) {
-    g_public_url = public_url;
+void register_auth_routes(LugApp& app, AuthService& auth, DiscordOAuth& oauth) {
 
     // GET /login - show login page
     CROW_ROUTE(app, "/login")([&](const crow::request& req) {

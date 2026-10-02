@@ -11,8 +11,7 @@
 //    features, Discord server, roles - then "Finish" hides the dashboard
 //    banner (setting setup_completed=1).
 void register_setup_routes(LugApp& app, SqliteDatabase& db, SettingsRepository& settings,
-                           DiscordClient& discord, CalendarGenerator& calendar, AuditService& audit,
-                           const std::string& public_url);
+                           DiscordClient& discord, CalendarGenerator& calendar, AuditService& audit);
 
 // The token, or "" once an admin exists. For the start-up log line and tests.
 std::string setup_token();

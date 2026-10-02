@@ -286,7 +286,8 @@ int main(int argc, char** argv) {
         if (offline_mode())
             std::cout << "[offline] LUG_OFFLINE=1: Discord, Google Calendar and email are disabled\n";
         std::cout << "[email] " << (svc.notifier->email_enabled() ? "enabled" :
-                     svc.mailer->enabled() ? "SMTP set but LUG_PUBLIC_URL missing - email off" : "off (LUG_SMTP_* not set)") << "\n";
+                     svc.mailer->enabled() ? "SMTP set but no public address - email off (Settings > Email & address)"
+                                           : "off (no SMTP server - Settings > Email & address)") << "\n";
         BackupService  backup_service(db, data_dir);
         SeriesService  series_service(db, meeting_service);
         LoanReminders  loan_reminders(db, svc.notifier);

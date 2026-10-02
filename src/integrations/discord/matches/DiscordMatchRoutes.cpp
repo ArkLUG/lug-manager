@@ -1,4 +1,5 @@
 #include "integrations/discord/matches/DiscordMatchRoutes.hpp"
+#include "integrations/discord/matches/DiscordInteractionsRoutes.hpp"
 #include "integrations/discord/sync/DiscordLinkPolicy.hpp"
 #include "utils/text/HtmlEscape.hpp"
 #include <crow/mustache.h>
@@ -99,6 +100,8 @@ void register_discord_match_routes(LugApp& app,
                                         "-- Select a channel --",
                                         "No text channels found (check guild ID &amp; bot permissions)");
             mctx["matches_channel_id"]      = matches_channel;
+            mctx["public_key"]              = discord_interactions_key(settings);
+            mctx["public_key_locked"]       = discord_interactions_key_locked();
             mctx["matches_channel_options"] = matches_channel_options;
 
             // Explicit admin-chosen role-ID allowlist, never a role-name match.
@@ -244,6 +247,12 @@ void register_discord_match_routes(LugApp& app,
         for (auto* r : role_vals)
             if (r && r[0]) { if (!csv.empty()) csv += ","; csv += r; }
         settings.set("discord_matches_authorized_role_ids", csv);
+        if (!discord_interactions_key_locked()) {
+            std::string key = get_param("discord_public_key");
+            // 64 hex characters (an Ed25519 key), or empty to clear
+            if (key.empty() || (key.size() == 64 && key.find_first_not_of("0123456789abcdefABCDEF") == std::string::npos))
+                settings.set("discord_public_key", key);
+        }
 
         audit.log(req, app, "settings.update", "settings", 0, "", "Updated Discord match settings");
 

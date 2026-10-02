@@ -29,7 +29,7 @@
     <ul class="space-y-1 text-gray-700">
       <li>{{with_email}} of {{members}} members have an email address; {{with_password}} have set a password.</li>
       <li>{{with_2fa}} use two-factor; {{staff_without_2fa}} admins, moderators or chapter leads don't yet.</li>
-      {{#no_public_url}}<li class="text-amber-800">The server has no <code>LUG_PUBLIC_URL</code> set, so emailed sign-in links and "Forgot it?" emails aren't sent. Set it to this site's address (e.g. https://lug.example.org) and restart.</li>{{/no_public_url}}
+      {{#no_public_url}}<li class="text-amber-800">There's no public address set, so emailed sign-in links and "Forgot it?" emails aren't sent. Set it under <a hx-get="/settings/site" hx-target="#main-content" hx-push-url="true" hx-swap="innerHTML" class="underline cursor-pointer">Settings &gt; Email &amp; address</a>.</li>{{/no_public_url}}
       {{#has_shared}}<li class="text-amber-800">{{shared_emails}} email address(es) are on more than one member record. Those can't be used to sign in until they're fixed (Members &gt; Merge can combine duplicates).</li>{{/has_shared}}
     </ul>
   </section>

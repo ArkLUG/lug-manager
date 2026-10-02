@@ -1,4 +1,5 @@
 #include "routes/settings/SetupRoutes.hpp"
+#include "services/SiteSettings.hpp"
 #include "utils/LocalTime.hpp"
 #include "services/Features.hpp"
 #include "services/FanCoLab.hpp"
@@ -133,8 +134,8 @@ std::string ensure_setup_token(SqliteDatabase& db) {
 }
 
 void register_setup_routes(LugApp& app, SqliteDatabase& db, SettingsRepository& settings,
-                           DiscordClient& discord, CalendarGenerator& calendar, AuditService& audit,
-                           const std::string& public_url) {
+                           DiscordClient& discord, CalendarGenerator& calendar, AuditService& audit) {
+    const std::string public_url = site::public_url();
     if (std::string t = ensure_setup_token(db); !t.empty())
         std::cout << "[setup] No admin yet. Create the first one at "
                   << (public_url.empty() ? "http://<this-server>" : public_url)

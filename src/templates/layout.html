@@ -488,6 +488,16 @@
                     {{^active_reminders}}nav-inactive{{/active_reminders}}">
             Reminders
           </a>
+          <a hx-get="/settings/site"
+             hx-target="#main-content"
+             hx-push-url="true"
+             hx-swap="innerHTML"
+             hx-indicator="#nav-spinner"
+             class="block px-3 py-2 rounded-lg text-sm cursor-pointer transition-colors
+                    {{#active_site}}nav-active{{/active_site}}
+                    {{^active_site}}nav-inactive{{/active_site}}">
+            Email &amp; address
+          </a>
           <a hx-get="/settings/sign-in"
              hx-target="#main-content"
              hx-push-url="true"

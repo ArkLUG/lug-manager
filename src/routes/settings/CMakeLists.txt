@@ -15,5 +15,7 @@ target_sources(lug_core PRIVATE
   SettingsRoutes.cpp
   SettingsRoutes.hpp
   SetupRoutes.cpp
+  SiteSettingsRoutes.cpp
+  SiteSettingsRoutes.hpp
   SetupRoutes.hpp
 )

@@ -2,6 +2,7 @@
 #include "db/SqliteDatabase.hpp"
 #include "integrations/discord/DiscordClient.hpp"
 #include "integrations/email/Mailer.hpp"
+#include "services/SiteSettings.hpp"
 #include "repositories/members/NotificationPrefs.hpp"
 #include "auth/SessionStore.hpp"
 #include "chat/ChatHub.hpp"
@@ -16,7 +17,7 @@ public:
     Notifier(SqliteDatabase& db, DiscordClient& discord, std::shared_ptr<Mailer> mailer, std::string public_url)
         : db_(db), discord_(discord), mailer_(std::move(mailer)), public_url_(std::move(public_url)) {}
 
-    bool email_enabled() const { return mailer_ && mailer_->enabled() && !public_url_.empty(); }
+    bool email_enabled() const { return mailer_ && mailer_->enabled() && !url().empty(); }
 
     void set_chat(std::shared_ptr<chat::ChatHub> hub) { chat_owner_ = hub; chat_ = hub.get(); }
     chat::ChatHub* chat() const { return chat_; }
@@ -62,7 +63,8 @@ public:
     void send_email(int64_t member_id, const std::string& email, const std::string& name, const std::string& kind,
                     const std::string& subject, const std::string& text) {
         if (!mailer_ || !mailer_->enabled()) return;
-        std::string unsub = public_url_.empty() ? "" : public_url_ + "/unsubscribe/" + email_token(db_, member_id) +
+        const std::string base = url();
+        std::string unsub = base.empty() ? "" : base + "/unsubscribe/" + email_token(db_, member_id) +
                                                          (kind.empty() ? "" : "?kind=" + kind);
         std::string body = "Hi " + name + ",\n\n" + strip_markdown(text) + "\n";
         if (!unsub.empty())
@@ -101,7 +103,8 @@ private:
     SqliteDatabase& db_;
     DiscordClient& discord_;
     std::shared_ptr<Mailer> mailer_;
-    std::string public_url_;
+    std::string public_url_;   // given (tests); else the site's (Settings > Email & address)
+    std::string url() const { return public_url_.empty() ? site::public_url() : public_url_; }
     std::shared_ptr<chat::ChatHub> chat_owner_;
     chat::ChatHub* chat_ = nullptr;
 };

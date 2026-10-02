@@ -1,0 +1,46 @@
+<div class="max-w-2xl space-y-4" data-page-title="Email & address">
+  <div>
+    <h2 class="text-xl font-semibold text-gray-800">Email &amp; address</h2>
+    <p class="text-sm text-gray-500">This site's public address, and the email server LUG Manager sends through. A setting marked <em>set on the server</em> comes from an environment variable and can only be changed there.</p>
+  </div>
+  {{#flash}}<div role="status" class="bg-green-50 text-green-800 rounded-lg px-4 py-2 text-sm">{{flash}}</div>{{/flash}}
+  {{#error}}<div role="alert" class="bg-red-50 text-red-700 rounded-lg px-4 py-2 text-sm">{{error}}</div>{{/error}}
+  {{#no_address}}<div class="bg-amber-50 border border-amber-200 text-amber-800 rounded-lg px-4 py-2 text-sm">Without a public address, emailed sign-in links, password resets and email confirmations aren't sent, and messages can't link back here.</div>{{/no_address}}
+  <form hx-post="/settings/site" hx-target="#main-content" hx-swap="innerHTML" class="bg-white rounded-xl border border-gray-200 p-6 space-y-4 text-sm">
+    <label class="block">
+      <span class="font-medium text-gray-800">Public address</span>
+      <input type="url" name="public_url" value="{{public_url}}" placeholder="https://lug.example.org" {{#public_url_locked}}disabled{{/public_url_locked}}
+             class="mt-1 w-full border border-gray-300 rounded-lg px-3 py-2 disabled:bg-gray-50 disabled:text-gray-500">
+      <span class="block text-xs text-gray-500 mt-1">{{#public_url_locked}}Set on the server (LUG_PUBLIC_URL). {{/public_url_locked}}The address people use to reach LUG Manager, without a path. Emailed links always use this, never the address a request came in on.</span>
+    </label>
+    <fieldset class="space-y-3 border-t border-gray-100 pt-4">
+      <legend class="font-medium text-gray-800">Email server (SMTP)</legend>
+      <label class="block">
+        <span class="text-gray-700">Server</span>
+        <input type="text" name="smtp_url" value="{{smtp_url}}" placeholder="smtps://smtp.example.com:465" {{#smtp_url_locked}}disabled{{/smtp_url_locked}}
+               class="mt-1 w-full border border-gray-300 rounded-lg px-3 py-2 disabled:bg-gray-50 disabled:text-gray-500">
+        <span class="block text-xs text-gray-500 mt-1">{{#smtp_url_locked}}Set on the server (LUG_SMTP_URL). {{/smtp_url_locked}}smtps://…:465, or smtp://…:587 (encryption is always required).</span>
+      </label>
+      <label class="block">
+        <span class="text-gray-700">User name</span>
+        <input type="text" name="smtp_user" value="{{smtp_user}}" autocomplete="off" {{#smtp_user_locked}}disabled{{/smtp_user_locked}}
+               class="mt-1 w-full border border-gray-300 rounded-lg px-3 py-2 disabled:bg-gray-50 disabled:text-gray-500">
+        {{#smtp_user_locked}}<span class="block text-xs text-gray-500 mt-1">Set on the server (LUG_SMTP_USER).</span>{{/smtp_user_locked}}
+      </label>
+      <label class="block">
+        <span class="text-gray-700">From</span>
+        <input type="text" name="smtp_from" value="{{smtp_from}}" placeholder="Brickton LUG &lt;lug@example.org&gt;" {{#smtp_from_locked}}disabled{{/smtp_from_locked}}
+               class="mt-1 w-full border border-gray-300 rounded-lg px-3 py-2 disabled:bg-gray-50 disabled:text-gray-500">
+        {{#smtp_from_locked}}<span class="block text-xs text-gray-500 mt-1">Set on the server (LUG_SMTP_FROM).</span>{{/smtp_from_locked}}
+      </label>
+      <p class="text-xs text-gray-500">Password: {{#has_password}}set on the server.{{/has_password}}{{^has_password}}not set. It's a secret, so it lives only on the server: set LUG_SMTP_PASSWORD and restart.{{/has_password}}</p>
+    </fieldset>
+    <div class="flex items-center gap-3 pt-2">
+      <button class="px-4 py-2 bg-gray-800 text-white rounded-lg font-medium hover:bg-gray-700">Save</button>
+      {{#email_ready}}<span class="text-green-700">Email is on.</span>{{/email_ready}}
+    </div>
+  </form>
+  <form hx-post="/settings/site/test" hx-target="#main-content" hx-swap="innerHTML" class="text-sm">
+    <button class="px-3 py-1.5 border border-gray-300 rounded-lg hover:bg-gray-50">Send me a test email</button>
+  </form>
+</div>

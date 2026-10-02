@@ -1,4 +1,5 @@
 #include "integration_test_base.hpp"
+#include "services/SiteSettings.hpp"
 #include "services/Features.hpp"
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -284,4 +285,39 @@ TEST_F(IntegrationTest, ReminderSettingsPage) {
     EXPECT_EQ(settings_repo->get("discord_reminder_hours"), "24");
     EXPECT_EQ(settings_repo->get("dues_reminder_days"), "90");
     Features::set("discord", true);
+}
+
+// Settings > Email & address: the public address and SMTP server are set in
+// the app; environment variables win and lock the field.
+TEST_F(IntegrationTest, SiteAddressAndEmailSettings) {
+    EXPECT_EQ(GET("/settings/site", member_token).code, 403);
+    // The fixture's environment sets the address: locked
+    auto locked = GET("/settings/site", admin_token);
+    expect_contains(locked, "Set on the server (LUG_PUBLIC_URL)");
+    expect_contains(locked, "lug.test");
+
+    site::bind(settings_repo.get(), "", {});                  // nothing from the environment
+    EXPECT_EQ(site::public_url(), "");
+    EXPECT_EQ(POST("/settings/site", "public_url=javascript%3Aalert(1)", admin_token).code, 400);
+    EXPECT_EQ(POST("/settings/site", "public_url=https%3A%2F%2Fevil.example%2Fpath", admin_token).code, 400);
+    EXPECT_EQ(POST("/settings/site", "public_url=https%3A%2F%2Flug.example.org%2F&smtp_url=ftp%3A%2F%2Fx", admin_token).code, 400);
+    auto ok = POST("/settings/site", "public_url=https%3A%2F%2Flug.example.org%2F&smtp_url=smtps%3A%2F%2Fsmtp.example.org%3A465"
+                                     "&smtp_user=lug&smtp_from=Brickton+LUG+%3Clug%40example.org%3E", admin_token);
+    EXPECT_EQ(ok.code, 200);
+    expect_contains(ok, "Saved.");
+    EXPECT_EQ(site::public_url(), "https://lug.example.org");   // trailing slash dropped
+    EXPECT_EQ(site::smtp().url, "smtps://smtp.example.org:465");
+    EXPECT_EQ(site::smtp().from, "Brickton LUG <lug@example.org>");
+    EXPECT_EQ(site::smtp().password, "");                       // environment only
+
+    // Emailed links now use it
+    Member m = *member_repo->find_by_id(regular_member_id);
+    m.email = "reg@example.org";
+    member_repo->update(m);
+    mailer->clear_outbox();
+    POST("/auth/forgot", "email=reg%40example.org");
+    ASSERT_EQ(mailer->outbox().size(), 1u);
+    EXPECT_NE(mailer->outbox()[0].body.find("https://lug.example.org/auth/reset/"), std::string::npos);
+
+    site::bind(settings_repo.get(), "http://lug.test", {});    // back to the fixture's
 }

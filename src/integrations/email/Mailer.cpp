@@ -60,6 +60,13 @@ Mailer::Mailer(Config cfg) : cfg_(std::move(cfg)) {
     if (enabled()) worker_ = std::make_unique<ThreadPool>(1);
 }
 
+void Mailer::reconfigure(Config cfg) {
+    std::lock_guard<std::mutex> l(cfg_mu_);
+    if (capture_) return;
+    cfg_ = std::move(cfg);
+    if (!cfg_.url.empty() && !cfg_.from.empty() && !worker_) worker_ = std::make_unique<ThreadPool>(1);
+}
+
 std::shared_ptr<Mailer> Mailer::capture() {
     auto m = std::make_shared<Mailer>(Config{});
     m->capture_ = true;
@@ -75,7 +82,7 @@ std::string Mailer::address_of(const std::string& from) {
 std::string Mailer::build(const Message& m, const std::string& date, const std::string& message_id) const {
     std::string h;
     h += "Date: " + date + "\r\n";
-    h += "From: " + one_line(cfg_.from) + "\r\n";
+    h += "From: " + one_line(config().from) + "\r\n";
     h += "To: " + one_line(m.to) + "\r\n";
     h += "Subject: " + encode_header(one_line(m.subject)) + "\r\n";
     h += "Message-ID: " + message_id + "\r\n";
@@ -103,7 +110,10 @@ void Mailer::send(Message m) {
         outbox_.push_back(std::move(m));
         return;
     }
-    worker_->enqueue([this, m = std::move(m)] {
+    ThreadPool* worker = nullptr;
+    { std::lock_guard<std::mutex> l(cfg_mu_); worker = worker_.get(); }
+    if (!worker) return;
+    worker->enqueue([this, m = std::move(m)] {
         try { send_now(m); } catch (const std::exception& e) { std::cerr << "[mailer] " << e.what() << "\n"; }
     });
 }
@@ -124,7 +134,8 @@ bool Mailer::send_now(const Message& m) {
     std::tm tm{};
     gmtime_r(&now, &tm);
     std::strftime(date, sizeof(date), "%a, %d %b %Y %H:%M:%S +0000", &tm);
-    std::string from_addr = address_of(cfg_.from);
+    const Config cfg = config();
+    std::string from_addr = address_of(cfg.from);
     std::string domain = from_addr.substr(from_addr.find('@') == std::string::npos ? 0 : from_addr.find('@') + 1);
     std::string payload = build(m, date, "<" + SessionStore::generate_token().substr(0, 24) + "@" + domain + ">");
 
@@ -132,10 +143,10 @@ bool Mailer::send_now(const Message& m) {
     if (!curl) return false;
     Upload up{&payload};
     struct curl_slist* rcpt = curl_slist_append(nullptr, ("<" + address_of(m.to) + ">").c_str());
-    curl_easy_setopt(curl, CURLOPT_URL, cfg_.url.c_str());
-    if (!cfg_.user.empty()) {
-        curl_easy_setopt(curl, CURLOPT_USERNAME, cfg_.user.c_str());
-        curl_easy_setopt(curl, CURLOPT_PASSWORD, cfg_.password.c_str());
+    curl_easy_setopt(curl, CURLOPT_URL, cfg.url.c_str());
+    if (!cfg.user.empty()) {
+        curl_easy_setopt(curl, CURLOPT_USERNAME, cfg.user.c_str());
+        curl_easy_setopt(curl, CURLOPT_PASSWORD, cfg.password.c_str());
     }
     curl_easy_setopt(curl, CURLOPT_USE_SSL, static_cast<long>(CURLUSESSL_ALL));
     curl_easy_setopt(curl, CURLOPT_MAIL_FROM, ("<" + from_addr + ">").c_str());

@@ -83,6 +83,17 @@ int64_t extract_id(const std::string& custom_id, const std::string& prefix) {
 
 } // namespace
 
+namespace {
+const std::string& env_key() {
+    static const std::string k = [] { const char* v = std::getenv("DISCORD_PUBLIC_KEY"); return std::string(v ? v : ""); }();
+    return k;
+}
+}
+bool discord_interactions_key_locked() { return !env_key().empty(); }
+std::string discord_interactions_key(SettingsRepository& settings) {
+    return !env_key().empty() ? env_key() : settings.get("discord_public_key", "");
+}
+
 void register_discord_interactions_routes(LugApp& app,
                                            const std::string& discord_public_key,
                                            PendingDiscordMatchRepository& pending_matches,
@@ -110,7 +121,8 @@ void register_discord_interactions_routes(LugApp& app,
         // 3. Verify before anything else touches the body. Fails closed on any
         //    malformed input; never throws.
         if (signature.empty() || timestamp.empty() ||
-            !verify_discord_signature(discord_public_key, signature, timestamp, raw_body)) {
+            !verify_discord_signature(discord_public_key.empty() ? discord_interactions_key(settings) : discord_public_key,
+                                      signature, timestamp, raw_body)) {
             return unauthorized();
         }
 

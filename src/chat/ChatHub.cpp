@@ -224,7 +224,7 @@ Values ChatHub::event_values(const LugEvent& e, const Provider& p) const {
     v["description"] = p.inert(e.description);
     v["non_lug"] = e.scope == "non_lug" ? "[Non-LUG] " : "";
     v["fee"] = p.inert(e.entrance_fee);
-    v["link"] = public_url_.empty() || e.id <= 0 ? "" : public_url_ + "/events/" + std::to_string(e.id);
+    v["link"] = public_url().empty() || e.id <= 0 ? "" : public_url() + "/events/" + std::to_string(e.id);
     v["signup_deadline"] = e.signup_deadline.empty() ? "" : fmt::md(e.signup_deadline);
     v["capacity"] = e.max_attendees > 0 ? std::to_string(e.max_attendees) : "";
     std::string lead = lead_account(p, e);
@@ -243,7 +243,7 @@ Values ChatHub::meeting_values(const Meeting& m, const Provider& p) const {
     v["when_relative"] = when_text(p, m.start_time, 'R', "");
     v["location"] = p.inert(m.location);
     v["description"] = p.inert(m.description);
-    v["link"] = public_url_.empty() || m.id <= 0 ? "" : public_url_ + "/meetings/" + std::to_string(m.id);
+    v["link"] = public_url().empty() || m.id <= 0 ? "" : public_url() + "/meetings/" + std::to_string(m.id);
     if (m.chapter_id > 0) {
         auto st = db_.prepare("SELECT name FROM chapters WHERE id=?");
         st.bind(1, m.chapter_id);

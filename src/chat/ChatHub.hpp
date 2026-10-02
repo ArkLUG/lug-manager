@@ -8,6 +8,7 @@
 // edited, deleted or refused is written to the chat activity log.
 #include "chat/Provider.hpp"
 #include "chat/Templates.hpp"
+#include "services/SiteSettings.hpp"
 #include "db/SqliteDatabase.hpp"
 #include "models/LugEvent.hpp"
 #include "models/Meeting.hpp"
@@ -100,7 +101,7 @@ public:
     void set_timezone_source(std::function<std::string()> f) { tz_source_ = std::move(f); }
     // Whether some chat service would take a DM for this member right now.
     bool can_dm(int64_t member_id) const;
-    std::string public_url() const { return public_url_; }
+    std::string public_url() const { return public_url_.empty() ? site::public_url() : public_url_; }
     std::string lug_name() const;
     std::string timezone() const;
 

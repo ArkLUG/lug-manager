@@ -25,3 +25,10 @@ void register_discord_interactions_routes(LugApp& app,
                                            MemberRepository& member_repo,
                                            SettingsRepository& settings,
                                            AuditService& audit);
+
+// The application's public key that Discord signs interactions with: the
+// DISCORD_PUBLIC_KEY environment variable if set (read once at start-up),
+// else Settings > Discord matches. Not a secret - Discord shows it openly.
+std::string discord_interactions_key(SettingsRepository& settings);
+bool discord_interactions_key_locked();
+

@@ -171,3 +171,13 @@ TEST_F(IntegrationTest, DiscordMatchesAlreadyResolvedIsTolerant) {
     EXPECT_EQ(r.code, 200);
     expect_contains(r, "Already resolved");
 }
+
+// The interactions public key can be set in the app (not a secret).
+TEST_F(IntegrationTest, InteractionsPublicKeyInSettings) {
+    std::string key(64, 'a');
+    POST("/settings/discord-matches", "discord_public_key=" + key, admin_token);
+    EXPECT_EQ(settings_repo->get("discord_public_key"), key);
+    POST("/settings/discord-matches", "discord_public_key=not-a-key", admin_token);
+    EXPECT_EQ(settings_repo->get("discord_public_key"), key);          // invalid: ignored
+    EXPECT_NE(POST("/settings/discord-matches", "discord_public_key=", member_token).code, 200);
+}

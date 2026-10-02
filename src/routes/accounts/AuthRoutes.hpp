@@ -7,10 +7,9 @@
 
 using LugApp = crow::App<AuthMiddleware, ApiKeyMiddleware>;
 
-// public_url: optional canonical base URL (e.g. "https://lug.example.com");
-// empty = derive from request headers.
-void register_auth_routes(LugApp& app, AuthService& auth, DiscordOAuth& oauth,
-                          const std::string& public_url = "");
+// Absolute URLs use the site's public address (services/SiteSettings.hpp);
+// unset = derived from the request (redirects only, never emailed links).
+void register_auth_routes(LugApp& app, AuthService& auth, DiscordOAuth& oauth);
 
 class Notifier;
 class AuditService;
