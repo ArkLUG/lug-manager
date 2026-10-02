@@ -171,7 +171,7 @@ TEST_F(ChatTest, MessageEditorPages) {
     expect_contains(list, "Event announcement");
     expect_contains(list, "Sign-in emails");
     auto ed = GET("/settings/messages/reminder.event", admin_token);
-    expect_contains(ed, "⏰ **Reminder:** {title} starts {when}[[ at {location}]]");
+    expect_contains(ed, "⏰ **Reminder:** {title} starts {when}[[ ({when_relative})]][[ at {location}]]");
     expect_contains(ed, "data-text=\"{location}\"");
     EXPECT_EQ(GET("/settings/messages/nope", admin_token).code, 404);
     // Preview

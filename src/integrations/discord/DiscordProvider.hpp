@@ -49,6 +49,12 @@ public:
         if (thread.empty() || discord_.get_guild_id().empty()) return "";
         return "https://discord.com/channels/" + discord_.get_guild_id() + "/" + thread;
     }
+    // Discord's timestamp markup: every reader sees it in their own time zone,
+    // language and clock style (and 'R' counts down: "in 2 hours").
+    std::string time(std::time_t when, char style, const std::string& plain) const override {
+        if (when <= 0) return plain;
+        return "<t:" + std::to_string(static_cast<long long>(when)) + ":" + std::string(1, style) + ">";
+    }
     std::string inert(const std::string& text) const override {
         // A zero-width space after "<" / "@" breaks <@id>, <@&id>, <#id>, @everyone and @here.
         static const std::string zw = "​";

@@ -200,7 +200,8 @@ TEST_F(DiscordPostsTest, MeetingCreateEditMoveAndDelete) {
     std::string a = nlohmann::json::parse(body_of("^POST /api/v10/channels/" + LUG_CH + "/messages$"))["content"];
     EXPECT_NE(a.find("<@&" + ANN_ROLE + ">"), std::string::npos);
     EXPECT_NE(a.find("**October meeting**"), std::string::npos);
-    EXPECT_NE(a.find("When: 10/14 7:00 PM CDT – 10/14 9:00 PM CDT"), std::string::npos);
+    // Discord timestamps: each reader sees their own time zone (7-9 PM CDT here).
+    EXPECT_NE(a.find("When: <t:4095705600:F> – <t:4095712800:t>"), std::string::npos) << a;
     EXPECT_NE(a.find("Where: Library"), std::string::npos);
     EXPECT_NE(a.find("Bring a build."), std::string::npos);
     EXPECT_FALSE(mf.discord_event_id.empty());
@@ -269,4 +270,24 @@ TEST_F(DiscordPostsTest, ChallengeWinnerAndTestMessage) {
     std::string w = nlohmann::json::parse(body_of("^POST /api/v10/channels/" + LUG_CH + "/messages$"))["content"];
     EXPECT_NE(w.find("**Space Week** winner:"), std::string::npos);
     EXPECT_NE(w.find("\"Moon Base\" (1 votes)"), std::string::npos);
+}
+
+// Times in Discord messages use Discord's timestamps (shown in each reader's
+// own time zone); reminders count down, and DMs get the same.
+TEST_F(DiscordPostsTest, TimesAreDiscordTimestamps) {
+    auto m = meeting_svc->create(new_meeting());
+    settle();
+    fake->clear();
+    ASSERT_EQ(chat_hub->remind_meeting(*meeting_svc->get(m.id)), 1);
+    std::string r = nlohmann::json::parse(body_of("^POST /api/v10/channels/" + LUG_CH + "/messages$"))["content"];
+    EXPECT_NE(r.find("<t:4095705600:F> (<t:4095705600:R>)"), std::string::npos) << r;
+
+    fake->clear();
+    ASSERT_TRUE(chat_hub->direct_message(regular_member_id, "dm.event_reminder",
+        {{"title", "Brick Fest"}, {"when", "Wed 10/14 7:00 PM CDT"}, {"when_at", "2099-10-14T19:00:00"}, {"location", "Expo"}}));
+    auto dms = sent("^POST /api/v10/channels/dm[^/]+/messages$");
+    ASSERT_FALSE(dms.empty());
+    std::string dm = nlohmann::json::parse(dms.back().body)["content"];
+    EXPECT_NE(dm.find("<t:4095705600:F> (<t:4095705600:R>)"), std::string::npos) << dm;
+    EXPECT_EQ(dm.find("CDT"), std::string::npos) << dm;
 }

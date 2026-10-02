@@ -9,6 +9,7 @@
 // page for its channels. Operations a service doesn't have (scheduled events,
 // forum threads) report caps() false and ChatHub skips them.
 #include <cstdint>
+#include <ctime>
 #include <optional>
 #include <string>
 #include <vector>
@@ -67,6 +68,15 @@ public:
     // Makes member-supplied text (titles, names, locations) unable to ping or
     // link anyone; called on every placeholder value.
     virtual std::string inert(const std::string& text) const = 0;
+    // A moment in time, for message text. Services that can show it in each
+    // reader's own time zone and language do (Discord: <t:unix:style>);
+    // the rest get `plain` (the LUG's local time, e.g. "Tue 10/14 7:00 PM CDT").
+    // style: 'F' weekday, date and time; 'f' date and time; 'D' date;
+    //        't' time; 'R' relative ("in 2 hours").
+    virtual std::string time(std::time_t when, char style, const std::string& plain) const {
+        (void)when; (void)style;
+        return plain;
+    }
 
     // ── Messages ──
     virtual Result post(const std::string& channel, const Message& m) = 0;

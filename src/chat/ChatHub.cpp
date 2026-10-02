@@ -199,6 +199,21 @@ std::vector<std::string> ChatHub::event_ping_roles(const Provider& p, const LugE
     return roles;
 }
 
+std::string ChatHub::when_text(const Provider& p, const std::string& local_iso, char style, const std::string& plain) const {
+    if (local_iso.size() < 16) return plain;
+    const std::time_t t = DiscordClient::local_to_epoch(local_iso, timezone());
+    return t > 0 ? p.time(t, style, plain) : plain;
+}
+
+std::string ChatHub::when_range(const Provider& p, const std::string& start, const std::string& end) const {
+    const std::string plain = fmt::time_range(start, end, timezone());
+    const std::string a = when_text(p, start, 'F', "");
+    if (a.empty()) return plain;                                   // no reader-local times here
+    if (end.size() < 16 || end == start) return a;
+    const std::string b = when_text(p, end, end.substr(0, 10) == start.substr(0, 10) ? 't' : 'F', "");
+    return b.empty() ? a : a + " – " + b;
+}
+
 Values ChatHub::event_values(const LugEvent& e, const Provider& p) const {
     Values v;
     v["title"] = p.inert(e.title);
@@ -215,15 +230,17 @@ Values ChatHub::event_values(const LugEvent& e, const Provider& p) const {
     std::string lead = lead_account(p, e);
     if (switch_on(p, "pings") && !lead.empty()) v["lead"] = p.user_mention(lead);
     else v["lead"] = p.inert(e.event_lead_name);
-    v["when"] = DiscordClient::friendly_time(e.start_time, timezone());
+    v["when"] = when_text(p, e.start_time, 'F', DiscordClient::friendly_time(e.start_time, timezone()));
+    v["when_relative"] = when_text(p, e.start_time, 'R', "");
     return v;
 }
 
 Values ChatHub::meeting_values(const Meeting& m, const Provider& p) const {
     Values v;
     v["title"] = p.inert(m.title);
-    v["when_range"] = fmt::time_range(m.start_time, m.end_time, timezone());
-    v["when"] = DiscordClient::friendly_time(m.start_time, timezone());
+    v["when_range"] = when_range(p, m.start_time, m.end_time);
+    v["when"] = when_text(p, m.start_time, 'F', DiscordClient::friendly_time(m.start_time, timezone()));
+    v["when_relative"] = when_text(p, m.start_time, 'R', "");
     v["location"] = p.inert(m.location);
     v["description"] = p.inert(m.description);
     v["link"] = public_url_.empty() || m.id <= 0 ? "" : public_url_ + "/meetings/" + std::to_string(m.id);
@@ -807,7 +824,15 @@ bool ChatHub::direct_message(int64_t member_id, const std::string& key, const Va
         std::string account = p->member_account(member_id);
         if (account.empty()) continue;
         if (quiet()) { log(*p, "skip", key, "member", member_id, Result{true, "", ""}); return false; }
-        Message m = message(*p, key, v);
+        // Callers give the start as "when_at" (local ISO) beside the plain
+        // "when": show it the way this service shows times.
+        Values pv = v;
+        if (auto at = v.find("when_at"); at != v.end()) {
+            auto plain = v.find("when");
+            pv["when"] = when_text(*p, at->second, 'F', plain != v.end() ? plain->second : "");
+            pv["when_relative"] = when_text(*p, at->second, 'R', "");
+        }
+        Message m = message(*p, key, pv);
         Result r = p->direct_message(account, m);
         log(*p, "dm", key, "member", member_id, r);
         if (r.ok) return true;

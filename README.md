@@ -35,7 +35,7 @@
 - A LEGO Fan CoLab page: Community Ambassador history, a yearly to-do list with a dashboard reminder, and the year's activity summary as a printable page or CSV.
 
 **Discord, calendars and the public**
-- Discord (optional): announcements, forum threads, scheduled events, reminders, role sync and DMs, all kept in step as meetings and events change. Choose what's posted (per area, and per meeting or event), a quiet mode, an activity log of everything sent with retry for failures, and nickname options. Switch Discord off entirely and messages go by email.
+- Discord (optional): announcements, forum threads, scheduled events, reminders, role sync and DMs, all kept in step as meetings and events change. Choose what's posted (per area, and per meeting or event), a quiet mode, an activity log of everything sent with retry for failures, and nickname options. Switch Discord off entirely and messages go by email. Times in Discord messages are Discord timestamps, so each member sees them in their own time zone.
 - Your own wording for every message: Discord posts, messages to members and sign-in emails, with placeholders and a live preview (Settings > Message wording).
 - Google Calendar sync, a public iCal feed, per-chapter feeds and a private personal feed.
 - A public "upcoming shows" page you can embed on your website, with an "I plan to come" button.

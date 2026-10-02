@@ -48,3 +48,13 @@ TEST(ChatTemplates, DefaultsAreComplete) {
     ASSERT_EQ(unknown.size(), 1u);
     EXPECT_EQ(unknown[0], "nope");
 }
+
+// Email (and any service without reader-local times) gets the plain LUG time;
+// the countdown part disappears.
+TEST(ChatTemplates, PlainTimesWithoutCountdown) {
+    const chat::TemplateDef* d = chat::find_template("dm.event_reminder");
+    ASSERT_NE(d, nullptr);
+    EXPECT_EQ(render(d->default_body, {{"title", "Brick Fest"}, {"when", "Sat 10/14 9:00 AM CDT"},
+                                       {"when_at", "2026-10-14T09:00:00"}, {"location", "Expo"}}),
+              "⏰ You're going to **Brick Fest** - Sat 10/14 9:00 AM CDT at Expo. See you there!");
+}

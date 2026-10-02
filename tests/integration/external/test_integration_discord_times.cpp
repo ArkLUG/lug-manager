@@ -143,9 +143,10 @@ TEST_F(DiscordTimesTest, ChecksThenFixesSilently) {
     }
     EXPECT_EQ(fake->scheduled_events["se1"]["scheduled_start_time"], discord_client->utc_iso(s1));
     EXPECT_EQ(fake->scheduled_events["se2"]["scheduled_end_time"], discord_client->utc_iso(e2));
-    std::string abbrev = DiscordClient::tz_abbrev(s2, "America/Chicago");
-    std::string good = "<@&555> \n**October meeting**\n📅 " + day + " 7:00 PM " + abbrev + " → " + day + " 9:00 PM " + abbrev + "\n📍 Library";
-    EXPECT_EQ(fake->messages[LUG_CH + "/msg2"]["content"], good);           // only the zone changed
+    // The times become Discord timestamps (each reader's own time zone); nothing else changes.
+    std::string good = "<@&555> \n**October meeting**\n📅 <t:" + std::to_string(DiscordClient::local_to_epoch(s2, "America/Chicago")) +
+                       ":F> → <t:" + std::to_string(DiscordClient::local_to_epoch(e2, "America/Chicago")) + ":t>\n📍 Library";
+    EXPECT_EQ(fake->messages[LUG_CH + "/msg2"]["content"], good);
     EXPECT_EQ(fake->messages[CH_CH + "/chmsg2"]["content"], good);
     EXPECT_EQ(fake->messages[LUG_CH + "/msg4"]["content"], "**Old meeting** 7:00 PM America");
     EXPECT_EQ(sql_text(*db, "SELECT details FROM audit_log WHERE action='discord.repair_times'"), "4 fixed, 2 ok, 1 past, 1 missing");

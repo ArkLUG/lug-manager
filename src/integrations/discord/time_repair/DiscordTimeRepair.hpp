@@ -4,7 +4,9 @@
 // LUG's local times as UTC, so:
 //   - scheduled events (Discord's Events tab) start 5-6 hours early for US
 //     Central, and Discord's "starting now" alert fires at that wrong time;
-//   - meeting announcements read "7:00 PM America" instead of "7:00 PM CDT".
+//   - meeting announcements read "7:00 PM America" instead of "7:00 PM CDT"
+//     (fixed by turning those times into Discord timestamps, which every
+//     reader sees in their own time zone - what new posts use).
 // Google Calendar was always right (it's sent the local time plus the zone
 // name), and event announcements / thread titles only carry dates.
 //
@@ -92,7 +94,7 @@ public:
             out.push_back(it);
         }
 
-        // ── Meeting announcements: "7:00 PM America" -> "7:00 PM CDT" ──
+        // ── Meeting announcements: "10/14 7:00 PM America" -> Discord timestamp ──
         size_t slash = tz.find('/');
         if (slash == std::string::npos) return out;           // e.g. "UTC": nothing was mislabelled
         const std::regex bogus("(\\d{1,2}:\\d{2} [AP]M) " + tz.substr(0, slash) + "(?![A-Za-z/_])");
@@ -124,10 +126,11 @@ public:
             }
             std::string content = j["content"].get<std::string>();
             if (!std::regex_search(content, bogus)) { it.status = "ok"; out.push_back(it); continue; }
-            std::string abbrev = DiscordClient::tz_abbrev(m.start, tz);
-            std::string fixed = std::regex_replace(content, bogus, "$1 " + abbrev);
+            std::string fixed = to_timestamps(content, tz.substr(0, slash), m.start, tz);
+            // Anything left without a date (hand-edited text): just correct the label.
+            fixed = std::regex_replace(fixed, bogus, "$1 " + DiscordClient::tz_abbrev(m.start, tz));
             it.status = "wrong";
-            it.note = "Says \"" + tz.substr(0, slash) + "\" instead of \"" + abbrev + "\".";
+            it.note = "Says \"" + tz.substr(0, slash) + "\" instead of a time zone; becomes Discord timestamps (each reader's own time).";
             if (opt.apply) {
                 auto r = parse(discord_.sync_edit_message_content(m.channel, m.message, fixed));
                 if (r.is_object() && r.value("content", std::string()) == fixed) it.status = "fixed";
@@ -136,6 +139,37 @@ public:
             }
             out.push_back(it);
         }
+        return out;
+    }
+
+    // "When: 4/2 7:00 PM America – 4/2 8:00 PM America" -> "When: <t:..:F> – <t:..:t>".
+    // The year comes from the meeting's start (next year if the month wrapped).
+    static std::string to_timestamps(const std::string& content, const std::string& bogus_label,
+                                     const std::string& start_iso, const std::string& tz) {
+        const std::regex dated("(\\d{1,2})/(\\d{1,2}) (\\d{1,2}):(\\d{2}) ([AP]M) " + bogus_label + "(?![A-Za-z/_])");
+        const int year = std::atoi(start_iso.substr(0, 4).c_str()), start_month = std::atoi(start_iso.substr(5, 2).c_str());
+        std::string out, first_date;
+        auto pos = content.cbegin();
+        for (std::sregex_iterator i(content.begin(), content.end(), dated), end; i != end; ++i) {
+            const std::smatch& mt = *i;
+            int mon = std::stoi(mt[1]), day = std::stoi(mt[2]), hour = std::stoi(mt[3]) % 12, min = std::stoi(mt[4]);
+            if (mt[5] == "PM") hour += 12;
+            int y = mon + 6 < start_month ? year + 1 : year;
+            char iso[32];
+            std::snprintf(iso, sizeof(iso), "%04d-%02d-%02dT%02d:%02d:00", y, mon, day, hour, min);
+            std::time_t t = DiscordClient::local_to_epoch(iso, tz);
+            out.append(pos, mt[0].first);
+            if (t <= 0) {
+                out += mt[0].str();
+            } else {
+                std::string date(iso, 10);
+                char style = first_date.empty() || date != first_date ? 'F' : 't';
+                if (first_date.empty()) first_date = date;
+                out += "<t:" + std::to_string(static_cast<long long>(t)) + ":" + std::string(1, style) + ">";
+            }
+            pos = mt[0].second;
+        }
+        out.append(pos, content.cend());
         return out;
     }
 

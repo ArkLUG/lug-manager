@@ -87,6 +87,10 @@ public:
     // ── Placeholder values ──
     Values event_values(const LugEvent& e, const Provider& p) const;
     Values meeting_values(const Meeting& m, const Provider& p) const;
+    // `local_iso` (the LUG's local time) as `p` shows times; `plain` if it can't.
+    std::string when_text(const Provider& p, const std::string& local_iso, char style, const std::string& plain) const;
+    // "start – end": one day -> end as a time only.
+    std::string when_range(const Provider& p, const std::string& start, const std::string& end) const;
 
     // ── Activity log ──
     void log(const Provider& p, const std::string& action, const std::string& what, const std::string& entity_type,
