@@ -153,7 +153,7 @@ void register_dues_routes(LugApp& app, MemberService& members, std::shared_ptr<D
     });
 
     // Settings > Dues
-    auto settings_page = [&settings](const std::string& flash) {
+    auto settings_page = [&settings, dues](const std::string& flash) {
         auto c = dues_config(settings);
         crow::mustache::context ctx;
         ctx["amount"] = c.amount_cents > 0 ? money(c.amount_cents).substr(1) : "";
@@ -172,6 +172,11 @@ void register_dues_routes(LugApp& app, MemberService& members, std::shared_ptr<D
         auto ex = dues::suggest(c, today_ymd(), "");
         ctx["example"] = c.amount_cents > 0 ? "Someone joining today: " + money(ex.cents) + " covering until " +
                                                   ex.covers_until + (ex.explain.empty() ? "" : " (" + ex.explain + ")") : "";
+        // Backfill: members marked paid with no payment on record
+        auto missing = dues->paid_without_payment();
+        ctx["backfill_count"] = static_cast<int>(missing.size());
+        ctx["has_backfill"] = !missing.empty();
+        ctx["today"] = today_ymd();
         if (!flash.empty()) ctx["flash"] = flash;
         return crow::mustache::load("settings/_dues.html").render(ctx).dump();
     };
@@ -194,5 +199,31 @@ void register_dues_routes(LugApp& app, MemberService& members, std::shared_ptr<D
         settings.set("dues_prorate", f.get("dues_prorate") == "1" ? "1" : "0");
         audit.log(req, app, "settings.update", "settings", 0, "Dues", "Updated dues settings");
         return html_page(req, app, settings_page("Saved."), "Dues", "active_dues_settings");
+    });
+
+    // POST /settings/dues/backfill - record one payment for each member marked
+    // paid with none on record (amount and date as entered), covering to their
+    // current paid_until, so the dues totals match who's paid. Paid-until
+    // dates don't change.
+    CROW_ROUTE(app, "/settings/dues/backfill").methods("POST"_method)(
+        [&app, &settings, &audit, dues, settings_page](const crow::request& req) {
+        crow::response res;
+        if (!require_auth(req, res, app, "admin")) return res;
+        FormBody f(req);
+        int64_t cents = parse_cents(f.get("amount"));
+        std::string paid_on = f.get("paid_on");
+        if (cents <= 0 || !is_ymd(paid_on))
+            return html_page(req, app, settings_page("Enter an amount and the date to record the payments on."),
+                             "Dues", "active_dues_settings", 400);
+        const std::string method = f.get("method", 50);
+        const int64_t by = app.get_context<AuthMiddleware>(req).auth.member_id;
+        int n = 0;
+        for (const auto& m : dues->paid_without_payment()) {
+            dues->record(m.member_id, paid_on, cents, method, m.paid_until, "Recorded afterwards (backfill)", by);
+            ++n;
+        }
+        audit.log(req, app, "member.dues_backfill", "settings", 0, "Dues",
+                  "Recorded " + money(cents) + " paid " + paid_on + " for " + std::to_string(n) + " members marked paid");
+        return html_page(req, app, settings_page("Recorded " + std::to_string(n) + " payments."), "Dues", "active_dues_settings");
     });
 }

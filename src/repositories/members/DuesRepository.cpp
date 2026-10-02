@@ -84,6 +84,15 @@ std::vector<DuesStatusRow> DuesRepository::expiring_between(const std::string& t
     return rows(stmt);
 }
 
+std::vector<DuesStatusRow> DuesRepository::paid_without_payment() {
+    auto stmt = db_.prepare(
+        "SELECT id, display_name, COALESCE(discord_user_id,''), paid_until FROM members m "
+        "WHERE is_paid=1 AND COALESCE(paid_until,'') <> '' AND NOT EXISTS ("
+        "  SELECT 1 FROM dues_payments d WHERE d.member_id = m.id AND d.covers_until >= m.paid_until) "
+        "ORDER BY display_name");
+    return rows(stmt);
+}
+
 std::vector<DuesStatusRow> DuesRepository::expire_lapsed(const std::string& today) {
     auto stmt = db_.prepare(
         "UPDATE members SET is_paid=0, updated_at=datetime('now') "

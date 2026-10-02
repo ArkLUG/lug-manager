@@ -77,3 +77,32 @@ TEST_F(IntegrationTest, DuesSettingsFillInTheRecordForm) {
     expect_contains(june, "value=\"2027-06-30\"");
     expect_contains(june, "value=\"24.00\"");
 }
+
+TEST_F(IntegrationTest, DuesBackfillForMembersMarkedPaid) {
+    // Two marked paid with no payment, one with a payment on record, one unpaid
+    member_repo->set_paid(regular_member_id, true, "2026-12-31");
+    member_repo->set_paid(chapter_lead_member_id, true, "2027-06-30");
+    member_repo->set_paid(event_manager_member_id, true, "2026-12-31");
+    POST("/members/" + std::to_string(event_manager_member_id) + "/dues",
+         "paid_on=2026-01-05&covers_until=2026-12-31&amount=20", admin_token);
+    member_repo->set_paid(admin_member_id, false, "");
+
+    auto page = GET("/settings/dues", admin_token);
+    expect_contains(page, "Record 2 payments");
+    EXPECT_NE(POST("/settings/dues/backfill", "amount=20&paid_on=2026-03-01", chapter_lead_token).code, 200);
+    EXPECT_EQ(POST("/settings/dues/backfill", "amount=&paid_on=2026-03-01", admin_token).code, 400);
+
+    auto r = POST("/settings/dues/backfill", "amount=%2420&paid_on=2026-03-01&method=cash", admin_token);
+    EXPECT_EQ(r.code, 200);
+    expect_contains(r, "Recorded 2 payments.");
+    expect_not_contains(r, "Record past payments");                     // nothing left to backfill
+    EXPECT_EQ(query_int(*db, "SELECT COUNT(*) FROM dues_payments WHERE note='Recorded afterwards (backfill)' AND amount_cents=2000 AND paid_on='2026-03-01'"), 2);
+    // Covers to each member's own paid-until, which doesn't change
+    EXPECT_EQ(query_int(*db, "SELECT COUNT(*) FROM dues_payments WHERE member_id=? AND covers_until='2027-06-30'", chapter_lead_member_id), 1);
+    EXPECT_EQ(member_repo->find_by_id(chapter_lead_member_id)->paid_until, "2027-06-30");
+    EXPECT_EQ(query_int(*db, "SELECT COUNT(*) FROM dues_payments WHERE member_id=?", event_manager_member_id), 1);
+    EXPECT_EQ(query_int(*db, "SELECT COUNT(*) FROM dues_payments WHERE member_id=?", admin_member_id), 0);
+    // Running it again does nothing
+    POST("/settings/dues/backfill", "amount=20&paid_on=2026-03-01", admin_token);
+    EXPECT_EQ(query_int(*db, "SELECT COUNT(*) FROM dues_payments"), 3);
+}

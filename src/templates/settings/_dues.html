@@ -28,4 +28,19 @@
       {{#flash}}<span class="text-green-700">{{flash}}</span>{{/flash}}
     </div>
   </form>
+
+  {{#has_backfill}}
+  <form hx-post="/settings/dues/backfill" hx-target="#main-content" hx-swap="innerHTML" id="dues-backfill"
+        hx-confirm="Record a payment for each of the {{backfill_count}} members marked paid with no payment on record?"
+        class="bg-white rounded-xl border border-gray-200 p-6 space-y-3 text-sm">
+    <h3 class="font-semibold text-gray-800">Record past payments</h3>
+    <p class="text-gray-500"><strong>{{backfill_count}}</strong> members are marked paid but have no payment on record, so their dues aren't in the Treasury or annual report totals. This records one payment for each of them, covering to their current paid-until date (which doesn't change). Each one can be deleted from the member's Dues panel afterwards.</p>
+    <div class="flex flex-wrap items-end gap-3">
+      <label class="text-gray-700">Amount each<span class="flex items-center gap-1 mt-1">$<input name="amount" value="{{amount}}" placeholder="20.00" inputmode="decimal" required class="w-24 border border-gray-300 rounded-lg px-2 py-1"></span></label>
+      <label class="text-gray-700">Paid on<input type="date" name="paid_on" value="{{today}}" required class="block mt-1 border border-gray-300 rounded-lg px-2 py-1"></label>
+      <label class="text-gray-700">Method<input name="method" maxlength="50" placeholder="optional" class="block mt-1 w-32 border border-gray-300 rounded-lg px-2 py-1"></label>
+      <button class="px-4 py-2 border border-gray-300 text-gray-800 rounded-lg font-medium hover:bg-gray-50">Record {{backfill_count}} payments</button>
+    </div>
+  </form>
+  {{/has_backfill}}
 </div>

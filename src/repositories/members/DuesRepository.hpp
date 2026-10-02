@@ -41,6 +41,9 @@ public:
     // Members due a reminder (expiring by `until`, not yet reminded for this paid_until).
     std::vector<DuesStatusRow> needing_reminder(const std::string& today, const std::string& until);
     void mark_reminded(int64_t member_id, const std::string& paid_until);
+    // Members marked paid with no recorded payment covering their paid_until
+    // (e.g. marked paid before payments were recorded) - Settings > Dues backfill.
+    std::vector<DuesStatusRow> paid_without_payment();
     SqliteDatabase& db() { return db_; }
 
 private:
