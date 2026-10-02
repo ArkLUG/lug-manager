@@ -2,6 +2,8 @@
 
 # LUG Manager
 
+*Member, meeting, and show management for LUGs and Fan CoLab groups*
+
 **Run your LEGO® User Group in one place**: members, meetings, shows, check-ins, dues, volunteers, build challenges, inventory and money, with Discord (optional) and Google Calendar built in. Self-hosted, open source, and light enough for a small home server.
 
 **Who it's for:**
