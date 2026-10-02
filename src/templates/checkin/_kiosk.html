@@ -7,6 +7,7 @@
   <link rel="stylesheet" href="/static/tailwind.min.css?v={{asset_v}}">
   <script src="/static/theme.js?v={{asset_v}}"></script>
   <script src="/static/app.js?v={{asset_v}}" defer></script>
+  <script src="/static/live.js?v={{asset_v}}" defer></script>
   <link rel="stylesheet" href="/static/theme.css?v={{asset_v}}">
   <link rel="stylesheet" href="/static/palettes.css?v={{asset_v}}">
   <link rel="manifest" href="/manifest.webmanifest">
@@ -15,7 +16,7 @@
   <script src="/static/vendor/htmx-1.9.12.min.js?v={{asset_v}}"></script>
   <script src="/static/vendor/qrcode-1.0.0.min.js?v={{asset_v}}"></script>
 </head>
-<body class="bg-gray-100 min-h-screen p-8">
+<body class="bg-gray-100 min-h-screen p-8" data-live="1">
   <div class="max-w-6xl mx-auto grid md:grid-cols-2 gap-10 items-center min-h-[85vh]">
     <div class="text-center">
       <h1 class="text-4xl font-bold text-gray-900 mb-2">{{title}}</h1>
@@ -23,8 +24,10 @@
       <div id="kiosk-qr" class="qr-keep-light inline-block bg-white p-6 rounded-2xl shadow-lg"></div>
       <p class="mt-6 text-sm text-gray-500 break-all" id="kiosk-url"></p>
     </div>
-    <div class="text-center md:text-left"
-         hx-get="/kiosk/{{entity_type}}/{{entity_id}}/recent" hx-trigger="load, every 5s" hx-swap="innerHTML">
+    <!-- Refreshed the moment someone checks in (live updates), and every
+         minute in case the live connection is blocked. -->
+    <div id="kiosk-recent" class="text-center md:text-left"
+         hx-get="/kiosk/{{entity_type}}/{{entity_id}}/recent" hx-trigger="load, live, every 60s" hx-swap="innerHTML">
       <p class="text-gray-400">Loading…</p>
     </div>
   </div>
@@ -36,6 +39,16 @@
       document.getElementById('kiosk-url').textContent = url;
       if (typeof QRCode !== 'undefined')
         new QRCode(document.getElementById('kiosk-qr'), { text: url, width: 360, height: 360 });
+      var topic = '{{entity_type}}:{{entity_id}}';
+      function hook() {
+        if (!window.LiveSync) return;
+        var el = document.getElementById('kiosk-recent');
+        window.LiveSync.onChange(el, function (changes) {
+          if (changes === 'all' || changes.indexOf(topic) >= 0) htmx.trigger(el, 'live');
+          return true;
+        });
+      }
+      if (window.LiveSync) hook(); else document.addEventListener('DOMContentLoaded', hook);
     })();
   </script>
 </body>

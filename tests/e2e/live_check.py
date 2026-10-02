@@ -7,6 +7,7 @@ requests with the same session but no X-Live-Tab, like another device) and
 checks the open page updates without a reload:
   - /meetings re-fetches itself when a meeting is added;
   - /members reloads its table rows (keeping the table) when a member changes;
+  - the kiosk screen shows a check-in within seconds;
   - while a form is being edited, the page is left alone and "Updated -
     refresh" appears instead; clicking it reloads the page.
 Fails on JS errors and CSP violations (the websocket must be allowed).
@@ -107,6 +108,21 @@ check(wait_for(lambda: not d.find_elements(By.ID, "live-pill")), "the refresh bu
 check(wait_for(lambda: d.find_element(By.CSS_SELECTOR, "input[name=require_2fa][value=everyone]").is_selected() == was),
       "refresh didn't reload the page")
 errs("editing")
+
+# 4. The kiosk screen updates the moment someone is checked in (not on a timer)
+title3 = "Kiosk live %d" % int(time.time())
+post("/meetings", {"title": title3, "description": "x", "location": "Room 1", "scope": "lug_wide",
+                   "start_time": "2026-12-03T19:00", "end_time": "2026-12-03T21:00"})
+go("/meetings?when=all")
+import re
+mid = max(int(x) for x in re.findall(r'/meetings/(\d+)', d.page_source))   # the newest: the one just added
+go("/meetings/%d/kiosk" % mid)
+time.sleep(1.0)
+before = d.find_element(By.ID, "kiosk-recent").text
+post("/attendance/admin/checkin", {"entity_type": "meeting", "entity_id": mid, "member_id": rows[1]["id"]})
+check(wait_for(lambda: d.find_element(By.ID, "kiosk-recent").text != before, 5), "kiosk didn't update within 5 s of a check-in")
+d.save_screenshot(f"{SHOTS}/live_kiosk.png")
+errs("kiosk")
 
 d.quit()
 print("PROBLEMS", len(problems))
