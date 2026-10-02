@@ -63,8 +63,8 @@ protected:
 
 TEST_F(DiscordTimesTest, ChecksThenFixesSilently) {
     exec(*db, "UPDATE chapters SET discord_announcement_channel_id='" + CH_CH + "' WHERE id=" + std::to_string(test_chapter_id));
-    // An upcoming show, sent as if 10 AM were UTC
-    std::string s1 = local_at(*db, 30, "10:00"), e1 = local_at(*db, 30, "16:00");
+    // An upcoming three-day show (stored by date: midnight to midnight), sent as if local midnight were UTC
+    std::string s1 = local_at(*db, 30, "00:00"), e1 = local_at(*db, 32, "00:00");
     add_event("Brick Fest", s1, e1, "se1");
     discord_event("se1", as_if_utc(s1), as_if_utc(e1));
     // An upcoming meeting: wrong scheduled event, "America" in both announcements
@@ -141,7 +141,9 @@ TEST_F(DiscordTimesTest, ChecksThenFixesSilently) {
             EXPECT_EQ(b["allowed_mentions"]["parse"].size(), 0u) << p.body;  // pings nobody
         }
     }
-    EXPECT_EQ(fake->scheduled_events["se1"]["scheduled_start_time"], discord_client->utc_iso(s1));
+    // Shows run whole days: from the first day's start to the end of the last day
+    EXPECT_EQ(fake->scheduled_events["se1"]["scheduled_start_time"], discord_client->utc_iso(s1.substr(0, 10) + "T00:00:00"));
+    EXPECT_EQ(fake->scheduled_events["se1"]["scheduled_end_time"], discord_client->utc_iso(e1.substr(0, 10) + "T23:59:00"));
     EXPECT_EQ(fake->scheduled_events["se2"]["scheduled_end_time"], discord_client->utc_iso(e2));
     // The times become Discord timestamps (each reader's own time zone); nothing else changes.
     std::string good = "<@&555> \n**October meeting**\n📅 <t:" + std::to_string(DiscordClient::local_to_epoch(s2, "America/Chicago")) +
@@ -185,4 +187,25 @@ TEST_F(DiscordTimesTest, StartedEventsAndRefusalsAreReported) {
     EXPECT_EQ(fake->scheduled_events["sr"]["scheduled_start_time"], as_if_utc(s2));
     EXPECT_EQ(fake->scheduled_events["sa"]["scheduled_start_time"], as_if_utc(s));   // started: left alone
 
+}
+
+TEST_F(DiscordTimesTest, ShowEndingAtMidnightIsExtendedToTheLastDay) {
+    // Start already right, but the end is the last day's midnight (Sunday cut off)
+    std::string s = local_at(*db, 20, "00:00"), e = local_at(*db, 22, "00:00");
+    add_event("Train Show", s, e, "st");
+    discord_event("st", discord_client->utc_iso(s), discord_client->utc_iso(e));
+    auto check = POST("/settings/discord-times/check", "", admin_token);
+    expect_contains(check, "1 wrong");
+    expect_contains(check, "Discord has it ending 23 hours 59 min early");
+    POST("/settings/discord-times/fix", "", admin_token);
+    EXPECT_EQ(fake->scheduled_events["st"]["scheduled_start_time"], discord_client->utc_iso(s));
+    EXPECT_EQ(fake->scheduled_events["st"]["scheduled_end_time"], discord_client->utc_iso(e.substr(0, 10) + "T23:59:00"));
+}
+
+TEST(EventDaySpan, WholeDays) {
+    EXPECT_EQ(chat::event_day_span("2026-11-13T00:00:00", "2026-11-15T00:00:00"),
+              std::make_pair(std::string("2026-11-13T00:00:00"), std::string("2026-11-15T23:59:00")));
+    EXPECT_EQ(chat::event_day_span("2026-11-13T10:00:00", ""),                     // one day, times ignored
+              std::make_pair(std::string("2026-11-13T00:00:00"), std::string("2026-11-13T23:59:00")));
+    EXPECT_EQ(chat::event_day_span("2026-11-13", "2026-11-12").second, "2026-11-13T23:59:00");   // end before start
 }

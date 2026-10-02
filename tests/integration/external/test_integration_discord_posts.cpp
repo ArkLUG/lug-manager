@@ -84,7 +84,8 @@ TEST_F(DiscordPostsTest, EventCreateEditAndDelete) {
     EXPECT_EQ(a.find("@everyone"), std::string::npos);
     auto se = nlohmann::json::parse(body_of("^POST /api/v10/guilds/" + fake->guild_id + "/scheduled-events$"));
     EXPECT_EQ(se["name"], "Brick Fest");
-    EXPECT_EQ(se["scheduled_start_time"], "2099-10-14T14:00:00Z");     // 9 AM CDT
+    EXPECT_EQ(se["scheduled_start_time"], "2099-10-14T05:00:00Z");     // shows run whole days: Oct 14 00:00 CDT
+    EXPECT_EQ(se["scheduled_end_time"], "2099-10-16T04:59:00Z");       // ... to Oct 15 23:59 CDT
     EXPECT_EQ(se["entity_type"], 3);
     EXPECT_FALSE(fresh.discord_event_id.empty());
     EXPECT_FALSE(fresh.discord_lug_message_id.empty());

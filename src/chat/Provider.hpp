@@ -12,6 +12,7 @@
 #include <ctime>
 #include <optional>
 #include <string>
+#include <utility>
 #include <vector>
 
 namespace chat {
@@ -36,6 +37,18 @@ struct Message {
 };
 
 struct ScheduledEvent { std::string name, description, location, start_local, end_local; };
+
+// Events (shows) are kept by date only, so their scheduled event runs from
+// the start of the first day to the end of the last (meetings keep their times).
+inline std::pair<std::string, std::string> event_day_span(const std::string& start, const std::string& end) {
+    const std::string first = start.substr(0, 10), last = (end.size() >= 10 ? end : start).substr(0, 10);
+    return {first + "T00:00:00", (last < first ? first : last) + "T23:59:00"};
+}
+inline ScheduledEvent event_days(std::string name, std::string description, std::string location,
+                                 const std::string& start, const std::string& end) {
+    auto [s, e] = event_day_span(start, end);
+    return {std::move(name), std::move(description), std::move(location), s, e};
+}
 
 struct Result {
     bool ok = false;

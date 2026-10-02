@@ -17,6 +17,7 @@
 // notifications. Scheduled events that have already started can't be moved
 // (Discord refuses), so they're reported and left alone.
 #include "db/SqliteDatabase.hpp"
+#include "chat/Provider.hpp"
 #include "integrations/discord/DiscordClient.hpp"
 #include <nlohmann/json.hpp>
 #include <chrono>
@@ -24,6 +25,7 @@
 #include <regex>
 #include <string>
 #include <thread>
+#include <tuple>
 #include <vector>
 
 struct TimeRepairItem {
@@ -62,10 +64,15 @@ public:
                 sched.push_back({std::string(table) == "meetings" ? "meeting" : "event", st.col_int(0), st.col_text(1),
                                  st.col_text(2), st.col_text(3), st.col_text(4)});
         }
-        for (const auto& s : sched) {
-            if (s.start.size() < 16) continue;                // all-day: no time of day to get wrong
+        for (auto s : sched) {
+            if (s.kind == "event") {                          // shows: whole days (chat/Provider.hpp)
+                if (s.start.size() < 10) continue;
+                std::tie(s.start, s.end) = chat::event_day_span(s.start, s.end);
+            } else if (s.start.size() < 16) continue;         // no time of day to get wrong
             TimeRepairItem it{s.kind, s.id, s.title, s.start, "scheduled event", "", ""};
             std::time_t right = DiscordClient::local_to_epoch(s.start, tz);
+            const std::string end = s.end.empty() ? s.start : s.end;
+            std::time_t right_end = DiscordClient::local_to_epoch(end, tz);
             if (right <= now) { it.status = "past"; it.note = "Already started or over; Discord doesn't allow moving it."; out.push_back(it); continue; }
             auto j = parse(discord_.sync_get("/guilds/" + discord_.get_guild_id() + "/scheduled-events/" + s.discord_id));
             if (!j.is_object() || !j.contains("scheduled_start_time") || !j["scheduled_start_time"].is_string()) {
@@ -76,11 +83,13 @@ public:
             }
             if (j.value("status", 1) != 1) { it.status = "past"; it.note = "Discord shows it as started or finished."; out.push_back(it); continue; }
             long diff = static_cast<long>(epoch(j["scheduled_start_time"].get<std::string>()) - right);
-            if (std::labs(diff) < 60) { it.status = "ok"; out.push_back(it); continue; }
+            long end_diff = j.contains("scheduled_end_time") && j["scheduled_end_time"].is_string()
+                ? static_cast<long>(epoch(j["scheduled_end_time"].get<std::string>()) - right_end) : 0;
+            if (std::labs(diff) < 60 && std::labs(end_diff) < 60) { it.status = "ok"; out.push_back(it); continue; }
             it.status = "wrong";
-            it.note = "Discord has it " + hours(diff) + ".";
+            it.note = std::labs(diff) >= 60 ? "Discord has it " + hours(diff) + "."
+                                            : "Discord has it ending " + hours(end_diff) + ".";
             if (opt.apply) {
-                std::string end = s.end.empty() ? s.start : s.end;
                 auto r = parse(discord_.sync_patch_scheduled_event_times(s.discord_id, discord_.utc_iso(s.start), discord_.utc_iso(end)));
                 if (r.is_object() && r.contains("scheduled_start_time") && r["scheduled_start_time"].is_string() &&
                     std::labs(static_cast<long>(epoch(r["scheduled_start_time"].get<std::string>()) - right)) < 60) {

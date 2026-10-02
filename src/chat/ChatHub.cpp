@@ -341,7 +341,7 @@ void ChatHub::publish_event(Provider& p, const LugEvent& e) {
     // 4. The scheduled event
     if (switch_on(p, "event_scheduled") && !skip.count("scheduled") && p.caps().scheduled_events &&
         may_create(p, "scheduled event", "event", e.id)) {
-        Result s = p.create_event(ScheduledEvent{e.title, e.description, e.location, e.start_time, e.end_time});
+        Result s = p.create_event(event_days(e.title, e.description, e.location, e.start_time, e.end_time));
         log(p, "event", "scheduled event", "event", e.id, s);
         if (s.ok) save_ref(p, "event", e.id, "scheduled", s.id);
     }
@@ -367,7 +367,7 @@ void ChatHub::update_event(Provider& p, const LugEvent& before, const LugEvent& 
     const std::string ann_ch = p.place(Place::Announcements);
 
     if (!r.scheduled.empty()) {
-        Result s = p.update_event(r.scheduled, ScheduledEvent{after.title, after.description, after.location, after.start_time, after.end_time});
+        Result s = p.update_event(r.scheduled, event_days(after.title, after.description, after.location, after.start_time, after.end_time));
         log(p, "edit", "scheduled event", "event", after.id, s);
     }
     // Our own thread: new name and first post. A thread someone picked isn't ours to change.
