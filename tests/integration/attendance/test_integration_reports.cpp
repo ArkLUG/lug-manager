@@ -81,3 +81,27 @@ TEST_F(IntegrationTest, AnnualReportGrowthAndRetention) {
     EXPECT_LT(expo, lib);
     expect_not_contains(r, ">Discord<");
 }
+
+TEST_F(IntegrationTest, AnnualReportCanLeaveOutExternalEvents) {
+    for (auto [title, scope, visitors] : {std::tuple{"Our Show", "lug_wide", 100}, std::tuple{"Their Con", "non_lug", 5000}}) {
+        auto e = db->prepare("INSERT INTO lug_events (title, start_time, end_time, status, scope, ical_uid, public_adults) "
+                             "VALUES (?, '2032-04-01T09:00:00', '2032-04-01T17:00:00', 'confirmed', ?, ?, ?)");
+        e.bind(1, std::string(title)); e.bind(2, std::string(scope)); e.bind(3, std::string(title) + "-uid");
+        e.bind(4, static_cast<int64_t>(visitors));
+        e.step();
+    }
+    auto all = GET("/reports/annual?year=2032", admin_token);
+    expect_contains(all, "Their Con");
+    expect_contains(all, ">External</span>");
+    expect_contains(all, ">5100</div>");                                 // visitors, both shows
+    expect_contains(all, "year=2032&external=0");                       // "Hide external" link
+
+    auto ours = GET("/reports/annual?year=2032&external=0", admin_token);
+    EXPECT_EQ(ours.code, 200);
+    expect_contains(ours, "Our Show");
+    expect_not_contains(ours, "Their Con");
+    expect_contains(ours, ">100</div>");                                 // visitors: ours only
+    expect_contains(ours, ">1</div><div class=\"text-xs text-gray-500\">events");
+    expect_contains(ours, "External meetings and events are left out");
+    expect_contains(ours, "year=2031&amp;external&#x3D;0");              // year links keep the choice
+}

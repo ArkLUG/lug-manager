@@ -21,34 +21,44 @@ void register_report_routes(LugApp& app, SqliteDatabase& db, EventService& event
         if (const char* y = req.url_params.get("year")) { try { year = std::stoi(y); } catch (...) {} }
         std::string ys = std::to_string(year), lo = ys + "-01-01", hi = std::to_string(year + 1) + "-01-01";
         const std::vector<std::string> range{lo, hi};
+        // ?external=0 leaves out External meetings and events (scope non_lug):
+        // shows other groups run that members went to.
+        const char* ext_p = req.url_params.get("external");
+        const bool no_ext = ext_p && std::string(ext_p) == "0";
+        const std::string EV  = no_ext ? " AND scope <> 'non_lug'" : "";       // lug_events / meetings, no alias
+        const std::string EVa = no_ext ? " AND e.scope <> 'non_lug'" : "";
+        const std::string MT  = no_ext ? " AND mt.scope <> 'non_lug'" : "";
+        const std::string ED  = no_ext ? " AND ed.event_id NOT IN (SELECT id FROM lug_events WHERE scope = 'non_lug')" : "";
 
         crow::mustache::context ctx;
         ctx["year"] = year;
         ctx["prev_year"] = year - 1;
         ctx["next_year"] = year + 1;
+        ctx["no_external"] = no_ext;
+        ctx["ext_q"] = no_ext ? "&external=0" : "";
         ctx["members_total"] = query_int(db, "SELECT COUNT(*) FROM members WHERE created_at < ?", {hi});
         ctx["members_new"]   = query_int(db, "SELECT COUNT(*) FROM members WHERE created_at >= ? AND created_at < ?", range);
         ctx["members_paid"]  = query_int(db, "SELECT COUNT(*) FROM members WHERE is_paid=1", {});
         ctx["dues_collected"] = money(query_int(db,
             "SELECT COALESCE(SUM(amount_cents),0) FROM dues_payments WHERE paid_on >= ? AND paid_on < ?", range));
         ctx["meetings_held"] = query_int(db,
-            "SELECT COUNT(*) FROM meetings WHERE status <> 'cancelled' AND start_time >= ? AND start_time < ?", range);
+            "SELECT COUNT(*) FROM meetings WHERE status <> 'cancelled' AND start_time >= ? AND start_time < ?" + EV, range);
         ctx["meeting_checkins"] = query_int(db,
             "SELECT COUNT(*) FROM attendance a JOIN meetings mt ON mt.id = a.entity_id "
-            "WHERE a.entity_type='meeting' AND mt.start_time >= ? AND mt.start_time < ?", range);
+            "WHERE a.entity_type='meeting' AND mt.start_time >= ? AND mt.start_time < ?" + MT, range);
         ctx["events_held"] = query_int(db,
-            "SELECT COUNT(*) FROM lug_events WHERE status <> 'cancelled' AND start_time >= ? AND start_time < ?", range);
+            "SELECT COUNT(*) FROM lug_events WHERE status <> 'cancelled' AND start_time >= ? AND start_time < ?" + EV, range);
         ctx["event_attendees"] = query_int(db,
             "SELECT COUNT(*) FROM (SELECT DISTINCT ed.event_id, eda.member_id FROM event_day_attendance eda "
-            "JOIN event_days ed ON ed.id = eda.event_day_id WHERE ed.day_date >= ? AND ed.day_date < ?)", range);
+            "JOIN event_days ed ON ed.id = eda.event_day_id WHERE ed.day_date >= ? AND ed.day_date < ?" + ED + ")", range);
         ctx["active_members"] = query_int(db,
             "SELECT COUNT(*) FROM (SELECT a.member_id FROM attendance a JOIN meetings mt ON mt.id = a.entity_id "
-            " WHERE a.entity_type='meeting' AND mt.start_time >= ?1 AND mt.start_time < ?2 "
+            " WHERE a.entity_type='meeting' AND mt.start_time >= ?1 AND mt.start_time < ?2" + MT + " "
             " UNION SELECT eda.member_id FROM event_day_attendance eda JOIN event_days ed ON ed.id = eda.event_day_id "
-            " WHERE ed.day_date >= ?1 AND ed.day_date < ?2)", range);
-        int64_t kids = query_int(db, "SELECT COALESCE(SUM(public_kids),0) FROM lug_events WHERE start_time >= ? AND start_time < ?", range);
-        int64_t teens = query_int(db, "SELECT COALESCE(SUM(public_teens),0) FROM lug_events WHERE start_time >= ? AND start_time < ?", range);
-        int64_t adults = query_int(db, "SELECT COALESCE(SUM(public_adults),0) FROM lug_events WHERE start_time >= ? AND start_time < ?", range);
+            " WHERE ed.day_date >= ?1 AND ed.day_date < ?2" + ED + ")", range);
+        int64_t kids = query_int(db, "SELECT COALESCE(SUM(public_kids),0) FROM lug_events WHERE start_time >= ? AND start_time < ?" + EV, range);
+        int64_t teens = query_int(db, "SELECT COALESCE(SUM(public_teens),0) FROM lug_events WHERE start_time >= ? AND start_time < ?" + EV, range);
+        int64_t adults = query_int(db, "SELECT COALESCE(SUM(public_adults),0) FROM lug_events WHERE start_time >= ? AND start_time < ?" + EV, range);
         ctx["visitors_total"] = kids + teens + adults;
         ctx["visitors_kids"] = kids;
         ctx["visitors_teens"] = teens;
@@ -60,9 +70,9 @@ void register_report_routes(LugApp& app, SqliteDatabase& db, EventService& event
             auto st = db.prepare(
                 "SELECT CAST(substr(d,6,2) AS INTEGER), COUNT(*) FROM ("
                 " SELECT mt.start_time AS d FROM attendance a JOIN meetings mt ON mt.id = a.entity_id "
-                "  WHERE a.entity_type='meeting' AND mt.start_time >= ?1 AND mt.start_time < ?2 "
+                "  WHERE a.entity_type='meeting' AND mt.start_time >= ?1 AND mt.start_time < ?2" + MT + " "
                 " UNION ALL SELECT ed.day_date FROM event_day_attendance eda JOIN event_days ed ON ed.id = eda.event_day_id "
-                "  WHERE ed.day_date >= ?1 AND ed.day_date < ?2) GROUP BY 1");
+                "  WHERE ed.day_date >= ?1 AND ed.day_date < ?2" + ED + ") GROUP BY 1");
             st.bind(1, lo); st.bind(2, hi);
             while (st.step()) { int m = static_cast<int>(st.col_int(0)); if (m >= 1 && m <= 12) per_month[m - 1] = static_cast<int>(st.col_int(1)); }
         }
@@ -81,9 +91,9 @@ void register_report_routes(LugApp& app, SqliteDatabase& db, EventService& event
             auto st = db.prepare(
                 "SELECT COALESCE(m.display_name,''), COUNT(*) AS n FROM ("
                 " SELECT a.member_id AS mid FROM attendance a JOIN meetings mt ON mt.id = a.entity_id "
-                "  WHERE a.entity_type='meeting' AND mt.start_time >= ?1 AND mt.start_time < ?2 "
+                "  WHERE a.entity_type='meeting' AND mt.start_time >= ?1 AND mt.start_time < ?2" + MT + " "
                 " UNION ALL SELECT DISTINCT eda.member_id FROM event_day_attendance eda JOIN event_days ed ON ed.id = eda.event_day_id "
-                "  WHERE ed.day_date >= ?1 AND ed.day_date < ?2 GROUP BY ed.event_id, eda.member_id) x "
+                "  WHERE ed.day_date >= ?1 AND ed.day_date < ?2" + ED + " GROUP BY ed.event_id, eda.member_id) x "
                 "JOIN members m ON m.id = x.mid GROUP BY x.mid ORDER BY n DESC, m.display_name LIMIT 10");
             st.bind(1, lo); st.bind(2, hi);
             crow::json::wvalue top = crow::json::wvalue::list();
@@ -96,8 +106,8 @@ void register_report_routes(LugApp& app, SqliteDatabase& db, EventService& event
         {
             auto st = db.prepare(
                 "SELECT e.id, e.title, substr(e.start_time,1,10), e.public_kids + e.public_teens + e.public_adults, "
-                "(SELECT COUNT(DISTINCT eda.member_id) FROM event_day_attendance eda JOIN event_days ed ON ed.id = eda.event_day_id WHERE ed.event_id = e.id) "
-                "FROM lug_events e WHERE e.status <> 'cancelled' AND e.start_time >= ? AND e.start_time < ? ORDER BY e.start_time");
+                "(SELECT COUNT(DISTINCT eda.member_id) FROM event_day_attendance eda JOIN event_days ed ON ed.id = eda.event_day_id WHERE ed.event_id = e.id), e.scope "
+                "FROM lug_events e WHERE e.status <> 'cancelled' AND e.start_time >= ? AND e.start_time < ?" + EVa + " ORDER BY e.start_time");
             st.bind(1, lo); st.bind(2, hi);
             crow::json::wvalue evs = crow::json::wvalue::list();
             int i = 0;
@@ -105,7 +115,8 @@ void register_report_routes(LugApp& app, SqliteDatabase& db, EventService& event
             while (st.step()) {
                 evs[i]["id"] = st.col_int(0); evs[i]["title"] = st.col_text(1); evs[i]["date"] = friendly_date(st.col_text(2));
                 evs[i]["upcoming"] = st.col_text(2) > today;
-                evs[i]["visitors"] = st.col_int(3); evs[i]["members"] = st.col_int(4); ++i;
+                evs[i]["visitors"] = st.col_int(3); evs[i]["members"] = st.col_int(4);
+                evs[i]["external"] = st.col_text(5) == "non_lug"; ++i;
             }
             ctx["events"] = std::move(evs);
             ctx["has_events"] = i > 0;
@@ -115,9 +126,9 @@ void register_report_routes(LugApp& app, SqliteDatabase& db, EventService& event
             std::set<int64_t> ids;
             auto st = db.prepare(
                 "SELECT a.member_id FROM attendance a JOIN meetings mt ON mt.id = a.entity_id "
-                " WHERE a.entity_type='meeting' AND mt.start_time >= ?1 AND mt.start_time < ?2 "
+                " WHERE a.entity_type='meeting' AND mt.start_time >= ?1 AND mt.start_time < ?2" + MT + " "
                 "UNION SELECT eda.member_id FROM event_day_attendance eda JOIN event_days ed ON ed.id = eda.event_day_id "
-                " WHERE ed.day_date >= ?1 AND ed.day_date < ?2");
+                " WHERE ed.day_date >= ?1 AND ed.day_date < ?2" + ED);
             st.bind(1, std::to_string(y) + "-01-01"); st.bind(2, std::to_string(y + 1) + "-01-01");
             while (st.step()) ids.insert(st.col_int(0));
             return ids;
@@ -140,11 +151,11 @@ void register_report_routes(LugApp& app, SqliteDatabase& db, EventService& event
             bool started = false;  // skip the empty years before the LUG's records begin
             for (int y = year - 4; y <= year; ++y) {
                 std::vector<std::string> r{std::to_string(y) + "-01-01", std::to_string(y + 1) + "-01-01"};
-                int64_t held = query_int(db, "SELECT COUNT(*) FROM meetings WHERE status <> 'cancelled' AND start_time >= ? AND start_time < ?", r);
+                int64_t held = query_int(db, "SELECT COUNT(*) FROM meetings WHERE status <> 'cancelled' AND start_time >= ? AND start_time < ?" + EV, r);
                 int64_t checkins = query_int(db, "SELECT COUNT(*) FROM attendance a JOIN meetings mt ON mt.id = a.entity_id "
-                                              "WHERE a.entity_type='meeting' AND mt.start_time >= ? AND mt.start_time < ?", r);
+                                              "WHERE a.entity_type='meeting' AND mt.start_time >= ? AND mt.start_time < ?" + MT, r);
                 int64_t visitors = query_int(db, "SELECT COALESCE(SUM(public_kids+public_teens+public_adults),0) FROM lug_events "
-                                              "WHERE start_time >= ? AND start_time < ?", r);
+                                              "WHERE start_time >= ? AND start_time < ?" + EV, r);
                 const int active = static_cast<int>(active_ids(y).size());
                 const int64_t new_members = query_int(db, "SELECT COUNT(*) FROM members WHERE created_at >= ? AND created_at < ?", r);
                 started = started || y == year || held || active || new_members || visitors;
@@ -181,10 +192,10 @@ void register_report_routes(LugApp& app, SqliteDatabase& db, EventService& event
             auto st = db.prepare(
                 "SELECT loc, COUNT(*) AS gatherings, SUM(n) AS people FROM ("
                 " SELECT TRIM(mt.location) AS loc, (SELECT COUNT(*) FROM attendance a WHERE a.entity_type='meeting' AND a.entity_id=mt.id) AS n "
-                "  FROM meetings mt WHERE mt.status <> 'cancelled' AND mt.is_virtual = 0 AND mt.start_time >= ?1 AND mt.start_time < ?2 "
+                "  FROM meetings mt WHERE mt.status <> 'cancelled' AND mt.is_virtual = 0 AND mt.start_time >= ?1 AND mt.start_time < ?2" + MT + " "
                 " UNION ALL SELECT TRIM(e.location), e.public_kids + e.public_teens + e.public_adults + "
                 "  (SELECT COUNT(DISTINCT eda.member_id) FROM event_day_attendance eda JOIN event_days ed ON ed.id = eda.event_day_id WHERE ed.event_id = e.id) "
-                "  FROM lug_events e WHERE e.status <> 'cancelled' AND e.start_time >= ?1 AND e.start_time < ?2) "
+                "  FROM lug_events e WHERE e.status <> 'cancelled' AND e.start_time >= ?1 AND e.start_time < ?2" + EVa + ") "
                 "WHERE COALESCE(loc,'') <> '' GROUP BY loc COLLATE NOCASE ORDER BY people DESC, gatherings DESC LIMIT 8");
             st.bind(1, lo); st.bind(2, hi);
             crow::json::wvalue v = crow::json::wvalue::list();

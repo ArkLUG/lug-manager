@@ -2,11 +2,14 @@
   <div class="flex flex-wrap items-center justify-between gap-2">
     <div>
       <h2 class="text-xl font-semibold text-gray-800">{{year}} in Numbers</h2>
+      {{#no_external}}<p class="text-sm text-amber-700">External meetings and events are left out of every number below.</p>{{/no_external}}
       {{#fan_colab_recognized}}<p class="text-sm text-gray-500">{{fan_colab_name}} - a Recognized LEGO® Fan Community (LEGO Fan CoLab){{#community_ambassador}} · Community Ambassador: {{community_ambassador}}{{/community_ambassador}}</p>{{/fan_colab_recognized}}
     </div>
     <div class="flex items-center gap-2 text-sm">
-      <a hx-get="/reports/annual?year={{prev_year}}" hx-target="#main-content" hx-push-url="true" hx-swap="innerHTML" class="px-3 py-1.5 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 cursor-pointer">&larr; {{prev_year}}</a>
-      <a hx-get="/reports/annual?year={{next_year}}" hx-target="#main-content" hx-push-url="true" hx-swap="innerHTML" class="px-3 py-1.5 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 cursor-pointer">{{next_year}} &rarr;</a>
+      <a hx-get="/reports/annual?year={{prev_year}}{{ext_q}}" hx-target="#main-content" hx-push-url="true" hx-swap="innerHTML" class="px-3 py-1.5 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 cursor-pointer">&larr; {{prev_year}}</a>
+      <a hx-get="/reports/annual?year={{next_year}}{{ext_q}}" hx-target="#main-content" hx-push-url="true" hx-swap="innerHTML" class="px-3 py-1.5 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 cursor-pointer">{{next_year}} &rarr;</a>
+      {{#no_external}}<a hx-get="/reports/annual?year={{year}}" hx-target="#main-content" hx-push-url="true" hx-swap="innerHTML" id="report-external" class="px-3 py-1.5 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 cursor-pointer" title="External meetings and events are left out">Include external</a>{{/no_external}}
+      {{^no_external}}<a hx-get="/reports/annual?year={{year}}&external=0" hx-target="#main-content" hx-push-url="true" hx-swap="innerHTML" id="report-external" class="px-3 py-1.5 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 cursor-pointer" title="Leave out other groups' shows that members went to">Hide external</a>{{/no_external}}
       <a href="/attendance/overview.csv?year={{year}}" class="px-3 py-1.5 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50">Attendance CSV</a>
     </div>
   </div>
@@ -80,8 +83,8 @@
     <div class="bg-white rounded-xl border border-gray-200 p-5">
       <h3 class="font-semibold text-gray-800 mb-2">Events</h3>
       {{#has_events}}
-      <table class="w-full text-sm"><thead><tr class="text-left text-xs text-gray-500"><th>Date</th><th>Event</th><th class="text-right">Members</th><th class="text-right">Visitors</th></tr></thead>
-        <tbody class="divide-y divide-gray-100">{{#events}}<tr><td class="py-1 text-gray-500 whitespace-nowrap">{{date}}</td><td class="text-gray-800"><a href="/events/{{id}}/report" target="_blank" class="hover:underline">{{title}}</a></td>{{#upcoming}}<td colspan="2" class="text-right text-xs text-gray-400">upcoming</td>{{/upcoming}}{{^upcoming}}<td class="text-right">{{members}}</td><td class="text-right">{{visitors}}</td>{{/upcoming}}</tr>{{/events}}</tbody></table>
+      <table class="w-full text-sm"><thead><tr class="text-left text-xs text-gray-500"><th>Date</th><th>Event</th><th class="text-right pl-3">Members</th><th class="text-right pl-3">Visitors</th></tr></thead>
+        <tbody class="divide-y divide-gray-100">{{#events}}<tr><td class="py-1 pr-3 text-gray-500 whitespace-nowrap">{{date}}</td><td class="text-gray-800"><a href="/events/{{id}}/report" target="_blank" class="hover:underline">{{title}}</a>{{#external}} <span class="text-xs px-1.5 py-0.5 rounded bg-amber-100 text-amber-700">External</span>{{/external}}</td>{{#upcoming}}<td colspan="2" class="text-right text-xs text-gray-400">upcoming</td>{{/upcoming}}{{^upcoming}}<td class="text-right">{{members}}</td><td class="text-right">{{visitors}}</td>{{/upcoming}}</tr>{{/events}}</tbody></table>
       {{/has_events}}
       {{^has_events}}<p class="text-sm text-gray-400">No events this year.</p>{{/has_events}}
     </div>
