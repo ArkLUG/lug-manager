@@ -6,7 +6,7 @@
   </div>
   {{#flash}}<div role="status" class="bg-green-50 text-green-800 rounded-lg px-4 py-2 text-sm">{{flash}}</div>{{/flash}}
   {{#error}}<div role="alert" class="bg-red-50 text-red-700 rounded-lg px-4 py-2 text-sm">{{error}}</div>{{/error}}
-  <div class="grid lg:grid-cols-2 gap-4">
+  <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
     <form hx-post="/settings/messages/{{key}}" hx-target="#message-editor" hx-swap="outerHTML" class="bg-white rounded-xl border border-gray-200 p-5 space-y-3 text-sm">
       {{#has_subject}}
       <label class="block">{{#is_email_only}}Email subject{{/is_email_only}}{{^is_email_only}}Title (email subject){{/is_email_only}}

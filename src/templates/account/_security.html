@@ -43,7 +43,7 @@
     {{#two_factor}}
       <p class="text-sm text-gray-600"><span class="text-green-700 font-medium">On</span>{{#two_factor_since}} since {{two_factor_since}}{{/two_factor_since}}. After signing in (with a password, Discord or an email link) you're asked for a code from your authenticator app. Recovery codes left: <strong>{{codes_left}}</strong>.</p>
       {{#few_codes}}<p class="text-sm text-amber-800">You're running low on recovery codes. Make new ones below.</p>{{/few_codes}}
-      <div class="grid md:grid-cols-2 gap-4 text-sm">
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
         <form hx-post="/account/2fa/recovery" hx-target="#account-security" hx-swap="outerHTML" class="space-y-2">
           <label class="block">New recovery codes: enter a current code<input name="code" required autocomplete="one-time-code" maxlength="40" class="mt-1 w-full border border-gray-300 rounded-lg px-3 py-2"></label>
           <button class="px-3 py-1.5 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50">Make new recovery codes</button>

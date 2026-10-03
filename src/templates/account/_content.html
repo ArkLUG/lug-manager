@@ -25,7 +25,7 @@
   <section class="bg-white rounded-xl border border-gray-200 p-6">
     <h3 class="font-semibold text-gray-800">Colours</h3>
     <p class="text-sm text-gray-500 mb-3">Your colour theme, on this and your other devices. Light or dark is separate (bottom of the sidebar).</p>
-    <div class="grid sm:grid-cols-2 gap-2">
+    <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
       {{#palettes}}
       <label class="flex items-center gap-3 p-3 rounded-lg border border-gray-200 cursor-pointer hover:bg-gray-50">
         <input type="radio" name="palette" value="{{key}}" {{#selected}}checked{{/selected}}

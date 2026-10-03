@@ -128,12 +128,12 @@
         <div><span class="text-sm font-medium text-gray-800">Quiet mode</span>
           <p class="text-xs text-gray-600">Nothing new is posted or messaged; existing posts are still edited or removed when things change. For maintenance, imports, or a test period.</p></div>
       </label>
-      <fieldset class="grid sm:grid-cols-2 gap-x-6 gap-y-2 text-sm">
+      <fieldset class="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-2 text-sm">
         <legend class="text-sm font-medium text-gray-700 mb-1">For each new meeting</legend>
         <label class="flex items-center gap-2"><input type="checkbox" name="chat_meeting_announce" value="1" {{#sw_meeting_announce}}checked{{/sw_meeting_announce}} class="accent-yellow-400"> An announcement (LUG channel, or the chapter's)</label>
         <label class="flex items-center gap-2"><input type="checkbox" name="chat_meeting_scheduled" value="1" {{#sw_meeting_scheduled}}checked{{/sw_meeting_scheduled}} class="accent-yellow-400"> A Discord event (Events tab)</label>
       </fieldset>
-      <fieldset class="grid sm:grid-cols-2 gap-x-6 gap-y-2 text-sm">
+      <fieldset class="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-2 text-sm">
         <legend class="text-sm font-medium text-gray-700 mb-1">For each new event</legend>
         <label class="flex items-center gap-2"><input type="checkbox" name="chat_event_thread" value="1" {{#sw_event_thread}}checked{{/sw_event_thread}} class="accent-yellow-400"> A discussion thread</label>
         <label class="flex items-center gap-2"><input type="checkbox" name="chat_event_announce" value="1" {{#sw_event_announce}}checked{{/sw_event_announce}} class="accent-yellow-400"> An announcement in the LUG channel</label>
@@ -141,7 +141,7 @@
         <label class="flex items-center gap-2"><input type="checkbox" name="chat_event_scheduled" value="1" {{#sw_event_scheduled}}checked{{/sw_event_scheduled}} class="accent-yellow-400"> A Discord event (Events tab)</label>
         <label class="flex items-center gap-2"><input type="checkbox" name="update_notes_on" value="1" {{^suppress_updates}}checked{{/suppress_updates}} class="accent-yellow-400"> An "Event updated" note in its thread when it's edited</label>
       </fieldset>
-      <fieldset class="grid sm:grid-cols-2 gap-x-6 gap-y-2 text-sm">
+      <fieldset class="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-2 text-sm">
         <legend class="text-sm font-medium text-gray-700 mb-1">Also</legend>
         <label class="flex items-center gap-2"><input type="checkbox" name="pings_on" value="1" {{^suppress_pings}}checked{{/suppress_pings}} class="accent-yellow-400"> Mention (ping) the announcement roles</label>
         <label class="flex items-center gap-2"><input type="checkbox" name="chat_dms" value="1" {{#sw_dms}}checked{{/sw_dms}} class="accent-yellow-400"> Send members direct messages (otherwise email)</label>

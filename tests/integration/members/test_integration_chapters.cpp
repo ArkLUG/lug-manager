@@ -212,6 +212,8 @@ TEST_F(IntegrationTest, ChapterPageOverview) {
     auto page = GET("/chapters/" + std::to_string(test_chapter_id), member_token);
     EXPECT_EQ(page.code, 200);
     expect_contains(page, "Coming up");
+    expect_not_contains(page, "and 0 more");                          // a small chapter lists everyone
+    expect_contains(page, "class=\"grid grid-cols-1 lg:grid-cols-2");    // phones: cards stay screen-width
     expect_contains(page, "Future meeting");
     expect_contains(page, "Chapter Show");
     expect_contains(page, "tentative");

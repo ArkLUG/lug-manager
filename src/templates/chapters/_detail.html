@@ -52,7 +52,7 @@
     <div class="bg-white rounded-xl border border-gray-200 p-4"><div class="text-2xl font-bold text-gray-900">{{active_90}}</div><div class="text-xs text-gray-500">came to something in the last 90 days</div></div>
   </div>
 
-  <div class="grid lg:grid-cols-2 gap-6">
+  <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
     <section class="bg-white rounded-xl border border-gray-200 p-6">
       <h3 class="text-lg font-semibold text-gray-900 mb-3">Coming up</h3>
       {{#has_upcoming}}
@@ -61,7 +61,7 @@
         <li>
           <button hx-get="{{url}}" hx-target="#modal" hx-swap="innerHTML" class="w-full text-left flex items-start gap-3 py-2 hover:bg-gray-50 rounded">
             <span class="text-xs font-medium text-gray-500 w-28 shrink-0 pt-0.5">{{when}}</span>
-            <span class="min-w-0"><span class="text-sm font-medium text-gray-800">{{title}}</span>
+            <span class="min-w-0"><span class="text-sm font-medium text-gray-800 break-words">{{title}}</span>
               {{#is_event}}<span class="ml-1 text-xs px-1.5 py-0.5 rounded bg-purple-100 text-purple-700">event</span>{{/is_event}}
               {{#tentative}}<span class="ml-1 text-xs px-1.5 py-0.5 rounded bg-amber-100 text-amber-800">tentative</span>{{/tentative}}
               {{#place}}<span class="block text-xs text-gray-500 truncate">{{place}}</span>{{/place}}</span>
@@ -80,7 +80,7 @@
         {{#recent}}
         <li>
           <button hx-get="{{url}}" hx-target="#modal" hx-swap="innerHTML" class="w-full text-left hover:bg-gray-50 rounded px-1">
-            <div class="flex items-baseline justify-between gap-2 text-sm"><span class="text-gray-800 truncate">{{title}}</span><span class="text-xs text-gray-500 whitespace-nowrap">{{when}} &middot; {{count}} came</span></div>
+            <div class="flex items-baseline justify-between gap-2 text-sm"><span class="text-gray-800 truncate min-w-0">{{title}}</span><span class="text-xs text-gray-500 whitespace-nowrap">{{when}} &middot; {{count}} came</span></div>
             <div class="h-1.5 bg-gray-100 rounded mt-1"><div class="h-1.5 bg-yellow-400 rounded" style="width: {{pct}}%"></div></div>
           </button>
         </li>

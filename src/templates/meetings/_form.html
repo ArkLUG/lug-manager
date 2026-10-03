@@ -140,7 +140,7 @@
     <details class="f-discord text-sm border border-gray-200 rounded-lg px-3 py-2" {{#has_chat_skip}}open{{/has_chat_skip}}>
       <summary class="cursor-pointer text-gray-700">Discord: leave out parts of this meeting's posts</summary>
       <input type="hidden" name="chat_opts" value="1">
-      <div class="grid sm:grid-cols-2 gap-x-6 gap-y-1 mt-2 text-gray-700">
+      <div class="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-1 mt-2 text-gray-700">
         <label class="flex items-center gap-2"><input type="checkbox" name="skip_announce" value="1" {{#skip_announce}}checked{{/skip_announce}} class="rounded border-gray-300"> No announcement</label>
         <label class="flex items-center gap-2"><input type="checkbox" name="skip_scheduled" value="1" {{#skip_scheduled}}checked{{/skip_scheduled}} class="rounded border-gray-300"> No Discord event (Events tab)</label>
       </div>

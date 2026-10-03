@@ -128,7 +128,7 @@ void add_chapter_overview(crow::mustache::context& ctx, SqliteDatabase& db, cons
     (void)managers;
     ctx["people"] = std::move(everyone);
     ctx["has_people"] = ei > 0;
-    ctx["more_people"] = member_count > 60 ? member_count - 60 : 0;
+    if (member_count > 60) ctx["more_people"] = member_count - 60;   // (a 0 would still show: numbers are truthy)
 
     // Coming up: this chapter's meetings and events, soonest first
     struct Item { std::string when, kind, title, place; int64_t id; bool tentative; };

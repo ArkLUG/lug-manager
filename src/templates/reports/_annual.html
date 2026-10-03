@@ -71,7 +71,7 @@
     {{^has_venues}}<p class="text-sm text-gray-400">No in-person meetings or events this year.</p>{{/has_venues}}
   </div>
 
-  <div class="grid md:grid-cols-2 gap-4">
+  <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
     <div class="bg-white rounded-xl border border-gray-200 p-5">
       <h3 class="font-semibold text-gray-800 mb-2">Most active members</h3>
       {{#has_top}}<ol class="text-sm space-y-1 list-decimal list-inside text-gray-700">{{#top}}<li>{{name}} <span class="text-gray-400">({{count}})</span></li>{{/top}}</ol>{{/has_top}}

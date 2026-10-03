@@ -31,7 +31,7 @@
   <form hx-post="/meetings/series" hx-target="#main-content" hx-swap="innerHTML"
         class="bg-white rounded-xl border border-gray-200 p-6 space-y-4 text-sm">
     <h3 class="font-semibold text-gray-800">New recurring meeting</h3>
-    <div class="grid md:grid-cols-2 gap-3">
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
       <label class="block text-gray-700">Title<input name="title" required maxlength="200" placeholder="Monthly Build Night" class="mt-1 w-full border border-gray-300 rounded-lg px-3 py-2"></label>
       <label class="block text-gray-700">Location<input name="location" maxlength="300" placeholder="Library, 123 Main St" class="mt-1 w-full border border-gray-300 rounded-lg px-3 py-2"></label>
     </div>
@@ -66,7 +66,7 @@
       </div>
     </fieldset>
 
-    <div class="grid md:grid-cols-2 gap-3">
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
       <label class="block text-gray-700">Scope
         <select name="scope" class="mt-1 w-full border border-gray-300 rounded-lg px-3 py-2">
           {{#f_chapters}}<option value="chapter">Chapter</option>{{/f_chapters}}
