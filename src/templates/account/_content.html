@@ -40,6 +40,17 @@
     </div>
   </section>
 
+  {{#has_owned_items}}
+  <section class="f-inventory bg-white rounded-xl border border-gray-200 p-6 space-y-2" id="account-owned">
+    <h3 class="font-semibold text-gray-800">Your things the LUG keeps or uses</h3>
+    <ul class="text-sm divide-y divide-gray-100">
+      {{#owned_items}}<li class="py-1.5"><span class="text-gray-900">{{name}}</span> <span class="text-gray-400">× {{quantity}}</span>
+        {{#where}}<div class="text-xs text-gray-500">{{where}}</div>{{/where}}{{#out}}<div class="text-xs text-amber-700">On loan: {{out}}</div>{{/out}}</li>{{/owned_items}}
+    </ul>
+    <a hx-get="/inventory?owner=mine" hx-target="#main-content" hx-push-url="true" class="text-sm text-indigo-600 hover:underline cursor-pointer">See them in the inventory</a>
+  </section>
+  {{/has_owned_items}}
+
   <section class="f-calendar bg-white rounded-xl border border-gray-200 p-6 space-y-3" id="account-calendar">
     <h3 class="font-semibold text-gray-800">Calendar</h3>
     <p class="text-sm text-gray-500">Subscribe once and meetings and events stay up to date in your own calendar app.</p>

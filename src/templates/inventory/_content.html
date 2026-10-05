@@ -84,23 +84,27 @@
           <a hx-get="/inventory?location={{id}}" hx-target="#main-content" hx-push-url="true" class="font-medium text-gray-900 hover:underline cursor-pointer">{{name}}</a>
           <span class="text-xs px-2 py-0.5 rounded bg-gray-100 text-gray-600 whitespace-nowrap">{{kind_label}}</span>
         </div>
-        <div class="text-xs text-gray-500">{{units}} item(s){{#keeper}} · looked after by {{keeper}}{{/keeper}}</div>
+        <div class="text-xs text-gray-500">{{units}} item(s){{#owner_member}} · owned by {{owner}}{{/owner_member}}{{#keeper}} · looked after by {{keeper}}{{/keeper}}</div>
         {{#address}}<div class="text-xs text-gray-500">{{address}}</div>{{/address}}
         {{#notes}}<div class="text-xs text-gray-500">{{notes}}</div>{{/notes}}
         {{#can_manage}}
         <details class="pt-1">
           <summary class="text-xs text-gray-600 cursor-pointer">Edit</summary>
-          <form hx-post="/inventory/locations/{{id}}" hx-target="#inventory-page" hx-swap="outerHTML" class="mt-2 space-y-1.5">
-            <input name="name" value="{{name}}" required maxlength="100" aria-label="Name" class="w-full border border-gray-300 rounded-lg px-2 py-1">
-            <select name="kind" aria-label="Type" class="w-full border border-gray-300 rounded-lg px-2 py-1">
+          <form hx-post="/inventory/locations/{{id}}" hx-target="#inventory-page" hx-swap="outerHTML" class="mt-2 space-y-1.5 text-xs text-gray-600">
+            <label class="block">Name<input name="name" value="{{name}}" required maxlength="100" class="mt-0.5 w-full border border-gray-300 rounded-lg px-2 py-1 text-sm text-gray-900"></label>
+            <label class="block">Type<select name="kind" class="mt-0.5 w-full border border-gray-300 rounded-lg px-2 py-1 text-sm text-gray-900">
               {{#kinds}}<option value="{{value}}" {{#selected}}selected{{/selected}}>{{label}}</option>{{/kinds}}
-            </select>
-            <select name="keeper_id" aria-label="Looked after by" class="w-full border border-gray-300 rounded-lg px-2 py-1">
+            </select></label>
+            <label class="block">Owned by<select name="owner_id" class="mt-0.5 w-full border border-gray-300 rounded-lg px-2 py-1 text-sm text-gray-900">
+              <option value="0">The LUG</option>
+              {{#owner_options}}<option value="{{id}}" {{#selected}}selected{{/selected}}>{{name}}</option>{{/owner_options}}
+            </select></label>
+            <label class="block">Looked after by<select name="keeper_id" class="mt-0.5 w-full border border-gray-300 rounded-lg px-2 py-1 text-sm text-gray-900">
               <option value="">Nobody in particular</option>
               {{#keeper_options}}<option value="{{id}}" {{#selected}}selected{{/selected}}>{{name}}</option>{{/keeper_options}}
-            </select>
-            <input name="address" value="{{address}}" maxlength="200" placeholder="Address / where exactly" class="w-full border border-gray-300 rounded-lg px-2 py-1">
-            <input name="notes" value="{{notes}}" maxlength="500" placeholder="Notes (gate code, who has keys...)" class="w-full border border-gray-300 rounded-lg px-2 py-1">
+            </select></label>
+            <label class="block">Address / where exactly<input name="address" value="{{address}}" maxlength="200" class="mt-0.5 w-full border border-gray-300 rounded-lg px-2 py-1 text-sm text-gray-900"></label>
+            <label class="block">Notes<input name="notes" value="{{notes}}" maxlength="500" placeholder="Gate code, who has keys..." class="mt-0.5 w-full border border-gray-300 rounded-lg px-2 py-1 text-sm text-gray-900"></label>
             <div class="flex items-center gap-2">
               <button class="px-3 py-1 bg-gray-800 text-white rounded-lg">Save</button>
               <button type="button" hx-post="/inventory/locations/{{id}}/archive" hx-target="#inventory-page" hx-swap="outerHTML"
@@ -118,17 +122,21 @@
     {{#can_manage}}
     <details class="mt-4 border border-gray-200 rounded-lg">
       <summary class="cursor-pointer px-3 py-2 text-sm font-medium text-gray-700">Add a location</summary>
-      <form hx-post="/inventory/locations" hx-target="#inventory-page" hx-swap="outerHTML" class="p-3 grid grid-cols-1 md:grid-cols-4 gap-2 text-sm">
-        <input name="name" required maxlength="100" placeholder="e.g. Show trailer" class="border border-gray-300 rounded-lg px-2 py-1.5" aria-label="Name">
-        <select name="kind" aria-label="Type" class="border border-gray-300 rounded-lg px-2 py-1.5">
+      <form hx-post="/inventory/locations" hx-target="#inventory-page" hx-swap="outerHTML" class="p-3 grid grid-cols-1 md:grid-cols-4 gap-2 text-sm items-end">
+        <label class="text-xs text-gray-600">Name<input name="name" required maxlength="100" placeholder="e.g. Show trailer" class="mt-0.5 w-full border border-gray-300 rounded-lg px-2 py-1.5 text-sm"></label>
+        <label class="text-xs text-gray-600">Type<select name="kind" class="mt-0.5 w-full border border-gray-300 rounded-lg px-2 py-1.5 text-sm">
           {{#kinds}}<option value="{{value}}">{{label}}</option>{{/kinds}}
-        </select>
-        <select name="keeper_id" aria-label="Looked after by" class="md:col-span-2 border border-gray-300 rounded-lg px-2 py-1.5">
-          <option value="">Looked after by… (optional)</option>
+        </select></label>
+        <label class="text-xs text-gray-600">Owned by<select name="owner_id" class="mt-0.5 w-full border border-gray-300 rounded-lg px-2 py-1.5 text-sm">
+          <option value="0">The LUG</option>
           {{#members}}<option value="{{id}}">{{name}}</option>{{/members}}
-        </select>
-        <input name="address" maxlength="200" placeholder="Address / where exactly" class="md:col-span-2 border border-gray-300 rounded-lg px-2 py-1.5">
-        <input name="notes" maxlength="500" placeholder="Notes" class="border border-gray-300 rounded-lg px-2 py-1.5">
+        </select></label>
+        <label class="text-xs text-gray-600">Looked after by <span class="text-gray-400">(optional)</span><select name="keeper_id" class="mt-0.5 w-full border border-gray-300 rounded-lg px-2 py-1.5 text-sm">
+          <option value="">Nobody in particular</option>
+          {{#members}}<option value="{{id}}">{{name}}</option>{{/members}}
+        </select></label>
+        <label class="md:col-span-2 text-xs text-gray-600">Address / where exactly<input name="address" maxlength="200" class="mt-0.5 w-full border border-gray-300 rounded-lg px-2 py-1.5 text-sm"></label>
+        <label class="text-xs text-gray-600">Notes<input name="notes" maxlength="500" class="mt-0.5 w-full border border-gray-300 rounded-lg px-2 py-1.5 text-sm"></label>
         <button class="px-3 py-1.5 bg-yellow-400 text-gray-900 rounded-lg font-semibold hover:bg-yellow-300">Add</button>
       </form>
     </details>
@@ -139,6 +147,11 @@
   <section class="bg-white rounded-xl border border-gray-200 p-5">
     <div class="flex flex-wrap items-center justify-between gap-2 mb-3">
       <h3 class="font-semibold text-gray-800">Items{{#filter_name}} at {{filter_name}}{{/filter_name}}</h3>
+      <div class="inline-flex rounded-lg border border-gray-300 overflow-hidden text-xs" role="tablist" aria-label="Owner">
+        <a role="tab" hx-get="/inventory" hx-target="#main-content" hx-push-url="true" class="px-3 py-1.5 cursor-pointer {{#owner_all}}bg-gray-800 text-white{{/owner_all}}{{^owner_all}}text-gray-700 hover:bg-gray-50{{/owner_all}}">Everything</a>
+        <a role="tab" hx-get="/inventory?owner=lug" hx-target="#main-content" hx-push-url="true" class="px-3 py-1.5 border-l border-gray-300 cursor-pointer {{#owner_lug}}bg-gray-800 text-white{{/owner_lug}}{{^owner_lug}}text-gray-700 hover:bg-gray-50{{/owner_lug}}">The LUG's</a>
+        <a role="tab" hx-get="/inventory?owner=mine" hx-target="#main-content" hx-push-url="true" class="px-3 py-1.5 border-l border-gray-300 cursor-pointer {{#owner_mine}}bg-gray-800 text-white{{/owner_mine}}{{^owner_mine}}text-gray-700 hover:bg-gray-50{{/owner_mine}}">Mine</a>
+      </div>
       {{#filter_name}}<a hx-get="/inventory" hx-target="#main-content" hx-push-url="true" class="text-sm text-indigo-600 hover:text-indigo-800 cursor-pointer">Show everything</a>{{/filter_name}}
     </div>
     {{#has_items}}
@@ -155,6 +168,7 @@
               {{#photo}}<a href="/uploads/{{photo}}" target="_blank" rel="noopener"><img src="/uploads/{{photo}}" alt="" loading="lazy" class="w-10 h-10 object-cover rounded border border-gray-200"></a>{{/photo}}
               <div>{{name}}
                 {{#condition_issue}}<span class="ml-1 text-xs px-1.5 py-0.5 rounded {{#condition_broken}}bg-red-100 text-red-700{{/condition_broken}}{{^condition_broken}}bg-amber-100 text-amber-800{{/condition_broken}}">{{condition_label}}</span>{{/condition_issue}}
+                {{#owner_member}}<div class="text-xs {{#owner_left}}text-amber-700{{/owner_left}}{{^owner_left}}text-indigo-700{{/owner_left}}">Owned by {{#owned_by_me}}you{{/owned_by_me}}{{^owned_by_me}}{{owner}}{{/owned_by_me}}</div>{{/owner_member}}
                 {{#condition_note}}<div class="text-xs text-amber-700">{{condition_note}}</div>{{/condition_note}}
                 {{#notes}}<div class="text-xs text-gray-500">{{notes}}</div>{{/notes}}
               </div>
@@ -174,15 +188,19 @@
         {{#can_manage}}
         <tr class="hidden">
           <td colspan="5" class="py-3 space-y-3">
-            <form hx-post="/inventory/{{id}}" hx-target="#inventory-page" hx-swap="outerHTML" class="grid grid-cols-1 md:grid-cols-6 gap-2 text-sm">
-              <input name="name" value="{{name}}" required maxlength="150" class="md:col-span-2 border border-gray-300 rounded-lg px-2 py-1.5" aria-label="Name">
-              <input name="category" value="{{category}}" maxlength="60" placeholder="Category" class="border border-gray-300 rounded-lg px-2 py-1.5">
-              <label class="flex items-center gap-1 text-xs text-gray-500">Total <input type="number" name="quantity" value="{{quantity}}" min="1" class="w-full border border-gray-300 rounded-lg px-2 py-1.5 text-sm" aria-label="Total owned"></label>
-              <input name="notes" value="{{notes}}" maxlength="1000" placeholder="Notes" class="md:col-span-2 border border-gray-300 rounded-lg px-2 py-1.5">
-              <select name="condition" aria-label="Condition" class="border border-gray-300 rounded-lg px-2 py-1.5">
+            <form hx-post="/inventory/{{id}}" hx-target="#inventory-page" hx-swap="outerHTML" class="grid grid-cols-1 md:grid-cols-6 gap-2 text-sm items-end">
+              <label class="md:col-span-2 text-xs text-gray-600">Name<input name="name" value="{{name}}" required maxlength="150" class="mt-0.5 w-full border border-gray-300 rounded-lg px-2 py-1.5 text-sm"></label>
+              <label class="text-xs text-gray-600">Category<input name="category" value="{{category}}" maxlength="60" class="mt-0.5 w-full border border-gray-300 rounded-lg px-2 py-1.5 text-sm"></label>
+              <label class="text-xs text-gray-600">Total owned<input type="number" name="quantity" value="{{quantity}}" min="1" class="mt-0.5 w-full border border-gray-300 rounded-lg px-2 py-1.5 text-sm"></label>
+              <label class="md:col-span-2 text-xs text-gray-600">Owned by<select name="owner_id" class="mt-0.5 w-full border border-gray-300 rounded-lg px-2 py-1.5 text-sm">
+                <option value="0">The LUG</option>
+                {{#owner_options}}<option value="{{id}}" {{#selected}}selected{{/selected}}>{{name}}</option>{{/owner_options}}
+              </select></label>
+              <label class="md:col-span-3 text-xs text-gray-600">Notes<input name="notes" value="{{notes}}" maxlength="1000" class="mt-0.5 w-full border border-gray-300 rounded-lg px-2 py-1.5 text-sm"></label>
+              <label class="text-xs text-gray-600">Condition<select name="condition" class="mt-0.5 w-full border border-gray-300 rounded-lg px-2 py-1.5 text-sm">
                 {{#conditions}}<option value="{{value}}" {{#selected}}selected{{/selected}}>{{label}}</option>{{/conditions}}
-              </select>
-              <input name="condition_note" value="{{condition_note}}" maxlength="300" placeholder="What's wrong / what needs fixing" class="md:col-span-5 border border-gray-300 rounded-lg px-2 py-1.5">
+              </select></label>
+              <label class="md:col-span-2 text-xs text-gray-600">What's wrong <span class="text-gray-400">(if anything)</span><input name="condition_note" value="{{condition_note}}" maxlength="300" class="mt-0.5 w-full border border-gray-300 rounded-lg px-2 py-1.5 text-sm"></label>
               <div class="md:col-span-6 flex items-center gap-2">
                 <button class="px-3 py-1.5 bg-gray-800 text-white rounded-lg">Save</button>
                 <button type="button" hx-post="/inventory/{{id}}/archive" hx-target="#inventory-page" hx-swap="outerHTML"
@@ -226,15 +244,19 @@
     {{#can_manage}}
     <details class="mt-4 border border-gray-200 rounded-lg">
       <summary class="cursor-pointer px-3 py-2 text-sm font-medium text-gray-700">Add an item</summary>
-      <form hx-post="/inventory" hx-target="#inventory-page" hx-swap="outerHTML" class="p-3 grid grid-cols-1 md:grid-cols-6 gap-2 text-sm">
-        <input name="name" required maxlength="150" placeholder="e.g. 6ft folding table" class="md:col-span-2 border border-gray-300 rounded-lg px-2 py-1.5">
-        <input name="category" maxlength="60" placeholder="Category" class="border border-gray-300 rounded-lg px-2 py-1.5">
-        <input type="number" name="quantity" value="1" min="1" class="border border-gray-300 rounded-lg px-2 py-1.5" aria-label="Quantity">
-        <select name="location_id" aria-label="Kept at" class="md:col-span-2 border border-gray-300 rounded-lg px-2 py-1.5">
-          <option value="0">Kept at… (choose later)</option>
+      <form hx-post="/inventory" hx-target="#inventory-page" hx-swap="outerHTML" class="p-3 grid grid-cols-1 md:grid-cols-6 gap-2 text-sm items-end">
+        <label class="md:col-span-2 text-xs text-gray-600">Name<input name="name" required maxlength="150" placeholder="e.g. 6ft folding table" class="mt-0.5 w-full border border-gray-300 rounded-lg px-2 py-1.5 text-sm"></label>
+        <label class="text-xs text-gray-600">Category<input name="category" maxlength="60" class="mt-0.5 w-full border border-gray-300 rounded-lg px-2 py-1.5 text-sm"></label>
+        <label class="text-xs text-gray-600">Quantity<input type="number" name="quantity" value="1" min="1" class="mt-0.5 w-full border border-gray-300 rounded-lg px-2 py-1.5 text-sm"></label>
+        <label class="md:col-span-2 text-xs text-gray-600">Kept at<select name="location_id" class="mt-0.5 w-full border border-gray-300 rounded-lg px-2 py-1.5 text-sm">
+          <option value="0">Choose later</option>
           {{#location_options}}<option value="{{id}}">{{name}}</option>{{/location_options}}
-        </select>
-        <input name="notes" maxlength="1000" placeholder="Notes" class="md:col-span-5 border border-gray-300 rounded-lg px-2 py-1.5">
+        </select></label>
+        <label class="md:col-span-2 text-xs text-gray-600">Owned by<select name="owner_id" class="mt-0.5 w-full border border-gray-300 rounded-lg px-2 py-1.5 text-sm">
+          <option value="0">The LUG</option>
+          {{#members}}<option value="{{id}}">{{name}}</option>{{/members}}
+        </select></label>
+        <label class="md:col-span-3 text-xs text-gray-600">Notes<input name="notes" maxlength="1000" class="mt-0.5 w-full border border-gray-300 rounded-lg px-2 py-1.5 text-sm"></label>
         <button class="px-3 py-1.5 bg-yellow-400 text-gray-900 rounded-lg font-semibold hover:bg-yellow-300">Add</button>
       </form>
     </details>

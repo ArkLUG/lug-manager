@@ -55,6 +55,7 @@ public:
             {"lug_events", "event_lead_id"}, {"meeting_series", "created_by"},
             {"pending_discord_matches", "suggested_member_id"}, {"pending_discord_matches", "resolved_member_id"},
             {"treasury_entries", "recorded_by"}, {"storage_locations", "keeper_id"},
+            {"storage_locations", "owner_member_id"}, {"inventory_items", "owner_member_id"},
             {"community_ambassador_terms", "member_id"}, {"fan_colab_task_done", "done_by"},
         };
         for (const auto& r : refs)

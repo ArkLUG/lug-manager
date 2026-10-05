@@ -78,6 +78,23 @@ void adjust_stock(SqliteDatabase& db, int64_t item, int64_t loc, int64_t delta) 
     }
 }
 
+// Owner from a form ("0"/empty = the LUG). Returns false if the member doesn't exist.
+bool read_owner(SqliteDatabase& db, int64_t owner, std::string& name) {
+    name.clear();
+    if (owner <= 0) return true;
+    auto st = db.prepare("SELECT display_name FROM members WHERE id=?");
+    st.bind(1, owner);
+    if (!st.step()) return false;
+    name = st.col_text(0);
+    return true;
+}
+// "the LUG", the member's name, or "<name> (left - reassign)"
+std::string owner_label(int64_t owner_id, const std::string& current, const std::string& saved) {
+    if (owner_id > 0) return current;
+    if (!saved.empty()) return saved + " (left - reassign)";
+    return "the LUG";
+}
+
 bool location_exists(SqliteDatabase& db, int64_t loc) {
     return loc > 0 && query_int(db, "SELECT COUNT(*) FROM storage_locations WHERE id=? AND archived=0", loc) > 0;
 }
@@ -96,12 +113,17 @@ std::string render(const crow::request& req, LugApp& app, SqliteDatabase& db, co
     std::string today = AttendanceService::today_ymd();
     int64_t filter = 0;
     if (const char* l = req.url_params.get("location")) { try { filter = std::stoll(l); } catch (...) {} }
+    std::string owner_filter;   // "mine" | "lug" | "" (everything)
+    if (const char* o = req.url_params.get("owner")) owner_filter = std::string(o) == "mine" || std::string(o) == "lug" ? o : "";
 
     crow::mustache::context ctx;
     if (!flash.empty()) ctx["flash"] = flash;
     ctx["flash_error"] = error;
     ctx["can_manage"] = manage;
     ctx["today"] = today;
+    ctx["owner_mine"] = owner_filter == "mine";
+    ctx["owner_lug"] = owner_filter == "lug";
+    ctx["owner_all"] = owner_filter.empty();
 
     std::vector<std::pair<int64_t, std::string>> people;
     if (manage) {
@@ -118,10 +140,12 @@ std::string render(const crow::request& req, LugApp& app, SqliteDatabase& db, co
     {
         auto st = db.prepare(
             "SELECT s.id, s.name, s.kind, s.address, s.notes, s.keeper_id, COALESCE(m.display_name,''), "
+            "COALESCE(s.owner_member_id,0), s.owner_name, COALESCE(om.display_name,''), "
             "COALESCE((SELECT SUM(k.quantity) FROM inventory_stock k JOIN inventory_items i ON i.id=k.item_id "
             "          WHERE k.location_id=s.id AND i.archived=0),0), "
             "(SELECT COUNT(*) FROM inventory_stock k JOIN inventory_items i ON i.id=k.item_id WHERE k.location_id=s.id AND i.archived=0) "
-            "FROM storage_locations s LEFT JOIN members m ON m.id=s.keeper_id WHERE s.archived=0 "
+            "FROM storage_locations s LEFT JOIN members m ON m.id=s.keeper_id LEFT JOIN members om ON om.id=s.owner_member_id "
+            "WHERE s.archived=0 "
             "ORDER BY s.name COLLATE NOCASE");
         while (st.step()) {
             int64_t id = st.col_int(0);
@@ -130,7 +154,10 @@ std::string render(const crow::request& req, LugApp& app, SqliteDatabase& db, co
             l["id"] = id; l["name"] = st.col_text(1); l["kind"] = st.col_text(2); l["kind_label"] = kind_label(st.col_text(2));
             l["address"] = st.col_text(3); l["notes"] = st.col_text(4);
             l["keeper_id"] = st.col_int(5); l["keeper"] = st.col_text(6);
-            l["units"] = st.col_int(7); l["item_kinds"] = st.col_int(8);
+            l["units"] = st.col_int(10); l["item_kinds"] = st.col_int(11);
+            const int64_t lowner = st.col_int(7);
+            l["owner"] = owner_label(lowner, st.col_text(9), st.col_text(8));
+            l["owner_member"] = lowner > 0 || !st.col_text(8).empty();
             l["selected"] = id == filter;
             l["can_manage"] = manage;
             if (manage) {
@@ -138,7 +165,9 @@ std::string render(const crow::request& req, LugApp& app, SqliteDatabase& db, co
                 int k = 0;
                 for (const auto& [pid, pname] : people) {
                     l["keeper_options"][k]["id"] = pid; l["keeper_options"][k]["name"] = pname;
-                    l["keeper_options"][k]["selected"] = pid == st.col_int(5); ++k;
+                    l["keeper_options"][k]["selected"] = pid == st.col_int(5);
+                    l["owner_options"][k]["id"] = pid; l["owner_options"][k]["name"] = pname;
+                    l["owner_options"][k]["selected"] = pid == lowner; ++k;
                 }
             }
             for (int k = 0; k < 5; ++k) {
@@ -147,7 +176,7 @@ std::string render(const crow::request& req, LugApp& app, SqliteDatabase& db, co
             }
             loc_opts[nl]["id"] = id; loc_opts[nl]["name"] = st.col_text(1);
             if (st.col_int(5) == a.member_id) {
-                mine[nmine]["id"] = id; mine[nmine]["name"] = st.col_text(1); mine[nmine]["units"] = st.col_int(7); ++nmine;
+                mine[nmine]["id"] = id; mine[nmine]["name"] = st.col_text(1); mine[nmine]["units"] = st.col_int(10); ++nmine;
             }
             ++nl;
         }
@@ -176,8 +205,9 @@ std::string render(const crow::request& req, LugApp& app, SqliteDatabase& db, co
     auto st = db.prepare(
         "SELECT i.id, i.name, i.category, i.quantity, i.notes, "
         "COALESCE((SELECT SUM(l.quantity) FROM inventory_loans l WHERE l.item_id=i.id AND l.returned_at IS NULL),0), "
-        "i.photo_file, i.condition, i.condition_note "
-        "FROM inventory_items i WHERE i.archived=0 ORDER BY i.category COLLATE NOCASE, i.name COLLATE NOCASE");
+        "i.photo_file, i.condition, i.condition_note, COALESCE(i.owner_member_id,0), i.owner_name, COALESCE(om.display_name,'') "
+        "FROM inventory_items i LEFT JOIN members om ON om.id=i.owner_member_id WHERE i.archived=0 "
+        "ORDER BY i.category COLLATE NOCASE, i.name COLLATE NOCASE");
     while (st.step()) {
         int64_t id = st.col_int(0), qty = st.col_int(3), out = st.col_int(5);
         int64_t placed = 0;
@@ -192,6 +222,9 @@ std::string render(const crow::request& req, LugApp& app, SqliteDatabase& db, co
         }
         int64_t free_ = qty - placed - out;
         if (!here) continue;
+        const int64_t owner = st.col_int(9);
+        if (owner_filter == "mine" && owner != a.member_id) continue;
+        if (owner_filter == "lug" && (owner > 0 || !st.col_text(10).empty())) continue;
         auto& it = items[i++];
         it["id"] = id;
         it["name"] = st.col_text(1);
@@ -216,6 +249,18 @@ std::string render(const crow::request& req, LugApp& app, SqliteDatabase& db, co
         it["unplaced"] = free_;
         it["has_unplaced"] = free_ > 0;
         it["can_manage"] = manage;
+        it["owner"] = owner_label(owner, st.col_text(11), st.col_text(10));
+        it["owner_member"] = owner > 0 || !st.col_text(10).empty();
+        it["owner_left"] = owner == 0 && !st.col_text(10).empty();
+        it["owned_by_me"] = owner > 0 && owner == a.member_id;
+        if (manage) {
+            int k = 0;
+            it["owner_options"] = crow::json::wvalue::list();
+            for (const auto& [pid, pname] : people) {
+                it["owner_options"][k]["id"] = pid; it["owner_options"][k]["name"] = pname;
+                it["owner_options"][k]["selected"] = pid == owner; ++k;
+            }
+        }
         it["locations"] = crow::json::wvalue::list();
         int k = 0;
         for (const auto& [lid, lname] : loc_names) { it["locations"][k]["id"] = lid; it["locations"][k]["name"] = lname; ++k; }
@@ -504,17 +549,19 @@ void register_inventory_routes(LugApp& app, SqliteDatabase& db, AuditService& au
     CROW_ROUTE(app, "/inventory.csv")([&app, &db](const crow::request& req) {
         crow::response res;
         if (!require_auth(req, res, app, "chapter_lead")) return res;
-        std::string out = "Item,Category,Total,Where,Quantity there,Looked after by / borrower,Due\n";
+        std::string out = "Item,Category,Owner,Total,Where,Quantity there,Looked after by / borrower,Due\n";
         auto st = db.prepare(
-            "SELECT i.name, i.category, i.quantity, s.name, k.quantity, COALESCE(m.display_name,''), '' "
+            "SELECT i.name, i.category, CASE WHEN i.owner_member_id IS NOT NULL THEN COALESCE((SELECT display_name FROM members WHERE id=i.owner_member_id),'') "
+            "  WHEN i.owner_name <> '' THEN i.owner_name || ' (left)' ELSE 'LUG' END, i.quantity, s.name, k.quantity, COALESCE(m.display_name,''), '' "
             "FROM inventory_items i JOIN inventory_stock k ON k.item_id=i.id JOIN storage_locations s ON s.id=k.location_id "
             "LEFT JOIN members m ON m.id=s.keeper_id WHERE i.archived=0 "
-            "UNION ALL SELECT i.name, i.category, i.quantity, 'On loan', l.quantity, COALESCE(m.display_name,''), l.due_on "
+            "UNION ALL SELECT i.name, i.category, CASE WHEN i.owner_member_id IS NOT NULL THEN COALESCE((SELECT display_name FROM members WHERE id=i.owner_member_id),'') "
+            "  WHEN i.owner_name <> '' THEN i.owner_name || ' (left)' ELSE 'LUG' END, i.quantity, 'On loan', l.quantity, COALESCE(m.display_name,''), l.due_on "
             "FROM inventory_items i JOIN inventory_loans l ON l.item_id=i.id AND l.returned_at IS NULL "
             "LEFT JOIN members m ON m.id=l.member_id WHERE i.archived=0 "
-            "ORDER BY 1 COLLATE NOCASE, 4");
+            "ORDER BY 1 COLLATE NOCASE, 5");
         while (st.step()) {
-            for (int c = 0; c < 7; ++c) out += (c ? "," : "") + csv_field(st.col_text(c));
+            for (int c = 0; c < 8; ++c) out += (c ? "," : "") + csv_field(st.col_text(c));
             out += "\n";
         }
         res.add_header("Content-Type", "text/csv; charset=utf-8");
@@ -529,13 +576,17 @@ void register_inventory_routes(LugApp& app, SqliteDatabase& db, AuditService& au
         if (!require_auth(req, res, app, "chapter_lead")) return res;
         Form f(req);
         std::string name = f.get("name", 100), kind = f.get("kind", 20);
-        int64_t keeper = f.num("keeper_id");
+        int64_t keeper = f.num("keeper_id"), owner = f.num("owner_id");
+        std::string owner_name;
         if (name.empty() || !valid_kind(kind)) return fragment(req, app, db, 400, "Give the location a name and a type.");
-        if (keeper > 0 && query_int(db, "SELECT COUNT(*) FROM members WHERE id=?", keeper) == 0)
+        if ((keeper > 0 && query_int(db, "SELECT COUNT(*) FROM members WHERE id=?", keeper) == 0) || !read_owner(db, owner, owner_name))
             return fragment(req, app, db, 404, "That member doesn't exist.");
-        auto ins = db.prepare("INSERT INTO storage_locations (name, kind, address, notes, keeper_id) VALUES (?,?,?,?,?) RETURNING id");
+        auto ins = db.prepare("INSERT INTO storage_locations (name, kind, address, notes, keeper_id, owner_member_id, owner_name) "
+                              "VALUES (?,?,?,?,?,?,?) RETURNING id");
         ins.bind(1, name); ins.bind(2, kind); ins.bind(3, f.get("address", 200)); ins.bind(4, f.get("notes", 500));
         if (keeper > 0) ins.bind(5, keeper); else ins.bind_null(5);
+        if (owner > 0) ins.bind(6, owner); else ins.bind_null(6);
+        ins.bind(7, owner_name);
         ins.step();
         int64_t id = ins.col_int(0);
         ins.reset();
@@ -548,20 +599,24 @@ void register_inventory_routes(LugApp& app, SqliteDatabase& db, AuditService& au
         if (!require_auth(req, res, app, "chapter_lead")) return res;
         Form f(req);
         std::string name = f.get("name", 100), kind = f.get("kind", 20);
-        int64_t keeper = f.num("keeper_id");
+        int64_t keeper = f.num("keeper_id"), owner = f.num("owner_id");
+        std::string owner_name;
         if (name.empty() || !valid_kind(kind)) return fragment(req, app, db, 400, "Give the location a name and a type.");
-        if (keeper > 0 && query_int(db, "SELECT COUNT(*) FROM members WHERE id=?", keeper) == 0)
+        if ((keeper > 0 && query_int(db, "SELECT COUNT(*) FROM members WHERE id=?", keeper) == 0) || !read_owner(db, owner, owner_name))
             return fragment(req, app, db, 404, "That member doesn't exist.");
-        auto up = db.prepare("UPDATE storage_locations SET name=?, kind=?, address=?, notes=?, keeper_id=? "
+        auto up = db.prepare("UPDATE storage_locations SET name=?, kind=?, address=?, notes=?, keeper_id=?, owner_member_id=?, owner_name=? "
                              "WHERE id=? AND archived=0 RETURNING id");
         up.bind(1, name); up.bind(2, kind); up.bind(3, f.get("address", 200)); up.bind(4, f.get("notes", 500));
         if (keeper > 0) up.bind(5, keeper); else up.bind_null(5);
-        up.bind(6, static_cast<int64_t>(id));
+        if (owner > 0) up.bind(6, owner); else up.bind_null(6);
+        up.bind(7, owner_name);
+        up.bind(8, static_cast<int64_t>(id));
         bool found = up.step();
         up.reset();
         if (!found) return fragment(req, app, db, 404, "That location doesn't exist.");
         audit.log(req, app, "inventory.location_update", "inventory_location", id, name,
-                  keeper > 0 ? "Looked after by member #" + std::to_string(keeper) : "No keeper");
+                  (keeper > 0 ? "Looked after by member #" + std::to_string(keeper) : "No keeper") +
+                  (owner > 0 ? ", owned by " + owner_name : ", owned by the LUG"));
         return fragment(req, app, db, 200, "Saved " + name + ".");
     });
 
@@ -587,15 +642,20 @@ void register_inventory_routes(LugApp& app, SqliteDatabase& db, AuditService& au
         if (!require_auth(req, res, app, "chapter_lead")) return res;
         Form f(req);
         std::string name = f.get("name", 150);
-        int64_t qty = f.num("quantity", 1), loc = f.num("location_id");
+        int64_t qty = f.num("quantity", 1), loc = f.num("location_id"), owner = f.num("owner_id");
+        std::string owner_name;
         if (name.empty() || qty < 1 || qty > 100000) return fragment(req, app, db, 400, "Give the item a name and a quantity of at least 1.");
         if (loc > 0 && !location_exists(db, loc)) return fragment(req, app, db, 404, "That location doesn't exist.");
+        if (!read_owner(db, owner, owner_name)) return fragment(req, app, db, 404, "That member doesn't exist.");
         int64_t id = 0;
         {
             Transaction tx(db);
             {
-                auto ins = db.prepare("INSERT INTO inventory_items (name, category, quantity, notes) VALUES (?,?,?,?) RETURNING id");
+                auto ins = db.prepare("INSERT INTO inventory_items (name, category, quantity, notes, owner_member_id, owner_name) "
+                                      "VALUES (?,?,?,?,?,?) RETURNING id");
                 ins.bind(1, name); ins.bind(2, f.get("category", 60)); ins.bind(3, qty); ins.bind(4, f.get("notes", 1000));
+                if (owner > 0) ins.bind(5, owner); else ins.bind_null(5);
+                ins.bind(6, owner_name);
                 ins.step();
                 id = ins.col_int(0);
             }
@@ -603,7 +663,8 @@ void register_inventory_routes(LugApp& app, SqliteDatabase& db, AuditService& au
             tx.commit();
         }
         audit.log(req, app, "inventory.create", "inventory", id, name,
-                  "Quantity " + std::to_string(qty) + (loc > 0 ? " at " + location_name(db, loc) : ""));
+                  "Quantity " + std::to_string(qty) + (loc > 0 ? " at " + location_name(db, loc) : "") +
+                  (owner > 0 ? ", owned by " + owner_name : ""));
         return fragment(req, app, db, 200, "Added " + name + ".");
     });
 
@@ -617,20 +678,26 @@ void register_inventory_routes(LugApp& app, SqliteDatabase& db, AuditService& au
         if (name.empty() || qty < 1 || qty > 100000) return fragment(req, app, db, 400, "Give the item a name and a quantity of at least 1.");
         if (qty < out_count(db, id) + placed_count(db, id))
             return fragment(req, app, db, 400, "More of " + name + " are at locations or on loan than that - move or return them first.");
+        int64_t owner = f.num("owner_id");
+        std::string owner_name;
+        if (!read_owner(db, owner, owner_name)) return fragment(req, app, db, 404, "That member doesn't exist.");
         std::string cond = f.get("condition", 20);
         bool cond_ok = false;
         for (const auto& c : CONDITIONS) cond_ok |= cond == c[0];
         if (!cond_ok) cond = "good";
-        auto up = db.prepare("UPDATE inventory_items SET name=?, category=?, quantity=?, notes=?, condition=?, condition_note=? "
-                             "WHERE id=? AND archived=0 RETURNING id");
+        auto up = db.prepare("UPDATE inventory_items SET name=?, category=?, quantity=?, notes=?, condition=?, condition_note=?, "
+                             "owner_member_id=?, owner_name=? WHERE id=? AND archived=0 RETURNING id");
         up.bind(1, name); up.bind(2, f.get("category", 60)); up.bind(3, qty);
         up.bind(4, f.get("notes", 1000)); up.bind(5, cond); up.bind(6, f.get("condition_note", 300));
-        up.bind(7, static_cast<int64_t>(id));
+        if (owner > 0) up.bind(7, owner); else up.bind_null(7);
+        up.bind(8, owner_name);
+        up.bind(9, static_cast<int64_t>(id));
         bool found = up.step();
         up.reset();
         if (!found) return fragment(req, app, db, 404, "That item doesn't exist.");
         audit.log(req, app, "inventory.update", "inventory", id, name,
-                  "Quantity " + std::to_string(qty) + ", " + condition_label(cond));
+                  "Quantity " + std::to_string(qty) + ", " + condition_label(cond) +
+                  (owner > 0 ? ", owned by " + owner_name : ", owned by the LUG"));
         return fragment(req, app, db, 200, "Saved " + name + ".");
     });
 

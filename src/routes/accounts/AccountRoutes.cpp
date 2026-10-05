@@ -1,5 +1,6 @@
 #include "routes/accounts/AccountRoutes.hpp"
 #include "utils/web/CalendarLinks.hpp"
+#include "services/Features.hpp"
 #include "auth/AccountSecurity.hpp"
 #include "services/Palettes.hpp"
 #include "repositories/members/NotificationPrefs.hpp"
@@ -80,6 +81,25 @@ void register_account_routes(LugApp& app, SqliteDatabase& db, MemberService& mem
                 ++i;
             }
             ctx["palettes"] = std::move(opts);
+        }
+        // Things this member owns that the LUG keeps or uses (Inventory)
+        if (Features::on("inventory")) {
+            crow::json::wvalue owned = crow::json::wvalue::list();
+            int k = 0;
+            auto st = db.prepare(
+                "SELECT i.name, i.quantity, "
+                "COALESCE((SELECT group_concat(k.quantity || ' at ' || s.name, ', ') FROM inventory_stock k "
+                "          JOIN storage_locations s ON s.id=k.location_id WHERE k.item_id=i.id),''), "
+                "COALESCE((SELECT group_concat(l.quantity || ' with ' || COALESCE(m.display_name,'?'), ', ') FROM inventory_loans l "
+                "          LEFT JOIN members m ON m.id=l.member_id WHERE l.item_id=i.id AND l.returned_at IS NULL),'') "
+                "FROM inventory_items i WHERE i.owner_member_id=? AND i.archived=0 ORDER BY i.name COLLATE NOCASE");
+            st.bind(1, a.member_id);
+            while (st.step()) {
+                owned[k]["name"] = st.col_text(0); owned[k]["quantity"] = st.col_int(1);
+                owned[k]["where"] = st.col_text(2); owned[k]["out"] = st.col_text(3); ++k;
+            }
+            ctx["owned_items"] = std::move(owned);
+            ctx["has_owned_items"] = k > 0;
         }
         ctx["subscribe_html"] = cal_links::subscribe_html("/calendar.ics", "LUG Manager", "account-cal",
                                                           cal_links::public_google_calendar(db));

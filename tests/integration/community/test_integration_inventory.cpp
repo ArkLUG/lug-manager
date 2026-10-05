@@ -313,3 +313,36 @@ TEST_F(IntegrationTest, EventPackList) {
     EXPECT_EQ(GET(base, admin_token).code, 404);
     expect_not_contains(GET_HTMX("/events/" + std::to_string(ev.id), admin_token), "/pack\"");
 }
+
+TEST_F(IntegrationTest, InventoryOwners) {
+    // A member's trailer, kept by someone else; the member's tables stored in it
+    const std::string reg = std::to_string(regular_member_id), lead = std::to_string(chapter_lead_member_id);
+    ASSERT_EQ(POST("/inventory/locations", "name=Dan%27s+trailer&kind=trailer&owner_id=" + reg + "&keeper_id=" + lead, admin_token).code, 200);
+    const int64_t trailer = query_int(*db, "SELECT id FROM storage_locations WHERE name='Dan''s trailer'");
+    ASSERT_EQ(POST("/inventory", "name=Folding+table&quantity=4&owner_id=" + reg + "&location_id=" + std::to_string(trailer), admin_token).code, 200);
+    ASSERT_EQ(POST("/inventory", "name=Banner&quantity=1", admin_token).code, 200);
+    EXPECT_EQ(POST("/inventory", "name=Ghost&quantity=1&owner_id=999999", admin_token).code, 404);
+
+    auto page = GET("/inventory", admin_token);
+    expect_contains(page, "owned by Regular U.");                 // the location
+    expect_contains(page, "Owned by Regular U.");                 // the item
+    auto mine = GET("/inventory?owner=mine", member_token);
+    expect_contains(mine, "Folding table");
+    expect_not_contains(mine, "Banner");
+    expect_contains(mine, "Owned by you");
+    auto lugs = GET("/inventory?owner=lug", admin_token);
+    expect_contains(lugs, "Banner");
+    expect_not_contains(lugs, "Folding table");
+    expect_contains(GET("/inventory.csv", admin_token), "\"Folding table\",\"\",\"Regular U.\",\"4\",\"Dan's trailer\"");
+    // My Account lists it, with where it is
+    auto acct = GET("/account", member_token);
+    expect_contains(acct, "Your things the LUG keeps or uses");
+    expect_contains(acct, "4 at Dan&#39;s trailer");
+
+    // Back to the LUG; and if the owner's record goes, the name stays with "left"
+    const int64_t table = query_int(*db, "SELECT id FROM inventory_items WHERE name='Folding table'");
+    ASSERT_EQ(POST("/inventory/" + std::to_string(table), "name=Folding+table&quantity=4&owner_id=" + reg, admin_token).code, 200);
+    { auto u = db->prepare("UPDATE inventory_items SET owner_member_id = NULL WHERE id = ?"); u.bind(1, table); u.step(); }   // as ON DELETE SET NULL does
+    expect_contains(GET("/inventory", admin_token), "Regular U. (left - reassign)");
+    EXPECT_GE(query_int(*db, "SELECT COUNT(*) FROM audit_log WHERE action='inventory.update' AND details LIKE '%owned by Regular U.%'"), 1);
+}
