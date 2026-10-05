@@ -85,9 +85,9 @@ void register_all_routes(LugApp& app, Services& svc) {
         // Action buttons on reminder DMs only when Discord can send the clicks back
         SettingsRepository* settings = &svc.settings;
         const std::string env_key = svc.discord_public_key;
-        svc.notifier->set_actions_available([settings, env_key] {
-            return !env_key.empty() || !discord_interactions_key(*settings).empty();
-        });
+        auto available = [settings, env_key] { return !env_key.empty() || !discord_interactions_key(*settings).empty(); };
+        svc.notifier->set_actions_available(available);
+        svc.chat->set_actions_available(available);
     }
     register_discord_interactions_routes(app, svc.discord_public_key, svc.pending_discord_matches,
                                           svc.member_repo, svc.settings, svc.audit, svc.reminder_actions);

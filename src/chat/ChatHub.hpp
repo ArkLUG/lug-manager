@@ -104,6 +104,10 @@ public:
     // Whether some chat service would take a DM for this member right now.
     bool can_dm(int64_t member_id) const;
     std::string public_url() const { return public_url_.empty() ? site::public_url() : public_url_; }
+    // Whether button clicks reach us (Discord's interactions endpoint is set
+    // up); without it posts get link buttons only. Set at start-up.
+    void set_actions_available(std::function<bool()> f) { actions_available_ = std::move(f); }
+    bool actions_available() const { return actions_available_ && actions_available_(); }
     std::string lug_name() const;
     std::string timezone() const;
 
@@ -131,6 +135,7 @@ private:
 
     SqliteDatabase& db_;
     std::string public_url_;
+    std::function<bool()> actions_available_;
     std::vector<std::shared_ptr<Provider>> providers_;
     std::function<std::string()> tz_source_;
 };

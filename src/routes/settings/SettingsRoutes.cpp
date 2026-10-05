@@ -1,3 +1,5 @@
+#include "integrations/discord/matches/DiscordInteractionsRoutes.hpp"
+#include "services/SiteSettings.hpp"
 #include "routes/settings/SettingsRoutes.hpp"
 #include "utils/LocalTime.hpp"
 #include "utils/web/ParseId.hpp"
@@ -509,6 +511,10 @@ void register_settings_routes(LugApp& app, SettingsRepository& settings,
         mctx["pending_match_count"] = pending_match_count;
         mctx["has_pending_matches"] = pending_match_count > 0;
 
+        mctx["public_key"] = discord_interactions_key(settings);
+        mctx["public_key_locked"] = discord_interactions_key_locked();
+        mctx["interactions_url"] = site::public_url().empty() ? std::string("https://your-address/discord/interactions")
+                                                              : site::public_url() + "/discord/interactions";
         return html_page(req, app, crow::mustache::load("settings/_content.html").render(mctx).dump(), "Discord Settings", "active_settings");
     });
 
@@ -890,6 +896,30 @@ void register_settings_routes(LugApp& app, SettingsRepository& settings,
             res.write("<span class=\"text-red-600\">Error: " + html_escape(ex.what()) + "</span>");
         }
         res.add_header("Content-Type", "text/html; charset=utf-8");
+        return res;
+    });
+
+    // POST /settings/discord/interactions - the application's public key, which
+    // Discord signs button clicks with (DiscordInteractionsRoutes)
+    CROW_ROUTE(app, "/settings/discord/interactions").methods("POST"_method)([&app, &settings, &audit](const crow::request& req) {
+        crow::response res;
+        if (!require_auth(req, res, app, "admin")) return res;
+        res.add_header("Content-Type", "text/html; charset=utf-8");
+        if (discord_interactions_key_locked()) { res.write("<span class=\"text-gray-600\">Set on the server (DISCORD_PUBLIC_KEY).</span>"); return res; }
+        auto params = crow::query_string("?" + req.body);
+        const char* k = params.get("discord_public_key");
+        std::string key = k ? k : "";
+        while (!key.empty() && key.back() == ' ') key.pop_back();
+        while (!key.empty() && key.front() == ' ') key.erase(0, 1);
+        if (!key.empty() && (key.size() != 64 || key.find_first_not_of("0123456789abcdefABCDEF") != std::string::npos)) {
+            res.code = 400;
+            res.write("<span class=\"text-red-600\">That isn't a public key: it's 64 letters and numbers (0-9, a-f).</span>");
+            return res;
+        }
+        settings.set("discord_public_key", key);
+        audit.log(req, app, "settings.update", "settings", 0, "Discord", key.empty() ? "Removed the interactions public key" : "Set the interactions public key");
+        res.write(key.empty() ? "<span class=\"text-gray-600\">Removed. Buttons in Discord are off.</span>"
+                              : "<span class=\"text-green-700\">Saved.</span>");
         return res;
     });
 }

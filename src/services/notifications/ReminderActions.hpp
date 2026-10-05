@@ -7,6 +7,8 @@
 //   lm:unmute:<id>     Undo that
 //   lm:rsvp_off:<id>   Can't make it / Give up my spot (cancel the RSVP; the waitlist moves up)
 //   lm:shift_off:<id>  Can't make my shift (leave the shift)
+//   lm:rsvp:<event>    "I'm going" on an event announcement: RSVP, or cancel it (anyone with
+//                      a member record linked to their Discord account; answered privately)
 // <id> is the reminder_dms row the DM was recorded as; it only works for the
 // member it was sent to.
 #include "db/SqliteDatabase.hpp"
@@ -42,6 +44,7 @@ public:
         const std::string verb = action.substr(3, c2 - 3);
         int64_t id = 0;
         try { id = std::stoll(action.substr(c2 + 1)); } catch (...) {}
+        if (verb == "rsvp") return rsvp_toggle(chat_user, id, now);
         Row r;
         if (!load(id, r)) return Reply{"This button doesn't work any more.", {}, true};
         if (member_for(chat_user) != r.member) return Reply{"This button is for someone else.", {}, true};
@@ -135,6 +138,49 @@ private:
                              CalendarGenerator::ics_for(ev, tz), Notifier::about_for("waitlist", std::to_string(event)));
         }
         return Reply{"✅ Your RSVP for " + title + " is cancelled." + (promoted ? " Your spot went to the next person on the waitlist." : ""), links};
+    }
+
+    // "I'm going" under an event announcement: toggles the clicker's RSVP.
+    Reply rsvp_toggle(const std::string& chat_user, int64_t event, std::time_t now) {
+        const int64_t member = member_for(chat_user);
+        if (member <= 0)
+            return Reply{"Your Discord account isn't linked to a member yet. Sign in to LUG Manager with Discord once, then try again.", {}, true};
+        std::string title, start, end, status, deadline;
+        int max = 0;
+        {
+            auto st = db_.prepare("SELECT title, start_time, end_time, max_attendees, status, COALESCE(signup_deadline,'') FROM lug_events WHERE id=?");
+            st.bind(1, event);
+            if (!st.step()) return Reply{"That event no longer exists.", {}, true};
+            title = st.col_text(0); start = st.col_text(1); end = st.col_text(2); max = static_cast<int>(st.col_int(3));
+            status = st.col_text(4); deadline = st.col_text(5);
+        }
+        if (status == "cancelled") return Reply{title + " is cancelled.", {}, true};
+        // Shows are dates: open until the end of their last day
+        const std::string last = (end.size() >= 10 ? end : start).substr(0, 10);
+        if (local_epoch(last + "T23:59:00") <= now) return Reply{title + " is over.", {}, true};
+        if (rsvps_.status_of(event, member)) {
+            auto promoted = rsvps_.cancel(event, member, max);
+            audit_.log_system("event.rsvp_cancel", "event", event, title, "Cancelled RSVP from Discord (member " + std::to_string(member) + ")");
+            if (promoted) {
+                audit_.log_system("event.rsvp_promoted", "event", event, title, "Member " + std::to_string(*promoted) + " moved off the waitlist");
+                const std::string tz = notifier_.timezone();
+                LugEvent ev; ev.id = event; ev.title = title; ev.start_time = start; ev.end_time = end;
+                notifier_.notify(*promoted, "waitlist", "dm.waitlist",
+                                 {{"title", title}, {"when", DiscordClient::friendly_time(start, tz)}, {"when_at", start}}, true,
+                                 CalendarGenerator::ics_for(ev, tz), Notifier::about_for("waitlist", std::to_string(event)));
+            }
+            return Reply{"You're no longer going to " + title + ". Click again if you change your mind.", {}, true};
+        }
+        // Same rule as the RSVP button on the site (rsvp_open): a deadline date runs to the end of that day
+        if (!deadline.empty()) {
+            const std::string dl = deadline.size() <= 10 ? deadline + "T23:59" : deadline.substr(0, 16);
+            if (local_epoch(dl + ":00") < now) return Reply{"RSVPs for " + title + " are closed.", {}, true};
+        }
+        const std::string s = rsvps_.rsvp(event, member, max);
+        audit_.log_system("event.rsvp", "event", event, title, "RSVP from Discord (member " + std::to_string(member) + "): " + s);
+        if (s == "waitlist")
+            return Reply{"It's full, so you're on the waitlist for " + title + ". You'll get a message if a spot opens. Click again to leave the list.", {}, true};
+        return Reply{"✅ You're going to " + title + ". Click again to cancel.", {}, true};
     }
 
     Reply shift_off(const Row& r, const std::vector<chat::Button>& links, std::time_t now) {

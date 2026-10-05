@@ -1,6 +1,7 @@
 #include "chat/ChatHub.hpp"
 #include "repositories/events/EventBlocks.hpp"
 #include "chat/Format.hpp"
+#include "services/Features.hpp"
 #include "integrations/discord/DiscordClient.hpp"
 #include "utils/text/Utf8.hpp"
 #include <nlohmann/json.hpp>
@@ -156,12 +157,24 @@ void ChatHub::save_owned(const Provider& p, const std::string& entity_type, int6
 
 Message ChatHub::message(const Provider& p, const std::string& key, const Values& v,
                          std::vector<std::string> roles, std::vector<std::string> users) {
-    (void)p;
     Message m;
     m.text = templates().render_body(key, v);
     if (const TemplateDef* d = find_template(key); d && d->max_len) m.text = utf8_truncate(m.text, d->max_len);
     m.roles = std::move(roles);
     m.users = std::move(users);
+    // Buttons under announcements: open it on the site, and for events
+    // "I'm going" (RSVP from Discord, see ReminderActions "lm:rsvp").
+    if (p.caps().buttons && (key == "event.announcement" || key == "event.thread_starter" || key == "meeting.announcement")) {
+        auto link = v.find("link");
+        if (link != v.end() && !link->second.empty()) {
+            const bool event = key != "meeting.announcement";
+            if (event && actions_available() && Features::on("rsvps")) {
+                const std::string id = link->second.substr(link->second.rfind('/') + 1);
+                m.buttons.push_back({"I'm going", "", "lm:rsvp:" + id, "success"});
+            }
+            m.buttons.push_back({event ? "View event" : "View meeting", link->second, "", ""});
+        }
+    }
     return m;
 }
 

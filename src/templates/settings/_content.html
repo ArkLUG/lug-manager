@@ -212,6 +212,25 @@
   </div>
 
   {{#discord_on}}
+  <div class="bg-white rounded-xl border border-gray-200 p-6" id="discord-buttons">
+    <h2 class="text-xl font-bold text-gray-900 mb-1">Buttons in Discord</h2>
+    <p class="text-sm text-gray-500 mb-4">For buttons members can click in Discord: "I'm going" on event announcements, Can't make it / Remind me later / Don't remind me on reminders, and reviewing member matches. Discord signs every click; this key checks the signature.</p>
+    <ol class="text-sm text-gray-600 list-decimal list-inside space-y-1 mb-4">
+      <li>In the Discord Developer Portal, open your app's <strong>General Information</strong>.</li>
+      <li>Copy its <strong>Public Key</strong> into the box below and save.</li>
+      <li>Set <strong>Interactions Endpoint URL</strong> there to <code class="bg-gray-100 px-1 rounded break-all">{{interactions_url}}</code> and save (Discord checks it straight away).</li>
+    </ol>
+    <form hx-post="/settings/discord/interactions" hx-target="#discord-key-feedback" hx-swap="innerHTML" class="space-y-2">
+      <label class="block text-sm font-medium text-gray-700" for="discord-public-key">Application public key</label>
+      <input id="discord-public-key" type="text" name="discord_public_key" value="{{public_key}}" {{#public_key_locked}}disabled{{/public_key_locked}} autocomplete="off" maxlength="64"
+             class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm font-mono disabled:bg-gray-50 disabled:text-gray-500">
+      <div class="flex items-center gap-3">
+        <button class="px-4 py-2 bg-gray-800 text-white rounded-lg text-sm font-medium hover:bg-gray-700" {{#public_key_locked}}disabled{{/public_key_locked}}>Save key</button>
+        <span id="discord-key-feedback" class="text-sm">{{#public_key_locked}}Set on the server (DISCORD_PUBLIC_KEY).{{/public_key_locked}}</span>
+      </div>
+    </form>
+  </div>
+
   <div class="bg-white rounded-xl border border-gray-200 p-6">
     <h2 class="text-xl font-bold text-gray-900 mb-1">Role mappings</h2>
     <p class="text-sm text-gray-500 mb-4">Map Discord roles to LUG app roles so members can log in automatically.</p>

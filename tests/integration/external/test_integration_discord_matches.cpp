@@ -172,12 +172,19 @@ TEST_F(IntegrationTest, DiscordMatchesAlreadyResolvedIsTolerant) {
     expect_contains(r, "Already resolved");
 }
 
-// The interactions public key can be set in the app (not a secret).
+// The interactions public key is set in the app (not a secret), on Settings > Discord.
 TEST_F(IntegrationTest, InteractionsPublicKeyInSettings) {
     std::string key(64, 'a');
-    POST("/settings/discord-matches", "discord_public_key=" + key, admin_token);
+    EXPECT_EQ(POST("/settings/discord/interactions", "discord_public_key=" + key, admin_token).code, 200);
     EXPECT_EQ(settings_repo->get("discord_public_key"), key);
-    POST("/settings/discord-matches", "discord_public_key=not-a-key", admin_token);
+    EXPECT_EQ(POST("/settings/discord/interactions", "discord_public_key=not-a-key", admin_token).code, 400);
     EXPECT_EQ(settings_repo->get("discord_public_key"), key);          // invalid: ignored
-    EXPECT_NE(POST("/settings/discord-matches", "discord_public_key=", member_token).code, 200);
+    EXPECT_NE(POST("/settings/discord/interactions", "discord_public_key=", member_token).code, 200);
+    // Saving the matches page no longer touches it
+    POST("/settings/discord-matches", "discord_matches_notification_channel_id=", admin_token);
+    EXPECT_EQ(settings_repo->get("discord_public_key"), key);
+    auto page = GET("/settings", admin_token);
+    expect_contains(page, "Buttons in Discord");
+    expect_contains(page, key);
+    expect_contains(page, "/discord/interactions");
 }

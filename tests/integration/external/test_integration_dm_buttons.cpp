@@ -188,3 +188,39 @@ TEST_F(DmButtonsTest, CantMakeMyShiftAndLinksOnlyWithoutInteractions) {
     EXPECT_NE(links.find("http://lug.test/account"), std::string::npos);
     EXPECT_EQ(links.find("lm:"), std::string::npos);
 }
+
+TEST_F(DmButtonsTest, ImGoingFromAnAnnouncement) {
+    const int64_t ev = make_event("Announce Show", 3 * 86400, 1);
+    const std::string id = "lm:rsvp:" + std::to_string(ev);
+    // Unknown Discord account: told to link first
+    expect_contains(click("stranger-999", id), "isn't linked to a member");
+    // Toggle: going, then not going; answered privately (ephemeral), the post isn't edited
+    auto r = nlohmann::json::parse(click("member-test-001", id).body);
+    EXPECT_EQ(r["type"], 4);
+    EXPECT_EQ(r["data"]["flags"], 64);
+    EXPECT_NE(r["data"]["content"].get<std::string>().find("You're going to Announce Show"), std::string::npos);
+    EXPECT_EQ(query_int(*db, "SELECT COUNT(*) FROM event_rsvps WHERE event_id=? AND member_id=? AND status='going'", ev, regular_member_id), 1);
+    // Full: the next person is waitlisted
+    expect_contains(click("lead-test-001", id), "on the waitlist");
+    // Cancelling moves the waitlist up
+    expect_contains(click("member-test-001", id), "no longer going");
+    EXPECT_EQ(query_int(*db, "SELECT COUNT(*) FROM event_rsvps WHERE event_id=? AND member_id=? AND status='going'", ev, chapter_lead_member_id), 1);
+    // Closed after the deadline
+    { auto u = db->prepare("UPDATE lug_events SET signup_deadline='2020-01-01' WHERE id=?"); u.bind(1, ev); u.step(); }
+    expect_contains(click("member-test-001", id), "closed");
+}
+
+TEST_F(DmButtonsTest, AnnouncementsGetButtons) {
+    chat_hub->set_actions_available([] { return true; });
+    LugEvent e;
+    e.title = "Posted Show"; e.start_time = local_in(5 * 86400).substr(0, 10) + "T00:00:00"; e.end_time = e.start_time;
+    e.scope = "lug_wide"; e.status = "confirmed";
+    settings_repo->set("discord_announcements_channel_id", "700000000000000001");
+    discord_client->reconfigure(fake->guild_id, "700000000000000001");
+    auto created = event_svc->create(e);
+    ASSERT_TRUE(fake->wait_for("POST /api/v10/channels/700000000000000001/messages"));
+    const auto post = fake->matching("POST /api/v10/channels/700000000000000001/messages")[0].body;
+    EXPECT_NE(post.find("lm:rsvp:" + std::to_string(created.id)), std::string::npos);
+    EXPECT_NE(post.find("I'm going"), std::string::npos);
+    EXPECT_NE(post.find("/events/" + std::to_string(created.id)), std::string::npos);
+}

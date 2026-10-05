@@ -680,21 +680,30 @@ DiscordClient::Result DiscordClient::call(const std::string& method, const std::
     }
 }
 
+static void add_components(json& body, const std::string& components_json) {
+    if (components_json.empty()) return;
+    try { body["components"] = json::parse(components_json); } catch (...) {}
+}
+
 DiscordClient::Result DiscordClient::send_message(const std::string& channel, const std::string& content,
-                                                  const std::vector<std::string>& roles, const std::vector<std::string>& users) {
+                                                  const std::vector<std::string>& roles, const std::vector<std::string>& users,
+                                                  const std::string& components_json) {
     if (channel.empty()) return Result{false, "", "no channel"};
     json body;
     body["content"] = content;
     body["allowed_mentions"] = mentions_json(roles, users);
+    add_components(body, components_json);
     return call("POST", "/channels/" + channel + "/messages", body.dump(), true);
 }
 
 DiscordClient::Result DiscordClient::edit_message(const std::string& channel, const std::string& message, const std::string& content,
-                                                  const std::vector<std::string>& roles, const std::vector<std::string>& users) {
+                                                  const std::vector<std::string>& roles, const std::vector<std::string>& users,
+                                                  const std::string& components_json) {
     if (channel.empty() || message.empty()) return Result{false, "", "nothing to edit"};
     json body;
     body["content"] = content;
     body["allowed_mentions"] = mentions_json(roles, users);
+    add_components(body, components_json);
     return call("PATCH", "/channels/" + channel + "/messages/" + message, body.dump(), false);
 }
 
@@ -704,13 +713,15 @@ DiscordClient::Result DiscordClient::remove_message(const std::string& channel, 
 }
 
 DiscordClient::Result DiscordClient::start_forum_thread(const std::string& forum, const std::string& name, const std::string& content,
-                                                        const std::vector<std::string>& roles, const std::vector<std::string>& users) {
+                                                        const std::vector<std::string>& roles, const std::vector<std::string>& users,
+                                                        const std::string& components_json) {
     if (forum.empty()) return Result{false, "", "no forum channel"};
     json body;
     body["name"] = utf8_truncate(name, 100);
     body["auto_archive_duration"] = 10080;   // 7 days
     body["message"]["content"] = content;
     body["message"]["allowed_mentions"] = mentions_json(roles, users);
+    if (!components_json.empty()) { try { body["message"]["components"] = json::parse(components_json); } catch (...) {} }
     return call("POST", "/channels/" + forum + "/threads", body.dump(), true);
 }
 

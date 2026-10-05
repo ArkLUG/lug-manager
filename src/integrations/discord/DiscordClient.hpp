@@ -105,12 +105,15 @@ public:
     struct Result { bool ok = false; std::string id; std::string error; };
     struct ScheduledEvent { std::string name, description, location, start_local, end_local; };
     Result send_message(const std::string& channel, const std::string& content,
-                        const std::vector<std::string>& roles = {}, const std::vector<std::string>& users = {});
+                        const std::vector<std::string>& roles = {}, const std::vector<std::string>& users = {},
+                        const std::string& components_json = "");   // buttons (Discord JSON), "" = none
     Result edit_message(const std::string& channel, const std::string& message, const std::string& content,
-                        const std::vector<std::string>& roles = {}, const std::vector<std::string>& users = {});
+                        const std::vector<std::string>& roles = {}, const std::vector<std::string>& users = {},
+                        const std::string& components_json = "");   // buttons (Discord JSON), "" = none
     Result remove_message(const std::string& channel, const std::string& message);
     Result start_forum_thread(const std::string& forum, const std::string& name, const std::string& content,
-                              const std::vector<std::string>& roles = {}, const std::vector<std::string>& users = {});
+                              const std::vector<std::string>& roles = {}, const std::vector<std::string>& users = {},
+                        const std::string& components_json = "");   // buttons (Discord JSON), "" = none
     Result start_thread_from_message(const std::string& channel, const std::string& message, const std::string& name);
     Result rename_thread(const std::string& thread, const std::string& name);
     Result remove_channel(const std::string& id);

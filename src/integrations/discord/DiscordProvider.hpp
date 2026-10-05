@@ -70,16 +70,17 @@ public:
     }
 
     Result post(const std::string& channel, const Message& m) override {
-        return conv(discord_.send_message(channel, m.text, m.roles, m.users));
+        return conv(discord_.send_message(channel, m.text, m.roles, m.users, m.buttons.empty() ? "" : components(m.buttons)));
     }
     Result edit(const std::string& channel, const std::string& message, const Message& m) override {
-        return conv(discord_.edit_message(channel, message, m.text, m.roles, m.users));
+        return conv(discord_.edit_message(channel, message, m.text, m.roles, m.users, m.buttons.empty() ? "" : components(m.buttons)));
     }
     Result remove(const std::string& channel, const std::string& message) override {
         return conv(discord_.remove_message(channel, message));
     }
     Result start_forum_thread(const std::string& forum, const std::string& title, const Message& first) override {
-        return conv(discord_.start_forum_thread(forum, title, first.text, first.roles, first.users));
+        return conv(discord_.start_forum_thread(forum, title, first.text, first.roles, first.users,
+                                                first.buttons.empty() ? "" : components(first.buttons)));
     }
     Result start_thread(const std::string& channel, const std::string& message, const std::string& title) override {
         return conv(discord_.start_thread_from_message(channel, message, title));
