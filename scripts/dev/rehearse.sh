@@ -42,6 +42,23 @@ for p in /dashboard /schedule "/schedule?view=calendar" /members /meetings /even
   [ "$c" = 200 ] || { echo "  $p -> $c"; BAD=$((BAD+1)); }
 done
 echo "== pages not 200: $BAD"
+# A plain member: their pages open, staff/admin pages don't
+MEM=$(sqlite3 "$W/lug.db" "SELECT id FROM members WHERE role='member' ORDER BY id LIMIT 1")
+if [ -n "$MEM" ]; then
+  MTOKEN=$(head -c 32 /dev/urandom | xxd -p -c 64)
+  sqlite3 "$W/lug.db" "INSERT INTO sessions (token, member_id, role, expires_at, token_is_hash) VALUES ('$(printf %s "$MTOKEN" | sha256sum | cut -d' ' -f1)', $MEM, 'member', datetime('now','+1 day'), 1)"
+  MBAD=0
+  for p in /dashboard /schedule /members /chapters /challenges /account; do
+    c=$(curl -s -o /dev/null -w '%{http_code}' -b "session=$MTOKEN" "localhost:$PORT$p"); [ "$c" = 200 ] || { echo "  member $p -> $c (want 200)"; MBAD=$((MBAD+1)); }
+  done
+  for p in /audit /audit.csv /attendance/overview /reports/annual /fancolab /events/all /members.csv /settings/overview /settings/permissions /settings/roles /settings/discord-matches; do
+    c=$(curl -s -o /dev/null -w '%{http_code}' -b "session=$MTOKEN" "localhost:$PORT$p"); [ "$c" = 200 ] && { echo "  member $p -> 200 (want refused)"; MBAD=$((MBAD+1)); }
+  done
+  echo "== member access problems: $MBAD"
+fi
+echo "== roles: $(sqlite3 "$W/lug.db" "SELECT group_concat(role || '=' || n, ' ') FROM (SELECT role, COUNT(*) n FROM members GROUP BY role)")"
+[ -n "$(sqlite3 "$W/lug.db" "SELECT name FROM sqlite_master WHERE name='role_permissions'")" ] && \
+  echo "== role_permissions: $(sqlite3 "$W/lug.db" "SELECT group_concat(role || ':' || permission, ' ') FROM role_permissions")"
 echo "== outbound attempts blocked: $(grep -c 'blocked outbound' "$W/new.log")"
 grep -iE "exception|segfault|abort" "$W/new.log" | grep -v offline | head -3
 echo "== done"
