@@ -32,7 +32,8 @@ public:
             }
             std::string what = (d.qty > 1 ? std::to_string(d.qty) + " x " : "") + d.item;
             std::string when = d.due == today ? "today" : "on " + d.due;
-            if (notifier_->notify(d.member_id, "loan_reminder", "dm.loan_reminder", {{"item", what}, {"due", when}}))
+            if (notifier_->notify(d.member_id, "loan_reminder", "dm.loan_reminder", {{"item", what}, {"due", when}}, false, "",
+                                  Notifier::about_for("loan_reminder", std::to_string(d.id))))
                 ++sent;
         }
         return sent;

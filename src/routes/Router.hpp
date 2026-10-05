@@ -21,6 +21,7 @@
 #include "routes/settings/AuditRoutes.hpp"
 #include "routes/pages/HelpRoutes.hpp"
 #include "routes/pages/ScheduleRoutes.hpp"
+#include "services/notifications/ReminderActions.hpp"
 #include "routes/accounts/ApiKeyRoutes.hpp"
 #include "integrations/discord/matches/DiscordMatchRoutes.hpp"
 #include "integrations/discord/matches/DiscordInteractionsRoutes.hpp"
@@ -130,6 +131,7 @@ struct Services {
     std::shared_ptr<Mailer> mailer;       // from LUG_SMTP_* when null
     std::shared_ptr<Notifier> notifier;
     std::shared_ptr<chat::ChatHub> chat;  // chat services (Discord, ...); made here when null
+    std::shared_ptr<ReminderActions> reminder_actions;   // reminder DM buttons; made here
 };
 
 void register_all_routes(LugApp& app, Services& svc);

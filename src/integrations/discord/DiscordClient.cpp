@@ -770,6 +770,20 @@ DiscordClient::Result DiscordClient::direct_message(const std::string& user, con
     return send_message(ch.id, content, {}, {});
 }
 
+DiscordClient::Result DiscordClient::direct_message(const std::string& user, const std::string& content,
+                                                    const std::string& components_json) {
+    if (user.empty()) return Result{false, "", "no Discord account"};
+    json open;
+    open["recipient_id"] = user;
+    Result ch = call("POST", "/users/@me/channels", open.dump(), true);
+    if (!ch.ok) return ch;
+    json body;
+    body["content"] = content;
+    body["allowed_mentions"] = mentions_json({}, {});
+    try { body["components"] = json::parse(components_json); } catch (...) {}
+    return call("POST", "/channels/" + ch.id + "/messages", body.dump(), true);
+}
+
 void DiscordClient::run_async(std::function<void()> job) {
     pool_.enqueue([job = std::move(job)]() {
         try { job(); } catch (const std::exception& e) { std::cerr << "[async] " << e.what() << "\n"; } catch (...) {}

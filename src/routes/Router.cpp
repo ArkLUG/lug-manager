@@ -76,8 +76,19 @@ void register_all_routes(LugApp& app, Services& svc) {
     register_discord_match_routes(app, svc.pending_discord_matches, svc.member_repo, svc.audit,
                                    svc.settings, svc.discord);
     register_branding_routes(app, svc.settings, svc.audit, svc.data_dir);
+    if (!svc.reminder_actions)
+        svc.reminder_actions = std::make_shared<ReminderActions>(svc.attendance_repo.db(), *svc.rsvps, *svc.shifts,
+                                                                 *svc.notifier, svc.audit);
+    {
+        // Action buttons on reminder DMs only when Discord can send the clicks back
+        SettingsRepository* settings = &svc.settings;
+        const std::string env_key = svc.discord_public_key;
+        svc.notifier->set_actions_available([settings, env_key] {
+            return !env_key.empty() || !discord_interactions_key(*settings).empty();
+        });
+    }
     register_discord_interactions_routes(app, svc.discord_public_key, svc.pending_discord_matches,
-                                          svc.member_repo, svc.settings, svc.audit);
+                                          svc.member_repo, svc.settings, svc.audit, svc.reminder_actions);
     register_members_api_routes(app, svc.members, svc.member_repo, svc.audit);
     register_events_api_routes(app, svc.events, svc.meetings, svc.event_day_repo,
                                 svc.event_day_attendance_repo, svc.attendance_repo, svc.audit);

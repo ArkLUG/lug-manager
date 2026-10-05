@@ -85,7 +85,7 @@ bool ShiftRepository::is_signed_up(int64_t shift_id, int64_t member_id) {
 std::vector<ShiftRepository::Due> ShiftRepository::due_reminders(const std::string& from, const std::string& to) {
     auto st = db_.prepare(
         "SELECT u.id, u.member_id, COALESCE(m.discord_user_id,''), COALESCE(m.display_name,''), s.title, "
-        "COALESCE(e.title,''), s.starts_at FROM event_shift_signups u "
+        "COALESCE(e.title,''), s.starts_at, s.event_id FROM event_shift_signups u "
         "JOIN event_shifts s ON s.id = u.shift_id JOIN members m ON m.id = u.member_id "
         "LEFT JOIN lug_events e ON e.id = s.event_id "
         "WHERE u.reminded_at IS NULL AND s.starts_at >= ? AND s.starts_at <= ? "
@@ -93,7 +93,7 @@ std::vector<ShiftRepository::Due> ShiftRepository::due_reminders(const std::stri
     st.bind(1, from); st.bind(2, to);
     std::vector<Due> out;
     while (st.step())
-        out.push_back({st.col_int(0), st.col_int(1), st.col_text(2), st.col_text(3), st.col_text(4), st.col_text(5), st.col_text(6)});
+        out.push_back({st.col_int(0), st.col_int(1), st.col_text(2), st.col_text(3), st.col_text(4), st.col_text(5), st.col_text(6), st.col_int(7)});
     return out;
 }
 

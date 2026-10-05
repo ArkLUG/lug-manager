@@ -1,4 +1,5 @@
 #pragma once
+#include <nlohmann/json.hpp>
 // Discord as a chat::Provider, on top of DiscordClient. Channels and roles
 // come from Settings > Discord (DiscordClient's configuration) and from each
 // chapter's Discord channel/role.
@@ -102,7 +103,30 @@ public:
         return st.step() ? st.col_text(0) : "";
     }
     Result direct_message(const std::string& account, const Message& m) override {
-        return conv(discord_.direct_message(account, m.text));
+        if (m.buttons.empty()) return conv(discord_.direct_message(account, m.text));
+        return conv(discord_.direct_message(account, m.text, components(m.buttons)));
+    }
+
+    // Discord message components: up to 5 buttons per action row, 5 rows.
+    static std::string components(const std::vector<Button>& buttons) {
+        nlohmann::json rows = nlohmann::json::array();
+        nlohmann::json row;
+        for (size_t i = 0; i < buttons.size() && i < 25; ++i) {
+            const auto& b = buttons[i];
+            nlohmann::json j;
+            j["type"] = 2;
+            j["label"] = b.label.substr(0, 80);
+            if (!b.url.empty()) { j["style"] = 5; j["url"] = b.url.substr(0, 512); }
+            else {
+                j["style"] = b.style == "primary" ? 1 : b.style == "success" ? 3 : b.style == "danger" ? 4 : 2;
+                j["custom_id"] = b.action.substr(0, 100);
+            }
+            if (row.is_null()) { row = {{"type", 1}, {"components", nlohmann::json::array()}}; }
+            row["components"].push_back(j);
+            if (row["components"].size() == 5) { rows.push_back(row); row = nlohmann::json(); }
+        }
+        if (!row.is_null()) rows.push_back(row);
+        return rows.dump();
     }
 
     DiscordClient& client() { return discord_; }

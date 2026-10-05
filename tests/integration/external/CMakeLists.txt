@@ -7,6 +7,7 @@ lug_add_tests(
   test_integration_discord_matches.cpp
   test_integration_discord_posts.cpp
   test_integration_discord_times.cpp
+  test_integration_dm_buttons.cpp
   test_integration_email.cpp
   test_integration_gcal_fake.cpp
   test_integration_reminders.cpp

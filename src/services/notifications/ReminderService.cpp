@@ -59,7 +59,7 @@ ReminderService::Result ReminderService::run_once(std::time_t now) {
                 if (rs.status != "going") continue;
                 if (notifier().notify(rs.member_id, "event_reminder", "dm.event_reminder",
                                       {{"title", e.title}, {"when", when}, {"when_at", e.start_time}, {"location", e.location}},
-                                      false, ics))
+                                      false, ics, Notifier::about_for("event_reminder", std::to_string(e.id))))
                     ++r.dms;
             }
         }
@@ -78,7 +78,8 @@ ReminderService::Result ReminderService::run_once(std::time_t now) {
             if (!shifts_.claim_reminder(d.signup_id)) continue;
             std::string at = DiscordClient::friendly_time(d.starts_at, tz);
             if (notifier().notify(d.member_id, "shift_reminder", "dm.shift_reminder",
-                                  {{"shift", d.shift_title}, {"event", d.event_title}, {"when", at}, {"when_at", d.starts_at}}))
+                                  {{"shift", d.shift_title}, {"event", d.event_title}, {"when", at}, {"when_at", d.starts_at}},
+                                  false, "", Notifier::about_for("shift_reminder", std::to_string(d.signup_id) + ":" + std::to_string(d.event_id))))
                 ++r.dms;
         }
     }

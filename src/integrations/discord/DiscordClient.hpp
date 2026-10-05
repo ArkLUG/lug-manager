@@ -118,6 +118,8 @@ public:
     Result update_scheduled(const std::string& id, const ScheduledEvent& e);
     Result remove_scheduled(const std::string& id);
     Result direct_message(const std::string& user, const std::string& content);
+    // With message components (action rows of buttons, Discord's JSON).
+    Result direct_message(const std::string& user, const std::string& content, const std::string& components_json);
     static long& last_status_ref();   // HTTP status of this thread's last Discord request
     // Runs a job on the integration worker pool (request handlers that mustn't wait on chat services).
     void run_async(std::function<void()> job);

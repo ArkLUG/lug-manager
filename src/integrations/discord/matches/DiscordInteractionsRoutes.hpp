@@ -5,13 +5,15 @@
 #include "repositories/members/MemberRepository.hpp"
 #include "repositories/admin/SettingsRepository.hpp"
 #include "services/AuditService.hpp"
+#include "services/notifications/ReminderActions.hpp"
 #include <crow.h>
 #include <string>
 
 using LugApp = crow::App<AuthMiddleware, ApiKeyMiddleware>;
 
 // Registers POST /discord/interactions — the inbound Discord Interactions webhook
-// used to resolve pending Discord member matches via an in-Discord button + modal.
+// used to resolve pending Discord member matches via an in-Discord button + modal,
+// and for the buttons on reminder DMs ("lm:..." custom ids, ReminderActions).
 //
 // This is the only route in the app deliberately NOT gated by AuthMiddleware /
 // ApiKeyMiddleware: Discord calls it directly, with no session or API key. Its sole
@@ -24,7 +26,8 @@ void register_discord_interactions_routes(LugApp& app,
                                            PendingDiscordMatchRepository& pending_matches,
                                            MemberRepository& member_repo,
                                            SettingsRepository& settings,
-                                           AuditService& audit);
+                                           AuditService& audit,
+                                           std::shared_ptr<ReminderActions> reminder_actions = nullptr);
 
 // The application's public key that Discord signs interactions with: the
 // DISCORD_PUBLIC_KEY environment variable if set (read once at start-up),

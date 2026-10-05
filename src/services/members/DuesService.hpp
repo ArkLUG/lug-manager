@@ -54,7 +54,8 @@ public:
                 dues_.mark_reminded(m.member_id, m.paid_until);
                 if (!notifier_) notifier_ = std::make_shared<Notifier>(dues_.db(), discord_, nullptr, "");
                 if (notifier_->notify(m.member_id, "dues_reminder", "dm.dues_reminder",
-                                      {{"name", m.display_name}, {"paid_until", m.paid_until}}))
+                                      {{"name", m.display_name}, {"paid_until", m.paid_until}}, false, "",
+                                      Notifier::about_for("dues_reminder", m.paid_until)))
                     ++r.reminded;
             }
         }

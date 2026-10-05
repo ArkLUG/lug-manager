@@ -69,7 +69,7 @@ std::string render_panel(const crow::request& req, LugApp& app, const LugEvent& 
 void notify_promoted(const LugEvent& ev, int64_t member_id, Notifier& notifier, const std::string& tz) {
     notifier.notify(member_id, "waitlist", "dm.waitlist",
                     {{"title", ev.title}, {"when", DiscordClient::friendly_time(ev.start_time, tz)}, {"when_at", ev.start_time}}, /*async=*/true,
-                    CalendarGenerator::ics_for(ev, tz));
+                    CalendarGenerator::ics_for(ev, tz), Notifier::about_for("waitlist", std::to_string(ev.id)));
 }
 
 } // namespace

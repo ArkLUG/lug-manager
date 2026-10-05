@@ -3,6 +3,7 @@ target_sources(lug_core PRIVATE
   DigestService.hpp
   LoanReminders.hpp
   Notifier.hpp
+  ReminderActions.hpp
   ReminderService.cpp
   ReminderService.hpp
 )

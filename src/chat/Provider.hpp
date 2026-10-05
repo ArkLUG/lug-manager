@@ -30,10 +30,20 @@ struct Caps {
 
 // A message ready to send: text in chat markdown, plus exactly which roles
 // and users it may ping (everything else in the text is inert).
+// A button under a message: a link (url) or an action the service sends back
+// to us when clicked (action = our id for it, e.g. "lm:snooze:12").
+struct Button {
+    std::string label;
+    std::string url;
+    std::string action;
+    std::string style = "secondary";   // primary | secondary | success | danger (actions only)
+};
+
 struct Message {
     std::string text;
     std::vector<std::string> roles;
     std::vector<std::string> users;
+    std::vector<Button> buttons;       // shown where the service supports them (caps().buttons)
 };
 
 struct ScheduledEvent { std::string name, description, location, start_local, end_local; };

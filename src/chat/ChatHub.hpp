@@ -84,6 +84,8 @@ public:
 
     // ── Direct messages ── true if a provider delivered it
     bool direct_message(int64_t member_id, const std::string& key, const Values& v);
+    // With buttons (dropped on services without them, see Caps::buttons).
+    bool direct_message(int64_t member_id, const std::string& key, const Values& v, const std::vector<Button>& buttons);
 
     // ── Placeholder values ──
     Values event_values(const LugEvent& e, const Provider& p) const;

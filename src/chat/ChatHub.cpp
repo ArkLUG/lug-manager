@@ -819,6 +819,10 @@ int ChatHub::remind_event(const LugEvent& e) {
 // ── Direct messages ──
 
 bool ChatHub::direct_message(int64_t member_id, const std::string& key, const Values& v) {
+    return direct_message(member_id, key, v, {});
+}
+
+bool ChatHub::direct_message(int64_t member_id, const std::string& key, const Values& v, const std::vector<Button>& buttons) {
     for (auto& p : providers_) {
         if (!p->ready() || !p->caps().direct_messages || !switch_on(*p, "dms")) continue;
         std::string account = p->member_account(member_id);
@@ -833,6 +837,7 @@ bool ChatHub::direct_message(int64_t member_id, const std::string& key, const Va
             pv["when_relative"] = when_text(*p, at->second, 'R', "");
         }
         Message m = message(*p, key, pv);
+        if (p->caps().buttons) m.buttons = buttons;
         Result r = p->direct_message(account, m);
         log(*p, "dm", key, "member", member_id, r);
         if (r.ok) return true;

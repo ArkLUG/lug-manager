@@ -296,7 +296,7 @@ int main(int argc, char** argv) {
         LoanReminders  loan_reminders(db, svc.notifier);
         DigestService  digest_service(db, settings_repo, svc.notifier);
         std::thread reminder_thread([&reminder_service, &dues_service, &backup_service, &settings_repo, &series_service,
-                                     &loan_reminders, &digest_service] {
+                                     &loan_reminders, &digest_service, notifier = svc.notifier] {
             std::this_thread::sleep_for(std::chrono::seconds(60));
             while (true) {
                 try {
@@ -319,6 +319,8 @@ int main(int argc, char** argv) {
                         std::cout << "[inventory] Reminded " << n << " borrower(s)\n";
                     if (int n = digest_service.run_once())
                         std::cout << "[digest] Sent " << n << " weekly digest(s)\n";
+                    if (int n = notifier->send_snoozed())
+                        std::cout << "[reminders] Sent " << n << " snoozed reminder(s) again\n";
                     auto r = reminder_service.run_once();
                     if (r.meetings || r.events || r.dms)
                         std::cout << "[reminders] Sent " << r.meetings << " meeting, " << r.events

@@ -26,7 +26,7 @@ public:
     bool withdraw(int64_t shift_id, int64_t member_id);
     bool is_signed_up(int64_t shift_id, int64_t member_id);
 
-    struct Due { int64_t signup_id; int64_t member_id; std::string discord_user_id, display_name, shift_title, event_title, starts_at; };
+    struct Due { int64_t signup_id; int64_t member_id; std::string discord_user_id, display_name, shift_title, event_title, starts_at; int64_t event_id = 0; };
     // Signups whose shift starts in [from, to] (LUG-local ISO) and haven't been reminded.
     std::vector<Due> due_reminders(const std::string& from, const std::string& to);
     bool claim_reminder(int64_t signup_id);

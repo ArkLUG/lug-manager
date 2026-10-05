@@ -1,4 +1,5 @@
 #include "integrations/discord/matches/DiscordInteractionsRoutes.hpp"
+#include "integrations/discord/DiscordProvider.hpp"
 #include "integrations/discord/sync/DiscordLinkPolicy.hpp"
 #include "integrations/discord/DiscordSignatureVerifier.hpp"
 #include "models/Member.hpp"
@@ -99,7 +100,8 @@ void register_discord_interactions_routes(LugApp& app,
                                            PendingDiscordMatchRepository& pending_matches,
                                            MemberRepository& member_repo,
                                            SettingsRepository& settings,
-                                           AuditService& audit) {
+                                           AuditService& audit,
+                                           std::shared_ptr<ReminderActions> reminder_actions) {
 
     // POST /discord/interactions — deliberately NOT wrapped in AuthMiddleware /
     // ApiKeyMiddleware checks. Discord is the caller, with no session or API key;
@@ -108,7 +110,7 @@ void register_discord_interactions_routes(LugApp& app,
     // intentionally ungated mutating route in the app — do not copy this pattern
     // elsewhere without the same signature-verification safeguard.
     CROW_ROUTE(app, "/discord/interactions").methods("POST"_method)(
-        [&](const crow::request& req) {
+        [&, reminder_actions](const crow::request& req) {
 
         // 1. Raw body, captured before any parsing — the signature covers these
         //    exact bytes, so re-serializing (even losslessly) would break verification.
@@ -150,6 +152,25 @@ void register_discord_interactions_routes(LugApp& app,
         if (type == TYPE_MESSAGE_COMPONENT) {
             if (!body.has("data") || !body["data"].has("custom_id")) return unauthorized();
             std::string custom_id = body["data"]["custom_id"].s();
+
+            // Reminder DM buttons: the member acts on their own reminder (no
+            // role allowlist; ReminderActions checks the DM was sent to them).
+            if (custom_id.rfind("lm:", 0) == 0) {
+                if (!reminder_actions) return ephemeral_message("This button doesn't work any more.");
+                std::string clicker;
+                if (body.has("user") && body["user"].has("id")) clicker = body["user"]["id"].s();
+                else if (body.has("member") && body["member"].has("user") && body["member"]["user"].has("id"))
+                    clicker = body["member"]["user"]["id"].s();
+                auto reply = reminder_actions->handle(clicker, custom_id);
+                if (!reply || reply->private_only) return ephemeral_message(reply ? reply->note : "This button doesn't work any more.");
+                std::string content;
+                if (body.has("message") && body["message"].has("content")) content = body["message"]["content"].s();
+                crow::json::wvalue upd;
+                upd["type"] = 7;   // UPDATE_MESSAGE: edit the DM in place
+                upd["data"]["content"] = (content.empty() ? "" : content + "\n\n") + reply->note;
+                upd["data"]["components"] = crow::json::load(chat::DiscordProvider::components(reply->buttons));
+                return json_response(200, std::move(upd));
+            }
             int64_t pending_id = extract_id(custom_id, "discord_match_resolve:");
             if (pending_id < 0) return ephemeral_message("This button is no longer valid.");
 
