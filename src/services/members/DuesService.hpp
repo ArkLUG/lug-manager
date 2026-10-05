@@ -34,7 +34,13 @@ public:
         Result r;
         if (!Features::on("dues")) return r;   // Settings > Features
         std::string today = ymd(now);
-        for (const auto& m : dues_.expire_lapsed(today)) {
+        // Grace period (Settings > Dues): lapse only once paid_until is more
+        // than `dues_grace_days` days ago.
+        int grace = 0;
+        try { grace = std::stoi(settings_.get("dues_grace_days", "0")); } catch (...) {}
+        if (grace < 0 || grace > 365) grace = 0;
+        const std::string cutoff = ymd(now - static_cast<std::time_t>(grace) * 86400);
+        for (const auto& m : dues_.expire_lapsed(cutoff)) {
             audit_.log_system("member.dues_expired", "member", m.member_id, m.display_name,
                               "Dues lapsed (paid until " + m.paid_until + ")");
             ++r.expired;

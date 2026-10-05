@@ -3,6 +3,7 @@
 #include <cmath>
 #include <cstdint>
 #include <cstdio>
+#include <ctime>
 #include <string>
 
 // Dues run on a club year that ends on the last day of a chosen month
@@ -16,6 +17,7 @@ struct Config {
     int64_t amount_cents = 0;   // full year; 0 = no standard amount
     int year_end_month = 12;    // 1-12: the year ends on that month's last day
     bool prorate = true;
+    int grace_days = 0;         // stay paid this many days after paid-until
 };
 
 struct Suggestion {
@@ -45,6 +47,24 @@ inline std::string year_end_for(const std::string& date, int end_month, int* end
     int ey = m <= end_month ? y : y + 1;
     if (end_y) *end_y = ey;
     return ymd(ey, end_month, days_in(ey, end_month));
+}
+
+// The date `days` after a YYYY-MM-DD date ("" if unparseable).
+inline std::string add_days(const std::string& date, int days) {
+    std::tm t{};
+    if (std::sscanf(date.c_str(), "%d-%d-%d", &t.tm_year, &t.tm_mon, &t.tm_mday) != 3) return "";
+    t.tm_year -= 1900; t.tm_mon -= 1; t.tm_mday += days; t.tm_hour = 12;
+    timegm(&t);
+    return ymd(t.tm_year + 1900, t.tm_mon + 1, t.tm_mday);
+}
+
+// Grace period (Settings > Dues): members stay paid for `grace_days` after
+// their paid-until date before the daily check marks them unpaid. Returns the
+// last day of grace when `today` is inside it, else "".
+inline std::string grace_until(const std::string& paid_until, int grace_days, const std::string& today) {
+    if (grace_days <= 0 || paid_until.size() != 10 || paid_until >= today) return "";
+    std::string last = add_days(paid_until, grace_days);
+    return today <= last ? last : "";
 }
 
 inline Suggestion suggest(const Config& c, const std::string& paid_on, const std::string& paid_until) {

@@ -60,3 +60,13 @@ TEST(DuesProration, RenewalAndOptions) {
     EXPECT_EQ(none.explain, "");
     EXPECT_EQ(dues::suggest(cfg(2000), "garbage", "").covers_until, "");
 }
+
+TEST(DuesProration, GracePeriod) {
+    EXPECT_EQ(dues::add_days("2026-12-31", 1), "2027-01-01");
+    EXPECT_EQ(dues::add_days("2028-02-28", 1), "2028-02-29");
+    EXPECT_EQ(dues::grace_until("2026-12-31", 30, "2027-01-15"), "2027-01-30");   // inside grace
+    EXPECT_EQ(dues::grace_until("2026-12-31", 30, "2027-01-30"), "2027-01-30");   // last day
+    EXPECT_EQ(dues::grace_until("2026-12-31", 30, "2027-01-31"), "");             // past it
+    EXPECT_EQ(dues::grace_until("2026-12-31", 30, "2026-12-31"), "");             // not run out yet
+    EXPECT_EQ(dues::grace_until("2026-12-31", 0, "2027-01-02"), "");              // no grace
+}

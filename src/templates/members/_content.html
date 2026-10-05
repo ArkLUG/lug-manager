@@ -235,7 +235,9 @@
         if (row.paid_until) {
           var today = new Date().toISOString().slice(0, 10);
           var lapsed = !row.is_paid && row.paid_until < today;
-          badge += '<div class="text-xs text-gray-400 mt-0.5 whitespace-nowrap">' + (lapsed ? 'expired ' : 'until ') + escHtml(row.paid_until) + '</div>';
+          var grace = row.is_paid && row.paid_until < today;   // still paid: grace period (Settings > Dues)
+          if (grace) badge = '<span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-amber-100 text-amber-800">Grace</span>';
+          badge += '<div class="text-xs text-gray-400 mt-0.5 whitespace-nowrap">' + (lapsed || grace ? 'ran out ' : 'until ') + escHtml(row.paid_until) + '</div>';
         }
         return badge;
       }

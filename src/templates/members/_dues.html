@@ -1,5 +1,9 @@
 <div id="dues-panel-{{member_id}}" class="space-y-2">
   {{#flash}}<p class="text-xs text-gray-500">{{flash}}</p>{{/flash}}
+  {{#paid_until}}<p class="text-xs" data-dues-status>
+    {{#in_grace}}<span class="px-1.5 py-0.5 rounded bg-amber-100 text-amber-800 font-medium">Grace period</span> <span class="text-gray-600">Paid until {{paid_until}}; still counted as paid until {{grace_until}}.</span>{{/in_grace}}
+    {{^in_grace}}{{#is_paid}}<span class="text-gray-600">Paid until {{paid_until}}.</span>{{/is_paid}}{{#lapsed}}<span class="text-red-700">Lapsed: paid until {{paid_until}}.</span>{{/lapsed}}{{/in_grace}}
+  </p>{{/paid_until}}
   {{#has_payments}}
   <table class="w-full text-xs">
     <thead><tr class="text-left text-gray-500"><th class="py-1">Paid</th><th>Amount</th><th>Method</th><th>Covers until</th><th></th></tr></thead>

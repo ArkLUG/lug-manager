@@ -30,6 +30,8 @@ dues::Config dues_config(SettingsRepository& settings) {
     try { c.year_end_month = std::stoi(settings.get("dues_year_end_month", "12")); } catch (...) {}
     if (c.year_end_month < 1 || c.year_end_month > 12) c.year_end_month = 12;
     c.prorate = settings.get("dues_prorate", "1") == "1";
+    try { c.grace_days = std::stoi(settings.get("dues_grace_days", "0")); } catch (...) {}
+    if (c.grace_days < 0 || c.grace_days > 365) c.grace_days = 0;
     return c;
 }
 
@@ -58,6 +60,12 @@ std::string render_panel(const crow::request& req, LugApp& app, const Member& m,
     ctx["flash"]      = flash;
     ctx["is_paid"]    = m.is_paid;
     ctx["paid_until"] = m.paid_until;
+    {
+        const std::string g = m.is_paid ? dues::grace_until(m.paid_until, dues_config(settings).grace_days, today_ymd()) : "";
+        ctx["in_grace"] = !g.empty();
+        ctx["grace_until"] = g;
+        ctx["lapsed"] = !m.is_paid && !m.paid_until.empty();
+    }
     auto hist = dues.history(m.id);
     crow::json::wvalue arr = crow::json::wvalue::list();
     for (size_t i = 0; i < hist.size(); ++i) {
@@ -158,6 +166,7 @@ void register_dues_routes(LugApp& app, MemberService& members, std::shared_ptr<D
         crow::mustache::context ctx;
         ctx["amount"] = c.amount_cents > 0 ? money(c.amount_cents).substr(1) : "";
         ctx["prorate"] = c.prorate;
+        ctx["grace_days"] = c.grace_days;
         static const char* names[] = {"January", "February", "March", "April", "May", "June", "July",
                                       "August", "September", "October", "November", "December"};
         crow::json::wvalue months = crow::json::wvalue::list();
@@ -197,6 +206,9 @@ void register_dues_routes(LugApp& app, MemberService& members, std::shared_ptr<D
         settings.set("dues_amount", cents > 0 ? money(cents).substr(1) : "");
         settings.set("dues_year_end_month", std::to_string(month));
         settings.set("dues_prorate", f.get("dues_prorate") == "1" ? "1" : "0");
+        int grace = 0;
+        try { grace = std::stoi(f.get("dues_grace_days")); } catch (...) {}
+        settings.set("dues_grace_days", std::to_string(grace < 0 ? 0 : grace > 365 ? 365 : grace));
         audit.log(req, app, "settings.update", "settings", 0, "Dues", "Updated dues settings");
         return html_page(req, app, settings_page("Saved."), "Dues", "active_dues_settings");
     });

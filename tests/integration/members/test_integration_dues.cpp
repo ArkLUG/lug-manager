@@ -106,3 +106,30 @@ TEST_F(IntegrationTest, DuesBackfillForMembersMarkedPaid) {
     POST("/settings/dues/backfill", "amount=20&paid_on=2026-03-01", admin_token);
     EXPECT_EQ(query_int(*db, "SELECT COUNT(*) FROM dues_payments"), 3);
 }
+
+TEST_F(IntegrationTest, DuesGracePeriod) {
+    // Ran out 10 days ago; with no grace the daily check marks them unpaid
+    const std::time_t now = std::time(nullptr);
+    const std::string ran_out = DuesService::ymd(now - 10 * 86400);
+    member_repo->set_paid(regular_member_id, true, ran_out);
+    DuesRepository dues(*db);
+    DuesService svc(dues, *settings_repo, *discord_client, *audit_svc);
+
+    // 30-day grace: still paid, and the panel says so
+    EXPECT_EQ(POST("/settings/dues", "dues_amount=20&dues_year_end_month=12&dues_prorate=1&dues_grace_days=30", admin_token).code, 200);
+    EXPECT_EQ(settings_repo->get("dues_grace_days"), "30");
+    svc.run_once(now);
+    EXPECT_TRUE(member_repo->find_by_id(regular_member_id)->is_paid);
+    auto panel = GET("/members/" + std::to_string(regular_member_id) + "/dues", chapter_lead_token);
+    expect_contains(panel, "Grace period");
+    expect_contains(panel, "still counted as paid until " + DuesService::ymd(now - 10 * 86400 + 30 * 86400));
+
+    // 5-day grace: past it, so they lapse
+    POST("/settings/dues", "dues_amount=20&dues_year_end_month=12&dues_prorate=1&dues_grace_days=5", admin_token);
+    svc.run_once(now);
+    EXPECT_FALSE(member_repo->find_by_id(regular_member_id)->is_paid);
+    expect_contains(GET("/members/" + std::to_string(regular_member_id) + "/dues", chapter_lead_token), "Lapsed: paid until " + ran_out);
+    // Junk values fall back to 0
+    POST("/settings/dues", "dues_amount=20&dues_year_end_month=12&dues_grace_days=-4", admin_token);
+    EXPECT_EQ(settings_repo->get("dues_grace_days"), "0");
+}
