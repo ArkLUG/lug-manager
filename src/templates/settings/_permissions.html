@@ -10,9 +10,9 @@
       <table class="w-full text-sm">
         <thead>
           <tr class="border-b border-gray-200 text-left">
-            <th scope="col" class="px-5 py-3 font-medium text-gray-500">Permission</th>
-            <th scope="col" class="px-3 py-3 font-medium text-gray-500 text-center w-24">Admin</th>
-            {{#roles}}<th scope="col" class="px-3 py-3 font-medium text-gray-800 text-center w-28" title="{{help}}">{{label}}</th>{{/roles}}
+            <th scope="col" class="pl-4 pr-2 sm:px-5 py-3 font-medium text-gray-500">Permission <span class="sm:hidden font-normal text-xs">(admins: all)</span></th>
+            <th scope="col" class="hidden sm:table-cell px-3 py-3 font-medium text-gray-500 text-center w-24">Admin</th>
+            {{#roles}}<th scope="col" class="px-1 sm:px-3 py-3 font-medium text-gray-800 text-center text-xs sm:text-sm sm:w-28" title="{{help}}">{{label}}</th>{{/roles}}
           </tr>
         </thead>
         {{#groups}}
@@ -20,13 +20,13 @@
           <tr><th scope="rowgroup" colspan="99" class="px-5 pt-4 pb-1 text-left text-[11px] font-semibold uppercase tracking-wider text-gray-400">{{title}}</th></tr>
           {{#perms}}
           <tr class="align-top">
-            <th scope="row" class="px-5 py-2 text-left font-normal min-w-[14rem]">
+            <th scope="row" class="pl-4 pr-2 sm:px-5 py-2 text-left font-normal min-w-[8rem] sm:min-w-[14rem]">
               <span class="font-medium text-gray-800">{{label}}</span>
               <span class="block text-xs text-gray-500">{{help}}</span>
             </th>
-            <td class="px-3 py-2 text-center"><input type="checkbox" checked disabled aria-label="Admin: {{label}} (always)" class="w-4 h-4 accent-yellow-400 opacity-50"></td>
+            <td class="hidden sm:table-cell px-3 py-2 text-center"><input type="checkbox" checked disabled aria-label="Admin: {{label}} (always)" class="w-4 h-4 accent-yellow-400 opacity-50"></td>
             {{#cells}}
-            <td class="px-3 py-2 text-center"><input type="checkbox" name="grant" value="{{role}}|{{perm}}" {{#on}}checked{{/on}} aria-label="{{role_label}}: {{label}}" class="w-4 h-4 accent-yellow-400 cursor-pointer"></td>
+            <td class="px-1 sm:px-3 py-2 text-center"><input type="checkbox" name="grant" value="{{role}}|{{perm}}" {{#on}}checked{{/on}} aria-label="{{role_label}}: {{label}}" class="w-4 h-4 accent-yellow-400 cursor-pointer"></td>
             {{/cells}}
           </tr>
           {{/perms}}
