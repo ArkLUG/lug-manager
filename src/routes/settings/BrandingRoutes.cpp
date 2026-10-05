@@ -63,6 +63,34 @@ SniffResult sniff_image(const std::string& bytes) {
 std::string logo_path(const std::string& data_dir, const std::string& extension) {
     return (fs::path(data_dir) / ("logo" + extension)).string();
 }
+// The picture the logo editor started from, kept so the logo can be re-edited.
+std::string original_path(const std::string& data_dir, const std::string& extension) {
+    return (fs::path(data_dir) / ("logo_original" + extension)).string();
+}
+bool write_file(const std::string& path, const std::string& bytes) {
+    std::ofstream out(path, std::ios::binary | std::ios::trunc);
+    if (!out) return false;
+    out.write(bytes.data(), static_cast<std::streamsize>(bytes.size()));
+    return static_cast<bool>(out);
+}
+// Editor state from the browser: zoom/offset/background, e.g.
+// {"z":1.25,"x":-12,"y":4,"bg":"#1f2937"}. Kept only if it's that shape.
+std::string clean_editor_state(const std::string& raw) {
+    if (raw.size() > 200) return "";
+    auto j = crow::json::load(raw);
+    if (!j || j.t() != crow::json::type::Object) return "";
+    for (const auto& k : j) {
+        const std::string key = k.key();
+        if (key == "bg") {
+            if (k.t() != crow::json::type::String) return "";
+            std::string v = k.s();
+            if (!v.empty() && (v.size() != 7 || v[0] != '#' || v.find_first_not_of("0123456789abcdefABCDEF", 1) != std::string::npos)) return "";
+        } else if (key == "z" || key == "x" || key == "y") {
+            if (k.t() != crow::json::type::Number) return "";
+        } else return "";
+    }
+    return raw;
+}
 
 void add_palette_options(crow::mustache::context& ctx, SettingsRepository& settings, const std::string& flash = "") {
     const std::string current = palettes::resolve("", settings.get("default_palette", "classic"));
@@ -98,6 +126,10 @@ void register_branding_routes(LugApp& app, SettingsRepository& settings,
         // replaces the same-named file - without this the browser (and any
         // proxy/CDN in front of it) would keep showing the old cached image.
         mctx["logo_url"] = "/branding/logo?v=" + settings.get("branding_logo_updated_at", "0");
+        const bool has_original = !settings.get("branding_original_extension", "").empty();
+        mctx["has_original"] = has_original;
+        mctx["original_url"] = "/branding/logo/original?v=" + settings.get("branding_logo_updated_at", "0");
+        mctx["editor_state"] = settings.get("branding_editor_state", "");
         {
             crow::mustache::context pctx;
             add_palette_options(pctx, settings);
@@ -174,6 +206,23 @@ void register_branding_routes(LugApp& app, SettingsRepository& settings,
             out.write(part.body.data(), static_cast<std::streamsize>(part.body.size()));
         }
 
+        // The editor sends the picture it started from as "original" (plain
+        // uploads: the logo is its own original), plus its settings.
+        auto orig = msg.get_part_by_name("original");
+        const std::string& orig_bytes = orig.body.empty() ? part.body : orig.body;
+        SniffResult osniff = orig_bytes.size() <= kMaxLogoBytes ? sniff_image(orig_bytes) : SniffResult{};
+        {
+            std::string old = settings.get("branding_original_extension", "");
+            std::error_code ec;
+            if (!old.empty()) fs::remove(original_path(data_dir, old), ec);
+            if (osniff.is_image && write_file(original_path(data_dir, osniff.extension), orig_bytes)) {
+                settings.set("branding_original_extension", osniff.extension);
+                settings.set("branding_original_content_type", osniff.content_type);
+            } else {
+                settings.set("branding_original_extension", "");
+            }
+        }
+        settings.set("branding_editor_state", orig.body.empty() ? "" : clean_editor_state(msg.get_part_by_name("editor_state").body));
         settings.set("branding_logo_extension", sniff.extension);
         settings.set("branding_logo_content_type", sniff.content_type);
         settings.set("branding_logo_updated_at", std::to_string(std::time(nullptr)));
@@ -196,6 +245,13 @@ void register_branding_routes(LugApp& app, SettingsRepository& settings,
             std::error_code ec;
             fs::remove(logo_path(data_dir, ext), ec); // best-effort
         }
+        std::string oext = settings.get("branding_original_extension", "");
+        if (!oext.empty()) {
+            std::error_code ec;
+            fs::remove(original_path(data_dir, oext), ec);
+        }
+        settings.set("branding_original_extension", "");
+        settings.set("branding_editor_state", "");
         settings.set("branding_logo_extension", "");
         settings.set("branding_logo_content_type", "");
         settings.set("branding_logo_updated_at", std::to_string(std::time(nullptr)));
@@ -216,6 +272,24 @@ void register_branding_routes(LugApp& app, SettingsRepository& settings,
     // pages; the favicon stays LUG Manager's logo). Public, unauthenticated: this
     // is exactly the same trust level as any other static asset the app
     // serves (CSS/JS under /static/*), not member data.
+    // GET /branding/logo/original - the picture the logo was made from (admins,
+    // for the logo editor)
+    CROW_ROUTE(app, "/branding/logo/original")([&](const crow::request& req) {
+        crow::response res;
+        if (!require_auth(req, res, app, "admin")) return res;
+        std::string ext = settings.get("branding_original_extension", "");
+        std::ifstream in(ext.empty() ? std::string() : original_path(data_dir, ext), std::ios::binary);
+        if (ext.empty() || !in) { res.code = 404; return res; }
+        std::ostringstream buf;
+        buf << in.rdbuf();
+        res.add_header("Content-Type", settings.get("branding_original_content_type", "application/octet-stream"));
+        res.add_header("Content-Security-Policy", "default-src 'none'; style-src 'unsafe-inline'; sandbox");
+        res.add_header("X-Content-Type-Options", "nosniff");
+        res.add_header("Cache-Control", "private, no-store");
+        res.write(buf.str());
+        return res;
+    });
+
     CROW_ROUTE(app, "/branding/logo")([&](const crow::request& /*req*/) {
         crow::response res;
         std::string ext = settings.get("branding_logo_extension", "");

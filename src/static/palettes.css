@@ -106,3 +106,12 @@ html[data-palette] #main-content #main-content { background-image: none; }
 .palette-swatch[data-swatch="creator"]   > span:nth-child(1) { background: #101010; } .palette-swatch[data-swatch="creator"]   > span:nth-child(2) { background: #9C4BA1; } .palette-swatch[data-swatch="creator"]   > span:nth-child(3) { background: #F3C9F6; }
 .palette-swatch[data-swatch="community"] > span:nth-child(1) { background: #101010; } .palette-swatch[data-swatch="community"] > span:nth-child(2) { background: #55AE78; } .palette-swatch[data-swatch="community"] > span:nth-child(3) { background: #B0EFC8; }
 .palette-swatch[data-swatch="event"]     > span:nth-child(1) { background: #101010; } .palette-swatch[data-swatch="event"]     > span:nth-child(2) { background: #3D5E9B; } .palette-swatch[data-swatch="event"]     > span:nth-child(3) { background: #C9DBFE; }
+
+/* Logo editor: a checkerboard shows where the logo is transparent */
+.logo-checker {
+  background-color: #fff;
+  background-image: linear-gradient(45deg, #e5e7eb 25%, transparent 25%), linear-gradient(-45deg, #e5e7eb 25%, transparent 25%),
+                    linear-gradient(45deg, transparent 75%, #e5e7eb 75%), linear-gradient(-45deg, transparent 75%, #e5e7eb 75%);
+  background-size: 20px 20px;
+  background-position: 0 0, 0 10px, 10px -10px, -10px 0;
+}

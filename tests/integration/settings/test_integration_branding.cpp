@@ -105,3 +105,37 @@ TEST_F(IntegrationTest, BrandingRemoveRequiresAdmin) {
     auto r = POST("/settings/branding/remove", "", member_token);
     EXPECT_EQ(r.code, 403);
 }
+
+TEST_F(IntegrationTest, LogoEditorKeepsTheOriginal) {
+    // The page has the editor
+    auto page = GET("/settings/branding", admin_token);
+    expect_contains(page, "data-logo-editor");
+    expect_not_contains(page, "Edit the current logo");          // nothing to edit yet
+    // The editor uploads its PNG with the picture it started from and its settings
+    const std::string svg = "<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"10\" height=\"10\"><rect width=\"10\" height=\"10\"/></svg>";
+    auto r = POST_FILE("/settings/branding", "logo", "logo.png", kTinyPng, admin_token,
+                       {{"original", svg}, {"editor_state", "{\"z\":1.5,\"x\":-12,\"y\":4,\"bg\":\"#1f2937\"}"}});
+    EXPECT_EQ(r.code, 200);
+    EXPECT_EQ(settings_repo->get("branding_logo_extension"), ".png");
+    EXPECT_EQ(settings_repo->get("branding_original_extension"), ".svg");
+    EXPECT_EQ(settings_repo->get("branding_editor_state"), "{\"z\":1.5,\"x\":-12,\"y\":4,\"bg\":\"#1f2937\"}");
+    auto again = GET("/settings/branding", admin_token);
+    expect_contains(again, "Edit the current logo");
+    expect_contains(again, "#1f2937");
+    // The original: admins only
+    EXPECT_NE(GET("/branding/logo/original").code, 200);
+    EXPECT_NE(GET("/branding/logo/original", member_token).code, 200);
+    auto o = GET("/branding/logo/original", admin_token);
+    EXPECT_EQ(o.code, 200);
+    EXPECT_EQ(o.body, svg);
+    EXPECT_NE(o.headers.find("sandbox"), std::string::npos);
+    // Junk editor settings aren't kept
+    POST_FILE("/settings/branding", "logo", "logo.png", kTinyPng, admin_token, {{"original", svg}, {"editor_state", "{\"bg\":\"red;}\"}"}});
+    EXPECT_EQ(settings_repo->get("branding_editor_state"), "");
+    // A plain upload is its own original; removing the logo removes both
+    POST_FILE("/settings/branding", "logo", "mylogo.png", kTinyPng, admin_token);
+    EXPECT_EQ(settings_repo->get("branding_original_extension"), ".png");
+    POST("/settings/branding/remove", "", admin_token);
+    EXPECT_EQ(settings_repo->get("branding_original_extension"), "");
+    EXPECT_EQ(GET("/branding/logo/original", admin_token).code, 404);
+}
