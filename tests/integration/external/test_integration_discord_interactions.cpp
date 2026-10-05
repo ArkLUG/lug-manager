@@ -47,6 +47,7 @@ protected:
         // then delegate to the base fixture.
         config.discord_public_key = public_key_hex;
         IntegrationTest::SetUp();
+        reset_discord_interaction_limits();
     }
 
     void TearDown() override {
@@ -68,7 +69,7 @@ protected:
     }
 
     // Posts a signed interaction body to /discord/interactions.
-    Response post_interaction(const std::string& body, const std::string& timestamp = "1700000000") {
+    Response post_interaction(const std::string& body, const std::string& timestamp = std::to_string(std::time(nullptr))) {
         std::string sig = sign_hex(timestamp + body);
         return http("POST", "/discord/interactions", body, "", false, "", true, {
             "X-Signature-Ed25519: " + sig,
@@ -77,7 +78,7 @@ protected:
     }
 
     // Posts an interaction body signed by a DIFFERENT (wrong) keypair.
-    Response post_interaction_wrong_key(const std::string& body, const std::string& timestamp = "1700000000") {
+    Response post_interaction_wrong_key(const std::string& body, const std::string& timestamp = std::to_string(std::time(nullptr))) {
         EVP_PKEY_CTX* pctx = EVP_PKEY_CTX_new_id(EVP_PKEY_ED25519, nullptr);
         EVP_PKEY_keygen_init(pctx);
         EVP_PKEY* wrong_key = nullptr;
@@ -308,4 +309,25 @@ TEST_F(DiscordInteractionsTest, NoAuthorizedRolesConfiguredMeansNobodyAuthorized
     auto r = post_interaction(body);
     EXPECT_EQ(r.code, 200);
     EXPECT_NE(r.body.find("permission"), std::string::npos);
+}
+
+TEST_F(DiscordInteractionsTest, ReplayWindowSizeCapAndRateLimit) {
+    // A genuinely signed request with an old (or future) timestamp is refused
+    const std::string ping = R"({"type":1})";
+    EXPECT_EQ(post_interaction(ping, std::to_string(std::time(nullptr) - 600)).code, 401);
+    EXPECT_EQ(post_interaction(ping, std::to_string(std::time(nullptr) + 600)).code, 401);
+    EXPECT_EQ(post_interaction(ping, "17000x0000").code, 401);
+    EXPECT_EQ(post_interaction(ping).code, 200);                          // fresh: PONG
+    // Signed but not a kind we handle: 400
+    EXPECT_EQ(post_interaction(R"({"type":2,"data":{"name":"x"}})").code, 400);
+    // Oversized bodies are refused before anything else
+    EXPECT_EQ(post_interaction(std::string(17 * 1024, ' ') + ping).code, 413);
+    // Only POST
+    EXPECT_NE(http("GET", "/discord/interactions", "", "", false, "", true, {}).code, 200);
+    // Too many bad signatures from one address: 429 for the rest of the minute
+    reset_discord_interaction_limits();
+    for (int i = 0; i < 21; ++i) post_interaction_wrong_key(ping);
+    EXPECT_EQ(post_interaction(ping).code, 429);
+    reset_discord_interaction_limits();
+    EXPECT_EQ(post_interaction(ping).code, 200);
 }

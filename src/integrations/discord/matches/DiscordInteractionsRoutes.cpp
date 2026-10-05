@@ -1,5 +1,9 @@
 #include "integrations/discord/matches/DiscordInteractionsRoutes.hpp"
 #include "integrations/discord/DiscordProvider.hpp"
+#include <unordered_map>
+#include <mutex>
+#include <ctime>
+#include "utils/web/ClientIp.hpp"
 #include "integrations/discord/sync/DiscordLinkPolicy.hpp"
 #include "integrations/discord/DiscordSignatureVerifier.hpp"
 #include "models/Member.hpp"
@@ -37,6 +41,48 @@ crow::response ephemeral_message(const std::string& content) {
     body["data"]["flags"]   = FLAG_EPHEMERAL;
     return json_response(200, std::move(body));
 }
+
+constexpr size_t kMaxInteractionBytes = 16 * 1024;
+
+crow::response plain_status(int code) {
+    crow::response res;
+    res.code = code;
+    return res;
+}
+
+// Timestamps within 5 minutes of now (Discord sends unix seconds).
+bool fresh_timestamp(const std::string& ts) {
+    if (ts.empty() || ts.size() > 12 || ts.find_first_not_of("0123456789") != std::string::npos) return false;
+    const long long t = std::stoll(ts), now = static_cast<long long>(std::time(nullptr));
+    return t > now - 300 && t < now + 300;
+}
+
+// Failed signature checks per client address: more than 20 in a minute and
+// the address gets 429 for the rest of that minute.
+class FailureLimiter {
+public:
+    bool blocked(const std::string& ip) {
+        std::lock_guard<std::mutex> l(mu_);
+        prune();
+        auto it = counts_.find(ip);
+        return it != counts_.end() && it->second > 20;
+    }
+    void add(const std::string& ip) {
+        std::lock_guard<std::mutex> l(mu_);
+        prune();
+        ++counts_[ip];
+    }
+    void reset() { std::lock_guard<std::mutex> l(mu_); counts_.clear(); }
+private:
+    void prune() {
+        const std::time_t minute = std::time(nullptr) / 60;
+        if (minute != minute_) { counts_.clear(); minute_ = minute; }
+    }
+    std::mutex mu_;
+    std::time_t minute_ = 0;
+    std::unordered_map<std::string, int> counts_;
+};
+FailureLimiter& failures() { static FailureLimiter f; return f; }
 
 // Bare 401, no body — used for every signature-verification failure so nothing
 // about *why* it failed (missing header vs. bad signature vs. bad key) leaks.
@@ -91,6 +137,8 @@ const std::string& env_key() {
 }
 }
 bool discord_interactions_key_locked() { return !env_key().empty(); }
+void reset_discord_interaction_limits() { failures().reset(); }
+
 std::string discord_interactions_key(SettingsRepository& settings) {
     return !env_key().empty() ? env_key() : settings.get("discord_public_key", "");
 }
@@ -112,6 +160,12 @@ void register_discord_interactions_routes(LugApp& app,
     CROW_ROUTE(app, "/discord/interactions").methods("POST"_method)(
         [&, reminder_actions](const crow::request& req) {
 
+        // 0. Cheap limits first: Discord's interaction payloads are a few KB;
+        //    a client that keeps failing the signature check gets slowed down.
+        if (req.body.size() > kMaxInteractionBytes) return plain_status(413);
+        const std::string ip = client_ip(req);
+        if (failures().blocked(ip)) return plain_status(429);
+
         // 1. Raw body, captured before any parsing — the signature covers these
         //    exact bytes, so re-serializing (even losslessly) would break verification.
         const std::string& raw_body = req.body;
@@ -125,6 +179,13 @@ void register_discord_interactions_routes(LugApp& app,
         if (signature.empty() || timestamp.empty() ||
             !verify_discord_signature(discord_public_key.empty() ? discord_interactions_key(settings) : discord_public_key,
                                       signature, timestamp, raw_body)) {
+            failures().add(ip);
+            return unauthorized();
+        }
+        // 3b. Replay window: Discord's timestamp (unix seconds) must be within
+        //     5 minutes of now. The signature covers it, so it can't be edited.
+        if (!fresh_timestamp(timestamp)) {
+            failures().add(ip);
             return unauthorized();
         }
 
@@ -284,6 +345,6 @@ void register_discord_interactions_routes(LugApp& app,
         }
 
         // Unknown/unsupported interaction type — acknowledge harmlessly.
-        return unauthorized();
+        return plain_status(400);   // signed, but not a kind of interaction we handle
     });
 }

@@ -40,7 +40,7 @@ protected:
     Response click(const std::string& user, const std::string& custom_id, const std::string& content = "Reminder text") {
         nlohmann::json b = {{"type", 3}, {"data", {{"custom_id", custom_id}, {"component_type", 2}}},
                             {"user", {{"id", user}}}, {"message", {{"content", content}}}};
-        std::string body = b.dump(), ts = "1700000000";
+        std::string body = b.dump(), ts = std::to_string(std::time(nullptr));
         EVP_MD_CTX* ctx = EVP_MD_CTX_new();
         EVP_DigestSignInit(ctx, nullptr, nullptr, nullptr, key);
         std::string msg = ts + body;

@@ -35,3 +35,6 @@ void register_discord_interactions_routes(LugApp& app,
 std::string discord_interactions_key(SettingsRepository& settings);
 bool discord_interactions_key_locked();
 
+
+// Tests: forget the failed-signature counts (per client address, per minute).
+void reset_discord_interaction_limits();
