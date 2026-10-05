@@ -7,33 +7,77 @@
   {{#error}}<div role="alert" class="bg-red-50 text-red-700 rounded-lg px-4 py-2 text-sm">{{error}}</div>{{/error}}
   {{#no_address}}<div class="bg-amber-50 border border-amber-200 text-amber-800 rounded-lg px-4 py-2 text-sm">Without a public address, emailed sign-in links, password resets and email confirmations aren't sent, and messages can't link back here.</div>{{/no_address}}
   <form hx-post="/settings/site" hx-target="#main-content" hx-swap="innerHTML" class="bg-white rounded-xl border border-gray-200 p-6 space-y-4 text-sm">
-    <label class="block">
+    <label class="block" for="site-public-url">
       <span class="font-medium text-gray-800">Public address</span>
-      <input type="url" name="public_url" value="{{public_url}}" placeholder="https://lug.example.org" {{#public_url_locked}}disabled{{/public_url_locked}}
+      <input id="site-public-url" type="url" name="public_url" value="{{public_url}}" placeholder="https://lug.example.org" {{#public_url_locked}}disabled{{/public_url_locked}}
              class="mt-1 w-full border border-gray-300 rounded-lg px-3 py-2 disabled:bg-gray-50 disabled:text-gray-500">
       <span class="block text-xs text-gray-500 mt-1">{{#public_url_locked}}Set on the server (LUG_PUBLIC_URL). {{/public_url_locked}}The address people use to reach LUG Manager, without a path. Emailed links always use this, never the address a request came in on.</span>
     </label>
     <fieldset class="space-y-3 border-t border-gray-100 pt-4">
       <legend class="font-medium text-gray-800">Email server (SMTP)</legend>
-      <label class="block">
-        <span class="text-gray-700">Server</span>
-        <input type="text" name="smtp_url" value="{{smtp_url}}" placeholder="smtps://smtp.example.com:465" {{#smtp_url_locked}}disabled{{/smtp_url_locked}}
-               class="mt-1 w-full border border-gray-300 rounded-lg px-3 py-2 disabled:bg-gray-50 disabled:text-gray-500">
-        <span class="block text-xs text-gray-500 mt-1">{{#smtp_url_locked}}Set on the server (LUG_SMTP_URL). {{/smtp_url_locked}}smtps://…:465, or smtp://…:587 (encryption is always required).</span>
+      {{^smtp_url_locked}}
+      <label class="block" for="smtp-preset">
+        <span class="text-gray-700">Email provider</span>
+        <select id="smtp-preset" data-change="smtp-preset" class="mt-1 w-full border border-gray-300 rounded-lg px-3 py-2 bg-white">
+          <option value="">Choose to fill in the server below…</option>
+          <option data-host="smtp.gmail.com" data-port="587" data-sec="starttls" data-hint="Gmail / Google Workspace: user name is the full address; the password is an App Password (Google Account > Security > App passwords), not the normal one.">Gmail / Google Workspace</option>
+          <option data-host="smtp.office365.com" data-port="587" data-sec="starttls" data-hint="Microsoft 365: user name is the full address. SMTP sign-in (SMTP AUTH) must be allowed for the mailbox.">Microsoft 365 (work or school)</option>
+          <option data-host="smtp-mail.outlook.com" data-port="587" data-sec="starttls" data-hint="Outlook.com / Hotmail: user name is the full address; with two-step verification use an app password.">Outlook.com / Hotmail</option>
+          <option data-host="smtp.mail.me.com" data-port="587" data-sec="starttls" data-hint="iCloud Mail: user name is the iCloud address; the password is an app-specific password (appleid.apple.com).">iCloud Mail</option>
+          <option data-host="smtp.fastmail.com" data-port="465" data-sec="ssl" data-hint="Fastmail: user name is the full address; the password is an app password (Settings > Privacy & Security).">Fastmail</option>
+          <option data-host="smtp.zoho.com" data-port="465" data-sec="ssl" data-hint="Zoho Mail: user name is the full address.">Zoho Mail</option>
+          <option data-host="smtp.sendgrid.net" data-port="587" data-sec="starttls" data-hint="SendGrid: user name is the word apikey; the password is an API key with Mail Send access.">SendGrid</option>
+          <option data-host="smtp.mailgun.org" data-port="587" data-sec="starttls" data-hint="Mailgun: use the SMTP credentials from your sending domain (EU accounts: smtp.eu.mailgun.org).">Mailgun</option>
+          <option data-host="email-smtp.us-east-1.amazonaws.com" data-port="587" data-sec="starttls" data-hint="Amazon SES: change us-east-1 to your region; user name and password are SES SMTP credentials (not your AWS keys).">Amazon SES</option>
+          <option data-host="" data-hint="">Other (fill in below)</option>
+        </select>
+        <span id="smtp-preset-hint" class="block text-xs text-gray-500 mt-1"></span>
       </label>
-      <label class="block">
+      {{/smtp_url_locked}}
+      <div class="grid grid-cols-1 sm:grid-cols-6 gap-3">
+        <label class="block sm:col-span-3" for="smtp-host">
+          <span class="text-gray-700">Server</span>
+          <input id="smtp-host" type="text" name="smtp_host" value="{{smtp_host}}" placeholder="smtp.example.com" {{#smtp_url_locked}}disabled{{/smtp_url_locked}}
+                 class="mt-1 w-full border border-gray-300 rounded-lg px-3 py-2 disabled:bg-gray-50 disabled:text-gray-500">
+        </label>
+        <label class="block sm:col-span-1" for="smtp-port">
+          <span class="text-gray-700">Port</span>
+          <input id="smtp-port" type="number" name="smtp_port" value="{{smtp_port}}" min="1" max="65535" placeholder="587" {{#smtp_url_locked}}disabled{{/smtp_url_locked}}
+                 class="mt-1 w-full border border-gray-300 rounded-lg px-3 py-2 disabled:bg-gray-50 disabled:text-gray-500">
+        </label>
+        <label class="block sm:col-span-2" for="smtp-security">
+          <span class="text-gray-700">Security</span>
+          <select id="smtp-security" name="smtp_security" {{#smtp_url_locked}}disabled{{/smtp_url_locked}}
+                  class="mt-1 w-full border border-gray-300 rounded-lg px-3 py-2 bg-white disabled:bg-gray-50 disabled:text-gray-500">
+            <option value="starttls" {{#sec_starttls}}selected{{/sec_starttls}}>STARTTLS (usually port 587)</option>
+            <option value="ssl" {{#sec_ssl}}selected{{/sec_ssl}}>SSL/TLS (usually port 465)</option>
+          </select>
+        </label>
+      </div>
+      <p class="text-xs text-gray-500 -mt-1">{{#smtp_url_locked}}Set on the server (LUG_SMTP_URL). {{/smtp_url_locked}}Mail is always sent encrypted.</p>
+      <label class="block" for="smtp-user">
         <span class="text-gray-700">User name</span>
-        <input type="text" name="smtp_user" value="{{smtp_user}}" autocomplete="off" {{#smtp_user_locked}}disabled{{/smtp_user_locked}}
+        <input id="smtp-user" type="text" name="smtp_user" value="{{smtp_user}}" autocomplete="off" {{#smtp_user_locked}}disabled{{/smtp_user_locked}}
                class="mt-1 w-full border border-gray-300 rounded-lg px-3 py-2 disabled:bg-gray-50 disabled:text-gray-500">
-        {{#smtp_user_locked}}<span class="block text-xs text-gray-500 mt-1">Set on the server (LUG_SMTP_USER).</span>{{/smtp_user_locked}}
+        <span class="block text-xs text-gray-500 mt-1">{{#smtp_user_locked}}Set on the server (LUG_SMTP_USER). {{/smtp_user_locked}}Usually the full email address.</span>
       </label>
-      <label class="block">
-        <span class="text-gray-700">From</span>
-        <input type="text" name="smtp_from" value="{{smtp_from}}" placeholder="Brickton LUG &lt;lug@example.org&gt;" {{#smtp_from_locked}}disabled{{/smtp_from_locked}}
+      <label class="block" for="smtp-password">
+        <span class="text-gray-700">Password</span>
+        {{#password_locked}}<span class="block text-xs text-gray-500 mt-1">Set on the server (LUG_SMTP_PASSWORD).</span>{{/password_locked}}
+        {{^password_locked}}
+        <input id="smtp-password" type="password" name="smtp_password" autocomplete="new-password"
+               placeholder="{{#password_saved}}Saved - type a new one to replace it{{/password_saved}}{{^password_saved}}Not set{{/password_saved}}"
+               class="mt-1 w-full border border-gray-300 rounded-lg px-3 py-2">
+        <span class="block text-xs text-gray-500 mt-1">{{#password_saved}}A password is saved (stored encrypted, never shown). Leave this empty to keep it.{{/password_saved}}{{^password_saved}}Stored encrypted and never shown again.{{/password_saved}}</span>
+        {{/password_locked}}
+      </label>
+      {{#password_saved}}<label class="inline-flex items-center gap-2 text-xs text-gray-600" for="smtp-clear-password"><input id="smtp-clear-password" type="checkbox" name="clear_password" value="1"> Remove the saved password</label>{{/password_saved}}
+      <label class="block" for="smtp-from">
+        <span class="text-gray-700">Send as</span>
+        <input id="smtp-from" type="text" name="smtp_from" value="{{smtp_from}}" placeholder="Brickton LUG &lt;lug@example.org&gt;" {{#smtp_from_locked}}disabled{{/smtp_from_locked}}
                class="mt-1 w-full border border-gray-300 rounded-lg px-3 py-2 disabled:bg-gray-50 disabled:text-gray-500">
-        {{#smtp_from_locked}}<span class="block text-xs text-gray-500 mt-1">Set on the server (LUG_SMTP_FROM).</span>{{/smtp_from_locked}}
+        <span class="block text-xs text-gray-500 mt-1">{{#smtp_from_locked}}Set on the server (LUG_SMTP_FROM). {{/smtp_from_locked}}The name and address emails come from. Most providers require the address to be the account above (or one it's allowed to send as).</span>
       </label>
-      <p class="text-xs text-gray-500">Password: {{#has_password}}set on the server.{{/has_password}}{{^has_password}}not set. It's a secret, so it lives only on the server: set LUG_SMTP_PASSWORD and restart.{{/has_password}}</p>
     </fieldset>
     <div class="flex items-center gap-3 pt-2">
       <button class="px-4 py-2 bg-gray-800 text-white rounded-lg font-medium hover:bg-gray-700">Save</button>

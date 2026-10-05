@@ -12,6 +12,7 @@
 #include <filesystem>
 
 #include "db/SqliteDatabase.hpp"
+#include "utils/SecretBox.hpp"
 #include "utils/web/TemplateCache.hpp"
 #include "db/Migrations.hpp"
 #include "middleware/AuthMiddleware.hpp"
@@ -155,6 +156,7 @@ protected:
                     ("lug-test-" + std::to_string(getpid()) + "-" +
                      std::to_string(reinterpret_cast<uintptr_t>(this)))).string();
         std::filesystem::create_directories(data_dir);
+        secretbox::init(data_dir);
 
         db = std::make_unique<SqliteDatabase>(":memory:");
         Migrations mig(*db);

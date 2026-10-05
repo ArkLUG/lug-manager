@@ -2,6 +2,7 @@
 #include "utils/LocalTime.hpp"
 #include "live/LiveHub.hpp"
 #include "utils/Offline.hpp"
+#include "utils/SecretBox.hpp"
 #include <crow.h>
 #include <crow/mustache.h>
 #include <filesystem>
@@ -72,6 +73,8 @@ int main(int argc, char** argv) {
         // "lug.db" in local dev).
         std::string data_dir = std::filesystem::absolute(config.db_path).parent_path().string();
         if (data_dir.empty()) data_dir = ".";
+        // Key for secrets kept in the database (the SMTP password)
+        if (!secretbox::init(data_dir)) std::cerr << "[secrets] can't read or create " << data_dir << "/secret.key\n";
 
         // Open SQLite database
         SqliteDatabase db(config.db_path);

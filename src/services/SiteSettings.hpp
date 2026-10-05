@@ -3,13 +3,15 @@
 //
 // Both are set by an admin in Settings > Email & address and stored in the
 // database. An environment variable set for one (LUG_PUBLIC_URL,
-// LUG_SMTP_URL / _USER / _FROM) wins and shows as locked on that page. The
-// SMTP password is a secret, so it's environment-only (LUG_SMTP_PASSWORD).
+// LUG_SMTP_URL / _USER / _FROM / _PASSWORD) wins and shows as locked on that
+// page. The SMTP password set in the app is stored encrypted
+// (utils/SecretBox.hpp) and never shown again.
 //
 // Callers ask at the moment they need a value, so a change in Settings takes
 // effect straight away.
 #include "integrations/email/Mailer.hpp"
 #include "repositories/admin/SettingsRepository.hpp"
+#include "utils/SecretBox.hpp"
 #include <mutex>
 #include <string>
 
@@ -76,8 +78,37 @@ inline Mailer::Config smtp() {
     c.url      = !env.url.empty()  ? env.url  : detail::setting("smtp_url");
     c.user     = !env.user.empty() ? env.user : detail::setting("smtp_user");
     c.from     = !env.from.empty() ? env.from : detail::setting("smtp_from");
-    c.password = env.password;
+    c.password = !env.password.empty() ? env.password : secretbox::open(detail::setting("smtp_password_sealed"));
     return c;
+}
+
+// Whether a password is saved in the app (not the environment's).
+inline bool smtp_password_saved() { return !detail::setting("smtp_password_sealed").empty(); }
+
+// SMTP server as host / port / security, for the settings form; and back.
+struct SmtpServer { std::string host; int port = 0; std::string security; };   // security: "ssl" | "starttls"
+inline SmtpServer parse_smtp_url(const std::string& url) {
+    SmtpServer s;
+    std::string rest;
+    if (url.rfind("smtps://", 0) == 0) { s.security = "ssl"; rest = url.substr(8); }
+    else if (url.rfind("smtp://", 0) == 0) { s.security = "starttls"; rest = url.substr(7); }
+    else return s;
+    while (!rest.empty() && rest.back() == '/') rest.pop_back();
+    auto colon = rest.rfind(':');
+    if (colon != std::string::npos) {
+        try { s.port = std::stoi(rest.substr(colon + 1)); } catch (...) { s.port = 0; }
+        rest = rest.substr(0, colon);
+    }
+    s.host = rest;
+    if (s.port == 0) s.port = s.security == "ssl" ? 465 : 587;
+    return s;
+}
+// "" when the host isn't a plain host name.
+inline std::string make_smtp_url(const std::string& host, int port, const std::string& security) {
+    if (host.empty() || host.size() > 200 || host.find_first_not_of("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789.-") != std::string::npos)
+        return "";
+    if (port <= 0 || port > 65535) port = security == "ssl" ? 465 : 587;
+    return std::string(security == "ssl" ? "smtps://" : "smtp://") + host + ":" + std::to_string(port);
 }
 
 } // namespace site

@@ -147,7 +147,7 @@ void Mailer::clear_outbox() {
     outbox_.clear();
 }
 
-bool Mailer::send_now(const Message& m) {
+std::string Mailer::send_now(const Message& m) {
     char date[64];
     std::time_t now = std::time(nullptr);
     std::tm tm{};
@@ -159,7 +159,9 @@ bool Mailer::send_now(const Message& m) {
     std::string payload = build(m, date, "<" + SessionStore::generate_token().substr(0, 24) + "@" + domain + ">");
 
     CURL* curl = curl_easy_init();
-    if (!curl) return false;
+    if (!curl) return "couldn't start the mail client";
+    char errbuf[CURL_ERROR_SIZE] = {0};
+    curl_easy_setopt(curl, CURLOPT_ERRORBUFFER, errbuf);
     Upload up{&payload};
     struct curl_slist* rcpt = curl_slist_append(nullptr, ("<" + address_of(m.to) + ">").c_str());
     curl_easy_setopt(curl, CURLOPT_URL, cfg.url.c_str());
@@ -179,8 +181,19 @@ bool Mailer::send_now(const Message& m) {
     curl_slist_free_all(rcpt);
     curl_easy_cleanup(curl);
     if (rc != CURLE_OK) {
-        std::cerr << "[mailer] send to " << address_of(m.to) << " failed: " << curl_easy_strerror(rc) << "\n";
-        return false;
+        std::string why = errbuf[0] ? std::string(errbuf) : std::string(curl_easy_strerror(rc));
+        std::cerr << "[mailer] send to " << address_of(m.to) << " failed: " << why << "\n";
+        return why;
     }
-    return true;
+    return "";
+}
+
+std::string Mailer::send_test(Message m) {
+    if (!enabled()) return "The email server isn't set up.";
+    if (capture_) {
+        std::lock_guard<std::mutex> l(mu_);
+        outbox_.push_back(std::move(m));
+        return "";
+    }
+    return send_now(m);
 }

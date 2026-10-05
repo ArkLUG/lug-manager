@@ -110,8 +110,7 @@ Everything that isn't a secret or needed before the server starts is set in the 
 | `LUG_PUBLIC_URL` | Optional | The public address, e.g. `https://lug.example.org`; or set it in Settings > Email & address. Emailed links (sign-in, password reset, email confirmation) are only sent once there is one. |
 | `BOOTSTRAP_ADMIN_DISCORD_ID` | Optional | Makes this Discord account admin on first sign-in. The `/setup` link works too. |
 | `DISCORD_PUBLIC_KEY` | Optional | Lets duplicate-member matches be resolved from Discord buttons; or set it in Settings > Discord matches |
-| `LUG_SMTP_PASSWORD` | With email | The email server's password (a secret, so environment only) |
-| `LUG_SMTP_URL`, `LUG_SMTP_USER`, `LUG_SMTP_FROM` | Optional | The email server; or set it in Settings > Email & address |
+| `LUG_SMTP_URL`, `LUG_SMTP_USER`, `LUG_SMTP_PASSWORD`, `LUG_SMTP_FROM` | Optional | The email server. Usually set in Settings > Email & address instead; a variable that is set wins there |
 | `LUG_PORT`, `LUG_DB_PATH`, `LUG_TEMPLATES_DIR` | Optional | Defaults `8080`, `./lug.db`, `./src/templates`. The Docker image sets these. |
 | `ICAL_TIMEZONE`, `ICAL_CALENDAR_NAME`, `DISCORD_GUILD_ID` | Optional | Starting values; change them later in Settings |
 | `LUG_OFFLINE` | Never in production | `1` blocks every outbound request (Discord, Google, email). Use it for testing and copies of real data. |
@@ -154,7 +153,7 @@ Private meetings and events still appear on the calendar, but only as "Private L
 
 ### Email (optional)
 
-Set the email server and the public address under **Settings > Email & address** (or with the `LUG_SMTP_*` and `LUG_PUBLIC_URL` variables), and the server's password with `LUG_SMTP_PASSWORD`. "Send me a test email" there checks it works. Then:
+Set the email server and the public address under **Settings > Email & address**: pick your provider (Gmail, Microsoft 365, Outlook.com, iCloud, Fastmail, Zoho, SendGrid, Mailgun, Amazon SES or other) to fill in the server, then the user name, password and the address to send as. The password is stored encrypted with a key in `data/secret.key` and never shown again. "Send me a test email" sends one straight away and shows the mail server's error if it fails. The `LUG_SMTP_*` and `LUG_PUBLIC_URL` variables still work and win when set. Then:
 - **Email me a link** and **Forgot it?** work on the sign-in page (single use, short-lived, rate limited);
 - members who can't get a Discord DM (no Discord, DMs off, or Discord switched off) get reminders, waitlist notices, digests and dues reminders by email.
 
@@ -216,6 +215,7 @@ These start off and are opt-in:
 - **Daily database snapshots** go to `data/backups`; the newest 14 are kept by default. Settings > Backups has "Back up now" and download links.
 - **Uploads:** photos and receipts are copied to `data/backups/uploads` with each backup. You can also download them all as one `.zip`.
 - **Members' own data:** every member can download it as JSON, or delete their account, from My Account.
+- **Secret key:** `data/secret.key` encrypts the email password stored in the database. It's not in the database backups, so copy it along when moving to a new server (otherwise just re-enter the email password).
 - **Audit log:** records who did what, when, and from which IP address.
 
 ## JSON API

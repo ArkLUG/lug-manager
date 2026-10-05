@@ -637,3 +637,35 @@ TEST(LocalTime, ProcessTimezoneFollowsTheLug) {
     if (old) setenv("TZ", saved.c_str(), 1); else unsetenv("TZ");
     tzset();
 }
+
+#include "utils/SecretBox.hpp"
+#include "services/SiteSettings.hpp"
+#include <filesystem>
+TEST(SecretBox, SealOpenAndTamper) {
+    auto dir = std::filesystem::temp_directory_path() / ("lm-sb-" + std::to_string(::getpid()));
+    ASSERT_TRUE(secretbox::init(dir.string()));
+    auto perms = std::filesystem::status(dir / "secret.key").permissions();
+    EXPECT_EQ(perms & std::filesystem::perms::others_read, std::filesystem::perms::none);
+    std::string s = secretbox::seal("hunter2 ünïcode");
+    EXPECT_EQ(s.rfind("v1:", 0), 0u);
+    EXPECT_NE(s, secretbox::seal("hunter2 ünïcode"));                 // fresh nonce each time
+    EXPECT_EQ(secretbox::open(s), "hunter2 ünïcode");
+    std::string bad = s; bad[10] = bad[10] == 'a' ? 'b' : 'a';
+    EXPECT_EQ(secretbox::open(bad), "");                               // tampered
+    EXPECT_EQ(secretbox::open("v1:zz"), "");
+    EXPECT_EQ(secretbox::open(""), "");
+    ASSERT_TRUE(secretbox::init(dir.string()));                        // same key file again
+    EXPECT_EQ(secretbox::open(s), "hunter2 ünïcode");
+    std::filesystem::remove_all(dir);
+}
+
+TEST(SiteSettings, SmtpServerParts) {
+    auto a = site::parse_smtp_url("smtps://smtp.example.org:465");
+    EXPECT_EQ(a.host, "smtp.example.org"); EXPECT_EQ(a.port, 465); EXPECT_EQ(a.security, "ssl");
+    auto b = site::parse_smtp_url("smtp://mail.x.org");
+    EXPECT_EQ(b.port, 587); EXPECT_EQ(b.security, "starttls");
+    EXPECT_EQ(site::make_smtp_url("smtp.gmail.com", 587, "starttls"), "smtp://smtp.gmail.com:587");
+    EXPECT_EQ(site::make_smtp_url("smtp.x.org", 0, "ssl"), "smtps://smtp.x.org:465");
+    EXPECT_EQ(site::make_smtp_url("evil.org/x?y", 25, "ssl"), "");
+    EXPECT_EQ(site::make_smtp_url("", 25, "ssl"), "");
+}

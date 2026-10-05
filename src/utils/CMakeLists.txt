@@ -5,6 +5,8 @@ target_sources(lug_core PRIVATE
   Crypto.hpp
   LocalTime.hpp
   Offline.hpp
+  SecretBox.cpp
+  SecretBox.hpp
 )
 add_subdirectory(text)
 add_subdirectory(web)

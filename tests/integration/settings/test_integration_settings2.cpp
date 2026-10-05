@@ -300,15 +300,43 @@ TEST_F(IntegrationTest, SiteAddressAndEmailSettings) {
     EXPECT_EQ(site::public_url(), "");
     EXPECT_EQ(POST("/settings/site", "public_url=javascript%3Aalert(1)", admin_token).code, 400);
     EXPECT_EQ(POST("/settings/site", "public_url=https%3A%2F%2Fevil.example%2Fpath", admin_token).code, 400);
-    EXPECT_EQ(POST("/settings/site", "public_url=https%3A%2F%2Flug.example.org%2F&smtp_url=ftp%3A%2F%2Fx", admin_token).code, 400);
-    auto ok = POST("/settings/site", "public_url=https%3A%2F%2Flug.example.org%2F&smtp_url=smtps%3A%2F%2Fsmtp.example.org%3A465"
-                                     "&smtp_user=lug&smtp_from=Brickton+LUG+%3Clug%40example.org%3E", admin_token);
+    EXPECT_EQ(POST("/settings/site", "public_url=https%3A%2F%2Flug.example.org%2F&smtp_host=bad%20host%2Fx", admin_token).code, 400);
+    auto ok = POST("/settings/site", "public_url=https%3A%2F%2Flug.example.org%2F&smtp_host=smtp.example.org&smtp_port=465&smtp_security=ssl"
+                                     "&smtp_user=lug&smtp_password=s3cret%21&smtp_from=Brickton+LUG+%3Clug%40example.org%3E", admin_token);
     EXPECT_EQ(ok.code, 200);
     expect_contains(ok, "Saved.");
     EXPECT_EQ(site::public_url(), "https://lug.example.org");   // trailing slash dropped
     EXPECT_EQ(site::smtp().url, "smtps://smtp.example.org:465");
     EXPECT_EQ(site::smtp().from, "Brickton LUG <lug@example.org>");
-    EXPECT_EQ(site::smtp().password, "");                       // environment only
+    // The password: stored encrypted, used, never shown back
+    EXPECT_EQ(site::smtp().password, "s3cret!");
+    const std::string sealed = settings_repo->get("smtp_password_sealed");
+    EXPECT_EQ(sealed.rfind("v1:", 0), 0u);
+    EXPECT_EQ(sealed.find("s3cret"), std::string::npos);
+    auto page = GET("/settings/site", admin_token);
+    expect_not_contains(page, "s3cret");
+    expect_contains(page, "A password is saved");
+    expect_contains(page, "value=\"smtp.example.org\"");
+    expect_contains(page, "<option value=\"ssl\" selected>");
+    // An empty box keeps it; STARTTLS + default port
+    POST("/settings/site", "public_url=https%3A%2F%2Flug.example.org&smtp_host=smtp.example.org&smtp_security=starttls"
+                           "&smtp_user=lug&smtp_from=lug%40example.org", admin_token);
+    EXPECT_EQ(site::smtp().password, "s3cret!");
+    EXPECT_EQ(site::smtp().url, "smtp://smtp.example.org:587");
+    // Remove it
+    POST("/settings/site", "public_url=https%3A%2F%2Flug.example.org&smtp_host=smtp.example.org&smtp_security=starttls"
+                           "&smtp_user=lug&smtp_from=lug%40example.org&clear_password=1", admin_token);
+    EXPECT_EQ(site::smtp().password, "");
+    POST("/settings/site", "public_url=https%3A%2F%2Flug.example.org&smtp_host=smtp.example.org&smtp_security=starttls"
+                           "&smtp_user=lug&smtp_password=pw2&smtp_from=lug%40example.org", admin_token);
+    // The environment's password wins and locks the field
+    Mailer::Config env; env.password = "from-env";
+    site::bind(settings_repo.get(), "", env);
+    EXPECT_EQ(site::smtp().password, "from-env");
+    expect_contains(GET("/settings/site", admin_token), "Set on the server (LUG_SMTP_PASSWORD)");
+    site::bind(settings_repo.get(), "", {});
+    EXPECT_EQ(site::smtp().password, "pw2");
+    EXPECT_EQ(query_int(*db, "SELECT COUNT(*) FROM audit_log WHERE details LIKE '%pw2%' OR details LIKE '%s3cret%'"), 0);
 
     // Emailed links now use it
     Member m = *member_repo->find_by_id(regular_member_id);

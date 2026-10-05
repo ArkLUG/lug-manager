@@ -33,6 +33,9 @@ public:
     // New settings take effect for the next message (Settings > Email & address).
     void reconfigure(Config cfg);
     void send(Message m);
+    // Sends now and waits (Settings > "Send me a test email"): "" when the
+    // server accepted it, else the server's or connection's error.
+    std::string send_test(Message m);
     std::vector<Message> outbox() const;   // capture mode only
     void clear_outbox();
 
@@ -41,7 +44,7 @@ public:
     static std::string address_of(const std::string& from);   // "Name <a@b>" -> "a@b"
 
 private:
-    bool send_now(const Message& m);
+    std::string send_now(const Message& m);   // "" = sent
 
     Config config() const { std::lock_guard<std::mutex> l(cfg_mu_); return cfg_; }
 
