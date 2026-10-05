@@ -37,6 +37,10 @@ void register_role_mappings_api_routes(LugApp& app, RoleMappingRepository& role_
         std::string discord_role_id   = body["discord_role_id"].s();
         std::string discord_role_name = body["discord_role_name"].s();
         std::string lug_role          = body["lug_role"].s();
+        if (lug_role != "admin" && lug_role != "moderator" && lug_role != "chapter_lead" && lug_role != "member") {
+            envelope_error(res, 400, "lug_role must be admin, moderator, chapter_lead or member", "validation_error");
+            return res;
+        }
 
         try {
             role_mappings.upsert(discord_role_id, discord_role_name, lug_role);
@@ -69,6 +73,10 @@ void register_role_mappings_api_routes(LugApp& app, RoleMappingRepository& role_
 
         std::string discord_role_name = body["discord_role_name"].s();
         std::string lug_role          = body["lug_role"].s();
+        if (lug_role != "admin" && lug_role != "moderator" && lug_role != "chapter_lead" && lug_role != "member") {
+            envelope_error(res, 400, "lug_role must be admin, moderator, chapter_lead or member", "validation_error");
+            return res;
+        }
 
         try {
             role_mappings.upsert(discord_role_id, discord_role_name, lug_role);

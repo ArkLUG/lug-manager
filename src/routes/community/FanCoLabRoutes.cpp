@@ -234,7 +234,7 @@ void register_fan_colab_routes(LugApp& app, SqliteDatabase& db, SettingsReposito
     // GET /fancolab?year=
     CROW_ROUTE(app, "/fancolab")([&app, &db, &settings](const crow::request& req) {
         crow::response res;
-        if (!require_auth(req, res, app, "admin")) return res;
+        if (!require_auth(req, res, app, "perm:fancolab.manage")) return res;
         return html_page(req, app, render_fancolab(db, settings, year_param(req.url_params.get("year"))),
                     "LEGO Fan CoLab", "active_fancolab");
     });
@@ -242,7 +242,7 @@ void register_fan_colab_routes(LugApp& app, SqliteDatabase& db, SettingsReposito
     // POST /fancolab/recognition - Recognized LEGO Fan Community + Community Ambassador
     CROW_ROUTE(app, "/fancolab/recognition").methods("POST"_method)([&app, &db, &settings, &audit](const crow::request& req) {
         crow::response res;
-        if (!require_auth(req, res, app, "admin")) return res;
+        if (!require_auth(req, res, app, "perm:fancolab.manage")) return res;
         Form f(req);
         int year = year_param(f.get("year", 6).c_str());
         bool recognized = f.get("fan_colab_recognized", 2) == "1";
@@ -265,7 +265,7 @@ void register_fan_colab_routes(LugApp& app, SqliteDatabase& db, SettingsReposito
     // POST /fancolab/terms - record a past Community Ambassador
     CROW_ROUTE(app, "/fancolab/terms").methods("POST"_method)([&app, &db, &settings, &audit](const crow::request& req) {
         crow::response res;
-        if (!require_auth(req, res, app, "admin")) return res;
+        if (!require_auth(req, res, app, "perm:fancolab.manage")) return res;
         Form f(req);
         int year = year_param(f.get("year", 6).c_str());
         int64_t member = f.num("member_id");
@@ -294,7 +294,7 @@ void register_fan_colab_routes(LugApp& app, SqliteDatabase& db, SettingsReposito
     // POST /fancolab/terms/<id> - correct a term's dates
     CROW_ROUTE(app, "/fancolab/terms/<int>").methods("POST"_method)([&app, &db, &settings, &audit](const crow::request& req, int id) {
         crow::response res;
-        if (!require_auth(req, res, app, "admin")) return res;
+        if (!require_auth(req, res, app, "perm:fancolab.manage")) return res;
         Form f(req);
         int year = year_param(f.get("year", 6).c_str());
         std::string from = f.get("started_on", 10), to = f.get("ended_on", 10), name, cur_end;
@@ -327,7 +327,7 @@ void register_fan_colab_routes(LugApp& app, SqliteDatabase& db, SettingsReposito
     // POST /fancolab/terms/<id>/delete - past terms only
     CROW_ROUTE(app, "/fancolab/terms/<int>/delete").methods("POST"_method)([&app, &db, &settings, &audit](const crow::request& req, int id) {
         crow::response res;
-        if (!require_auth(req, res, app, "admin")) return res;
+        if (!require_auth(req, res, app, "perm:fancolab.manage")) return res;
         int year = year_param(Form(req).get("year", 6).c_str());
         std::string name;
         bool serving = false;
@@ -352,7 +352,7 @@ void register_fan_colab_routes(LugApp& app, SqliteDatabase& db, SettingsReposito
     // POST /fancolab/tasks - add a yearly to-do
     CROW_ROUTE(app, "/fancolab/tasks").methods("POST"_method)([&app, &db, &settings, &audit](const crow::request& req) {
         crow::response res;
-        if (!require_auth(req, res, app, "admin")) return res;
+        if (!require_auth(req, res, app, "perm:fancolab.manage")) return res;
         Form f(req);
         int year = year_param(f.get("year", 6).c_str());
         std::string title = f.get("title", 200);
@@ -373,7 +373,7 @@ void register_fan_colab_routes(LugApp& app, SqliteDatabase& db, SettingsReposito
     // POST /fancolab/tasks/<id>/toggle - tick / untick for a year
     CROW_ROUTE(app, "/fancolab/tasks/<int>/toggle").methods("POST"_method)([&app, &db, &settings, &audit](const crow::request& req, int id) {
         crow::response res;
-        if (!require_auth(req, res, app, "admin")) return res;
+        if (!require_auth(req, res, app, "perm:fancolab.manage")) return res;
         int year = year_param(Form(req).get("year", 6).c_str());
         std::string title;
         {
@@ -406,7 +406,7 @@ void register_fan_colab_routes(LugApp& app, SqliteDatabase& db, SettingsReposito
     // POST /fancolab/tasks/<id>/delete
     CROW_ROUTE(app, "/fancolab/tasks/<int>/delete").methods("POST"_method)([&app, &db, &settings, &audit](const crow::request& req, int id) {
         crow::response res;
-        if (!require_auth(req, res, app, "admin")) return res;
+        if (!require_auth(req, res, app, "perm:fancolab.manage")) return res;
         int year = year_param(Form(req).get("year", 6).c_str());
         std::string title;
         {
@@ -427,7 +427,7 @@ void register_fan_colab_routes(LugApp& app, SqliteDatabase& db, SettingsReposito
     // GET /fancolab/summary?year= - printable one-page summary
     CROW_ROUTE(app, "/fancolab/summary")([&app, &db](const crow::request& req) {
         crow::response res;
-        if (!require_auth(req, res, app, "admin")) return res;
+        if (!require_auth(req, res, app, "perm:fancolab.manage")) return res;
         auto s = summarize(db, year_param(req.url_params.get("year")));
         auto fc = fan_colab_info(db);
         crow::mustache::context ctx;
@@ -460,7 +460,7 @@ void register_fan_colab_routes(LugApp& app, SqliteDatabase& db, SettingsReposito
     // GET /fancolab/summary.csv?year= - Measure,Value
     CROW_ROUTE(app, "/fancolab/summary.csv")([&app, &db](const crow::request& req) {
         crow::response res;
-        if (!require_auth(req, res, app, "admin")) return res;
+        if (!require_auth(req, res, app, "perm:fancolab.manage")) return res;
         auto s = summarize(db, year_param(req.url_params.get("year")));
         auto fc = fan_colab_info(db);
         std::string out = "Measure,Value\n";
@@ -478,7 +478,7 @@ void register_fan_colab_routes(LugApp& app, SqliteDatabase& db, SettingsReposito
     // GET /fancolab/events.csv?year= - one row per public show
     CROW_ROUTE(app, "/fancolab/events.csv")([&app, &db](const crow::request& req) {
         crow::response res;
-        if (!require_auth(req, res, app, "admin")) return res;
+        if (!require_auth(req, res, app, "perm:fancolab.manage")) return res;
         auto s = summarize(db, year_param(req.url_params.get("year")));
         std::string out = "Start,End,Event,Location,Days,Visitors,Kids,Teens,Adults,Members,Displays,Display sq ft,Said they'd come\n";
         for (const auto& e : s.shows) {
@@ -590,14 +590,14 @@ void register_fan_colab_routes(LugApp& app, SqliteDatabase& db, SettingsReposito
     // GET /settings/about - editor (admin)
     CROW_ROUTE(app, "/settings/about")([&app, &settings](const crow::request& req) {
         crow::response res;
-        if (!require_auth(req, res, app, "admin")) return res;
+        if (!require_auth(req, res, app, "perm:fancolab.manage")) return res;
         return html_page(req, app, render_about_editor(settings), "Public pages", "active_about");
     });
 
     // POST /settings/about - title, text (Markdown from the editor), options
     CROW_ROUTE(app, "/settings/about").methods("POST"_method)([&app, &db, &settings, photos, &audit](const crow::request& req) {
         crow::response res;
-        if (!require_auth(req, res, app, "admin")) return res;
+        if (!require_auth(req, res, app, "perm:fancolab.manage")) return res;
         Form f(req);
         std::string md = f.get("markdown", kAboutMaxChars + 1);
         if (md.size() > kAboutMaxChars)
@@ -632,7 +632,7 @@ void register_fan_colab_routes(LugApp& app, SqliteDatabase& db, SettingsReposito
     // POST /settings/about/photo - multipart "photo"; JSON {url} for the editor
     CROW_ROUTE(app, "/settings/about/photo").methods("POST"_method)([&app, &db, photos, &audit](const crow::request& req) {
         crow::response res;
-        if (!require_auth(req, res, app, "admin")) return res;
+        if (!require_auth(req, res, app, "perm:fancolab.manage")) return res;
         crow::multipart::message msg(req);
         std::string bytes;
         auto it = msg.part_map.find("photo");

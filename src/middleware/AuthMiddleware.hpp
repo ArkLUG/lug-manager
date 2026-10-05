@@ -1,5 +1,6 @@
 #pragma once
 #include "auth/AuthService.hpp"
+#include "auth/Permissions.hpp"
 #include "auth/SessionStore.hpp"
 #include "repositories/members/ChapterMemberRepository.hpp"
 #include "repositories/admin/SettingsRepository.hpp"
@@ -48,12 +49,17 @@ struct AuthContext {
     bool        treasurer     = false;
     bool        must_setup_2fa = false;   // two-factor required but not set up (see before_handle)
 
+    std::set<std::string> perms;        // the role's permissions (auth/Permissions.hpp); admin has all
+
     bool is_admin()        const { return role == "admin"; }
+    // A permission from Settings > Roles and permissions. Admin can do everything.
+    bool can(const std::string& perm) const { return authenticated && (is_admin() || perms.count(perm) > 0); }
     // Treasury pages and recording dues there: admins and the treasurer(s).
     bool can_treasury()    const { return is_admin() || treasurer; }
     bool is_moderator()    const { return role == "moderator"; }
-    // Same privilege tier as chapter_lead - moderator is granted manually
-    // (like chapter_lead), not via Discord role-mapping sync.
+    // Staff: admins, moderators and LUG-wide chapter leads. What they may do
+    // is set per role with can(); this is for wording and the Treasury's
+    // "leads" audience.
     bool is_chapter_lead() const { return role == "admin" || role == "chapter_lead" || role == "moderator"; }
 };
 
@@ -107,6 +113,7 @@ struct AuthMiddleware {
         ctx.auth.role          = session_opt->role;
         ctx.auth.display_name  = session_opt->display_name;
         ctx.auth.treasurer     = session_opt->treasurer;
+        if (settings && ctx.auth.role != "admin") ctx.auth.perms = perms::load(settings->db(), ctx.auth.role);
         if (session_opt->renewed) ctx.renewed_session = token;
 
         // Two-factor required for this member but not set up yet: everything
@@ -213,11 +220,15 @@ inline void set_layout_auth(const crow::request& req, App& app,
     layout_ctx["is_admin"]        = ctx.auth.is_admin();
     layout_ctx["is_chapter_lead"] = ctx.auth.is_chapter_lead();
     layout_ctx["can_treasury"]    = ctx.auth.can_treasury();
+    for (const auto& p : perms::all()) layout_ctx[perms::flag(p.key)] = ctx.auth.can(p.key);
+    // The sidebar's Admin section: anything in it they may open
+    layout_ctx["nav_admin"] = ctx.auth.is_admin() || ctx.auth.can("attendance.overview") || ctx.auth.can("reports.annual") ||
+                              ctx.auth.can("fancolab.manage") || ctx.auth.can("audit.view");
     Features::add_flags(layout_ctx);
     // Sidebar's "Chapter Tools" accordion: chapter leads/moderators who are NOT
     // admin get their own small accordion (admins already see Discord Matches
     // nested inside the "Settings" accordion, so they don't need a second copy).
-    layout_ctx["is_chapter_lead_not_admin"] = ctx.auth.is_chapter_lead() && !ctx.auth.is_admin();
+    layout_ctx["is_chapter_lead_not_admin"] = ctx.auth.can("discord.matches") && !ctx.auth.is_admin();
     layout_ctx["display_name"] = ctx.auth.display_name;
     layout_ctx["asset_v"]      = asset_version();
     layout_ctx["role"]         = ctx.auth.role;
@@ -283,7 +294,7 @@ inline std::string render_in_layout(const crow::request& req, App& app,
     static const std::set<std::string> settings_pages = {
         "active_settings_overview", "active_settings", "active_setup", "active_features", "active_messages", "active_reminders",
         "active_dues_settings", "active_treasury_settings", "active_site", "active_sign_in", "active_about", "active_calendar",
-        "active_google_calendar", "active_branding", "active_backups", "active_api_keys", "active_perks"};
+        "active_google_calendar", "active_branding", "active_backups", "active_api_keys", "active_perks", "active_permissions"};
     if (settings_pages.count(active_key) || (active_key == "active_discord_matches" && app.template get_context<AuthMiddleware>(req).auth.is_admin()))
         layout_ctx["active_settings_group"] = true;
     set_layout_auth(req, app, layout_ctx);
@@ -332,6 +343,7 @@ inline bool require_auth(const crow::request& req, crow::response& res, App& app
     bool allowed = (min_role == "admin")        ? ctx.auth.is_admin()
                  : (min_role == "chapter_lead") ? ctx.auth.is_chapter_lead()
                  : (min_role == "treasurer")    ? ctx.auth.can_treasury()
+                 : (min_role.rfind("perm:", 0) == 0) ? ctx.auth.can(min_role.substr(5))
                  : true;
     if (!allowed) {
         res.code = 403;
@@ -355,7 +367,8 @@ inline int chapter_role_rank(const std::string& r) {
 }
 
 // Returns true if the user can create/manage content for a specific chapter.
-// Admins and chapter_leads always pass; others need a chapter_members entry with
+// Admins (and roles with "Manage every meeting and event") always pass; others
+// need a chapter_members entry with
 // sufficient role (at least min_chapter_role: "lead" or "event_manager").
 template<typename App>
 inline bool can_manage_chapter_content(const crow::request& req, crow::response& res,
@@ -368,7 +381,7 @@ inline bool can_manage_chapter_content(const crow::request& req, crow::response&
         res.write(R"({"error":"not authenticated"})");
         return false;
     }
-    if (ctx.auth.role == "admin") return true;
+    if (ctx.auth.can("schedule.all_chapters")) return true;
 
     auto role_opt = chapter_members.get_chapter_role(ctx.auth.member_id, chapter_id);
     if (role_opt && chapter_role_rank(*role_opt) >= chapter_role_rank(min_chapter_role)) {

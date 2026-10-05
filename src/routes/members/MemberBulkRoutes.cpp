@@ -10,7 +10,7 @@
 void register_member_bulk_routes(LugApp& app, MemberService& members, AuditService& audit) {
     CROW_ROUTE(app, "/members/bulk").methods("POST"_method)([&](const crow::request& req) {
         crow::response res;
-        if (!require_auth(req, res, app, "chapter_lead")) return res;
+        if (!require_auth(req, res, app, "perm:members.edit")) return res;
         res.add_header("Content-Type", "text/html; charset=utf-8");
 
         auto params = crow::query_string("?" + req.body);
@@ -35,6 +35,9 @@ void register_member_bulk_routes(LugApp& app, MemberService& members, AuditServi
 
         static const std::regex ymd(R"(\d{4}-\d{2}-\d{2})");
         std::string summary;
+        // Paid / unpaid is dues work; the rest is editing members.
+        if ((action == "paid" || action == "unpaid") && !app.get_context<AuthMiddleware>(req).auth.can("dues.record"))
+            return fail("Marking members paid needs the \"Record dues payments\" permission.");
         if (action == "paid") {
             if (!std::regex_match(value, ymd)) return fail("Choose a paid-until date.");
             summary = "Marked paid until " + value;

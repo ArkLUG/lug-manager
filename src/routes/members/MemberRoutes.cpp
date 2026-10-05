@@ -66,13 +66,17 @@ static std::string render_members_page(const crow::request& req,
                                         LugApp& app) {
     auto& auth = app.get_context<AuthMiddleware>(req).auth;
     bool is_admin = auth.is_admin();
-    bool can_see_pii = auth.is_chapter_lead(); // admin or chapter_lead
-    bool can_see_dues = auth.is_chapter_lead();
+    bool can_see_pii = auth.can("members.view_private");
+    bool can_see_dues = auth.can("members.view_private");
     crow::mustache::context ctx;
     ctx["title"]        = "Members";
     ctx["is_admin"]     = is_admin;
     ctx["can_see_pii"]  = can_see_pii;
     ctx["can_see_dues"] = can_see_dues;
+    ctx["can_edit_members"] = auth.can("members.edit");
+    ctx["can_export"]       = auth.can("members.export");
+    ctx["can_record_dues"]  = auth.can("dues.record");
+    ctx["can_open_dues"]    = can_see_dues || auth.can("dues.record");
     Features::add_flags(ctx);
 
     const bool htmx = is_htmx(req);
@@ -144,8 +148,8 @@ void register_member_routes(LugApp& app, MemberService& members, AttendanceRepos
         // Access checks: admin/chapter_lead see PII + dues; regular members see
         // limited info — PII only for opted-in members, no dues, no discord username
         auto& auth = app.get_context<AuthMiddleware>(req).auth;
-        bool role_can_see_pii = auth.is_chapter_lead();
-        bool can_see_dues = auth.is_chapter_lead(); // admin or chapter_lead
+        bool role_can_see_pii = auth.can("members.view_private");
+        bool can_see_dues = auth.can("members.view_private");
         bool viewer_is_verified = role_can_see_pii || attendance_repo.is_verified_member(auth.member_id);
 
         // Build JSON manually so "data" is always a proper [] array.
@@ -319,7 +323,7 @@ void register_member_routes(LugApp& app, MemberService& members, AttendanceRepos
         }
 
         auto& auth = app.get_context<AuthMiddleware>(req).auth;
-        bool privileged = auth.is_chapter_lead();
+        bool privileged = auth.can("members.view_private");
         bool viewer_verified = privileged || attendance_repo.is_verified_member(auth.member_id);
         bool is_self = (auth.member_id == m->id);
 
@@ -362,7 +366,7 @@ void register_member_routes(LugApp& app, MemberService& members, AttendanceRepos
     // GET /members/new - new member form fragment (chapter_lead+)
     CROW_ROUTE(app, "/members/new")([&](const crow::request& req) {
         crow::response res;
-        if (!require_auth(req, res, app, "chapter_lead")) return res;
+        if (!require_auth(req, res, app, "perm:members.edit")) return res;
 
         res.add_header("Content-Type", "text/html; charset=utf-8");
         auto tmpl = crow::mustache::load("members/_form.html");
@@ -379,7 +383,7 @@ void register_member_routes(LugApp& app, MemberService& members, AttendanceRepos
     // GET /members/<id> - member edit form fragment (chapter_lead+ - contains PII)
     CROW_ROUTE(app, "/members/<int>")([&](const crow::request& req, int id) {
         crow::response res;
-        if (!require_auth(req, res, app, "chapter_lead")) return res;
+        if (!require_auth(req, res, app, "perm:members.edit")) return res;
 
         auto m = members.get(static_cast<int64_t>(id));
         if (!m) {
@@ -416,7 +420,7 @@ void register_member_routes(LugApp& app, MemberService& members, AttendanceRepos
     CROW_ROUTE(app, "/members").methods("POST"_method)(
         [&](const crow::request& req) {
         crow::response res;
-        if (!require_auth(req, res, app, "chapter_lead")) return res;
+        if (!require_auth(req, res, app, "perm:members.edit")) return res;
 
         auto params    = crow::query_string("?" + req.body);
         auto get_param = [&](const char* k) -> std::string {
@@ -433,8 +437,9 @@ void register_member_routes(LugApp& app, MemberService& members, AttendanceRepos
         m.last_name        = get_param("last_name");
         m.email            = get_param("email");
         std::string req_role = get_param("role");
-        // Non-admins cannot assign admin role
-        if (!caller_is_admin && req_role == "admin") req_role = "member";
+        // Only admins give out roles: anyone else adds plain members (a new
+        // record with someone's Discord ID would otherwise hand them a role).
+        if (!caller_is_admin) req_role = "member";
         m.role             = Features::normalize_role(req_role.empty() ? "member" : req_role);
         m.birthday         = get_param("birthday");
         m.fol_status       = get_param("fol_status").empty() ? "afol" : get_param("fol_status");
@@ -467,7 +472,7 @@ void register_member_routes(LugApp& app, MemberService& members, AttendanceRepos
     CROW_ROUTE(app, "/members/<int>").methods("POST"_method)(
         [&](const crow::request& req, int id) {
         crow::response res;
-        if (!require_auth(req, res, app, "chapter_lead")) return res;
+        if (!require_auth(req, res, app, "perm:members.edit")) return res;
 
         bool caller_is_admin = app.get_context<AuthMiddleware>(req).auth.is_admin();
 
@@ -577,7 +582,7 @@ void register_member_routes(LugApp& app, MemberService& members, AttendanceRepos
     CROW_ROUTE(app, "/members/<int>").methods("PUT"_method)(
         [&](const crow::request& req, int id) {
         crow::response res;
-        if (!require_auth(req, res, app, "chapter_lead")) return res;
+        if (!require_auth(req, res, app, "perm:members.edit")) return res;
 
         auto body = crow::json::load(req.body);
         if (!body) {
@@ -653,7 +658,7 @@ void register_member_routes(LugApp& app, MemberService& members, AttendanceRepos
     CROW_ROUTE(app, "/members/<int>/paid").methods("POST"_method)(
         [&](const crow::request& req, int id) {
         crow::response res;
-        if (!require_auth(req, res, app, "chapter_lead")) return res;
+        if (!require_auth(req, res, app, "perm:dues.record")) return res;
 
         auto params        = crow::query_string("?" + req.body);
         const char* v      = params.get("paid_until");

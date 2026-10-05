@@ -5,7 +5,7 @@ RoleMappingRepository::RoleMappingRepository(SqliteDatabase& db) : db_(db) {}
 // static
 int RoleMappingRepository::role_rank(const std::string& lug_role) {
     if (lug_role == "admin")        return 3;
-    if (lug_role == "chapter_lead") return 2;
+    if (lug_role == "chapter_lead" || lug_role == "moderator") return 2;   // same tier (see RoleSync.hpp)
     if (lug_role == "member")       return 1;
     return 0;
 }

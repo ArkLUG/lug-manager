@@ -160,7 +160,7 @@ void register_checkin_routes(LugApp& app,
         if (!ev) { res.code = 404; res.write("Not found"); return res; }
 
         auto& auth = app.get_context<AuthMiddleware>(req);
-        bool can = auth.auth.is_admin() || (ev->event_lead_id == auth.auth.member_id);
+        bool can = auth.auth.can("schedule.all_chapters") || (ev->event_lead_id == auth.auth.member_id);
         if (!can && ev->chapter_id > 0) {
             can = can_manage_chapter_content(req, res, app, ev->chapter_id, chapter_members);
             if (!can) return res;

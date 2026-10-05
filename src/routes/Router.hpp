@@ -85,6 +85,7 @@
 #include "routes/accounts/AccountSecurityRoutes.hpp"
 #include "routes/settings/ChatSettingsRoutes.hpp"
 #include "routes/settings/FeatureRoutes.hpp"
+#include "routes/settings/PermissionRoutes.hpp"
 #include "routes/settings/SetupRoutes.hpp"
 #include "services/notifications/Notifier.hpp"
 #include <memory>

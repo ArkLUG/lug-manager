@@ -24,7 +24,7 @@ void register_export_routes(LugApp& app, MemberRepository& members, AttendanceRe
     // GET /members.csv - chapter lead+ (same PII visibility as the members page for that role)
     CROW_ROUTE(app, "/members.csv")([&](const crow::request& req) {
         crow::response res;
-        if (!require_auth(req, res, app, "chapter_lead")) return res;
+        if (!require_auth(req, res, app, "perm:members.export")) return res;
         std::ostringstream csv;
         csv << "ID,Display name,First name,Last name,Discord username,Email,Phone,Address line 1,"
                "Address line 2,City,State,ZIP,Birthday,Age range,Role,Chapter,Dues paid,Paid until,Joined\r\n";
@@ -45,7 +45,7 @@ void register_export_routes(LugApp& app, MemberRepository& members, AttendanceRe
     // GET /attendance/overview.csv?year=YYYY - admin
     CROW_ROUTE(app, "/attendance/overview.csv")([&](const crow::request& req) {
         crow::response res;
-        if (!require_auth(req, res, app, "admin")) return res;
+        if (!require_auth(req, res, app, "perm:attendance.overview")) return res;
         int year = local_year();
         if (const char* y = req.url_params.get("year")) { try { year = std::stoi(y); } catch (...) {} }
         AttendanceRepository::OverviewParams p;
@@ -71,7 +71,7 @@ void register_export_routes(LugApp& app, MemberRepository& members, AttendanceRe
     // GET /audit.csv?search=&action_filter= - admin, newest first, capped at 50k rows
     CROW_ROUTE(app, "/audit.csv")([&](const crow::request& req) {
         crow::response res;
-        if (!require_auth(req, res, app, "admin")) return res;
+        if (!require_auth(req, res, app, "perm:audit.view")) return res;
         const char* s  = req.url_params.get("search");
         const char* af = req.url_params.get("action_filter");
         std::ostringstream csv;

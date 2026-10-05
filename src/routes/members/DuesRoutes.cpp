@@ -54,7 +54,7 @@ std::string render_panel(const crow::request& req, LugApp& app, const Member& m,
     auto& a = app.get_context<AuthMiddleware>(req).auth;
     crow::mustache::context ctx;
     ctx["member_id"]  = m.id;
-    ctx["can_record"] = a.is_chapter_lead();
+    ctx["can_record"] = a.can("dues.record");
     ctx["can_delete"] = a.can_treasury();
     ctx["today"]      = today_ymd();
     ctx["suggestion"] = render_suggestion(m, settings, today_ymd());
@@ -106,7 +106,7 @@ void register_dues_routes(LugApp& app, MemberService& members, std::shared_ptr<D
         crow::response res;
         if (!require_auth(req, res, app)) return res;
         auto& a = app.get_context<AuthMiddleware>(req).auth;
-        if (!a.is_chapter_lead() && a.member_id != id) { res.code = 403; return res; }
+        if (!a.can("dues.record") && !a.can("members.view_private") && a.member_id != id) { res.code = 403; return res; }
         auto m = members.get(id);
         if (!m) { res.code = 404; return res; }
         res.add_header("Content-Type", "text/html; charset=utf-8");
@@ -118,7 +118,7 @@ void register_dues_routes(LugApp& app, MemberService& members, std::shared_ptr<D
     CROW_ROUTE(app, "/members/<int>/dues").methods("POST"_method)(
         [&app, &members, dues, &settings, &audit](const crow::request& req, int id) {
         crow::response res;
-        if (!require_auth(req, res, app, "chapter_lead")) return res;
+        if (!require_auth(req, res, app, "perm:dues.record")) return res;
         auto m = members.get(id);
         if (!m) { res.code = 404; return res; }
         auto params = crow::query_string("?" + req.body);
@@ -217,7 +217,7 @@ void register_dues_routes(LugApp& app, MemberService& members, std::shared_ptr<D
     // and "covers until" for that date (record-a-payment form)
     CROW_ROUTE(app, "/members/<int>/dues/suggest")([&app, &members, &settings](const crow::request& req, int id) {
         crow::response res;
-        if (!require_auth(req, res, app, "chapter_lead")) return res;
+        if (!require_auth(req, res, app, "perm:dues.record")) return res;
         auto m = members.get(id);
         if (!m) { res.code = 404; return res; }
         const char* d = req.url_params.get("paid_on");

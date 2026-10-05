@@ -80,7 +80,7 @@ std::string render_challenge(const crow::request& req, LugApp& app, SqliteDataba
     ctx["id"] = c.id; ctx["title"] = c.title; ctx["description"] = c.description;
     ctx["starts_on"] = friendly_date(c.starts_on); ctx["ends_on"] = friendly_date(c.ends_on); ctx["vote_until"] = friendly_date(ph.vote_until);
     ctx["submit_open"] = ph.submit; ctx["vote_open"] = ph.vote; ctx["results"] = ph.results;
-    ctx["is_admin"] = a.is_admin(); ctx["announced"] = c.announced; ctx["flash"] = flash;
+    ctx["is_admin"] = a.can("challenges.manage"); ctx["announced"] = c.announced; ctx["flash"] = flash;
 
     int64_t my_vote = 0;
     {
@@ -109,7 +109,7 @@ std::string render_challenge(const crow::request& req, LugApp& app, SqliteDataba
         arr[i]["winner"] = ph.results && i == 0 && st.col_int(5) > 0;
         arr[i]["can_vote"] = ph.vote && !mine;
         arr[i]["voted"] = my_vote == st.col_int(0);
-        arr[i]["can_delete"] = (mine && ph.submit) || a.is_admin();
+        arr[i]["can_delete"] = (mine && ph.submit) || a.can("challenges.manage");
         ++i;
     }
     ctx["entries"] = std::move(arr);
@@ -229,14 +229,14 @@ void register_gallery_routes(LugApp& app, SqliteDatabase& db, std::shared_ptr<Ph
         }
         ctx["challenges"] = std::move(arr);
         ctx["has_challenges"] = i > 0;
-        ctx["is_admin"] = app.get_context<AuthMiddleware>(req).auth.is_admin();
+        ctx["is_admin"] = app.get_context<AuthMiddleware>(req).auth.can("challenges.manage");
         ctx["today"] = AttendanceService::today_ymd();
         return page(req, app, crow::mustache::load("challenges/_list.html").render(ctx).dump(), "Build Challenges");
     });
 
     CROW_ROUTE(app, "/challenges").methods("POST"_method)([&app, &db, &audit](const crow::request& req) {
         crow::response res;
-        if (!require_auth(req, res, app, "admin")) return res;
+        if (!require_auth(req, res, app, "perm:challenges.manage")) return res;
         auto p = crow::query_string("?" + req.body);
         auto gp = [&](const char* k) { const char* v = p.get(k); return v ? std::string(v) : ""; };
         static const std::regex ymd(R"(\d{4}-\d{2}-\d{2})");
@@ -354,7 +354,7 @@ void register_gallery_routes(LugApp& app, SqliteDatabase& db, std::shared_ptr<Ph
         if (!st.step()) { res.code = 404; return res; }
         bool own = st.col_int(0) == a.member_id;
         std::string file = st.col_text(1);
-        if (!a.is_admin() && !(own && phase_of(*c).submit)) { res.code = 403; return res; }
+        if (!a.can("challenges.manage") && !(own && phase_of(*c).submit)) { res.code = 403; return res; }
         { auto del = db.prepare("DELETE FROM challenge_entries WHERE id=?"); del.bind(1, (int64_t)eid); del.step(); }
         photos->remove(file);
         audit.log(req, app, "challenge.entry_delete", "challenge", c->id, c->title, "Removed entry #" + std::to_string(eid));
@@ -367,7 +367,7 @@ void register_gallery_routes(LugApp& app, SqliteDatabase& db, std::shared_ptr<Ph
     CROW_ROUTE(app, "/challenges/<int>/announce").methods("POST"_method)(
         [&app, &db, &events, &audit](const crow::request& req, int id) {
         crow::response res;
-        if (!require_auth(req, res, app, "admin")) return res;
+        if (!require_auth(req, res, app, "perm:challenges.manage")) return res;
         auto c = get_challenge(db, id);
         if (!c) { res.code = 404; return res; }
         res.add_header("Content-Type", "text/html; charset=utf-8");

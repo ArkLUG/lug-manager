@@ -148,7 +148,7 @@ static std::string render_event_page(const crow::request& req,
                                       ChapterService& chapters,
                                       bool all_events = false) {
     auto& auth     = app.get_context<AuthMiddleware>(req);
-    bool is_admin  = auth.auth.role == "admin";
+    bool is_admin  = auth.auth.can("schedule.all_chapters");   // manages every event
     int64_t mbr_id = auth.auth.member_id;
     // can_create: admin or anyone with event_manager/lead role in any chapter
     bool can_create = is_admin;
@@ -292,7 +292,7 @@ void register_event_routes(LugApp& app, EventService& events, AttendanceService&
     // GET /events/all - list all events (admin)
     CROW_ROUTE(app, "/events/all")([&](const crow::request& req) {
         crow::response res;
-        if (!require_auth(req, res, app, "admin")) return res;
+        if (!require_auth(req, res, app, "perm:schedule.all_chapters")) return res;
         res.add_header("Content-Type", "text/html; charset=utf-8");
         res.write(render_event_page(req, app, events, attendance, chapter_members, chapters, true));
         return res;
@@ -304,7 +304,7 @@ void register_event_routes(LugApp& app, EventService& events, AttendanceService&
         if (!require_auth(req, res, app)) return res;
         auto& ctx = app.get_context<AuthMiddleware>(req);
         // Non-admins must have at least one chapter membership to create events
-        if (ctx.auth.role != "admin") {
+        if (!ctx.auth.can("schedule.all_chapters")) {
             auto memberships = chapter_members.find_by_member(ctx.auth.member_id);
             bool has_chapter_role = false;
             for (auto& m : memberships)
@@ -470,7 +470,7 @@ void register_event_routes(LugApp& app, EventService& events, AttendanceService&
         }
 
         auto& auth     = app.get_context<AuthMiddleware>(req);
-        bool is_admin  = auth.auth.role == "admin";
+        bool is_admin  = auth.auth.can("schedule.all_chapters");   // manages every event
         int64_t mbr_id = auth.auth.member_id;
 
         auto attendees  = attendance.get_attendees("event", static_cast<int64_t>(id));
@@ -587,7 +587,7 @@ void register_event_routes(LugApp& app, EventService& events, AttendanceService&
 
         // Chapter permission check (non-admins must be lead/event_manager for the chapter)
         auto& auth_ctx = app.get_context<AuthMiddleware>(req);
-        if (auth_ctx.auth.role != "admin") {
+        if (!auth_ctx.auth.can("schedule.all_chapters")) {
             std::string ch_str = get_param("chapter_id");
             int64_t chapter_id = parse_id(ch_str);
             if (chapter_id == 0 || !can_manage_chapter_content(req, res, app, chapter_id, chapter_members)) {

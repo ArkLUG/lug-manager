@@ -100,6 +100,7 @@ void register_role_routes(LugApp& app,
 
         crow::mustache::context mctx;
         mctx["admin_roles"]     = build_options("admin");
+        mctx["moderator_roles"] = build_options("moderator");
         mctx["member_roles"]    = build_options("member");
         mctx["guild_configured"]= !discord.get_guild_id().empty();
         mctx["has_discord_roles"]= !guild_roles.empty();
@@ -109,7 +110,7 @@ void register_role_routes(LugApp& app,
     });
 
     // POST /settings/roles
-    // Form submits lug_admin[]=<discord_id> and lug_member[]=<discord_id> as repeated params.
+    // Form submits lug_admin / lug_moderator / lug_member = <discord role id>, repeated.
     // Any Discord role not present in either list has its mapping removed.
     CROW_ROUTE(app, "/settings/roles").methods("POST"_method)(
         [&](const crow::request& req) {
@@ -118,8 +119,9 @@ void register_role_routes(LugApp& app,
 
         auto params = crow::query_string("?" + req.body);
 
-        std::unordered_set<std::string> admin_ids, member_ids;
+        std::unordered_set<std::string> admin_ids, moderator_ids, member_ids;
         for (auto* id : params.get_list("lug_admin", false))  if (id) admin_ids.insert(id);
+        for (auto* id : params.get_list("lug_moderator", false)) if (id) moderator_ids.insert(id);
         for (auto* id : params.get_list("lug_member", false)) if (id) member_ids.insert(id);
 
         // Without Discord's role list nothing can be matched up: change nothing.
@@ -134,6 +136,8 @@ void register_role_routes(LugApp& app,
         for (auto& gr : guild_roles) {
             if (admin_ids.count(gr.id)) {
                 role_mappings.upsert(gr.id, gr.name, "admin");
+            } else if (moderator_ids.count(gr.id)) {
+                role_mappings.upsert(gr.id, gr.name, "moderator");
             } else if (member_ids.count(gr.id)) {
                 role_mappings.upsert(gr.id, gr.name, "member");
             } else {
@@ -141,7 +145,8 @@ void register_role_routes(LugApp& app,
             }
         }
 
-        audit.log(req, app, "roles.update", "settings", 0, "", "Updated role mappings");
+        audit.log(req, app, "roles.update", "settings", 0, "", "Updated role mappings: " + std::to_string(admin_ids.size()) + " admin, " +
+                  std::to_string(moderator_ids.size()) + " moderator, " + std::to_string(member_ids.size()) + " member Discord role(s)");
 
         const bool htmx = is_htmx(req);
         if (htmx) {

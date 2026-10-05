@@ -15,7 +15,7 @@ static bool can_manage_attendance(const crow::request& req, LugApp& app,
                                    ChapterMemberRepository& chapter_members,
                                    const std::string& entity_type, int64_t entity_id) {
     auto& auth = app.get_context<AuthMiddleware>(req);
-    if (auth.auth.role == "admin") return true;
+    if (auth.auth.can("schedule.all_chapters")) return true;
 
     int64_t chapter_id = 0;
     if (entity_type == "event" && auth.auth.member_id > 0) {
@@ -171,7 +171,7 @@ void register_attendance_routes(LugApp& app, AttendanceService& attendance,
         crow::response res;
         if (!require_auth(req, res, app)) return res;
 
-        if (!require_auth(req, res, app, "admin")) return res;
+        if (!require_auth(req, res, app, "perm:attendance.overview")) return res;
 
         // Parse query params
         const int current_year = local_year();
@@ -526,7 +526,7 @@ void register_attendance_routes(LugApp& app, AttendanceService& attendance,
         // Used by the admin-only overview; members may only see their own history.
         {
             auto& a = app.get_context<AuthMiddleware>(req).auth;
-            if (!a.is_admin() && a.member_id != static_cast<int64_t>(id)) {
+            if (!a.can("attendance.overview") && a.member_id != static_cast<int64_t>(id)) {
                 res.code = 403;
                 res.write("Forbidden");
                 return res;

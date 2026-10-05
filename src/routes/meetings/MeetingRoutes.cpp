@@ -147,7 +147,7 @@ static std::string render_meeting_page(const crow::request& req,
                                         ChapterMemberRepository& chapter_members,
                                         ChapterService& chapters) {
     auto& auth = app.get_context<AuthMiddleware>(req);
-    bool is_admin = auth.auth.role == "admin";
+    bool is_admin = auth.auth.can("schedule.all_chapters");   // manages every meeting
     int64_t member_id = auth.auth.member_id;
     bool can_create = is_admin;
     if (!is_admin && member_id > 0) {
@@ -239,7 +239,7 @@ void register_meeting_routes(LugApp& app, MeetingService& meetings, AttendanceSe
         crow::response res;
         if (!require_auth(req, res, app)) return res;
         auto& ctx = app.get_context<AuthMiddleware>(req);
-        if (ctx.auth.role != "admin") {
+        if (!ctx.auth.can("schedule.all_chapters")) {
             auto memberships = chapter_members.find_by_member(ctx.auth.member_id);
             bool has_role = false;
             for (auto& m : memberships)
@@ -363,7 +363,7 @@ void register_meeting_routes(LugApp& app, MeetingService& meetings, AttendanceSe
         }
 
         auto& auth = app.get_context<AuthMiddleware>(req);
-        bool is_admin   = auth.auth.role == "admin";
+        bool is_admin   = auth.auth.can("schedule.all_chapters");   // manages every meeting
         int64_t mbr_id  = auth.auth.member_id;
 
         auto attendees = attendance.get_attendees("meeting", static_cast<int64_t>(id));
@@ -443,7 +443,7 @@ void register_meeting_routes(LugApp& app, MeetingService& meetings, AttendanceSe
 
         // Chapter permission check
         auto& auth_ctx = app.get_context<AuthMiddleware>(req);
-        if (auth_ctx.auth.role != "admin") {
+        if (!auth_ctx.auth.can("schedule.all_chapters")) {
             std::string ch_str = get_param("chapter_id");
             int64_t chapter_id = parse_id(ch_str);
             if (chapter_id == 0 || !can_manage_chapter_content(req, res, app, chapter_id, chapter_members)) {
@@ -728,7 +728,7 @@ void register_meeting_routes(LugApp& app, MeetingService& meetings, AttendanceSe
         if (!require_auth(req, res, app)) return res;
 
         auto& auth = app.get_context<AuthMiddleware>(req);
-        bool is_admin = auth.auth.role == "admin";
+        bool is_admin = auth.auth.can("schedule.all_chapters");   // manages every meeting
 
         auto attendees = attendance.get_attendees("meeting", static_cast<int64_t>(id));
 

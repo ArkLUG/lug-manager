@@ -3,6 +3,7 @@ target_sources(lug_core PRIVATE
   AccountSecurity.hpp
   AuthService.cpp
   AuthService.hpp
+  Permissions.hpp
   Password.hpp
   SessionStore.cpp
   SessionStore.hpp

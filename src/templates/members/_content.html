@@ -9,7 +9,7 @@
 <script type="application/json" id="tour-members-content">[
         {"element":"#members-table", "popover":{"title":"Members Table", "description":"All registered LUG members. Click column headers to sort. Use View to see shared contact info."}},
         {"element":"button[hx-get=\"/members/me\"]", "popover":{"title":"Edit my profile", "description":"Update your own name, contact info, and per-field privacy settings."}},
-        {{#can_see_dues}}{"element":"button[hx-get=\"/members/new\"]", "popover":{"title":"Add Member", "description":"Manually add a new member. Useful for people who haven't logged in via Discord yet."}},{{/can_see_dues}}
+        {{#can_edit_members}}{"element":"button[hx-get=\"/members/new\"]", "popover":{"title":"Add Member", "description":"Manually add a new member. Useful for people who haven't logged in via Discord yet."}},{{/can_edit_members}}
         {"popover":{"title":"Privacy", "description":"Each member controls who sees their contact info. Fields can be set to Don't share, Verified members only, or All members."}}
       ]</script>
       <button data-action="tour" data-tour="tour-members-content" class="inline-flex items-center gap-1 px-2 py-1 text-xs text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors" title="Page tour">
@@ -28,18 +28,20 @@
         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7h8M8 7l3-3M8 7l3 3m5 7H8m8 0l-3-3m3 3l-3 3"/></svg>Merge
       </button>
       {{/is_admin}}
-      {{#can_see_dues}}
+      {{#can_export}}
       <a href="/members.csv" class="inline-flex items-center gap-1.5 px-3 py-2 border border-gray-300 text-gray-700 rounded-lg text-sm font-medium hover:bg-gray-50"><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/></svg>CSV</a>
+      {{/can_export}}
+      {{#can_edit_members}}
       <button hx-get="/members/new" hx-target="#modal" hx-swap="innerHTML"
               class="inline-flex items-center gap-2 px-4 py-2 whitespace-nowrap bg-gray-800 text-white rounded-lg text-sm font-medium hover:bg-gray-700 transition-colors">
         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
-        Add Member
+        Add member
       </button>
-      {{/can_see_dues}}
+      {{/can_edit_members}}
     </div>
   </div>
 
-  {{#can_see_dues}}
+  {{#can_edit_members}}
   <!-- Bulk actions: appears when rows are selected -->
   <div id="bulk-bar" class="hidden bg-white rounded-xl border border-yellow-300 p-3 flex flex-wrap items-center gap-2 text-sm">
     <span class="font-medium text-gray-800"><span id="bulk-count">0</span> selected</span>
@@ -48,8 +50,8 @@
       <input type="hidden" name="ids" id="bulk-ids">
       <select name="action" id="bulk-action" data-change="bulk-action" aria-label="What to change"
               class="border border-gray-300 rounded-lg px-2 py-1 text-sm">
-        {{#f_dues}}<option value="paid">Mark paid until…</option>
-        <option value="unpaid">Mark unpaid</option>{{/f_dues}}
+        {{#f_dues}}{{#can_record_dues}}<option value="paid">Mark paid until…</option>
+        <option value="unpaid">Mark unpaid</option>{{/can_record_dues}}{{/f_dues}}
         {{#f_chapters}}<option value="chapter">Set chapter…</option>{{/f_chapters}}
         <option value="fol">Set age range…</option>
       </select>
@@ -65,7 +67,7 @@
     </form>
     <span id="bulk-result"></span>
   </div>
-  {{/can_see_dues}}
+  {{/can_edit_members}}
 
   <!-- Members table (DataTables manages content via AJAX) -->
   <div class="bg-white rounded-xl border border-gray-200 overflow-hidden">
@@ -182,6 +184,7 @@
   var canSeePii  = {{#can_see_pii}}true{{/can_see_pii}}{{^can_see_pii}}false{{/can_see_pii}};
   var canSeeDues = {{#can_see_dues}}true{{/can_see_dues}}{{^can_see_dues}}false{{/can_see_dues}};
   var isAdmin    = {{#is_admin}}true{{/is_admin}}{{^is_admin}}false{{/is_admin}};
+  var canBulk    = {{#can_edit_members}}true{{/can_edit_members}}{{^can_edit_members}}false{{/can_edit_members}};
   var featDues     = {{#f_dues}}true{{/f_dues}}{{^f_dues}}false{{/f_dues}};
   var featChapters = {{#f_chapters}}true{{/f_chapters}}{{^f_chapters}}false{{/f_chapters}};
 
@@ -192,7 +195,7 @@
         if (type !== 'display') return data;
         var full = escHtml((row.first_name || '') + ' ' + (row.last_name || '')).trim();
         var html = '<div class="font-medium text-gray-800 whitespace-nowrap">'
-          + (canSeeDues ? '<input type="checkbox" class="bulk-sel mr-2 align-middle accent-yellow-400" aria-label="Select ' + full + '" value="' + row.id + '"'
+          + (canBulk ? '<input type="checkbox" class="bulk-sel mr-2 align-middle accent-yellow-400" aria-label="Select ' + full + '" value="' + row.id + '"'
                           + (window.bulkSelected && window.bulkSelected.has(String(row.id)) ? ' checked' : '') + '>' : '')
           + escHtml(data) + '</div>';
         if (full && full !== escHtml(data)) {
@@ -291,12 +294,14 @@
       var html = '<div class="flex items-center justify-end gap-2">'
         + '<button hx-get="/members/' + row.id + '/view" hx-target="#modal" hx-swap="innerHTML"'
         + ' class="text-xs px-2 py-1 text-gray-600 border border-gray-300 rounded hover:bg-gray-50">View</button>';
-      {{#can_see_dues}}
+      {{#can_edit_members}}
       html += '<button hx-get="/members/' + row.id + '" hx-target="#modal" hx-swap="innerHTML"'
         + ' class="text-xs px-2 py-1 text-gray-600 border border-gray-300 rounded hover:bg-gray-50">Edit</button>';
+      {{/can_edit_members}}
+      {{#can_open_dues}}
       if (featDues) html += '<button data-action="set-member-dues" data-member-id="' + row.id + '" data-member-name="' + escHtml(row.display_name) + '"'
         + ' class="text-xs px-2 py-1 text-gray-600 border border-gray-300 rounded hover:bg-gray-50">Dues</button>';
-      {{/can_see_dues}}
+      {{/can_open_dues}}
       html += '</div>';
       return html;
     }

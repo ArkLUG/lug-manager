@@ -12,6 +12,7 @@ const std::vector<SettingsGroup>& settings_groups() {
             {"/settings/branding", "Logo and colours", "Your club logo and the default colour theme.", ""},
             {"/settings/about", "Public pages", "The About page and the upcoming shows page anyone can see.", ""},
             {"/settings/sign-in", "Sign-in", "Passwords, emailed links, two-factor and Discord sign-in.", ""},
+            {"/settings/permissions", "Roles and permissions", "What moderators, chapter leads and members may do.", ""},
             {"/fancolab", "LEGO Fan CoLab", "Recognized LEGO Fan Community status, the Community Ambassador and this year's to-do list.", "f-fancolab"},
         }},
         {"Messages", "", {

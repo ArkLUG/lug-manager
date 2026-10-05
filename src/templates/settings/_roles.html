@@ -12,7 +12,7 @@
   <div class="bg-white rounded-xl border border-gray-200 p-6">
     <h2 class="text-xl font-bold text-gray-900 mb-1">Role mappings</h2>
     <p class="text-sm text-gray-500 mb-6">
-      Select which Discord roles grant each LUG role. On login, the member's highest-privilege match is applied.
+      Select which Discord roles grant each LUG role. On sign-in and on each member sync, the member's highest match is applied (Admin, then Moderator, then Member).
       Multiple Discord roles can map to the same LUG role.
     </p>
 
@@ -51,6 +51,23 @@
         </div>
       </div>
 
+      <!-- Moderator -->
+      <div class="space-y-2">
+        <div class="flex items-start gap-3">
+          <div class="w-2 h-2 rounded-full bg-blue-500 mt-2 flex-shrink-0"></div>
+          <div class="flex-1 min-w-0">
+            <label class="block text-sm font-semibold text-gray-800 mb-0.5" for="settings-roles-lug-moderator">Moderator</label>
+            <p class="text-xs text-gray-400 mb-2">Helps run the group: what moderators may do is set on
+              <a hx-get="/settings/permissions" hx-target="#main-content" hx-push-url="true" hx-swap="innerHTML" class="underline cursor-pointer">Roles and permissions</a></p>
+            <select id="settings-roles-lug-moderator" name="lug_moderator" multiple
+                    class="ts-multi w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-yellow-400">
+              {{#moderator_roles}}
+              <option value="{{id}}" {{#selected}}selected{{/selected}}>{{name}}</option>
+              {{/moderator_roles}}
+            </select>
+          </div>
+        </div>
+      </div>
       <!-- Member -->
       <div class="space-y-2">
         <div class="flex items-start gap-3">

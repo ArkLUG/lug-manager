@@ -220,7 +220,7 @@ void register_calendar_routes(LugApp& app, CalendarGenerator& cal,
         }
 
         // Chapter leads+: dues expiring in the next 30 days
-        if (auth_ctx.auth.is_chapter_lead()) {
+        if (auth_ctx.auth.can("members.view_private")) {
             DuesRepository dues(attendance_repo.db());
             std::time_t now_d = std::time(nullptr);
             auto rows = dues.expiring_between(DuesService::ymd(now_d), DuesService::ymd(now_d + 30 * 86400));

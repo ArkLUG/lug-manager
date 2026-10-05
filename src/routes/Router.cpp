@@ -54,6 +54,7 @@ void register_all_routes(LugApp& app, Services& svc) {
     register_chat_settings_routes(app, svc.attendance_repo.db(), svc.chat, svc.notifier, svc.audit);
     register_account_security_routes(app, svc.attendance_repo.db(), svc.settings, svc.auth, svc.notifier, svc.audit);
     register_feature_routes(app, svc.settings, svc.audit);
+    register_permission_routes(app, svc.settings, svc.audit);
     register_settings_overview_routes(app);
     register_reminder_settings_routes(app, svc.settings, svc.audit);
     register_site_settings_routes(app, svc.settings, svc.mailer, svc.audit);

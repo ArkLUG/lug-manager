@@ -109,7 +109,7 @@ std::string location_name(SqliteDatabase& db, int64_t loc) {
 std::string render(const crow::request& req, LugApp& app, SqliteDatabase& db, const std::string& flash = "",
                    bool error = false) {
     auto& a = app.get_context<AuthMiddleware>(req).auth;
-    bool manage = a.is_chapter_lead();
+    bool manage = a.can("inventory.manage");
     std::string today = AttendanceService::today_ymd();
     int64_t filter = 0;
     if (const char* l = req.url_params.get("location")) { try { filter = std::stoll(l); } catch (...) {} }
@@ -492,7 +492,7 @@ void register_inventory_routes(LugApp& app, SqliteDatabase& db, AuditService& au
     // POST /inventory/<id>/photo - add or replace an item's photo (multipart "photo")
     CROW_ROUTE(app, "/inventory/<int>/photo").methods("POST"_method)([&app, &db, &audit, photos](const crow::request& req, int id) {
         crow::response res;
-        if (!require_auth(req, res, app, "chapter_lead")) return res;
+        if (!require_auth(req, res, app, "perm:inventory.manage")) return res;
         std::string old, name;
         {
             auto st = db.prepare("SELECT photo_file, name FROM inventory_items WHERE id=? AND archived=0");
@@ -518,7 +518,7 @@ void register_inventory_routes(LugApp& app, SqliteDatabase& db, AuditService& au
 
     CROW_ROUTE(app, "/inventory/<int>/photo/delete").methods("POST"_method)([&app, &db, &audit, photos](const crow::request& req, int id) {
         crow::response res;
-        if (!require_auth(req, res, app, "chapter_lead")) return res;
+        if (!require_auth(req, res, app, "perm:inventory.manage")) return res;
         std::string old, name;
         {
             auto st = db.prepare("SELECT photo_file, name FROM inventory_items WHERE id=? AND archived=0");
@@ -548,7 +548,7 @@ void register_inventory_routes(LugApp& app, SqliteDatabase& db, AuditService& au
     // CSV: one row per item and place (location, member on loan, not placed)
     CROW_ROUTE(app, "/inventory.csv")([&app, &db](const crow::request& req) {
         crow::response res;
-        if (!require_auth(req, res, app, "chapter_lead")) return res;
+        if (!require_auth(req, res, app, "perm:inventory.manage")) return res;
         std::string out = "Item,Category,Owner,Total,Where,Quantity there,Looked after by / borrower,Due\n";
         auto st = db.prepare(
             "SELECT i.name, i.category, CASE WHEN i.owner_member_id IS NOT NULL THEN COALESCE((SELECT display_name FROM members WHERE id=i.owner_member_id),'') "
@@ -573,7 +573,7 @@ void register_inventory_routes(LugApp& app, SqliteDatabase& db, AuditService& au
     // ── Locations ──
     CROW_ROUTE(app, "/inventory/locations").methods("POST"_method)([&app, &db, &audit](const crow::request& req) {
         crow::response res;
-        if (!require_auth(req, res, app, "chapter_lead")) return res;
+        if (!require_auth(req, res, app, "perm:inventory.manage")) return res;
         Form f(req);
         std::string name = f.get("name", 100), kind = f.get("kind", 20);
         int64_t keeper = f.num("keeper_id"), owner = f.num("owner_id");
@@ -596,7 +596,7 @@ void register_inventory_routes(LugApp& app, SqliteDatabase& db, AuditService& au
 
     CROW_ROUTE(app, "/inventory/locations/<int>").methods("POST"_method)([&app, &db, &audit](const crow::request& req, int id) {
         crow::response res;
-        if (!require_auth(req, res, app, "chapter_lead")) return res;
+        if (!require_auth(req, res, app, "perm:inventory.manage")) return res;
         Form f(req);
         std::string name = f.get("name", 100), kind = f.get("kind", 20);
         int64_t keeper = f.num("keeper_id"), owner = f.num("owner_id");
@@ -622,7 +622,7 @@ void register_inventory_routes(LugApp& app, SqliteDatabase& db, AuditService& au
 
     CROW_ROUTE(app, "/inventory/locations/<int>/archive").methods("POST"_method)([&app, &db, &audit](const crow::request& req, int id) {
         crow::response res;
-        if (!require_auth(req, res, app, "chapter_lead")) return res;
+        if (!require_auth(req, res, app, "perm:inventory.manage")) return res;
         if (query_int(db, "SELECT COUNT(*) FROM inventory_stock k JOIN inventory_items i ON i.id=k.item_id "
                        "WHERE k.location_id=? AND i.archived=0", id) > 0)
             return fragment(req, app, db, 409, "Move everything out of that location first.");
@@ -639,7 +639,7 @@ void register_inventory_routes(LugApp& app, SqliteDatabase& db, AuditService& au
     // POST /inventory - add an item (optionally all at one location)
     CROW_ROUTE(app, "/inventory").methods("POST"_method)([&app, &db, &audit](const crow::request& req) {
         crow::response res;
-        if (!require_auth(req, res, app, "chapter_lead")) return res;
+        if (!require_auth(req, res, app, "perm:inventory.manage")) return res;
         Form f(req);
         std::string name = f.get("name", 150);
         int64_t qty = f.num("quantity", 1), loc = f.num("location_id"), owner = f.num("owner_id");
@@ -671,7 +671,7 @@ void register_inventory_routes(LugApp& app, SqliteDatabase& db, AuditService& au
     // POST /inventory/<id> - edit name/category/total/notes
     CROW_ROUTE(app, "/inventory/<int>").methods("POST"_method)([&app, &db, &audit](const crow::request& req, int id) {
         crow::response res;
-        if (!require_auth(req, res, app, "chapter_lead")) return res;
+        if (!require_auth(req, res, app, "perm:inventory.manage")) return res;
         Form f(req);
         std::string name = f.get("name", 150);
         int64_t qty = f.num("quantity", 1);
@@ -704,7 +704,7 @@ void register_inventory_routes(LugApp& app, SqliteDatabase& db, AuditService& au
     // POST /inventory/<id>/move - move some from one place to another (0 = not placed)
     CROW_ROUTE(app, "/inventory/<int>/move").methods("POST"_method)([&app, &db, &audit](const crow::request& req, int id) {
         crow::response res;
-        if (!require_auth(req, res, app, "chapter_lead")) return res;
+        if (!require_auth(req, res, app, "perm:inventory.manage")) return res;
         Form f(req);
         int64_t from = f.num("from_location_id"), to = f.num("to_location_id"), qty = f.num("quantity", 0);
         int64_t item = static_cast<int64_t>(id);
@@ -736,7 +736,7 @@ void register_inventory_routes(LugApp& app, SqliteDatabase& db, AuditService& au
     // POST /inventory/<id>/archive - retire an item (history is kept)
     CROW_ROUTE(app, "/inventory/<int>/archive").methods("POST"_method)([&app, &db, &audit](const crow::request& req, int id) {
         crow::response res;
-        if (!require_auth(req, res, app, "chapter_lead")) return res;
+        if (!require_auth(req, res, app, "perm:inventory.manage")) return res;
         if (out_count(db, id) > 0) return fragment(req, app, db, 409, "Some of that item are still checked out.");
         auto up = db.prepare("UPDATE inventory_items SET archived=1 WHERE id=? RETURNING name");
         up.bind(1, static_cast<int64_t>(id));
@@ -751,7 +751,7 @@ void register_inventory_routes(LugApp& app, SqliteDatabase& db, AuditService& au
     // POST /inventory/checkout - lend an item to a member, taken from a location (or from what isn't placed)
     CROW_ROUTE(app, "/inventory/checkout").methods("POST"_method)([&app, &db, &audit](const crow::request& req) {
         crow::response res;
-        if (!require_auth(req, res, app, "chapter_lead")) return res;
+        if (!require_auth(req, res, app, "perm:inventory.manage")) return res;
         Form f(req);
         int64_t item = f.num("item_id"), member = f.num("member_id"), qty = f.num("quantity", 1);
         int64_t from = f.num("from_location_id");
@@ -808,7 +808,7 @@ void register_inventory_routes(LugApp& app, SqliteDatabase& db, AuditService& au
     // POST /inventory/loans/<id>/return - back to where it came from, or to the chosen location
     CROW_ROUTE(app, "/inventory/loans/<int>/return").methods("POST"_method)([&app, &db, &audit](const crow::request& req, int id) {
         crow::response res;
-        if (!require_auth(req, res, app, "chapter_lead")) return res;
+        if (!require_auth(req, res, app, "perm:inventory.manage")) return res;
         Form f(req);
         int64_t to = f.num("to_location_id", -1);
         int64_t item = 0, qty = 0, from = 0;

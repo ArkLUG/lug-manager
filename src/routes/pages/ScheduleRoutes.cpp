@@ -244,7 +244,7 @@ void register_schedule_routes(LugApp& app, SqliteDatabase& db, ChapterMemberRepo
                                                               one_chapter ? "" : cal_links::public_google_calendar(db));
         }
         // Who can add meetings/events: admins and chapter event managers/leads
-        bool can_create = auth.is_admin();
+        bool can_create = auth.can("schedule.all_chapters");
         if (!can_create && auth.member_id > 0)
             for (const auto& cm : chapter_members.find_by_member(auth.member_id))
                 if (chapter_role_rank(cm.chapter_role) >= chapter_role_rank("event_manager")) { can_create = true; break; }

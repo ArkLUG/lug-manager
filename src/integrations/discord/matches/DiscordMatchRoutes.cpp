@@ -66,7 +66,7 @@ void register_discord_match_routes(LugApp& app,
     CROW_ROUTE(app, "/settings/discord-matches")([&](const crow::request& req) {
         crow::response res;
         auto& ctx = app.get_context<AuthMiddleware>(req);
-        if (!ctx.auth.is_chapter_lead()) {
+        if (!ctx.auth.can("discord.matches")) {
             res.redirect("/dashboard");
             return res;
         }
@@ -133,7 +133,7 @@ void register_discord_match_routes(LugApp& app,
         [&](const crow::request& req, int id) {
         crow::response res;
         auto& ctx = app.get_context<AuthMiddleware>(req);
-        if (!ctx.auth.is_chapter_lead()) {
+        if (!ctx.auth.can("discord.matches")) {
             res.code = 403;
             res.write(R"(<span class="text-red-600">Forbidden</span>)");
             res.add_header("Content-Type", "text/html; charset=utf-8");
@@ -189,7 +189,7 @@ void register_discord_match_routes(LugApp& app,
         [&](const crow::request& req, int id) {
         crow::response res;
         auto& ctx = app.get_context<AuthMiddleware>(req);
-        if (!ctx.auth.is_chapter_lead()) {
+        if (!ctx.auth.can("discord.matches")) {
             res.code = 403;
             res.write(R"(<span class="text-red-600">Forbidden</span>)");
             res.add_header("Content-Type", "text/html; charset=utf-8");

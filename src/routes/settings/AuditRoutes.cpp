@@ -10,7 +10,7 @@ void register_audit_routes(LugApp& app, AuditService& audit) {
     // GET /audit — admin-only audit log viewer
     CROW_ROUTE(app, "/audit")([&](const crow::request& req) {
         crow::response res;
-        if (!require_auth(req, res, app, "admin")) return res;
+        if (!require_auth(req, res, app, "perm:audit.view")) return res;
 
         auto qs = crow::query_string(req.url_params);
         const char* s_raw = qs.get("search");

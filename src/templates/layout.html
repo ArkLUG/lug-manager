@@ -323,9 +323,11 @@
       {{/f_treasury}}
       {{/can_see_treasury}}
 
-      {{#is_admin}}
-      {{#is_admin}}<div class="nav-heading px-3 pt-4 pb-1 text-[11px] font-semibold uppercase tracking-wider">Admin</div>{{/is_admin}}
-      <!-- Attendance Overview (admin) -->
+      {{#nav_admin}}
+      <div class="nav-heading px-3 pt-4 pb-1 text-[11px] font-semibold uppercase tracking-wider">Admin</div>
+      {{/nav_admin}}
+      {{#perm_attendance_overview}}
+      <!-- Attendance Overview -->
       <a hx-get="/attendance/overview"
          hx-target="#main-content"
          hx-push-url="true"
@@ -340,9 +342,10 @@
         </svg>
         Attendance Overview
       </a>
+      {{/perm_attendance_overview}}
 
-      {{#f_reports}}
-      <!-- Annual Report (admin) -->
+      {{#f_reports}}{{#perm_reports_annual}}
+      <!-- Annual Report -->
       <a hx-get="/reports/annual"
          hx-target="#main-content"
          hx-push-url="true"
@@ -356,9 +359,9 @@
         </svg>
         Annual Report
       </a>
-      {{/f_reports}}
-      {{#f_fancolab}}
-      <!-- LEGO Fan CoLab (admin) -->
+      {{/perm_reports_annual}}{{/f_reports}}
+      {{#f_fancolab}}{{#perm_fancolab_manage}}
+      <!-- LEGO Fan CoLab -->
       <a hx-get="/fancolab"
          hx-target="#main-content"
          hx-push-url="true"
@@ -372,8 +375,9 @@
         </svg>
         LEGO Fan CoLab
       </a>
-      {{/f_fancolab}}
-      <!-- Audit Log (admin) -->
+      {{/perm_fancolab_manage}}{{/f_fancolab}}
+      {{#perm_audit_view}}
+      <!-- Audit Log -->
       <a hx-get="/audit"
          hx-target="#main-content"
          hx-push-url="true"
@@ -388,7 +392,9 @@
         </svg>
         Audit Log
       </a>
+      {{/perm_audit_view}}
 
+      {{#is_admin}}
       <!-- Settings: one page with every setting, grouped (settings/_overview.html) -->
       <a hx-get="/settings/overview"
          data-nav-also="/settings /setup /perks"

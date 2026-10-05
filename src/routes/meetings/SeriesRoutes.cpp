@@ -9,8 +9,8 @@
 namespace {
 
 bool can_manage_series(const AuthContext& a, ChapterMemberRepository& cm, const std::string& scope, int64_t chapter_id) {
-    if (a.is_admin()) return true;
-    if (scope != "chapter" || chapter_id <= 0) return false; // LUG-wide/non-LUG series: admins
+    if (a.can("schedule.all_chapters")) return true;
+    if (scope != "chapter" || chapter_id <= 0) return false; // LUG-wide/non-LUG series: admins and those who manage every meeting
     auto r = cm.get_chapter_role(a.member_id, chapter_id);
     return r && chapter_role_rank(*r) >= chapter_role_rank("event_manager");
 }
@@ -38,8 +38,8 @@ std::string render(const crow::request& req, LugApp& app, SeriesService& series,
     ctx["series"] = std::move(arr);
     ctx["has_series"] = !list.empty();
     ctx["flash"] = flash;
-    ctx["can_create"] = a.is_chapter_lead() || !cm.find_by_member(a.member_id).empty();
-    ctx["is_admin"] = a.is_admin();
+    ctx["can_create"] = a.can("schedule.all_chapters") || !cm.find_by_member(a.member_id).empty();
+    ctx["is_admin"] = a.can("schedule.all_chapters");
     ctx["today"] = AttendanceService::today_ymd();
     Features::add_flags(ctx);
     return crow::mustache::load("meetings/_series.html").render(ctx).dump();

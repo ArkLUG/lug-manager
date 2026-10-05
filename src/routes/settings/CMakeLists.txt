@@ -10,6 +10,8 @@ target_sources(lug_core PRIVATE
   ChatSettingsRoutes.hpp
   FeatureRoutes.cpp
   FeatureRoutes.hpp
+  PermissionRoutes.cpp
+  PermissionRoutes.hpp
   ReminderSettingsRoutes.cpp
   ReminderSettingsRoutes.hpp
   SettingsOverviewRoutes.cpp
