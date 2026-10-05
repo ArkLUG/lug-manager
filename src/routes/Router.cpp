@@ -103,4 +103,5 @@ void register_all_routes(LugApp& app, Services& svc) {
     register_audit_log_api_routes(app, svc.audit);
     register_settings_api_routes(app, svc.settings, svc.events, svc.meetings, svc.gcal, svc.audit);
     register_pending_discord_matches_api_routes(app, svc.pending_discord_matches, svc.member_repo, svc.audit);
+    register_not_found_route(app);   // last: catches unknown paths
 }

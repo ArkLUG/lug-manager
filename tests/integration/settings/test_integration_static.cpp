@@ -31,6 +31,12 @@ TEST_F(IntegrationTest, StaticRejectsTraversal) {
     EXPECT_EQ(GET("/static/../CMakeLists.txt").code, 404);
     EXPECT_EQ(GET("/static/%2e%2e/CMakeLists.txt").code, 404);
     EXPECT_EQ(GET("/static/nope.css").code, 404);
+    // Unknown paths: a complete 404 (not a truncated reply a proxy turns into a 500)
+    auto nf = GET("/nope-xyz");
+    EXPECT_EQ(nf.code, 404);
+    expect_contains(nf, "Page not found");
+    auto api = GET("/api/v1/nope");
+    EXPECT_EQ(api.code, 404);
 }
 
 // /healthz for Docker's HEALTHCHECK: public, plain, no details; and

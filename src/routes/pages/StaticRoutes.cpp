@@ -100,4 +100,23 @@ void register_static_routes(LugApp& app) {
         res.write(a->body);
         res.end();
     });
+
+}
+
+void register_not_found_route(LugApp& app) {
+    CROW_ROUTE(app, "/<path>").methods("GET"_method, "POST"_method, "PUT"_method, "DELETE"_method)(
+        [](const crow::request& req, const std::string&) {
+        crow::response res;
+        res.code = 404;
+        if (req.url.rfind("/api/", 0) == 0) {
+            res.add_header("Content-Type", "application/json");
+            res.write(R"({"error":{"code":"not_found","message":"No such endpoint"}})");
+        } else {
+            res.add_header("Content-Type", "text/html; charset=utf-8");
+            res.write("<!doctype html><meta charset=\"utf-8\"><meta name=\"viewport\" content=\"width=device-width\">"
+                      "<title>Not found</title><body style=\"font-family:system-ui,sans-serif;max-width:32rem;margin:4rem auto;padding:0 1rem\">"
+                      "<h1>Page not found</h1><p>There's nothing at this address.</p><p><a href=\"/dashboard\">Go to the dashboard</a></p></body>");
+        }
+        return res;
+    });
 }
