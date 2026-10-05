@@ -21,3 +21,14 @@ Other checks, run the same way:
   conversion cases, toolbar formatting, a hostile paste, photo upload, save, the public
   `/about` page, and reopening without changes). It saves the About page, so use a scratch DB.
 - `demo_check.py <url> <dir>`: the exported static demo (see the file for how to serve it).
+
+## Screenshots at desktop and phone width
+
+`scripts/dev/shots.sh` starts a throwaway server on the seeded demo LUG
+(`scripts/dev/demo_server.sh`, offline) and runs `shots.py` against it:
+
+```bash
+python3 -m venv ~/.cache/lug-manager/venv && ~/.cache/lug-manager/venv/bin/pip install selenium
+unshare -rn bash -c "ip link set lo up && scripts/dev/shots.sh /tmp/shots admin /schedule /treasury"
+LONG=1 ...   # stretch titles, addresses and names to catch overflow
+```
