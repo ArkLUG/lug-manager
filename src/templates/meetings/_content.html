@@ -40,7 +40,7 @@
       <a role="tab" aria-selected="{{#when_past}}true{{/when_past}}{{^when_past}}false{{/when_past}}" hx-get="/meetings?when=past&search={{search_q}}" hx-target="#main-content" hx-swap="innerHTML" hx-push-url="true" class="px-3 py-2 border-l border-gray-300 cursor-pointer {{#when_past}}bg-gray-800 text-white{{/when_past}}{{^when_past}}text-gray-700 hover:bg-gray-50{{/when_past}}">Past</a>
       <a role="tab" aria-selected="{{#when_all}}true{{/when_all}}{{^when_all}}false{{/when_all}}" hx-get="/meetings?when=all&search={{search_q}}" hx-target="#main-content" hx-swap="innerHTML" hx-push-url="true" class="px-3 py-2 border-l border-gray-300 cursor-pointer {{#when_all}}bg-gray-800 text-white{{/when_all}}{{^when_all}}text-gray-700 hover:bg-gray-50{{/when_all}}">All</a>
     </div>
-    <input type="search" name="search" value="{{search}}" placeholder="Search meetings..." hx-vals='{"when": "{{when}}"}'
+    <input type="search" name="search" value="{{search}}" placeholder="Search meetings..." aria-label="Search meetings" hx-vals='{"when": "{{when}}"}'
            hx-get="/meetings" hx-target="#main-content" hx-swap="innerHTML" hx-push-url="true"
            hx-trigger="input changed delay:300ms, search"
            hx-include="this"

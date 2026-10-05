@@ -9,12 +9,12 @@
 
   <!-- Filters -->
   <div class="flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
-    <input type="search" name="search" value="{{search}}" placeholder="Search actions, members, details..."
+    <input type="search" name="search" value="{{search}}" placeholder="Search actions, members, details..." aria-label="Search the audit log"
            hx-get="/audit" hx-target="#main-content" hx-swap="innerHTML" hx-push-url="true"
            hx-trigger="input changed delay:300ms, search"
            hx-include="this,[name=action_filter]"
            class="flex-1 px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-yellow-400">
-    <select name="action_filter"
+    <select name="action_filter" aria-label="Kind of change"
             hx-get="/audit" hx-target="#main-content" hx-swap="innerHTML" hx-push-url="true"
             hx-trigger="change" hx-include="[name=search],this"
             class="px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-yellow-400">

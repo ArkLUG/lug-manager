@@ -45,7 +45,7 @@
 
   <!-- Search -->
   <div class="flex items-center gap-2">
-    <input type="search" name="search" value="{{search}}" placeholder="Search events..."
+    <input type="search" name="search" value="{{search}}" placeholder="Search events..." aria-label="Search events"
            hx-get="{{#show_all}}/events/all{{/show_all}}{{^show_all}}/events{{/show_all}}" hx-target="#main-content" hx-swap="innerHTML" hx-push-url="true"
            hx-trigger="input changed delay:300ms, search"
            hx-include="this"

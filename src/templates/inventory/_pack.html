@@ -36,7 +36,7 @@
       {{#item_options}}<option value="{{id}}">{{label}}</option>{{/item_options}}
     </select>
     <input type="number" name="quantity" value="1" min="1" aria-label="How many" class="w-16 border border-gray-300 rounded-lg px-2 py-1 text-xs">
-    <input name="note" maxlength="200" placeholder="Note" class="w-32 border border-gray-300 rounded-lg px-2 py-1 text-xs">
+    <input name="note" maxlength="200" placeholder="Note" aria-label="Note" class="w-32 border border-gray-300 rounded-lg px-2 py-1 text-xs">
     <button class="text-xs px-3 py-1 bg-gray-800 text-white rounded-lg">Add</button>
   </form>
   {{/has_item_options}}{{/can_manage}}

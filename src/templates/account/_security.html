@@ -27,7 +27,7 @@
       {{#email_unique}}
       <p class="text-sm text-gray-600">{{#has_password}}You can sign in with <strong>{{email}}</strong> and your password{{#password_changed}} (set {{password_changed}}){{/password_changed}}.{{/has_password}}{{^has_password}}Set a password to sign in with <strong>{{email}}</strong> without Discord.{{/has_password}}</p>
       <form hx-post="/account/password" hx-target="#account-security" hx-swap="outerHTML" class="grid grid-cols-1 md:grid-cols-3 gap-3 text-sm items-end">
-        <input type="email" name="username" value="{{email}}" autocomplete="username" class="hidden" aria-hidden="true" tabindex="-1" readonly>
+        <input type="email" name="username" value="{{email}}" autocomplete="username" class="hidden" aria-hidden="true" aria-label="Email" tabindex="-1" readonly>
         {{#has_password}}<label class="block">Current password<input type="password" name="current" required autocomplete="current-password" maxlength="200" class="mt-1 w-full border border-gray-300 rounded-lg px-3 py-2"></label>{{/has_password}}
         <label class="block">New password<input type="password" name="password" required minlength="10" maxlength="200" autocomplete="new-password" class="mt-1 w-full border border-gray-300 rounded-lg px-3 py-2"></label>
         <label class="block">Type it again<input type="password" name="confirm" required minlength="10" maxlength="200" autocomplete="new-password" class="mt-1 w-full border border-gray-300 rounded-lg px-3 py-2"></label>

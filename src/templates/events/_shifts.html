@@ -27,12 +27,12 @@
     <summary class="cursor-pointer px-3 py-1.5 text-xs font-medium text-gray-700">Add a shift</summary>
     <form hx-post="/events/{{event_id}}/shifts" hx-target="#shifts-panel-{{event_id}}" hx-swap="outerHTML"
           class="px-3 pb-3 grid grid-cols-2 gap-2 text-xs">
-      <input name="title" required maxlength="100" placeholder="Set-up crew" class="col-span-2 border border-gray-300 rounded px-2 py-1">
-      <input type="date" name="day" value="{{default_day}}" required class="border border-gray-300 rounded px-2 py-1">
-      <input type="number" name="slots" min="1" max="100" value="2" required class="border border-gray-300 rounded px-2 py-1" aria-label="Volunteers needed">
-      <input type="time" name="from" value="08:00" required class="border border-gray-300 rounded px-2 py-1" aria-label="Start">
-      <input type="time" name="to" value="10:00" required class="border border-gray-300 rounded px-2 py-1" aria-label="End">
-      <input name="notes" maxlength="500" placeholder="Notes (optional)" class="col-span-2 border border-gray-300 rounded px-2 py-1">
+      <label class="col-span-2 text-gray-600">Shift name<input name="title" required maxlength="100" placeholder="e.g. Set-up crew" class="mt-0.5 w-full border border-gray-300 rounded px-2 py-1"></label>
+      <label class="text-gray-600">Day<input type="date" name="day" value="{{default_day}}" required class="mt-0.5 w-full border border-gray-300 rounded px-2 py-1"></label>
+      <label class="text-gray-600">Volunteers needed<input type="number" name="slots" min="1" max="100" value="2" required class="mt-0.5 w-full border border-gray-300 rounded px-2 py-1"></label>
+      <label class="text-gray-600">Starts<input type="time" name="from" value="08:00" required class="mt-0.5 w-full border border-gray-300 rounded px-2 py-1"></label>
+      <label class="text-gray-600">Ends<input type="time" name="to" value="10:00" required class="mt-0.5 w-full border border-gray-300 rounded px-2 py-1"></label>
+      <label class="col-span-2 text-gray-600">Notes <span class="text-gray-400">(optional)</span><input name="notes" maxlength="500" class="mt-0.5 w-full border border-gray-300 rounded px-2 py-1"></label>
       <button class="col-span-2 py-1.5 bg-yellow-400 text-gray-900 rounded-lg font-semibold hover:bg-yellow-300">Add shift</button>
     </form>
   </details>

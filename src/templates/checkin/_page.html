@@ -91,11 +91,11 @@
       <div id="panel-search" class="space-y-3" style="display:none">
         <p class="text-sm text-gray-500 text-center">Find your name to check in.</p>
         <form hx-post="/checkin/{{token}}/select" hx-target="#search-result" hx-swap="innerHTML">
-          <input type="search" name="q" placeholder="Type your name..."
+          <input type="search" name="q" placeholder="Type your name..." aria-label="Your name"
                  hx-get="/checkin/{{token}}/search" hx-target="#member-search-options" hx-swap="innerHTML"
                  hx-trigger="input changed delay:300ms" hx-include="this"
                  class="w-full border border-gray-300 rounded-lg px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-yellow-400 mb-2">
-          <select name="member_id" id="member-search-options" size="5"
+          <select name="member_id" id="member-search-options" size="5" aria-label="Pick your name"
                   class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm mb-2">
             <option value="">Type your name above to search...</option>
           </select>
@@ -111,11 +111,11 @@
       <div id="panel-manual" class="space-y-3" style="display:none">
         <p class="text-sm text-gray-500 text-center">First time? Enter your info to check in.</p>
         <form hx-post="/checkin/{{token}}/manual" hx-target="#manual-result" hx-swap="innerHTML" class="space-y-2">
-          <input type="text" name="first_name" required placeholder="First name"
+          <input type="text" name="first_name" required placeholder="First name" aria-label="First name"
                  class="w-full border border-gray-300 rounded-lg px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-yellow-400">
-          <input type="text" name="last_name" required placeholder="Last name"
+          <input type="text" name="last_name" required placeholder="Last name" aria-label="Last name"
                  class="w-full border border-gray-300 rounded-lg px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-yellow-400">
-          <input type="email" name="email" placeholder="Email (optional)"
+          <input type="email" name="email" placeholder="Email (optional)" aria-label="Email (optional)"
                  class="w-full border border-gray-300 rounded-lg px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-yellow-400">
           <button type="submit"
                   class="w-full py-2.5 bg-green-600 text-white rounded-lg font-medium hover:bg-green-700 transition-colors">

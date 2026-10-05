@@ -6,7 +6,7 @@
       <p class="text-sm text-gray-500 mt-0.5">{{active_count}} active of {{total_count}} members &mdash; {{selected_year}}</p>
     </div>
     <div class="flex items-center gap-2">
-      <select name="year"
+      <select name="year" aria-label="Year"
               hx-get="/attendance/overview" hx-target="#main-content" hx-swap="innerHTML" hx-push-url="true"
               hx-trigger="change" hx-include="#overview-filters"
               class="px-2 py-1.5 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-yellow-400">
@@ -33,7 +33,7 @@
     <input type="hidden" name="year" value="{{selected_year}}">
     <input type="hidden" name="sort" value="{{sort}}">
     <input type="hidden" name="dir" value="{{dir}}">
-    <input type="search" name="search" value="{{search}}" placeholder="Search by name..."
+    <input type="search" name="search" value="{{search}}" placeholder="Search by name..." aria-label="Search by name"
            hx-get="/attendance/overview" hx-target="#main-content" hx-swap="innerHTML" hx-push-url="true"
            hx-trigger="input changed delay:300ms, search"
            hx-include="#overview-filters"

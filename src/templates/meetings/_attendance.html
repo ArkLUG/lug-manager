@@ -53,7 +53,7 @@
           class="flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
       <input type="hidden" name="entity_type" value="{{entity_type}}">
       <input type="hidden" name="entity_id" value="{{entity_id}}">
-      <select name="member_id" multiple id="att-add-member-{{entity_type}}-{{entity_id}}"
+      <select aria-label="Members to add" name="member_id" multiple id="att-add-member-{{entity_type}}-{{entity_id}}"
               hx-get="/api/member-options" hx-trigger="load" hx-target="this" hx-swap="innerHTML"
               data-tomselect="multi"
               class="flex-1 text-xs border border-gray-300 rounded px-2 py-1.5">

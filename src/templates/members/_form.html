@@ -11,30 +11,30 @@
 
     <div class="grid grid-cols-2 gap-4">
       <div>
-        <label class="block text-sm font-medium text-gray-700 mb-1">First Name <span class="text-red-500">*</span></label>
-        <input type="text" name="first_name" value="{{first_name}}" required
+        <label class="block text-sm font-medium text-gray-700 mb-1" for="members-form-first-name">First Name <span class="text-red-500">*</span></label>
+        <input id="members-form-first-name" type="text" name="first_name" value="{{first_name}}" required
                class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-yellow-400"
                placeholder="John">
       </div>
 
       <div>
-        <label class="block text-sm font-medium text-gray-700 mb-1">Last Name <span class="text-red-500">*</span></label>
-        <input type="text" name="last_name" value="{{last_name}}" required
+        <label class="block text-sm font-medium text-gray-700 mb-1" for="members-form-last-name">Last Name <span class="text-red-500">*</span></label>
+        <input id="members-form-last-name" type="text" name="last_name" value="{{last_name}}" required
                class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-yellow-400"
                placeholder="Smith">
       </div>
 
       {{#is_edit}}
       <div class="col-span-2">
-        <label class="block text-sm font-medium text-gray-700 mb-1">Display Name <span class="text-gray-400">(auto-generated)</span></label>
-        <input type="text" value="{{display_name}}" disabled
+        <label class="block text-sm font-medium text-gray-700 mb-1" for="members-form-field">Display Name <span class="text-gray-400">(auto-generated)</span></label>
+        <input id="members-form-field" type="text" value="{{display_name}}" disabled
                class="w-full border border-gray-200 bg-gray-50 rounded-lg px-3 py-2 text-sm text-gray-500">
       </div>
       {{/is_edit}}
 
       <div class="col-span-2">
-        <label class="block text-sm font-medium text-gray-700 mb-1">Discord User ID <span class="text-gray-400">(optional)</span></label>
-        <input type="text" name="discord_user_id" value="{{discord_user_id}}"
+        <label class="block text-sm font-medium text-gray-700 mb-1" for="members-form-discord-user-id">Discord User ID <span class="text-gray-400">(optional)</span></label>
+        <input id="members-form-discord-user-id" type="text" name="discord_user_id" value="{{discord_user_id}}"
                {{#is_edit}}readonly class="w-full border border-gray-200 bg-gray-50 rounded-lg px-3 py-2 text-sm text-gray-500"{{/is_edit}}
                {{^is_edit}}class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-yellow-400"{{/is_edit}}
                placeholder="123456789012345678">
@@ -42,23 +42,23 @@
       </div>
 
       <div>
-        <label class="block text-sm font-medium text-gray-700 mb-1">Discord Username</label>
-        <input type="text" name="discord_username" value="{{discord_username}}"
+        <label class="block text-sm font-medium text-gray-700 mb-1" for="members-form-discord-username">Discord Username</label>
+        <input id="members-form-discord-username" type="text" name="discord_username" value="{{discord_username}}"
                class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-yellow-400"
                placeholder="username">
       </div>
 
       <div>
-        <label class="block text-sm font-medium text-gray-700 mb-1">Email</label>
-        <input type="email" name="email" value="{{email}}" {{#is_edit}}{{^is_admin}}readonly{{/is_admin}}{{/is_edit}}
+        <label class="block text-sm font-medium text-gray-700 mb-1" for="members-form-email">Email</label>
+        <input id="members-form-email" type="email" name="email" value="{{email}}" {{#is_edit}}{{^is_admin}}readonly{{/is_admin}}{{/is_edit}}
                class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-yellow-400 read-only:bg-gray-50 read-only:text-gray-500"
                placeholder="member@example.com">
         {{#is_edit}}{{^is_admin}}<p class="text-xs text-gray-400 mt-1">It's their sign-in address, so only an admin or the member can change it.</p>{{/is_admin}}{{/is_edit}}
       </div>
 
       <div>
-        <label class="block text-sm font-medium text-gray-700 mb-1">Role</label>
-        <select name="role" class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-yellow-400"
+        <label class="block text-sm font-medium text-gray-700 mb-1" for="members-form-role">Role</label>
+        <select id="members-form-role" name="role" class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-yellow-400"
                 {{^is_admin}}{{#is_edit}}disabled{{/is_edit}}{{/is_admin}}>
           <option value="member" {{#role_member}}selected{{/role_member}}>Member</option>
           {{#show_chapter_lead}}<option value="chapter_lead" {{#role_chapter_lead}}selected{{/role_chapter_lead}}>Chapter Lead{{#chapters_off}} (chapters are off - use Moderator){{/chapters_off}}</option>{{/show_chapter_lead}}
@@ -72,20 +72,20 @@
       </div>
 
       <div class="f-dues">
-        <label class="block text-sm font-medium text-gray-700 mb-1">Paid Until</label>
-        <input type="date" name="paid_until" value="{{paid_until}}"
+        <label class="block text-sm font-medium text-gray-700 mb-1" for="members-form-paid-until">Paid Until</label>
+        <input id="members-form-paid-until" type="date" name="paid_until" value="{{paid_until}}"
                class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-yellow-400">
       </div>
 
       <div>
-        <label class="block text-sm font-medium text-gray-700 mb-1">Birthday</label>
-        <input type="date" name="birthday" value="{{birthday}}"
+        <label class="block text-sm font-medium text-gray-700 mb-1" for="members-form-birthday">Birthday</label>
+        <input id="members-form-birthday" type="date" name="birthday" value="{{birthday}}"
                class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-yellow-400">
       </div>
 
       <div>
-        <label class="block text-sm font-medium text-gray-700 mb-1">Age Range</label>
-        <select name="fol_status" class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-yellow-400">
+        <label class="block text-sm font-medium text-gray-700 mb-1" for="members-form-fol-status">Age Range</label>
+        <select id="members-form-fol-status" name="fol_status" class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-yellow-400">
           <option value="afol" {{#fol_afol}}selected{{/fol_afol}}>AFOL (Adult)</option>
           <option value="tfol" {{#fol_tfol}}selected{{/fol_tfol}}>TFOL (Teen)</option>
           <option value="kfol" {{#fol_kfol}}selected{{/fol_kfol}}>KFOL (Kid)</option>
@@ -97,8 +97,8 @@
       </div>
 
       <div>
-        <label class="block text-sm font-medium text-gray-700 mb-1">Phone</label>
-        <input type="tel" name="phone" value="{{phone}}"
+        <label class="block text-sm font-medium text-gray-700 mb-1" for="members-form-phone">Phone</label>
+        <input id="members-form-phone" type="tel" name="phone" value="{{phone}}"
                pattern="\(\d{3}\)\s?\d{3}-\d{4}"
                title="Format: (555) 123-4567"
                data-phone-format
@@ -107,27 +107,27 @@
       </div>
 
       <div class="col-span-2">
-        <label class="block text-sm font-medium text-gray-700 mb-1">Address</label>
-        <input type="text" name="address_line1" value="{{address_line1}}"
+        <label class="block text-sm font-medium text-gray-700 mb-1" for="members-form-address-line1">Address</label>
+        <input id="members-form-address-line1" type="text" name="address_line1" value="{{address_line1}}"
                maxlength="100"
                class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-yellow-400 mb-2"
                placeholder="Street address">
-        <input type="text" name="address_line2" value="{{address_line2}}"
+        <input type="text" name="address_line2" value="{{address_line2}}" aria-label="Address line 2"
                maxlength="100"
                class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-yellow-400"
                placeholder="Apt, suite, unit (optional)">
       </div>
 
       <div>
-        <label class="block text-sm font-medium text-gray-700 mb-1">City</label>
-        <input type="text" name="city" value="{{city}}"
+        <label class="block text-sm font-medium text-gray-700 mb-1" for="members-form-city">City</label>
+        <input id="members-form-city" type="text" name="city" value="{{city}}"
                maxlength="50"
                class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-yellow-400">
       </div>
 
       <div>
-        <label class="block text-sm font-medium text-gray-700 mb-1">State</label>
-        <input type="text" name="state" value="{{state}}"
+        <label class="block text-sm font-medium text-gray-700 mb-1" for="members-form-state">State</label>
+        <input id="members-form-state" type="text" name="state" value="{{state}}"
                pattern="[A-Za-z]{2}" maxlength="2"
                title="Two-letter state code (e.g. AR)"
                class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-yellow-400 uppercase"
@@ -135,8 +135,8 @@
       </div>
 
       <div>
-        <label class="block text-sm font-medium text-gray-700 mb-1">ZIP</label>
-        <input type="text" name="zip" value="{{zip}}"
+        <label class="block text-sm font-medium text-gray-700 mb-1" for="members-form-zip">ZIP</label>
+        <input id="members-form-zip" type="text" name="zip" value="{{zip}}"
                pattern="\d{5}(-\d{4})?" maxlength="10"
                title="5-digit ZIP or ZIP+4 (e.g. 72201 or 72201-1234)"
                class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-yellow-400"
@@ -147,12 +147,12 @@
     <details class="f-guardians border border-gray-200 rounded-lg" {{#guardian_open}}open{{/guardian_open}}>
       <summary class="cursor-pointer px-3 py-2 text-sm font-medium text-gray-700">Guardian &amp; consent <span class="text-xs text-gray-400">(KFOL/TFOL members)</span></summary>
       <div class="px-3 pb-3 grid grid-cols-1 md:grid-cols-3 gap-2">
-        <input name="guardian_name" value="{{guardian_name}}" maxlength="100" placeholder="Guardian name"
-               class="border border-gray-300 rounded-lg px-3 py-2 text-sm">
-        <input name="guardian_phone" value="{{guardian_phone}}" maxlength="40" placeholder="Guardian phone"
-               class="border border-gray-300 rounded-lg px-3 py-2 text-sm">
-        <input name="guardian_email" type="email" value="{{guardian_email}}" maxlength="200" placeholder="Guardian email"
-               class="border border-gray-300 rounded-lg px-3 py-2 text-sm">
+        <label class="text-xs text-gray-600">Guardian name<input name="guardian_name" value="{{guardian_name}}" maxlength="100"
+               class="mt-0.5 w-full border border-gray-300 rounded-lg px-3 py-2 text-sm"></label>
+        <label class="text-xs text-gray-600">Guardian phone<input name="guardian_phone" value="{{guardian_phone}}" maxlength="40"
+               class="mt-0.5 w-full border border-gray-300 rounded-lg px-3 py-2 text-sm"></label>
+        <label class="text-xs text-gray-600">Guardian email<input name="guardian_email" type="email" value="{{guardian_email}}" maxlength="200"
+               class="mt-0.5 w-full border border-gray-300 rounded-lg px-3 py-2 text-sm"></label>
         <label class="flex items-center gap-2 text-sm text-gray-700"><input type="checkbox" name="consent_on_file" value="1" {{#consent_on_file}}checked{{/consent_on_file}} class="accent-yellow-400"> Signed consent on file</label>
         <label class="flex items-center gap-2 text-sm text-gray-700">dated <input type="date" name="consent_date" value="{{consent_date}}" class="border border-gray-300 rounded-lg px-2 py-1 text-sm"></label>
         <label class="flex items-center gap-2 text-sm text-gray-700"><input type="checkbox" name="photo_release" value="1" {{#photo_release}}checked{{/photo_release}} class="accent-yellow-400"> Photo release given</label>
@@ -169,7 +169,7 @@
     {{/is_admin}}{{/is_edit}}
 
     <div class="f-chapters">
-      <label class="block text-sm font-medium text-gray-700 mb-1">Chapter <span class="text-gray-400">(optional)</span></label>
+      <label class="block text-sm font-medium text-gray-700 mb-1" for="member-chapter-select">Chapter <span class="text-gray-400">(optional)</span></label>
       <select name="chapter_id" id="member-chapter-select"
               hx-get="/api/chapter-options?selected={{chapter_id_str}}" hx-trigger="load" hx-swap="innerHTML"
               class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-yellow-400">

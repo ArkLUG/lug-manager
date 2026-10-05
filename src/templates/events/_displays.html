@@ -41,7 +41,7 @@
         {{#can_manage}}
         <form hx-post="/events/{{event_id}}/displays/{{id}}/review" hx-target="#displays-panel-{{event_id}}" hx-swap="outerHTML"
               class="flex items-center gap-1">
-          <input name="table_assignment" value="{{table}}" placeholder="Table" maxlength="100"
+          <input name="table_assignment" value="{{table}}" placeholder="Table" aria-label="Table or spot assigned" maxlength="100"
                  class="w-20 text-xs border border-gray-300 rounded px-1.5 py-0.5">
           <button name="status" value="approved" class="text-xs px-2 py-0.5 rounded bg-green-600 text-white hover:bg-green-700">Approve</button>
           <button name="status" value="declined" class="text-xs px-2 py-0.5 rounded border border-gray-300 text-gray-700 hover:bg-gray-50">Decline</button>
@@ -62,21 +62,24 @@
     <summary class="cursor-pointer px-3 py-2 text-sm font-medium text-gray-700">Request display space</summary>
     <form hx-post="/events/{{event_id}}/displays" hx-target="#displays-panel-{{event_id}}" hx-swap="outerHTML"
           class="px-3 pb-3 space-y-2 text-sm">
-      <input name="title" required maxlength="200" placeholder="Display name (e.g. Modular street, 3 buildings)"
-             class="w-full border border-gray-300 rounded-lg px-2 py-1.5">
+      <label class="block text-xs text-gray-600">Display name
+        <input name="title" required maxlength="200" placeholder="e.g. Modular street, 3 buildings"
+             class="mt-0.5 w-full border border-gray-300 rounded-lg px-2 py-1.5 text-sm"></label>
+      <span class="block text-xs text-gray-600">Space needed (inches)</span>
       <div class="flex items-center gap-2">
-        <input name="width_in" type="number" min="1" max="10000" required placeholder="Width"
+        <input name="width_in" type="number" min="1" max="10000" required placeholder="Width" aria-label="Width in inches"
                class="w-24 border border-gray-300 rounded-lg px-2 py-1.5">
         <span class="text-gray-500">×</span>
-        <input name="depth_in" type="number" min="1" max="10000" required placeholder="Depth"
+        <input name="depth_in" type="number" min="1" max="10000" required placeholder="Depth" aria-label="Depth in inches"
                class="w-24 border border-gray-300 rounded-lg px-2 py-1.5">
         <span class="text-xs text-gray-500">inches</span>
         <label class="ml-auto flex items-center gap-1 text-xs text-gray-700"><input type="checkbox" name="needs_power"> Needs power</label>
       </div>
-      <textarea name="description" rows="2" maxlength="2000" placeholder="What is it? (optional)"
+      <label class="block text-xs text-gray-600" for="events-displays-description">What is it? <span class="text-gray-400">(optional)</span></label>
+      <textarea id="events-displays-description" name="description" rows="2" maxlength="2000"
                 class="w-full border border-gray-300 rounded-lg px-2 py-1.5"></textarea>
-      <input name="notes" maxlength="1000" placeholder="Notes for the organizer (optional)"
-             class="w-full border border-gray-300 rounded-lg px-2 py-1.5">
+      <label class="block text-xs text-gray-600">Notes for the organizer <span class="text-gray-400">(optional)</span>
+        <input name="notes" maxlength="1000" class="mt-0.5 w-full border border-gray-300 rounded-lg px-2 py-1.5 text-sm"></label>
       <button class="text-xs px-3 py-1.5 bg-yellow-400 text-gray-900 rounded-lg font-semibold hover:bg-yellow-300">Submit request</button>
     </form>
   </details>

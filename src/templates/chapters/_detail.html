@@ -127,7 +127,7 @@
     {{#has_non_leads}}
     <form hx-post="/chapters/{{id}}/lead" hx-target="#main-content" hx-swap="innerHTML" hx-push-url="true"
           class="flex gap-2 items-center border-t border-gray-100 pt-4">
-      <select name="member_id" required
+      <select name="member_id" required aria-label="Member to make a lead"
               class="ts-search flex-1 px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-yellow-400">
         {{{add_lead_options}}}
       </select>

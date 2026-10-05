@@ -22,8 +22,8 @@
     <summary class="cursor-pointer px-3 py-1.5 text-xs font-medium text-gray-700">Add a photo</summary>
     <form hx-post="/events/{{event_id}}/photos" hx-encoding="multipart/form-data"
           hx-target="#gallery-panel-{{event_id}}" hx-swap="outerHTML" class="px-3 pb-3 space-y-2 text-xs">
-      <input type="file" name="photo" accept="image/jpeg,image/png,image/gif,image/webp" required class="block w-full">
-      <input name="caption" maxlength="200" placeholder="Caption (optional)" class="w-full border border-gray-300 rounded px-2 py-1">
+      <label class="block text-gray-700">Photo<input type="file" name="photo" accept="image/jpeg,image/png,image/gif,image/webp" required class="mt-1 block w-full"></label>
+      <label class="block text-gray-700">Caption <span class="text-gray-400">(optional)</span><input name="caption" maxlength="200" class="mt-1 w-full border border-gray-300 rounded px-2 py-1"></label>
       <p class="text-gray-500">Location data is removed from uploads. Please don't post photos of members marked &ldquo;no photos&rdquo;.</p>
       <button class="px-3 py-1.5 bg-yellow-400 text-gray-900 rounded-lg font-semibold hover:bg-yellow-300">Upload</button>
     </form>

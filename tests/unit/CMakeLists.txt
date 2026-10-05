@@ -15,5 +15,6 @@ lug_add_tests(
   test_series.cpp
   test_services.cpp
   test_suppression.cpp
+  test_template_labels.cpp
   test_utils.cpp
 )

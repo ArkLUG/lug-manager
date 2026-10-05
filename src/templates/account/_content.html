@@ -87,7 +87,7 @@
     <p class="text-sm text-gray-600">Permanently removes your member record, attendance, RSVPs, dues history, photos and challenge entries. This can't be undone. It doesn't remove you from the LUG Discord server: while you're still in it, a new basic record is created the next time you sign in or the member list syncs.</p>
     <form hx-post="/account/delete" hx-target="#delete-result" hx-swap="innerHTML"
           hx-confirm="Permanently delete your account?" class="flex flex-wrap items-center gap-2">
-      <input name="confirm" autocomplete="off" placeholder="Type DELETE" required
+      <input name="confirm" autocomplete="off" placeholder="Type DELETE" aria-label="Type DELETE to confirm" required
              class="border border-gray-300 rounded-lg px-3 py-2 text-sm">
       <button class="px-4 py-2 bg-red-600 text-white rounded-lg text-sm font-medium hover:bg-red-700">Delete my account</button>
     </form>

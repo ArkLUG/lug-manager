@@ -6,7 +6,7 @@
             <p class="text-sm text-gray-500 mt-0.5">Attendance tiers members earn each year<span class="f-discord">, optionally with a Discord role</span>.</p>
         </div>
         <div class="flex items-center gap-2">
-            <select name="year"
+            <select name="year" aria-label="Year"
                     hx-get="/perks" hx-target="#main-content" hx-swap="innerHTML" hx-push-url="true"
                     hx-trigger="change" hx-include="this"
                     class="px-2 py-1.5 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-yellow-400">
@@ -75,7 +75,7 @@
         <span class="text-sm font-medium text-gray-700">Clone tiers from another year:</span>
         <form hx-post="/perks/clone" hx-target="#sync-result" hx-swap="innerHTML" class="flex items-center gap-2">
             <input type="hidden" name="target_year" value="{{selected_year}}">
-            <select name="source_year" class="px-2 py-1.5 border border-gray-300 rounded-lg text-sm">
+            <select name="source_year" aria-label="Copy from year" class="px-2 py-1.5 border border-gray-300 rounded-lg text-sm">
                 {{#years}}
                 {{^selected}}<option value="{{year}}">{{year}}</option>{{/selected}}
                 {{/years}}
@@ -92,38 +92,38 @@
             <input type="hidden" name="year" value="{{selected_year}}">
             <div class="grid grid-cols-2 gap-4">
                 <div>
-                    <label class="block text-sm font-medium text-gray-700">Name</label>
-                    <input type="text" name="name" required
+                    <label class="block text-sm font-medium text-gray-700" for="settings-perks-name">Name</label>
+                    <input id="settings-perks-name" type="text" name="name" required
                            class="mt-1 block w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-yellow-400"
                            placeholder="e.g. Bronze, Silver, Gold">
                 </div>
                 <div>
-                    <label class="block text-sm font-medium text-gray-700">Sort Order</label>
-                    <input type="number" name="sort_order" value="0"
+                    <label class="block text-sm font-medium text-gray-700" for="settings-perks-sort-order">Sort Order</label>
+                    <input id="settings-perks-sort-order" type="number" name="sort_order" value="0"
                            class="mt-1 block w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-yellow-400">
                 </div>
             </div>
             <div>
-                <label class="block text-sm font-medium text-gray-700">Description</label>
-                <textarea name="description" rows="2"
+                <label class="block text-sm font-medium text-gray-700" for="settings-perks-description">Description</label>
+                <textarea id="settings-perks-description" name="description" rows="2"
                           class="mt-1 block w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-yellow-400"
                           placeholder="What members get at this tier (e.g. a badge, priority seating, a special role)"></textarea>
             </div>
             <div class="grid grid-cols-2 gap-4">
                 <div>
-                    <label class="block text-sm font-medium text-gray-700">Meetings Required</label>
-                    <input type="number" name="meeting_attendance_required" value="0" min="0"
+                    <label class="block text-sm font-medium text-gray-700" for="settings-perks-meeting-attendance-required">Meetings Required</label>
+                    <input id="settings-perks-meeting-attendance-required" type="number" name="meeting_attendance_required" value="0" min="0"
                            class="mt-1 block w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-yellow-400">
                 </div>
                 <div>
-                    <label class="block text-sm font-medium text-gray-700">Events Required</label>
-                    <input type="number" name="event_attendance_required" value="0" min="0"
+                    <label class="block text-sm font-medium text-gray-700" for="settings-perks-event-attendance-required">Events Required</label>
+                    <input id="settings-perks-event-attendance-required" type="number" name="event_attendance_required" value="0" min="0"
                            class="mt-1 block w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-yellow-400">
                 </div>
             </div>
             <div class="grid grid-cols-2 gap-4">
                 <div class="f-discord">
-                    <label class="block text-sm font-medium text-gray-700">Discord Role</label>
+                    <label class="block text-sm font-medium text-gray-700" for="perk-role-select">Discord Role</label>
                     <select name="discord_role_id" id="perk-role-select"
                             hx-get="/api/discord/role-options?selected=" hx-trigger="load" hx-swap="innerHTML"
                             data-tomselect="single"
@@ -141,8 +141,8 @@
             </div>
             <div class="grid grid-cols-2 gap-4">
                 <div>
-                    <label class="block text-sm font-medium text-gray-700">Minimum Age Range</label>
-                    <select name="min_fol_status"
+                    <label class="block text-sm font-medium text-gray-700" for="settings-perks-min-fol-status">Minimum Age Range</label>
+                    <select id="settings-perks-min-fol-status" name="min_fol_status"
                             class="mt-1 w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-yellow-400">
                         <option value="kfol">KFOL — Kids and up (any age)</option>
                         <option value="tfol">TFOL — Teens and up</option>

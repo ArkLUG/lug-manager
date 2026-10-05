@@ -38,7 +38,7 @@
 
       <!-- Guild ID -->
       <div>
-        <label class="block text-sm font-medium text-gray-700 mb-1">Discord Server (Guild) ID</label>
+        <label class="block text-sm font-medium text-gray-700 mb-1" for="guild-id-input">Discord Server (Guild) ID</label>
         <div class="flex gap-2">
           <input type="text" name="discord_guild_id" id="guild-id-input"
                  value="{{guild_id}}"
@@ -70,7 +70,7 @@
 
       <!-- LUG-wide Announcements Channel -->
       <div>
-        <label class="block text-sm font-medium text-gray-700 mb-1">Group-wide Announcements Channel</label>
+        <label class="block text-sm font-medium text-gray-700 mb-1" for="lug-channel-select">Group-wide Announcements Channel</label>
         <select name="discord_announcements_channel_id" id="lug-channel-select"
                 class="ts-channel w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-yellow-400 focus:border-transparent">
           {{{channel_options}}}
@@ -80,7 +80,7 @@
 
       <!-- Event Announcement Role -->
       <div>
-        <label class="block text-sm font-medium text-gray-700 mb-1">Event Announcement Role</label>
+        <label class="block text-sm font-medium text-gray-700 mb-1" for="announcement-role-select">Event Announcement Role</label>
         <div class="flex gap-2">
           <select name="discord_announcement_role_id" id="announcement-role-select"
                   class="ts-channel flex-1 px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-yellow-400 focus:border-transparent">
@@ -102,7 +102,7 @@
 
       <!-- Non-LUG Event Role -->
       <div>
-        <label class="block text-sm font-medium text-gray-700 mb-1">External Event Role</label>
+        <label class="block text-sm font-medium text-gray-700 mb-1" for="non-lug-role-select">External Event Role</label>
         <div class="flex gap-2">
           <select name="discord_non_lug_event_role_id" id="non-lug-role-select"
                   class="ts-channel flex-1 px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-yellow-400 focus:border-transparent">
@@ -153,7 +153,7 @@
 
       <!-- Event Thread Forum Channel -->
       <div>
-        <label class="block text-sm font-medium text-gray-700 mb-1">Event Thread Forum Channel</label>
+        <label class="block text-sm font-medium text-gray-700 mb-1" for="forum-channel-select">Event Thread Forum Channel</label>
         <select name="discord_events_forum_channel_id" id="forum-channel-select"
                 class="ts-channel w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-yellow-400 focus:border-transparent">
           {{{forum_options}}}
@@ -162,7 +162,7 @@
       </div>
 
       <div>
-        <label class="block text-sm font-medium text-gray-700 mb-1">Event Reports Forum Channel</label>
+        <label class="block text-sm font-medium text-gray-700 mb-1" for="event-reports-forum-select">Event Reports Forum Channel</label>
         <select name="discord_event_reports_forum_channel_id" id="event-reports-forum-select"
                 class="ts-channel w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-yellow-400 focus:border-transparent">
           {{{event_reports_forum_options}}}
@@ -171,7 +171,7 @@
       </div>
 
       <div>
-        <label class="block text-sm font-medium text-gray-700 mb-1">Meeting Reports Forum Channel</label>
+        <label class="block text-sm font-medium text-gray-700 mb-1" for="meeting-reports-forum-select">Meeting Reports Forum Channel</label>
         <select name="discord_meeting_reports_forum_channel_id" id="meeting-reports-forum-select"
                 class="ts-channel w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-yellow-400 focus:border-transparent">
           {{{meeting_reports_forum_options}}}

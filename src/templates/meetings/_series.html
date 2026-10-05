@@ -41,14 +41,14 @@
       <legend class="px-1 text-gray-600">Repeats</legend>
       <div class="flex flex-wrap items-center gap-2">
         <label class="flex items-center gap-1"><input type="radio" name="rule" value="monthly" checked class="accent-yellow-400"> Monthly on the</label>
-        <select name="nth" class="border border-gray-300 rounded-lg px-2 py-1">
+        <select id="meetings-series-nth" name="nth" aria-label="Which week of the month" class="border border-gray-300 rounded-lg px-2 py-1">
           <option value="1">1st</option><option value="2">2nd</option><option value="3">3rd</option><option value="4">4th</option><option value="-1">last</option>
         </select>
         <span class="text-gray-500">day below</span>
       </div>
       <div class="flex flex-wrap items-center gap-2">
         <label class="flex items-center gap-1"><input type="radio" name="rule" value="weekly" class="accent-yellow-400"> Every</label>
-        <input type="number" name="interval_weeks" min="1" max="8" value="1" class="w-16 border border-gray-300 rounded-lg px-2 py-1">
+        <input id="meetings-series-interval-weeks" aria-label="Number of weeks" type="number" name="interval_weeks" min="1" max="8" value="1" class="w-16 border border-gray-300 rounded-lg px-2 py-1">
         <span class="text-gray-500">week(s) on the day below</span>
       </div>
       <label class="flex items-center gap-2">Day

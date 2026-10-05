@@ -19,14 +19,14 @@
     <div id="event-form-errors"></div>
 
     <div>
-      <label class="block text-sm font-medium text-gray-700 mb-1">Event Title <span class="text-red-500">*</span></label>
-      <input type="text" name="title" value="{{title_val}}" required
+      <label class="block text-sm font-medium text-gray-700 mb-1" for="events-form-title">Event Title <span class="text-red-500">*</span></label>
+      <input id="events-form-title" type="text" name="title" value="{{title_val}}" required
              class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-yellow-400"
              placeholder="Spring Showcase 2026">
     </div>
 
     <div>
-      <label class="block text-sm font-medium text-gray-700 mb-1">Event Lead <span class="text-gray-400">(optional)</span></label>
+      <label class="block text-sm font-medium text-gray-700 mb-1" for="event-lead-select">Event Lead <span class="text-gray-400">(optional)</span></label>
       <select name="event_lead_id" id="event-lead-select"
               class="ts-member w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-yellow-400">
         {{{member_options}}}
@@ -34,8 +34,8 @@
     </div>
 
     <div class="f-discord">
-      <label class="block text-sm font-medium text-gray-700 mb-1">Extra Role Pings <span class="text-gray-400">(optional)</span></label>
-      <select name="discord_ping_role_ids" multiple
+      <label class="block text-sm font-medium text-gray-700 mb-1" for="events-form-discord-ping-role-ids">Extra Role Pings <span class="text-gray-400">(optional)</span></label>
+      <select id="events-form-discord-ping-role-ids" name="discord_ping_role_ids" multiple
               class="ts-multi w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-yellow-400">
         {{{role_ping_options}}}
       </select>
@@ -43,15 +43,15 @@
     </div>
 
     <div>
-      <label class="block text-sm font-medium text-gray-700 mb-1">Description</label>
-      <textarea name="description" rows="3"
+      <label class="block text-sm font-medium text-gray-700 mb-1" for="events-form-description">Description</label>
+      <textarea id="events-form-description" name="description" rows="3"
                 class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-yellow-400"
                 placeholder="What's this event about...">{{description}}</textarea>
     </div>
 
     <div>
-      <label class="block text-sm font-medium text-gray-700 mb-1">Location</label>
-      <input type="text" name="location" value="{{location}}"
+      <label class="block text-sm font-medium text-gray-700 mb-1" for="events-form-location">Location</label>
+      <input id="events-form-location" type="text" name="location" value="{{location}}"
              maxlength="200"
              class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-yellow-400"
              placeholder="Convention Center, 123 Main St, Conway, AR 72032">
@@ -60,25 +60,25 @@
 
     <div class="grid grid-cols-2 gap-4">
       <div>
-        <label class="block text-sm font-medium text-gray-700 mb-1">Start <span class="text-red-500">*</span></label>
-        <input type="date" name="start_time" value="{{start_time_input}}" required
+        <label class="block text-sm font-medium text-gray-700 mb-1" for="events-form-start-time">Start <span class="text-red-500">*</span></label>
+        <input id="events-form-start-time" type="date" name="start_time" value="{{start_time_input}}" required
                class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-yellow-400">
       </div>
       <div>
-        <label class="block text-sm font-medium text-gray-700 mb-1">End <span class="text-red-500">*</span></label>
-        <input type="date" name="end_time" value="{{end_time_input}}" required
+        <label class="block text-sm font-medium text-gray-700 mb-1" for="events-form-end-time">End <span class="text-red-500">*</span></label>
+        <input id="events-form-end-time" type="date" name="end_time" value="{{end_time_input}}" required
                class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-yellow-400">
       </div>
     </div>
 
     <div>
-      <label class="block text-sm font-medium text-gray-700 mb-1">Signup Deadline <span class="text-gray-400">(optional)</span></label>
-      <input type="date" name="signup_deadline" value="{{signup_deadline_input}}"
+      <label class="block text-sm font-medium text-gray-700 mb-1" for="events-form-signup-deadline">Signup Deadline <span class="text-gray-400">(optional)</span></label>
+      <input id="events-form-signup-deadline" type="date" name="signup_deadline" value="{{signup_deadline_input}}"
              class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-yellow-400">
     </div>
 
     <div>
-      <label class="block text-sm font-medium text-gray-700 mb-1">Scope</label>
+      <label class="block text-sm font-medium text-gray-700 mb-1" for="event-scope-select">Scope</label>
       <select name="scope" id="event-scope-select"
               class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-yellow-400">
         {{#show_chapter_scope}}<option value="chapter" {{#scope_chapter}}selected{{/scope_chapter}}>Chapter Event</option>{{/show_chapter_scope}}
@@ -88,7 +88,7 @@
     </div>
 
     {{#show_chapter_scope}}<div id="event-chapter-row">
-      <label class="block text-sm font-medium text-gray-700 mb-1">Chapter <span class="text-gray-400">(optional for admins)</span></label>
+      <label class="block text-sm font-medium text-gray-700 mb-1" for="event-chapter-select">Chapter <span class="text-gray-400">(optional for admins)</span></label>
       <select name="chapter_id" id="event-chapter-select"
               class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-yellow-400">
         {{{chapter_options}}}
@@ -145,7 +145,7 @@
         </label>
       </div>
       <div id="existing-thread-row" style="display:none">
-        <select name="existing_thread_id" id="existing-thread-select"
+        <select name="existing_thread_id" id="existing-thread-select" aria-label="Existing Discord thread"
                 class="ts-thread w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-yellow-400">
           <option value="">Loading threads…</option>
         </select>
@@ -183,8 +183,8 @@
 
       <div class="grid grid-cols-2 gap-4">
         <div>
-          <label class="block text-sm font-medium text-gray-700 mb-1">Entrance Fee</label>
-          <input type="text" name="entrance_fee" value="{{entrance_fee}}"
+          <label class="block text-sm font-medium text-gray-700 mb-1" for="events-form-entrance-fee">Entrance Fee</label>
+          <input id="events-form-entrance-fee" type="text" name="entrance_fee" value="{{entrance_fee}}"
                  class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-yellow-400"
                  placeholder="e.g. $5, Free">
         </div>
@@ -192,39 +192,39 @@
 
       <div class="grid grid-cols-3 gap-4 mt-3">
         <div>
-          <label class="block text-sm font-medium text-gray-700 mb-1">Public Kids</label>
-          <input type="number" name="public_kids" value="{{public_kids}}" min="0"
+          <label class="block text-sm font-medium text-gray-700 mb-1" for="events-form-public-kids">Public Kids</label>
+          <input id="events-form-public-kids" type="number" name="public_kids" value="{{public_kids}}" min="0"
                  class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-yellow-400">
         </div>
         <div>
-          <label class="block text-sm font-medium text-gray-700 mb-1">Public Teens</label>
-          <input type="number" name="public_teens" value="{{public_teens}}" min="0"
+          <label class="block text-sm font-medium text-gray-700 mb-1" for="events-form-public-teens">Public Teens</label>
+          <input id="events-form-public-teens" type="number" name="public_teens" value="{{public_teens}}" min="0"
                  class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-yellow-400">
         </div>
         <div>
-          <label class="block text-sm font-medium text-gray-700 mb-1">Public Adults</label>
-          <input type="number" name="public_adults" value="{{public_adults}}" min="0"
+          <label class="block text-sm font-medium text-gray-700 mb-1" for="events-form-public-adults">Public Adults</label>
+          <input id="events-form-public-adults" type="number" name="public_adults" value="{{public_adults}}" min="0"
                  class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-yellow-400">
         </div>
       </div>
 
       <div class="mt-3">
-        <label class="block text-sm font-medium text-gray-700 mb-1">Social Media Links / Mentions</label>
-        <textarea name="social_media_links" rows="2"
+        <label class="block text-sm font-medium text-gray-700 mb-1" for="events-form-social-media-links">Social Media Links / Mentions</label>
+        <textarea id="events-form-social-media-links" name="social_media_links" rows="2"
                   class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-yellow-400"
                   placeholder="Links to social media posts, mentions, announcements...">{{social_media_links}}</textarea>
       </div>
 
       <div class="mt-3">
-        <label class="block text-sm font-medium text-gray-700 mb-1">What You Liked Best</label>
-        <textarea name="event_feedback" rows="2"
+        <label class="block text-sm font-medium text-gray-700 mb-1" for="events-form-event-feedback">What You Liked Best</label>
+        <textarea id="events-form-event-feedback" name="event_feedback" rows="2"
                   class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-yellow-400"
                   placeholder="What you liked best about the event...">{{event_feedback}}</textarea>
       </div>
     </div>
 
     <div>
-      <label class="block text-sm font-medium text-gray-700 mb-1">Notes</label>
+      <label class="block text-sm font-medium text-gray-700 mb-1" for="event-notes-editor">Notes</label>
       <textarea name="notes" rows="4" id="event-notes-editor"
                 class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-yellow-400"
                 placeholder="Additional notes, reports, follow-ups...">{{notes}}</textarea>

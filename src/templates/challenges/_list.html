@@ -20,8 +20,8 @@
   <form hx-post="/challenges" hx-target="#challenge-create-result" hx-swap="innerHTML"
         class="bg-white rounded-xl border border-gray-200 p-5 space-y-3 text-sm">
     <h3 class="font-semibold text-gray-800">New challenge</h3>
-    <input name="title" required maxlength="150" placeholder="e.g. Microscale Castle" class="w-full border border-gray-300 rounded-lg px-3 py-2">
-    <textarea name="description" rows="2" placeholder="Rules, size limits, prizes..." class="w-full border border-gray-300 rounded-lg px-3 py-2"></textarea>
+    <label class="block text-gray-700">Challenge name<input name="title" required maxlength="150" placeholder="e.g. Microscale Castle" class="mt-1 w-full border border-gray-300 rounded-lg px-3 py-2"></label>
+    <label class="block text-gray-700">Rules and details<textarea name="description" rows="2" placeholder="Rules, size limits, prizes..." class="mt-1 w-full border border-gray-300 rounded-lg px-3 py-2"></textarea></label>
     <div class="flex flex-wrap items-center gap-3">
       <label class="flex items-center gap-2">Entries open <input type="date" name="starts_on" value="{{today}}" required class="border border-gray-300 rounded-lg px-2 py-1"></label>
       <label class="flex items-center gap-2">until <input type="date" name="ends_on" required class="border border-gray-300 rounded-lg px-2 py-1"></label>

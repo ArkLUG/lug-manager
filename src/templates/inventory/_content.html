@@ -2,7 +2,7 @@
   <div class="flex flex-wrap items-center justify-between gap-2">
     <div>
       <h2 class="text-xl font-semibold text-gray-800">Inventory</h2>
-      <p class="text-sm text-gray-500">LUG-owned tables, baseplates, display cases, banners and more - where they're kept and who has them right now.</p>
+      <p class="text-sm text-gray-500">Tables, baseplates, display cases, banners and more - the LUG's and members' own - where they're kept and who has them right now.</p>
     </div>
     {{#can_manage}}<a href="/inventory.csv" download class="px-3 py-1.5 border border-gray-300 rounded-lg text-sm text-gray-700 hover:bg-gray-50">Export CSV</a>{{/can_manage}}
   </div>
@@ -67,7 +67,7 @@
           <option value="0">Wherever it is</option>
           {{#location_options}}<option value="{{id}}">{{name}}</option>{{/location_options}}
         </select></label>
-      <input name="notes" maxlength="500" placeholder="Notes (e.g. for which show)" class="md:col-span-3 border border-gray-300 rounded-lg px-2 py-1.5">
+      <label class="md:col-span-3">Notes <span class="text-gray-400">(optional)</span><input name="notes" maxlength="500" placeholder="e.g. for which show" class="mt-1 w-full border border-gray-300 rounded-lg px-2 py-1.5"></label>
       <button class="px-4 py-2 bg-yellow-400 text-gray-900 rounded-lg font-semibold hover:bg-yellow-300">Check out</button>
     </form>
     {{/has_item_options}}{{/can_manage}}

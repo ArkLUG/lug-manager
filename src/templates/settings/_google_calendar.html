@@ -12,15 +12,15 @@
     <p class="text-sm text-gray-500 mb-6">Sync meetings and events to a Google Calendar using a service account. Leave blank to disable.</p>
     <form hx-post="/settings/google-calendar" hx-target="#gcal-feedback" hx-swap="innerHTML" class="space-y-4">
       <div>
-        <label class="block text-sm font-medium text-gray-700 mb-1">Service Account JSON Path</label>
-        <input type="text" name="google_service_account_json_path" value="{{google_sa_path}}"
+        <label class="block text-sm font-medium text-gray-700 mb-1" for="settings-google-calendar-google-service-account-json-path">Service Account JSON Path</label>
+        <input id="settings-google-calendar-google-service-account-json-path" type="text" name="google_service_account_json_path" value="{{google_sa_path}}"
                placeholder="/etc/lug-manager/service-account.json"
                class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-yellow-400 focus:border-transparent font-mono">
         <p class="text-xs text-gray-400 mt-1">Absolute path to the Google Cloud service account key file (.json) on the server.</p>
       </div>
       <div>
-        <label class="block text-sm font-medium text-gray-700 mb-1">Google Calendar ID</label>
-        <input type="text" name="google_calendar_id" value="{{google_calendar_id}}"
+        <label class="block text-sm font-medium text-gray-700 mb-1" for="settings-google-calendar-google-calendar-id">Google Calendar ID</label>
+        <input id="settings-google-calendar-google-calendar-id" type="text" name="google_calendar_id" value="{{google_calendar_id}}"
                placeholder="abc123@group.calendar.google.com"
                class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-yellow-400 focus:border-transparent font-mono">
         <p class="text-xs text-gray-400 mt-1">Found in Google Calendar → Settings → Calendar ID. Share the calendar with the service account email as an editor.</p>

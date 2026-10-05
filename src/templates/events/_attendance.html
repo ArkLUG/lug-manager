@@ -41,7 +41,7 @@
             hx-target="#att-list-event-{{entity_id}}" hx-swap="outerHTML"
             class="flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
         <input type="hidden" name="entity_id" value="{{entity_id}}">
-        <select name="member_id" multiple id="att-add-event-{{day_id}}"
+        <select name="member_id" multiple id="att-add-event-{{day_id}}" aria-label="Members to add"
                 hx-get="/api/member-options" hx-trigger="load" hx-target="this" hx-swap="innerHTML"
                 data-tomselect="multi"
                 class="flex-1 text-xs border border-gray-300 rounded px-2 py-1.5">

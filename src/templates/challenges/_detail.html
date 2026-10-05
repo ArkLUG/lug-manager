@@ -44,8 +44,8 @@
   <form hx-post="/challenges/{{id}}/entries" hx-encoding="multipart/form-data" hx-target="#challenge-{{id}}" hx-swap="outerHTML"
         class="bg-white rounded-xl border border-gray-200 p-5 space-y-3 text-sm">
     <h3 class="font-semibold text-gray-800">Enter your build</h3>
-    <input name="title" required maxlength="150" placeholder="Name of your build" class="w-full border border-gray-300 rounded-lg px-3 py-2">
-    <input type="file" name="photo" accept="image/jpeg,image/png,image/gif,image/webp" required class="block w-full">
+    <label class="block text-gray-700">Name of your build<input name="title" required maxlength="150" class="mt-1 w-full border border-gray-300 rounded-lg px-3 py-2"></label>
+    <label class="block text-gray-700">Photo<input type="file" name="photo" accept="image/jpeg,image/png,image/gif,image/webp" required class="mt-1 block w-full"></label>
     <p class="text-xs text-gray-500">One entry per member. Location data is removed from photos.</p>
     <button class="px-4 py-2 bg-yellow-400 text-gray-900 rounded-lg font-semibold hover:bg-yellow-300">Submit entry</button>
   </form>
