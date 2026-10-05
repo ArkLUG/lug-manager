@@ -40,12 +40,13 @@ TEST_F(IntegrationTest, TreasuryTotalsAndLedger) {
     expect_contains(page, "Treasury 2030");
     expect_contains(page, "$100.00");      // opening
     expect_contains(page, "$25.00");       // dues
-    expect_contains(page, "Dues - Regular U. (cash)");
+    expect_contains(page, "treasury-tab-ledger");                        // Overview tab first
+    expect_contains(GET("/treasury?year=2030&tab=ledger", admin_token), "Dues - Regular U. (cash)");
     expect_contains(page, "-$815.50");     // net = 25 + 200 - 1040.50
     expect_contains(page, "-$715.50");     // closing = 100 - 815.50
     expect_contains(page, "Money Show");
     expect_contains(page, "-$840.50");     // event net
-    expect_contains(page, "<option value=\"Table fee\">");
+    expect_contains(GET("/treasury?year=2030&tab=ledger", admin_token), "<option value=\"Table fee\">");
 
     auto csv = GET("/treasury.csv?year=2030", admin_token);
     EXPECT_EQ(csv.code, 200);
@@ -140,4 +141,79 @@ TEST_F(IntegrationTest, TreasuryRecordsDues) {
     auto m = member_repo->find_by_id(regular_member_id);
     ASSERT_TRUE(m.has_value());
     EXPECT_EQ(m->paid_until, "2030-12-31");
+}
+
+TEST_F(IntegrationTest, TreasuryEditEntry) {
+    ASSERT_EQ(POST("/treasury", "entry_on=2030-05-01&kind=expense&category=Snacks&amount=12&description=Chips", admin_token).code, 200);
+    auto q = db->prepare("SELECT id FROM treasury_entries WHERE category='Snacks'");
+    ASSERT_TRUE(q.step());
+    const std::string id = std::to_string(q.col_int(0));
+    q.reset();
+    EXPECT_EQ(GET("/treasury/" + id + "/edit", member_token).code, 403);
+    auto form = GET("/treasury/" + id + "/edit", admin_token);
+    EXPECT_EQ(form.code, 200);
+    expect_contains(form, "Edit entry");
+    expect_contains(form, "value=\"Chips\"");
+    expect_contains(form, "value=\"12.00\"");
+    EXPECT_EQ(POST("/treasury/" + id, "entry_on=2030-05-02&kind=expense&amount=0", admin_token).code, 400);
+    EXPECT_EQ(POST("/treasury/" + id, "entry_on=2030-05-02&kind=income&amount=15", member_token).code, 403);
+    auto r = POST("/treasury/" + id, "entry_on=2030-05-02&kind=expense&category=Food&amount=15.50&description=Pizza", admin_token);
+    EXPECT_EQ(r.code, 200);
+    expect_contains(r, "Entry updated.");
+    expect_contains(r, "Pizza");
+    expect_contains(r, "-$15.50");
+    auto st = db->prepare("SELECT entry_on, category, amount_cents FROM treasury_entries WHERE id=?");
+    st.bind(1, static_cast<int64_t>(std::stoll(id)));
+    ASSERT_TRUE(st.step());
+    EXPECT_EQ(st.col_text(0), "2030-05-02");
+    EXPECT_EQ(st.col_text(1), "Food");
+    EXPECT_EQ(st.col_int(2), 1550);
+    st.reset();
+    EXPECT_EQ(query_int(*db, "SELECT COUNT(*) FROM audit_log WHERE action='treasury.edit' AND details LIKE '%amount: $12.00 -> $15.50%'"), 1);
+    EXPECT_EQ(POST("/treasury/999999", "entry_on=2030-05-02&kind=expense&amount=1", admin_token).code, 404);
+}
+
+TEST_F(IntegrationTest, TreasuryVisibilitySettings) {
+    ASSERT_EQ(POST("/treasury", "entry_on=2030-06-01&kind=income&category=Raffle&amount=50", admin_token).code, 200);
+    {
+        auto d = db->prepare("INSERT INTO dues_payments (member_id, paid_on, amount_cents, method, covers_until) VALUES (?, '2030-01-15', 2000, 'cash', '2030-12-31')");
+        d.bind(1, regular_member_id);
+        d.step();
+    }
+    // Default: admins and treasurers only; no sidebar link for others
+    EXPECT_EQ(GET("/treasury", member_token).code, 403);
+    expect_not_contains(GET("/dashboard", member_token), "hx-get=\"/treasury\"");
+    EXPECT_NE(GET("/settings/treasury", chapter_lead_token).code, 200);
+    expect_contains(GET("/settings/treasury", admin_token), "Who paid dues");
+
+    // Members: overview only
+    ASSERT_EQ(POST("/settings/treasury", "summary=members&ledger=treasurers&receipts=treasurers&dues_names=treasurers", admin_token).code, 200);
+    auto m = GET("/treasury?year=2030", member_token);
+    EXPECT_EQ(m.code, 200);
+    expect_contains(m, "$50.00");
+    expect_not_contains(m, "treasury-tab-ledger");
+    expect_not_contains(m, "Record income");
+    expect_not_contains(m, "Export CSV");
+    expect_contains(GET("/dashboard", member_token), "hx-get=\"/treasury\"");
+    EXPECT_EQ(GET("/treasury.csv?year=2030", member_token).code, 403);
+    expect_not_contains(GET("/treasury?year=2030&tab=ledger", member_token), ">Ledger</h3>");   // overview only, even if asked
+
+    // Leads: ledger without dues names; members still overview only
+    ASSERT_EQ(POST("/settings/treasury", "summary=members&ledger=leads&receipts=treasurers&dues_names=treasurers", admin_token).code, 200);
+    auto l = GET("/treasury?year=2030&tab=ledger", chapter_lead_token);
+    expect_contains(l, "Dues payment");
+    expect_not_contains(l, "Regular U.");
+    expect_not_contains(l, "Record income");                            // still can't edit
+    auto csv = GET("/treasury.csv?year=2030", chapter_lead_token);
+    EXPECT_EQ(csv.code, 200);
+    expect_not_contains(csv, "Regular U.");
+    EXPECT_EQ(POST("/treasury", "entry_on=2030-06-02&kind=income&amount=5", chapter_lead_token).code, 403);
+    EXPECT_EQ(GET("/treasury?year=2030&tab=ledger", member_token).code, 200);
+    expect_not_contains(GET("/treasury?year=2030&tab=ledger", member_token), "Dues payment");
+
+    // Junk values fall back to treasurers-only
+    POST("/settings/treasury", "summary=everyone&ledger=x", admin_token);
+    EXPECT_EQ(settings_repo->get("treasury_view_summary"), "treasurers");
+    EXPECT_EQ(GET("/treasury", chapter_lead_token).code, 403);
+    EXPECT_GE(query_int(*db, "SELECT COUNT(*) FROM audit_log WHERE action='settings.update' AND details LIKE 'Treasury visibility:%'"), 2);
 }

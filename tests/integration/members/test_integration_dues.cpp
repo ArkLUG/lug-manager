@@ -133,3 +133,43 @@ TEST_F(IntegrationTest, DuesGracePeriod) {
     POST("/settings/dues", "dues_amount=20&dues_year_end_month=12&dues_grace_days=-4", admin_token);
     EXPECT_EQ(settings_repo->get("dues_grace_days"), "0");
 }
+
+TEST_F(IntegrationTest, EditAndDeleteDuesPayments) {
+    const std::string base = "/members/" + std::to_string(regular_member_id) + "/dues";
+    ASSERT_EQ(POST(base, "paid_on=2026-01-05&covers_until=2026-12-31&amount=20&method=cash", admin_token).code, 200);
+    ASSERT_EQ(POST(base, "paid_on=2027-01-03&covers_until=2027-12-31&amount=20&method=cash", admin_token).code, 200);
+    EXPECT_EQ(member_repo->find_by_id(regular_member_id)->paid_until, "2027-12-31");
+    auto later = query_int(*db, "SELECT id FROM dues_payments WHERE covers_until='2027-12-31'");
+    auto first = query_int(*db, "SELECT id FROM dues_payments WHERE covers_until='2026-12-31'");
+    const std::string later_url = base + "/" + std::to_string(later);
+
+    // Only admins/treasurers; leads can record but not edit
+    EXPECT_EQ(GET(later_url + "/edit", chapter_lead_token).code, 403);
+    EXPECT_EQ(POST(later_url, "paid_on=2027-01-03&covers_until=2027-06-30&amount=10", chapter_lead_token).code, 403);
+    auto form = GET(later_url + "/edit", admin_token);
+    EXPECT_EQ(form.code, 200);
+    expect_contains(form, "Edit payment");
+    expect_contains(form, "value=\"20.00\"");
+    EXPECT_EQ(POST(later_url, "paid_on=bad&covers_until=2027-06-30&amount=10", admin_token).code, 400);
+
+    // Shortening the payment that set paid_until moves paid_until with it
+    auto r = POST(later_url, "paid_on=2027-01-03&covers_until=2027-06-30&amount=10.00&method=card", admin_token);
+    EXPECT_EQ(r.code, 200);
+    expect_contains(r, "Payment updated.");
+    expect_contains(r, "$10.00");
+    EXPECT_EQ(member_repo->find_by_id(regular_member_id)->paid_until, "2027-06-30");
+    EXPECT_EQ(query_int(*db, "SELECT COUNT(*) FROM audit_log WHERE action='member.dues_payment_edit' AND details LIKE '%covers until: 2027-12-31 -> 2027-06-30%'"), 1);
+    // Editing an older payment doesn't shorten paid_until
+    POST(base + "/" + std::to_string(first), "paid_on=2026-01-05&covers_until=2026-10-31&amount=20", admin_token);
+    EXPECT_EQ(member_repo->find_by_id(regular_member_id)->paid_until, "2027-06-30");
+
+    // Deleting the payment that set paid_until falls back to the remaining one
+    auto d = POST(later_url + "/delete", "", admin_token);
+    EXPECT_EQ(d.code, 200);
+    expect_contains(d, "Paid until is now 2026-10-31.");
+    EXPECT_EQ(member_repo->find_by_id(regular_member_id)->paid_until, "2026-10-31");
+    // Deleting the last one leaves paid_until (nothing to fall back to) and says so
+    auto last = POST(base + "/" + std::to_string(first) + "/delete", "", admin_token);
+    expect_contains(last, "Paid until is unchanged");
+    EXPECT_EQ(member_repo->find_by_id(regular_member_id)->paid_until, "2026-10-31");
+}

@@ -303,7 +303,7 @@
       </a>
       {{/f_inventory}}
 
-      {{#can_treasury}}
+      {{#can_see_treasury}}
       {{#f_treasury}}
       <!-- Treasury (admin or treasurer) -->
       <a hx-get="/treasury"
@@ -320,7 +320,7 @@
         Treasury
       </a>
       {{/f_treasury}}
-      {{/can_treasury}}
+      {{/can_see_treasury}}
 
       {{#is_admin}}
       <!-- Attendance Overview (admin) -->
@@ -482,6 +482,16 @@
                     {{#active_dues_settings}}nav-active{{/active_dues_settings}}
                     {{^active_dues_settings}}nav-inactive{{/active_dues_settings}}">
             Dues
+          </a>
+          <a hx-get="/settings/treasury"
+             hx-target="#main-content"
+             hx-push-url="true"
+             hx-swap="innerHTML"
+             hx-indicator="#nav-spinner"
+             class="f-treasury block px-3 py-2 rounded-lg text-sm cursor-pointer transition-colors
+                    {{#active_treasury_settings}}nav-active{{/active_treasury_settings}}
+                    {{^active_treasury_settings}}nav-inactive{{/active_treasury_settings}}">
+            Treasury
           </a>
           <a hx-get="/settings/site"
              hx-target="#main-content"

@@ -61,6 +61,67 @@ bool DuesRepository::remove(int64_t payment_id, int64_t member_id) {
     return stmt.step();
 }
 
+std::optional<DuesPayment> DuesRepository::find(int64_t payment_id, int64_t member_id) {
+    auto st = db_.prepare("SELECT id, member_id, paid_on, amount_cents, method, covers_until, note FROM dues_payments "
+                          "WHERE id=? AND member_id=?");
+    st.bind(1, payment_id); st.bind(2, member_id);
+    if (!st.step()) return std::nullopt;
+    DuesPayment p;
+    p.id = st.col_int(0); p.member_id = st.col_int(1); p.paid_on = st.col_text(2); p.amount_cents = st.col_int(3);
+    p.method = st.col_text(4); p.covers_until = st.col_text(5); p.note = st.col_text(6);
+    return p;
+}
+
+namespace {
+std::string paid_until_of(SqliteDatabase& db, int64_t member_id) {
+    auto st = db.prepare("SELECT COALESCE(paid_until,'') FROM members WHERE id=?");
+    st.bind(1, member_id);
+    return st.step() ? st.col_text(0) : "";
+}
+std::string latest_cover(SqliteDatabase& db, int64_t member_id) {
+    auto st = db.prepare("SELECT COALESCE(MAX(covers_until),'') FROM dues_payments WHERE member_id=?");
+    st.bind(1, member_id);
+    return st.step() ? st.col_text(0) : "";
+}
+void set_paid_until(SqliteDatabase& db, int64_t member_id, const std::string& until) {
+    // Moving it into the future marks them paid; an earlier date is left for
+    // the daily check (which applies the grace period) to expire.
+    auto up = db.prepare("UPDATE members SET paid_until=?, is_paid = CASE WHEN ? >= date('now','localtime') THEN 1 ELSE is_paid END, "
+                         "updated_at=datetime('now') WHERE id=?");
+    up.bind(1, until); up.bind(2, until); up.bind(3, member_id);
+    up.step();
+}
+}
+
+bool DuesRepository::update(int64_t payment_id, int64_t member_id, const std::string& paid_on, int64_t amount_cents,
+                            const std::string& method, const std::string& covers_until, const std::string& note) {
+    Transaction tx(db_);
+    auto before = find(payment_id, member_id);
+    if (!before) return false;
+    {
+        auto up = db_.prepare("UPDATE dues_payments SET paid_on=?, amount_cents=?, method=?, covers_until=?, note=? WHERE id=? AND member_id=?");
+        up.bind(1, paid_on); up.bind(2, amount_cents); up.bind(3, method); up.bind(4, covers_until); up.bind(5, note);
+        up.bind(6, payment_id); up.bind(7, member_id);
+        up.step();
+    }
+    const std::string current = paid_until_of(db_, member_id);
+    std::string next = current;
+    if (before->covers_until == current) next = latest_cover(db_, member_id);   // it set paid_until: follow it
+    if (covers_until > next) next = covers_until;
+    if (next != current) set_paid_until(db_, member_id, next);
+    tx.commit();
+    return true;
+}
+
+std::string DuesRepository::refit_paid_until(int64_t member_id, const std::string& removed_covers_until) {
+    const std::string current = paid_until_of(db_, member_id);
+    if (removed_covers_until != current) return current;
+    const std::string latest = latest_cover(db_, member_id);
+    if (latest.empty() || latest == current) return current;
+    set_paid_until(db_, member_id, latest);
+    return latest;
+}
+
 std::vector<DuesStatusRow> DuesRepository::rows(Statement& stmt) {
     std::vector<DuesStatusRow> out;
     while (stmt.step()) {

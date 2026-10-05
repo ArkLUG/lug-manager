@@ -49,12 +49,13 @@ std::string render_suggestion(const Member& m, SettingsRepository& settings, con
 }
 
 std::string render_panel(const crow::request& req, LugApp& app, const Member& m,
-                         DuesRepository& dues, SettingsRepository& settings, const std::string& flash = "") {
+                         DuesRepository& dues, SettingsRepository& settings, const std::string& flash = "",
+                         int64_t editing = 0) {
     auto& a = app.get_context<AuthMiddleware>(req).auth;
     crow::mustache::context ctx;
     ctx["member_id"]  = m.id;
     ctx["can_record"] = a.is_chapter_lead();
-    ctx["can_delete"] = a.is_admin();
+    ctx["can_delete"] = a.can_treasury();
     ctx["today"]      = today_ymd();
     ctx["suggestion"] = render_suggestion(m, settings, today_ymd());
     ctx["flash"]      = flash;
@@ -77,7 +78,18 @@ std::string render_panel(const crow::request& req, LugApp& app, const Member& m,
         arr[i]["covers_until"] = hist[i].covers_until;
         arr[i]["note"]         = hist[i].note;
         arr[i]["recorded_by"]  = hist[i].recorded_by_name;
-        arr[i]["can_delete"]   = a.is_admin();
+        arr[i]["can_delete"]   = a.can_treasury();
+        arr[i]["can_edit"]     = a.can_treasury();
+    }
+    if (editing > 0 && a.can_treasury()) {
+        if (auto p = dues.find(editing, m.id)) {
+            crow::json::wvalue e;
+            e["id"] = p->id; e["member_id"] = m.id;
+            e["paid_on"] = p->paid_on; e["covers_until"] = p->covers_until;
+            e["amount"] = p->amount_cents > 0 ? money(p->amount_cents).substr(1) : "";
+            e["method"] = p->method; e["note"] = p->note;
+            ctx["editing"] = std::move(e);
+        }
     }
     ctx["payments"] = std::move(arr);
     ctx["has_payments"] = !hist.empty();
@@ -130,19 +142,74 @@ void register_dues_routes(LugApp& app, MemberService& members, std::shared_ptr<D
         return res;
     });
 
-    // POST /members/<id>/dues/<pid>/delete - admin; doesn't change paid_until
+    // POST /members/<id>/dues/<pid>/delete - admins/treasurers; if the payment
+    // set paid_until, it falls back to the latest remaining payment
     CROW_ROUTE(app, "/members/<int>/dues/<int>/delete").methods("POST"_method)(
         [&app, &members, dues, &settings, &audit](const crow::request& req, int id, int pid) {
         crow::response res;
-        if (!require_auth(req, res, app, "admin")) return res;
+        if (!require_auth(req, res, app, "treasurer")) return res;
         auto m = members.get(id);
         if (!m) { res.code = 404; return res; }
-        if (dues->remove(pid, id))
+        std::string flash = "Record deleted.";
+        if (auto p = dues->find(pid, id); p && dues->remove(pid, id)) {
+            const std::string before = m->paid_until, after = dues->refit_paid_until(id, p->covers_until);
             audit.log(req, app, "member.dues_payment_delete", "member", m->id, m->display_name,
-                      "Deleted dues payment record #" + std::to_string(pid));
+                      "Deleted dues payment #" + std::to_string(pid) + " (" + money(p->amount_cents) + ", paid " + p->paid_on +
+                      ", covered until " + p->covers_until + ")" + (after != before ? "; paid until " + before + " -> " + after : ""));
+            if (after != before) flash += " Paid until is now " + after + ".";
+            else if (p->covers_until == before) flash += " Paid until is unchanged (no other payment covers it) - adjust it with Dues if needed.";
+        }
+        auto fresh = members.get(id);
         res.add_header("Content-Type", "text/html; charset=utf-8");
-        res.write(render_panel(req, app, *m, *dues, settings,
-                               "Record deleted. Paid-until is unchanged - adjust it with Dues if needed."));
+        res.add_header("HX-Trigger", "duesUpdated");
+        res.write(render_panel(req, app, fresh ? *fresh : *m, *dues, settings, flash));
+        return res;
+    });
+
+    // GET /members/<id>/dues/<pid>/edit - the panel with that payment's edit form
+    CROW_ROUTE(app, "/members/<int>/dues/<int>/edit")([&app, &members, dues, &settings](const crow::request& req, int id, int pid) {
+        crow::response res;
+        if (!require_auth(req, res, app, "treasurer")) return res;
+        auto m = members.get(id);
+        if (!m) { res.code = 404; return res; }
+        if (!dues->find(pid, id)) { res.code = 404; return res; }
+        res.add_header("Content-Type", "text/html; charset=utf-8");
+        res.write(render_panel(req, app, *m, *dues, settings, "", pid));
+        return res;
+    });
+
+    // POST /members/<id>/dues/<pid> - change a payment (admins/treasurers)
+    CROW_ROUTE(app, "/members/<int>/dues/<int>").methods("POST"_method)(
+        [&app, &members, dues, &settings, &audit](const crow::request& req, int id, int pid) {
+        crow::response res;
+        if (!require_auth(req, res, app, "treasurer")) return res;
+        auto m = members.get(id);
+        if (!m) { res.code = 404; return res; }
+        auto before = dues->find(pid, id);
+        if (!before) { res.code = 404; return res; }
+        FormBody f(req);
+        std::string paid_on = f.get("paid_on", 10), covers = f.get("covers_until", 10);
+        int64_t cents = parse_cents(f.get("amount", 20));
+        res.add_header("Content-Type", "text/html; charset=utf-8");
+        if (!is_ymd(paid_on) || !is_ymd(covers) || cents < 0) {
+            res.code = 400;
+            res.write(render_panel(req, app, *m, *dues, settings, "Enter a valid paid date, 'covers until' date and amount.", pid));
+            return res;
+        }
+        const std::string method = f.get("method", 50), note = f.get("note", 500);
+        dues->update(pid, id, paid_on, cents, method, covers, note);
+        std::string changes;
+        auto diff = [&](const char* what, const std::string& a, const std::string& b) {
+            if (a != b) changes += std::string(changes.empty() ? "" : "; ") + what + ": " + (a.empty() ? "-" : a) + " -> " + (b.empty() ? "-" : b);
+        };
+        diff("paid on", before->paid_on, paid_on); diff("amount", money(before->amount_cents), money(cents));
+        diff("method", before->method, method); diff("covers until", before->covers_until, covers); diff("note", before->note, note);
+        auto fresh = members.get(id);
+        if (fresh && fresh->paid_until != m->paid_until) diff("member paid until", m->paid_until, fresh->paid_until);
+        audit.log(req, app, "member.dues_payment_edit", "member", m->id, m->display_name,
+                  "Edited dues payment #" + std::to_string(pid) + (changes.empty() ? " (no changes)" : ": " + changes));
+        res.add_header("HX-Trigger", "duesUpdated");
+        res.write(render_panel(req, app, fresh ? *fresh : *m, *dues, settings, "Payment updated."));
         return res;
     });
 

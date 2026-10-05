@@ -8,6 +8,7 @@ target_sources(lug_core PRIVATE
   Palettes.hpp
   PhotoStore.hpp
   SiteSettings.hpp
+  TreasuryAccess.hpp
 )
 add_subdirectory(events)
 add_subdirectory(members)

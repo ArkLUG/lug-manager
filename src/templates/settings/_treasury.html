@@ -1,0 +1,26 @@
+<div class="max-w-2xl space-y-4" data-page-title="Treasury settings">
+  <div>
+    <h2 class="text-xl font-semibold text-gray-800">Treasury</h2>
+    <p class="text-sm text-gray-500">Who can see each part of the Treasury page. Admins and treasurers always see everything and are the only ones who can change it.</p>
+  </div>
+  {{^treasury_on}}<p class="text-sm text-amber-700 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2">The Treasury is switched off under Settings &gt; Features.</p>{{/treasury_on}}
+  <form hx-post="/settings/treasury" hx-target="#main-content" hx-swap="innerHTML" class="bg-white rounded-xl border border-gray-200 divide-y divide-gray-100 text-sm">
+    {{#parts}}
+    <fieldset class="p-5 space-y-2" id="treasury-vis-{{key}}">
+      <legend class="sr-only">{{title}}</legend>
+      <div class="font-medium text-gray-800">{{title}}</div>
+      <p class="text-xs text-gray-500">{{help}}</p>
+      <div class="flex flex-wrap gap-x-5 gap-y-2 pt-1">
+        <label class="inline-flex items-center gap-2 cursor-pointer"><input type="radio" name="{{key}}" value="treasurers" {{#treasurers}}checked{{/treasurers}} class="accent-yellow-400"> Admins &amp; treasurers</label>
+        <label class="inline-flex items-center gap-2 cursor-pointer"><input type="radio" name="{{key}}" value="leads" {{#leads}}checked{{/leads}} class="accent-yellow-400"> + chapter leads &amp; moderators</label>
+        <label class="inline-flex items-center gap-2 cursor-pointer"><input type="radio" name="{{key}}" value="members" {{#members}}checked{{/members}} class="accent-yellow-400"> All members</label>
+      </div>
+    </fieldset>
+    {{/parts}}
+    <div class="p-5 flex items-center gap-3">
+      <button class="px-4 py-2 bg-gray-800 text-white rounded-lg font-medium hover:bg-gray-700">Save</button>
+      {{#flash}}<span class="text-green-700">{{flash}}</span>{{/flash}}
+    </div>
+  </form>
+  <p class="text-xs text-gray-500">Tip: to share how the LUG's money is doing without details, give members the Overview only.</p>
+</div>

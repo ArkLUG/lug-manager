@@ -1,5 +1,6 @@
 #pragma once
 #include "db/SqliteDatabase.hpp"
+#include <optional>
 #include <string>
 #include <vector>
 
@@ -33,6 +34,16 @@ public:
                 const std::string& note, int64_t recorded_by);
     std::vector<DuesPayment> history(int64_t member_id);
     bool remove(int64_t payment_id, int64_t member_id);
+    std::optional<DuesPayment> find(int64_t payment_id, int64_t member_id);
+    // Changes a payment. If it was the payment that set the member's
+    // paid_until, paid_until follows it (the latest covers_until of their
+    // payments); a later covers_until always extends it. Atomic.
+    bool update(int64_t payment_id, int64_t member_id, const std::string& paid_on, int64_t amount_cents,
+                const std::string& method, const std::string& covers_until, const std::string& note);
+    // After a payment is deleted: if it set paid_until, paid_until falls back
+    // to the latest remaining covers_until (unchanged if none remain).
+    // Returns the member's paid_until afterwards.
+    std::string refit_paid_until(int64_t member_id, const std::string& removed_covers_until);
 
     // Members currently paid whose paid_until falls in [today, until].
     std::vector<DuesStatusRow> expiring_between(const std::string& today, const std::string& until);

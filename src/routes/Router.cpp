@@ -44,7 +44,7 @@ void register_all_routes(LugApp& app, Services& svc) {
                             svc.audit);
     register_account_routes(app, svc.attendance_repo.db(), svc.members, svc.photos, svc.audit);
     register_inventory_routes(app, svc.attendance_repo.db(), svc.audit, svc.photos, svc.events, svc.chapter_members);
-    register_treasury_routes(app, svc.attendance_repo.db(), svc.audit,
+    register_treasury_routes(app, svc.attendance_repo.db(), svc.settings, svc.audit,
                              std::make_shared<PhotoStore>(svc.data_dir, "uploads/receipts"));
     register_member_merge_routes(app, svc.attendance_repo.db(), svc.audit);
     register_shows_routes(app, svc.attendance_repo.db(), svc.settings, svc.audit);

@@ -15,6 +15,7 @@
         <td>{{method}}</td>
         <td>{{covers_until}}</td>
         <td class="text-right">
+          {{#can_edit}}<button hx-get="/members/{{member_id}}/dues/{{id}}/edit" hx-target="#dues-panel-{{member_id}}" hx-swap="outerHTML" class="text-gray-700 hover:text-gray-900 mr-2">Edit</button>{{/can_edit}}
           {{#can_delete}}
           <button hx-post="/members/{{member_id}}/dues/{{id}}/delete" hx-target="#dues-panel-{{member_id}}" hx-swap="outerHTML"
                   hx-confirm="Delete this payment record?" class="text-red-600 hover:text-red-800">Delete</button>
@@ -28,6 +29,22 @@
   {{/has_payments}}
   {{^has_payments}}<p class="text-xs text-gray-400">No payments recorded.</p>{{/has_payments}}
 
+  {{#editing}}
+  <form hx-post="/members/{{member_id}}/dues/{{id}}" hx-target="#dues-panel-{{member_id}}" hx-swap="outerHTML" id="dues-edit-form"
+        class="border-2 border-yellow-400 rounded-lg p-3 grid grid-cols-2 gap-2 text-xs">
+    <p class="col-span-2 font-medium text-gray-800">Edit payment</p>
+    <label class="text-gray-600">Paid on<input type="date" name="paid_on" value="{{paid_on}}" required class="mt-0.5 w-full border border-gray-300 rounded px-2 py-1"></label>
+    <label class="text-gray-600">Covers until<input type="date" name="covers_until" value="{{covers_until}}" required class="mt-0.5 w-full border border-gray-300 rounded px-2 py-1"></label>
+    <label class="text-gray-600">Amount<input name="amount" value="{{amount}}" inputmode="decimal" class="mt-0.5 w-full border border-gray-300 rounded px-2 py-1"></label>
+    <label class="text-gray-600">Method<input name="method" value="{{method}}" maxlength="50" class="mt-0.5 w-full border border-gray-300 rounded px-2 py-1"></label>
+    <label class="col-span-2 text-gray-600">Note<input name="note" value="{{note}}" maxlength="500" class="mt-0.5 w-full border border-gray-300 rounded px-2 py-1"></label>
+    <div class="col-span-2 flex gap-2">
+      <button class="flex-1 py-1.5 bg-yellow-400 text-gray-900 rounded-lg font-semibold hover:bg-yellow-300">Save changes</button>
+      <button type="button" hx-get="/members/{{member_id}}/dues" hx-target="#dues-panel-{{member_id}}" hx-swap="outerHTML" class="px-3 py-1.5 text-gray-600 hover:text-gray-900">Cancel</button>
+    </div>
+  </form>
+  {{/editing}}
+  {{^editing}}
   {{#can_record}}
   <details class="border border-gray-200 rounded-lg">
     <summary class="cursor-pointer px-3 py-1.5 text-xs font-medium text-gray-700">Record a payment</summary>
@@ -43,4 +60,5 @@
     </form>
   </details>
   {{/can_record}}
+  {{/editing}}
 </div>

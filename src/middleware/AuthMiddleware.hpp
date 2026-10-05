@@ -4,6 +4,7 @@
 #include "repositories/members/ChapterMemberRepository.hpp"
 #include "repositories/admin/SettingsRepository.hpp"
 #include "services/Features.hpp"
+#include "services/TreasuryAccess.hpp"
 #include "services/Palettes.hpp"
 #include "utils/web/AssetVersion.hpp"
 #include <crow.h>
@@ -222,6 +223,9 @@ inline void set_layout_auth(const crow::request& req, App& app,
     // than a function parameter, so every page picks this up automatically.
     auto& mw = app.template get_middleware<AuthMiddleware>();
     layout_ctx["lug_name"] = mw.settings ? mw.settings->get("lug_name", "LEGO fan community") : "LEGO fan community";
+    // Treasury link: anyone allowed to see some part of it (Settings > Treasury)
+    layout_ctx["can_see_treasury"] = treasury::view_for(mw.settings, ctx.auth.can_treasury(), ctx.auth.is_chapter_lead(),
+                                                        ctx.auth.authenticated).any();
     {
         // Colour theme: theirs, else the LUG default (services/Palettes.hpp).
         std::string mine;

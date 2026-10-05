@@ -2,16 +2,26 @@
   <div class="flex flex-wrap items-center justify-between gap-2">
     <div>
       <h2 class="text-xl font-semibold text-gray-800">Treasury {{year}}</h2>
-      <p class="text-sm text-gray-500">Dues recorded on member records plus the other income and expenses entered here.</p>
+      <p class="text-sm text-gray-500">Dues recorded on member records plus the other income and expenses entered here.{{#can_edit}} <a hx-get="/settings/treasury" hx-target="#main-content" hx-push-url="true" class="underline cursor-pointer">Who can see this</a>{{/can_edit}}</p>
     </div>
     <div class="flex items-center gap-2 text-sm">
-      <a hx-get="/treasury?year={{prev_year}}" hx-target="#main-content" hx-push-url="true" hx-swap="innerHTML" class="px-3 py-1.5 border border-gray-300 rounded-lg cursor-pointer hover:bg-gray-50">&larr; {{prev_year}}</a>
-      <a hx-get="/treasury?year={{next_year}}" hx-target="#main-content" hx-push-url="true" hx-swap="innerHTML" class="px-3 py-1.5 border border-gray-300 rounded-lg cursor-pointer hover:bg-gray-50">{{next_year}} &rarr;</a>
-      <a href="/treasury.csv?year={{year}}" download class="px-3 py-1.5 border border-gray-300 rounded-lg hover:bg-gray-50">Export CSV</a>
+      <a hx-get="/treasury?year={{prev_year}}{{tab_q}}" hx-target="#main-content" hx-push-url="true" hx-swap="innerHTML" class="px-3 py-1.5 border border-gray-300 rounded-lg cursor-pointer hover:bg-gray-50">&larr; {{prev_year}}</a>
+      <a hx-get="/treasury?year={{next_year}}{{tab_q}}" hx-target="#main-content" hx-push-url="true" hx-swap="innerHTML" class="px-3 py-1.5 border border-gray-300 rounded-lg cursor-pointer hover:bg-gray-50">{{next_year}} &rarr;</a>
+      {{#can_csv}}<a href="/treasury.csv?year={{year}}" download class="px-3 py-1.5 border border-gray-300 rounded-lg hover:bg-gray-50">Export CSV</a>{{/can_csv}}
     </div>
   </div>
   {{#flash}}<div class="text-sm rounded-lg px-4 py-2 border {{#flash_error}}border-red-200 bg-red-50 text-red-700{{/flash_error}}{{^flash_error}}border-green-200 bg-green-50 text-green-700{{/flash_error}}">{{flash}}</div>{{/flash}}
 
+  {{#show_tabs}}
+  <div class="flex gap-1 border-b border-gray-200 text-sm" role="tablist" aria-label="Treasury">
+    <a role="tab" id="treasury-tab-overview" aria-selected="{{#tab_overview}}true{{/tab_overview}}{{^tab_overview}}false{{/tab_overview}}" hx-get="/treasury?year={{year}}" hx-target="#main-content" hx-push-url="true" hx-swap="innerHTML"
+       class="px-4 py-2 -mb-px border-b-2 cursor-pointer {{#tab_overview}}border-gray-800 font-semibold text-gray-900{{/tab_overview}}{{^tab_overview}}border-transparent text-gray-500 hover:text-gray-800{{/tab_overview}}">Overview</a>
+    <a role="tab" id="treasury-tab-ledger" aria-selected="{{#tab_ledger}}true{{/tab_ledger}}{{^tab_ledger}}false{{/tab_ledger}}" hx-get="/treasury?year={{year}}&tab=ledger" hx-target="#main-content" hx-push-url="true" hx-swap="innerHTML"
+       class="px-4 py-2 -mb-px border-b-2 cursor-pointer {{#tab_ledger}}border-gray-800 font-semibold text-gray-900{{/tab_ledger}}{{^tab_ledger}}border-transparent text-gray-500 hover:text-gray-800{{/tab_ledger}}">Ledger</a>
+  </div>
+  {{/show_tabs}}
+
+  {{#see_summary}}
   <div class="grid grid-cols-2 md:grid-cols-6 gap-3">
     <div class="bg-white rounded-xl border border-gray-200 p-4"><div class="text-xs text-gray-500">Start of year</div><div class="text-lg font-semibold text-gray-800">{{opening}}</div></div>
     <div class="bg-white rounded-xl border border-gray-200 p-4"><div class="text-xs text-gray-500">Dues</div><div class="text-lg font-semibold text-green-700">{{dues}}</div></div>
@@ -21,47 +31,9 @@
     <div class="bg-white rounded-xl border border-gray-200 p-4"><div class="text-xs text-gray-500">End of year</div><div class="text-lg font-semibold {{#closing_negative}}text-red-600{{/closing_negative}}{{^closing_negative}}text-gray-800{{/closing_negative}}">{{closing}}</div></div>
   </div>
 
-  <section class="bg-white rounded-xl border border-gray-200 p-5">
-    <h3 class="font-semibold text-gray-800 mb-3">Record income or an expense</h3>
-    <form hx-post="/treasury" hx-encoding="multipart/form-data" hx-target="#treasury-page" hx-swap="outerHTML" class="grid grid-cols-1 md:grid-cols-6 gap-2 text-sm items-end">
-      <label>Date <input type="date" name="entry_on" value="{{today}}" required class="mt-1 w-full border border-gray-300 rounded-lg px-2 py-1.5"></label>
-      <label>Type
-        <select name="kind" class="mt-1 w-full border border-gray-300 rounded-lg px-2 py-1.5">
-          <option value="expense">Expense</option>
-          <option value="income">Income</option>
-        </select></label>
-      <label>Amount <input name="amount" required inputmode="decimal" placeholder="25.00" class="mt-1 w-full border border-gray-300 rounded-lg px-2 py-1.5"></label>
-      <label>Category <input name="category" list="treasury-cats" maxlength="60" placeholder="Table fee, supplies, donation..." class="mt-1 w-full border border-gray-300 rounded-lg px-2 py-1.5"></label>
-      <datalist id="treasury-cats">{{#known_categories}}<option value="{{name}}">{{/known_categories}}</datalist>
-      <label class="md:col-span-2">For event <span class="text-gray-400">(optional)</span>
-        <select name="event_id" class="mt-1 w-full border border-gray-300 rounded-lg px-2 py-1.5">
-          <option value="">-</option>
-          {{#event_options}}<option value="{{id}}">{{label}}</option>{{/event_options}}
-        </select></label>
-      <input name="description" maxlength="300" placeholder="Description" class="md:col-span-3 border border-gray-300 rounded-lg px-2 py-1.5">
-      <label class="md:col-span-2 text-xs text-gray-500">Receipt <span class="text-gray-400">(photo or PDF, optional)</span>
-        <input type="file" name="receipt" accept="image/jpeg,image/png,image/gif,image/webp,application/pdf" class="mt-1 block w-full text-sm"></label>
-      <button class="px-4 py-2 bg-yellow-400 text-gray-900 rounded-lg font-semibold hover:bg-yellow-300">Record</button>
-    </form>
-  </section>
+  {{/see_summary}}
 
-  <details class="f-dues bg-white rounded-xl border border-gray-200">
-    <summary class="cursor-pointer px-5 py-3 font-semibold text-gray-800">Record a dues payment</summary>
-    <form hx-post="/treasury/dues" hx-target="#treasury-page" hx-swap="outerHTML" class="px-5 pb-5 grid grid-cols-1 md:grid-cols-6 gap-2 text-sm items-end">
-      <label class="md:col-span-2">Member
-        <select name="member_id" required data-tomselect="single" class="mt-1 w-full">
-          <option value="">Choose a member…</option>
-          {{#members}}<option value="{{id}}">{{name}}</option>{{/members}}
-        </select></label>
-      <label>Paid on <input type="date" name="paid_on" value="{{today}}" required class="mt-1 w-full border border-gray-300 rounded-lg px-2 py-1.5"></label>
-      <label>Amount <input name="amount" required inputmode="decimal" placeholder="25.00" class="mt-1 w-full border border-gray-300 rounded-lg px-2 py-1.5"></label>
-      <label>Covers until <input type="date" name="covers_until" value="{{year_end}}" required class="mt-1 w-full border border-gray-300 rounded-lg px-2 py-1.5"></label>
-      <label>Method <input name="method" maxlength="40" placeholder="cash, card, PayPal" class="mt-1 w-full border border-gray-300 rounded-lg px-2 py-1.5"></label>
-      <input name="note" maxlength="300" placeholder="Note (optional)" class="md:col-span-5 border border-gray-300 rounded-lg px-2 py-1.5">
-      <button class="px-4 py-2 bg-gray-800 text-white rounded-lg font-medium hover:bg-gray-700">Record dues</button>
-    </form>
-  </details>
-
+  {{#tab_overview}}
   <div class="grid grid-cols-1 lg:grid-cols-3 gap-5">
     <section class="bg-white rounded-xl border border-gray-200 p-5">
       <h3 class="font-semibold text-gray-800 mb-3">By category</h3>
@@ -86,6 +58,82 @@
     </section>
   </div>
 
+  {{/tab_overview}}
+
+  {{#tab_ledger}}
+  {{#can_edit}}
+  {{#editing}}
+  <section class="bg-white rounded-xl border-2 border-yellow-400 p-5" id="treasury-edit">
+    <h3 class="font-semibold text-gray-800 mb-3">Edit entry</h3>
+    <form hx-post="/treasury/{{id}}" hx-encoding="multipart/form-data" hx-target="#treasury-page" hx-swap="outerHTML" class="grid grid-cols-1 md:grid-cols-6 gap-2 text-sm items-end">
+      <label>Date <input type="date" name="entry_on" value="{{on}}" required class="mt-1 w-full border border-gray-300 rounded-lg px-2 py-1.5"></label>
+      <label>Type
+        <select name="kind" class="mt-1 w-full border border-gray-300 rounded-lg px-2 py-1.5">
+          <option value="expense" {{^income}}selected{{/income}}>Expense</option>
+          <option value="income" {{#income}}selected{{/income}}>Income</option>
+        </select></label>
+      <label>Amount <input name="amount" value="{{amount}}" required inputmode="decimal" class="mt-1 w-full border border-gray-300 rounded-lg px-2 py-1.5"></label>
+      <label>Category <input name="category" value="{{category}}" list="treasury-cats" maxlength="60" class="mt-1 w-full border border-gray-300 rounded-lg px-2 py-1.5"></label>
+      <label class="md:col-span-2">For event <span class="text-gray-400">(optional)</span>
+        <select name="event_id" class="mt-1 w-full border border-gray-300 rounded-lg px-2 py-1.5">
+          <option value="">-</option>
+          {{#event_options}}<option value="{{id}}" {{#selected}}selected{{/selected}}>{{label}}</option>{{/event_options}}
+        </select></label>
+      <label class="md:col-span-3">Description <input name="description" value="{{description}}" maxlength="300" class="mt-1 w-full border border-gray-300 rounded-lg px-2 py-1.5"></label>
+      <label class="md:col-span-2 text-xs text-gray-500">{{#has_receipt}}Replace receipt{{/has_receipt}}{{^has_receipt}}Receipt{{/has_receipt}} <span class="text-gray-400">(photo or PDF, optional)</span>
+        <input type="file" name="receipt" accept="image/jpeg,image/png,image/gif,image/webp,application/pdf" class="mt-1 block w-full text-sm"></label>
+      {{#has_receipt}}<label class="flex items-center gap-1.5 text-xs text-gray-600"><input type="checkbox" name="remove_receipt" value="1"> Remove the receipt</label>{{/has_receipt}}
+      <div class="md:col-span-6 flex items-center gap-2">
+        <button class="px-4 py-2 bg-yellow-400 text-gray-900 rounded-lg font-semibold hover:bg-yellow-300">Save changes</button>
+        <a hx-get="/treasury?year={{year}}&tab=ledger" hx-target="#main-content" hx-swap="innerHTML" class="px-4 py-2 text-gray-600 hover:text-gray-900 cursor-pointer">Cancel</a>
+      </div>
+    </form>
+  </section>
+  {{/editing}}
+  {{^editing}}
+  <section class="bg-white rounded-xl border border-gray-200 p-5">
+    <h3 class="font-semibold text-gray-800 mb-3">Record income or an expense</h3>
+    <form hx-post="/treasury" hx-encoding="multipart/form-data" hx-target="#treasury-page" hx-swap="outerHTML" class="grid grid-cols-1 md:grid-cols-6 gap-2 text-sm items-end">
+      <label>Date <input type="date" name="entry_on" value="{{today}}" required class="mt-1 w-full border border-gray-300 rounded-lg px-2 py-1.5"></label>
+      <label>Type
+        <select name="kind" class="mt-1 w-full border border-gray-300 rounded-lg px-2 py-1.5">
+          <option value="expense">Expense</option>
+          <option value="income">Income</option>
+        </select></label>
+      <label>Amount <input name="amount" required inputmode="decimal" placeholder="25.00" class="mt-1 w-full border border-gray-300 rounded-lg px-2 py-1.5"></label>
+      <label>Category <input name="category" list="treasury-cats" maxlength="60" placeholder="Table fee, supplies, donation..." class="mt-1 w-full border border-gray-300 rounded-lg px-2 py-1.5"></label>
+      <datalist id="treasury-cats">{{#known_categories}}<option value="{{name}}">{{/known_categories}}</datalist>
+      <label class="md:col-span-2">For event <span class="text-gray-400">(optional)</span>
+        <select name="event_id" class="mt-1 w-full border border-gray-300 rounded-lg px-2 py-1.5">
+          <option value="">-</option>
+          {{#event_options}}<option value="{{id}}">{{label}}</option>{{/event_options}}
+        </select></label>
+      <label class="md:col-span-3">Description <input name="description" maxlength="300" placeholder="What it was for" class="mt-1 w-full border border-gray-300 rounded-lg px-2 py-1.5"></label>
+      <label class="md:col-span-2 text-xs text-gray-500">Receipt <span class="text-gray-400">(photo or PDF, optional)</span>
+        <input type="file" name="receipt" accept="image/jpeg,image/png,image/gif,image/webp,application/pdf" class="mt-1 block w-full text-sm"></label>
+      <button class="px-4 py-2 bg-yellow-400 text-gray-900 rounded-lg font-semibold hover:bg-yellow-300">Record</button>
+    </form>
+  </section>
+
+  <details class="f-dues bg-white rounded-xl border border-gray-200">
+    <summary class="cursor-pointer px-5 py-3 font-semibold text-gray-800">Record a dues payment</summary>
+    <form hx-post="/treasury/dues" hx-target="#treasury-page" hx-swap="outerHTML" class="px-5 pb-5 grid grid-cols-1 md:grid-cols-6 gap-2 text-sm items-end">
+      <label class="md:col-span-2">Member
+        <select name="member_id" required data-tomselect="single" class="mt-1 w-full">
+          <option value="">Choose a member…</option>
+          {{#members}}<option value="{{id}}">{{name}}</option>{{/members}}
+        </select></label>
+      <label>Paid on <input type="date" name="paid_on" value="{{today}}" required class="mt-1 w-full border border-gray-300 rounded-lg px-2 py-1.5"></label>
+      <label>Amount <input name="amount" required inputmode="decimal" placeholder="25.00" class="mt-1 w-full border border-gray-300 rounded-lg px-2 py-1.5"></label>
+      <label>Covers until <input type="date" name="covers_until" value="{{year_end}}" required class="mt-1 w-full border border-gray-300 rounded-lg px-2 py-1.5"></label>
+      <label>Method <input name="method" maxlength="40" placeholder="cash, card, PayPal" class="mt-1 w-full border border-gray-300 rounded-lg px-2 py-1.5"></label>
+      <label class="md:col-span-5">Note <span class="text-gray-400">(optional)</span><input name="note" maxlength="300" class="mt-1 w-full border border-gray-300 rounded-lg px-2 py-1.5"></label>
+      <button class="px-4 py-2 bg-gray-800 text-white rounded-lg font-medium hover:bg-gray-700">Record dues</button>
+    </form>
+  </details>
+
+  {{/editing}}
+  {{/can_edit}}
   <section class="bg-white rounded-xl border border-gray-200 p-5">
     <h3 class="font-semibold text-gray-800 mb-3">Ledger</h3>
     {{#has_lines}}
@@ -99,13 +147,14 @@
           <td class="py-2 pr-3 hidden sm:table-cell">{{category}}</td>
           <td class="py-2 pr-3"><span class="sm:hidden text-xs text-gray-500 block">{{category}}</span>{{description}}{{#event}}<div class="text-xs text-gray-500">{{event}}</div>{{/event}}{{#who}}<div class="text-xs text-gray-400">by {{who}}</div>{{/who}}</td>
           <td class="py-2 pr-3 text-right font-medium whitespace-nowrap {{#income}}text-green-700{{/income}}{{^income}}text-red-600{{/income}}">{{amount}}</td>
-          <td class="py-2 text-right"><div class="flex flex-col sm:flex-row items-end sm:items-center justify-end gap-1">{{#can_delete}}
-            {{#receipt}}<a href="/treasury/receipts/{{receipt}}" target="_blank" rel="noopener" class="text-xs text-indigo-600 hover:text-indigo-800 sm:mr-2">Receipt</a>{{/receipt}}
-            {{^receipt}}<form hx-post="/treasury/{{id}}/receipt" hx-encoding="multipart/form-data" hx-target="#treasury-page" hx-swap="outerHTML" class="inline">
+          <td class="py-2 text-right"><div class="flex flex-col sm:flex-row items-end sm:items-center justify-end gap-1">{{#receipt}}<a href="/treasury/receipts/{{receipt}}" target="_blank" rel="noopener" class="text-xs text-indigo-600 hover:text-indigo-800 sm:mr-2">Receipt</a>{{/receipt}}
+            {{#no_receipt}}<form hx-post="/treasury/{{id}}/receipt" hx-encoding="multipart/form-data" hx-target="#treasury-page" hx-swap="outerHTML" class="inline">
               <label class="text-xs text-gray-500 hover:text-gray-800 cursor-pointer sm:mr-2 whitespace-nowrap">Attach receipt
                 <input type="file" name="receipt" accept="image/jpeg,image/png,image/gif,image/webp,application/pdf" data-change="submit" class="sr-only"></label>
-            </form>{{/receipt}}
-            <button hx-post="/treasury/{{id}}/delete" hx-target="#treasury-page" hx-swap="outerHTML" hx-confirm="Delete this entry?" class="text-xs text-red-600 hover:text-red-800">Delete</button>{{/can_delete}}</div></td>
+            </form>{{/no_receipt}}
+            {{#can_delete}}<button hx-get="/treasury/{{id}}/edit" hx-target="#treasury-page" hx-swap="outerHTML" class="text-xs text-gray-700 hover:text-gray-900 sm:mr-2">Edit</button>
+            <button hx-post="/treasury/{{id}}/delete" hx-target="#treasury-page" hx-swap="outerHTML" hx-confirm="Delete this entry?" class="text-xs text-red-600 hover:text-red-800">Delete</button>{{/can_delete}}
+            {{#dues_edit}}<button hx-get="/members/{{member_id}}/view" hx-target="#modal" hx-swap="innerHTML" class="text-xs text-gray-700 hover:text-gray-900" title="Dues payments are edited on the member's Dues panel">Edit on member</button>{{/dues_edit}}</div></td>
         </tr>
       {{/lines}}
       </tbody>
@@ -114,4 +163,5 @@
     {{/has_lines}}
     {{^has_lines}}<p class="text-sm text-gray-400">No money recorded for {{year}}. Dues amounts entered on member records appear here automatically.</p>{{/has_lines}}
   </section>
+  {{/tab_ledger}}
 </div>
