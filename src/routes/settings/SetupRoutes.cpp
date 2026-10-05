@@ -31,8 +31,9 @@ crow::response page(const crow::request& req, LugApp& app, const std::string& bo
     res.code = code;
     res.add_header("Content-Type", "text/html; charset=utf-8");
     res.add_header("Cache-Control", "no-store");
-    if (standalone || is_htmx(req)) res.write(body);
-    else res.write(render_in_layout(req, app, body, "Setup", "active_setup"));
+    if (standalone) res.write(body);
+    else if (is_htmx(req)) res.write(with_breadcrumb(req, app, body, "Setup"));
+    else res.write(render_in_layout(req, app, with_breadcrumb(req, app, body, "Setup"), "Setup", "active_setup"));
     return res;
 }
 

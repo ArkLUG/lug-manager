@@ -680,7 +680,7 @@
     // /attendance/overview and /settings vs /settings/discord-matches fixes).
     function updateActiveNav() {
       var path = window.location.pathname;
-      var links = Array.prototype.slice.call(document.querySelectorAll('nav a[hx-get]'));
+      var links = Array.prototype.slice.call(document.querySelectorAll('nav:not([aria-label="Breadcrumb"]) a[hx-get]'));
       var targets = links.map(function(a) { return a.getAttribute('hx-get'); });
 
       links.forEach(function(a, i) {

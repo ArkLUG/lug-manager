@@ -1,6 +1,7 @@
 # Unit tests: no server, an in-memory database at most.
 lug_add_tests(
   test_auth_crypto.cpp
+  test_breadcrumbs.cpp
   test_chat_hub.cpp
   test_chat_templates.cpp
   test_discord_content.cpp

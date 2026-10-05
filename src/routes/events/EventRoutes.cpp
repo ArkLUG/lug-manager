@@ -207,11 +207,11 @@ static std::string render_event_page(const crow::request& req,
     const bool htmx = is_htmx(req);
     if (htmx) {
         auto tmpl = crow::mustache::load("events/_content.html");
-        return tmpl.render(ctx).dump();
+        return with_breadcrumb(req, app, tmpl.render(ctx).dump(), "");
     }
 
     auto content_tmpl = crow::mustache::load("events/_content.html");
-    std::string content = content_tmpl.render(ctx).dump();
+    std::string content = with_breadcrumb(req, app, content_tmpl.render(ctx).dump(), "");
     return render_in_layout(req, app, content, (all_events ? "All Events" : "Events"), "active_events");
 }
 

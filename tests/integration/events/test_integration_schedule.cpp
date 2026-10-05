@@ -142,5 +142,7 @@ TEST_F(IntegrationTest, ScheduleNewMenuAndSidebar) {
     expect_contains(dash, "hx-get=\"/schedule\"");
     expect_not_contains(dash, "hx-get=\"/meetings\"\n");
     auto meetings = GET("/meetings", member_token);
-    expect_contains(meetings, "&larr; Schedule");
+    // Breadcrumb back to Schedule
+    expect_contains(meetings, "<nav aria-label=\"Breadcrumb\"");
+    expect_contains(meetings, "hx-get=\"/schedule\" hx-target=\"#main-content\"");
 }

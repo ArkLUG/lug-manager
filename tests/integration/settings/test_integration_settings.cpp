@@ -315,3 +315,16 @@ TEST_F(IntegrationTest, DiscordSyncSkipsWhenDiscordReturnsNobody) {
     ASSERT_TRUE(role.has_value());
     EXPECT_EQ(*role, "lead");
 }
+
+// Settings pages carry a breadcrumb: Settings > group > page. Fragments swapped
+// into some other part of a page (htmx with another target) don't.
+TEST_F(IntegrationTest, SettingsPagesHaveABreadcrumb) {
+    auto r = GET("/settings/reminders", admin_token);
+    EXPECT_EQ(r.code, 200);
+    expect_contains(r, "<nav aria-label=\"Breadcrumb\"");
+    expect_contains(r, "hx-get=\"/settings/overview\"");
+    expect_contains(r, "<span>Messages</span>");
+    expect_contains(r, "aria-current=\"page\" class=\"font-medium text-gray-800 truncate max-w-[16rem] sm:max-w-md\">Reminders</span>");
+    expect_not_contains(GET_HTMX("/settings/reminders", admin_token), "<nav aria-label=\"Breadcrumb\"");
+    expect_not_contains(GET("/settings/overview", admin_token), "<nav aria-label=\"Breadcrumb\"");
+}

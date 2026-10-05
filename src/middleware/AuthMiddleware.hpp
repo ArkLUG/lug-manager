@@ -7,6 +7,7 @@
 #include "services/TreasuryAccess.hpp"
 #include "services/Palettes.hpp"
 #include "utils/web/AssetVersion.hpp"
+#include "utils/web/Breadcrumbs.hpp"
 #include <crow.h>
 #include <set>
 #include <string>
@@ -285,6 +286,17 @@ inline std::string render_in_layout(const crow::request& req, App& app,
     return crow::mustache::load("layout.html").render(layout_ctx).dump();
 }
 
+// `content` with the page's breadcrumb (Settings > Dues, Schedule > Events >
+// ...) above it. Only whole pages get one, not fragments swapped into some
+// other part of a page.
+template<typename App>
+inline std::string with_breadcrumb(const crow::request& req, App& app, const std::string& content,
+                                   const std::string& page_title) {
+    if (is_htmx(req) && req.get_header_value("HX-Target") != "main-content") return content;
+    const bool is_admin = app.template get_context<AuthMiddleware>(req).auth.is_admin();
+    return breadcrumb_html(breadcrumbs_for(req.url, req.method == crow::HTTPMethod::Get ? page_title : "", is_admin)) + content;
+}
+
 // An HTML response: the fragment for htmx requests, else the whole page.
 template<typename App>
 inline crow::response html_page(const crow::request& req, App& app, const std::string& content,
@@ -292,7 +304,8 @@ inline crow::response html_page(const crow::request& req, App& app, const std::s
     crow::response res;
     res.code = code;
     res.add_header("Content-Type", "text/html; charset=utf-8");
-    res.write(is_htmx(req) ? content : render_in_layout(req, app, content, page_title, active_key));
+    const std::string body = with_breadcrumb(req, app, content, page_title);
+    res.write(is_htmx(req) ? body : render_in_layout(req, app, body, page_title, active_key));
     return res;
 }
 

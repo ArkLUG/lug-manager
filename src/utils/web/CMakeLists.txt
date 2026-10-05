@@ -1,6 +1,8 @@
 # src/utils/web: Request/response helpers: form bodies, client IP, ids, asset versions, template cache, uploads, zip.
 target_sources(lug_core PRIVATE
   AssetVersion.hpp
+  Breadcrumbs.cpp
+  Breadcrumbs.hpp
   CalendarLinks.hpp
   ClientIp.hpp
   FormBody.hpp
