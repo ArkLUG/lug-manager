@@ -138,7 +138,7 @@
         <div class="text-[11px] mb-0.5 {{#today}}inline-flex items-center justify-center w-5 h-5 rounded-full bg-gray-800 text-white font-semibold{{/today}}{{^today}}text-gray-500{{/today}}">{{day}}</div>
         {{#items}}
         <button type="button" hx-get="{{url}}" hx-target="#modal" hx-swap="innerHTML" title="{{title}} - {{when}}"
-                class="sched-chip block w-full text-left truncate rounded px-1 py-0.5 mb-0.5 text-[10px] sm:text-xs leading-tight {{#is_meeting}}bg-blue-50 text-blue-800{{/is_meeting}}{{^is_meeting}}bg-amber-50 text-amber-800{{/is_meeting}} {{#cancelled}}line-through opacity-60{{/cancelled}} {{#tentative}}border border-dashed border-current{{/tentative}}">{{#continues}}&rarr; {{/continues}}{{^continues}}{{#time}}<span class="hidden sm:inline">{{time}} </span>{{/time}}{{/continues}}{{title}}</button>
+                class="sched-chip block w-full text-left truncate rounded px-1 py-0.5 mb-0.5 text-[10px] sm:text-xs leading-tight {{#is_meeting}}bg-blue-50 text-blue-800{{/is_meeting}}{{^is_meeting}}bg-amber-50 text-amber-800{{/is_meeting}} {{#cancelled}}line-through opacity-60{{/cancelled}} {{#tentative}}border border-dashed border-current{{/tentative}}">{{#continues}}&rarr; {{/continues}}{{^continues}}{{#time}}<span class="hidden sm:inline">{{time}} </span>{{/time}}{{/continues}}{{prefix}}{{title}}</button>
         {{/items}}
       </div>
       {{/blank}}

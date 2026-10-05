@@ -39,6 +39,7 @@ void register_all_routes(LugApp& app, Services& svc) {
                            svc.event_day_attendance_repo, svc.displays, svc.chapter_members, svc.audit);
     if (!svc.shifts) svc.shifts = std::make_shared<ShiftRepository>(svc.attendance_repo.db());
     register_shift_routes(app, svc.events, svc.shifts, svc.chapter_members, svc.audit);
+    register_event_block_routes(app, svc.attendance_repo.db(), svc.events, svc.chapter_members, svc.audit);
     if (!svc.photos) svc.photos = std::make_shared<PhotoStore>(svc.data_dir);
     register_gallery_routes(app, svc.attendance_repo.db(), svc.photos, svc.events, svc.chapter_members,
                             svc.audit);

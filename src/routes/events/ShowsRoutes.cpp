@@ -12,6 +12,7 @@
 #include <deque>
 #include <map>
 #include <mutex>
+#include "repositories/events/EventBlocks.hpp"
 #include <set>
 #include <sstream>
 
@@ -59,7 +60,7 @@ std::string when(const Show& s) {
     if (!parse(s.start, a)) return s.start;
     bool has_end = parse(s.end, b);
     bool same_day = !has_end || s.end.substr(0, 10) == s.start.substr(0, 10);
-    bool timed = s.start.size() >= 16;
+    bool timed = s.start.size() >= 16 && s.start.substr(11, 5) != "00:00";   // events are dates (T00:00)
     if (same_day) {
         std::string out = fmt(a, "%A, %B %d, %Y");
         if (timed) out += " · " + fmt(a, "%I:%M %p") + (has_end && s.end.size() >= 16 ? " - " + fmt(b, "%I:%M %p") : "");
@@ -119,6 +120,18 @@ void register_shows_routes(LugApp& app, SqliteDatabase& db, SettingsRepository& 
             auto& o = arr[i++];
             o["title"] = s.title;
             o["when"] = when(s);
+            // Opening hours, day by day (event_blocks: public ones only)
+            {
+                crow::json::wvalue hours = crow::json::wvalue::list();
+                int h = 0;
+                for (const auto& b : event_blocks::list(db, s.id)) {
+                    if (!b.is_public()) continue;
+                    std::tm t1{}, t2{};
+                    if (!parse(b.start_iso(), t1) || !parse(b.end_iso(), t2)) continue;
+                    hours[h++]["text"] = fmt(t1, "%a, %b %d") + ": " + fmt(t1, "%I:%M %p") + " - " + fmt(t2, "%I:%M %p");
+                }
+                if (h > 0) { o["hours"] = std::move(hours); o["has_hours"] = true; }
+            }
             if (!s.location.empty()) o["location"] = s.location;
             if (!s.fee.empty()) o["fee"] = s.fee;
             o["tentative"] = s.status == "tentative";
@@ -166,6 +179,18 @@ void register_shows_routes(LugApp& app, SqliteDatabase& db, SettingsRepository& 
             o["start"] = s.start;
             o["end"] = s.end;
             o["when"] = when(s);
+            // Opening hours, day by day (event_blocks: public ones only)
+            {
+                crow::json::wvalue hours = crow::json::wvalue::list();
+                int h = 0;
+                for (const auto& b : event_blocks::list(db, s.id)) {
+                    if (!b.is_public()) continue;
+                    std::tm t1{}, t2{};
+                    if (!parse(b.start_iso(), t1) || !parse(b.end_iso(), t2)) continue;
+                    hours[h++]["text"] = fmt(t1, "%a, %b %d") + ": " + fmt(t1, "%I:%M %p") + " - " + fmt(t2, "%I:%M %p");
+                }
+                if (h > 0) { o["hours"] = std::move(hours); o["has_hours"] = true; }
+            }
             o["location"] = s.location;
             o["entrance_fee"] = s.fee;
             o["tentative"] = s.status == "tentative";

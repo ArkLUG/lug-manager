@@ -1,4 +1,5 @@
 #include "integrations/ical/CalendarGenerator.hpp"
+#include "repositories/events/EventBlocks.hpp"
 #include "utils/LocalTime.hpp"
 #include <cstdio>
 #include <unordered_map>
@@ -334,16 +335,9 @@ std::string CalendarGenerator::generate_ics(const Filter& f) const {
         std::string uid = e.ical_uid.empty()
             ? ("event-" + std::to_string(e.id) + "@lug-manager")
             : e.ical_uid;
-        if (e.is_private && !f.full_details) {
-            oss << make_vevent(uid, "Private LUG Event", "", "",
-                               e.start_time, e.end_time, e.status, e.updated_at,
-                               timezone_, true);
-        } else {
-            oss << make_vevent(uid, cal_title(e.title, e.scope, e.chapter_id, e.status),
-                               e.description, e.location,
-                               e.start_time, e.end_time, e.status, e.updated_at,
-                               timezone_, true);
-        }
+        const bool hide = e.is_private && !f.full_details;
+        const std::string title = hide ? "Private LUG Event" : cal_title(e.title, e.scope, e.chapter_id, e.status);
+        oss << event_vevents(e, uid, title, hide, event_blocks::list(events_.db(), e.id), f.full_details, timezone_);
     }
 
     oss << "END:VCALENDAR\r\n";
@@ -377,10 +371,42 @@ std::string CalendarGenerator::ics_for(const Meeting& m, const std::string& time
                       m.status, m.updated_at, timezone, false);
 }
 
-std::string CalendarGenerator::ics_for(const LugEvent& e, const std::string& timezone) {
+std::string CalendarGenerator::ics_for(const LugEvent& e, const std::string& timezone, const std::vector<EventBlock>& blocks) {
     std::string uid = e.ical_uid.empty() ? ("event-" + std::to_string(e.id) + "@lug-manager") : e.ical_uid;
-    return single_ics(uid, e.title, e.description, e.location, e.start_time, e.end_time,
-                      e.status, e.updated_at, timezone, true);
+    if (blocks.empty())
+        return single_ics(uid, e.title, e.description, e.location, e.start_time, e.end_time,
+                          e.status, e.updated_at, timezone, true);
+    std::ostringstream oss;
+    oss << "BEGIN:VCALENDAR\r\nVERSION:2.0\r\nPRODID:-//LUG-Manager//LUG-Manager 1.0//EN\r\nCALSCALE:GREGORIAN\r\nMETHOD:PUBLISH\r\n";
+    oss << vtimezone(timezone);
+    oss << event_vevents(e, uid, e.title, false, blocks, true, timezone);
+    oss << "END:VCALENDAR\r\n";
+    return oss.str();
+}
+
+// An event's VEVENTs: one per public block when it has hours (else the
+// all-day dates), plus its setup / teardown blocks when `members` (the
+// personal feed and members' downloads; the public feed shows only when
+// it's open). Block UIDs are the event's with "-b<id>" before the "@".
+std::string CalendarGenerator::event_vevents(const LugEvent& e, const std::string& uid, const std::string& title, bool hide,
+                                             const std::vector<EventBlock>& blocks, bool members, const std::string& timezone) {
+    auto block_uid = [&uid](int64_t id) {
+        const auto at = uid.find('@');
+        return at == std::string::npos ? uid + "-b" + std::to_string(id) : uid.substr(0, at) + "-b" + std::to_string(id) + uid.substr(at);
+    };
+    const bool has_public = event_blocks::public_span(blocks).has_value();
+    std::string out;
+    if (!has_public)
+        out += make_vevent(uid, title, hide ? "" : e.description, hide ? "" : e.location,
+                           e.start_time, e.end_time, e.status, e.updated_at, timezone, true);
+    for (const auto& b : blocks) {
+        if (!b.is_public() && !members) continue;
+        std::string t = b.is_public() ? title : "[" + std::string(event_blocks::kind_label(b.kind)) + "] " + title;
+        std::string desc = hide ? "" : (b.label.empty() ? e.description : b.label + (e.description.empty() ? "" : "\n\n" + e.description));
+        out += make_vevent(block_uid(b.id), t, desc, hide ? "" : e.location, b.start_iso(), b.end_iso(),
+                           e.status, e.updated_at, timezone, false);
+    }
+    return out;
 }
 
 std::optional<std::string> CalendarGenerator::meeting_ics(int64_t id) const {
@@ -392,5 +418,5 @@ std::optional<std::string> CalendarGenerator::meeting_ics(int64_t id) const {
 std::optional<std::string> CalendarGenerator::event_ics(int64_t id) const {
     auto e = events_.find_by_id(id);
     if (!e) return std::nullopt;
-    return ics_for(*e, tz());
+    return ics_for(*e, tz(), event_blocks::list(events_.db(), e->id));
 }

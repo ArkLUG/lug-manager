@@ -21,6 +21,7 @@
 #include "routes/settings/AuditRoutes.hpp"
 #include "routes/pages/HelpRoutes.hpp"
 #include "routes/pages/ScheduleRoutes.hpp"
+#include "routes/events/EventBlockRoutes.hpp"
 #include "services/notifications/ReminderActions.hpp"
 #include "routes/accounts/ApiKeyRoutes.hpp"
 #include "integrations/discord/matches/DiscordMatchRoutes.hpp"

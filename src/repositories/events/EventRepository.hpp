@@ -44,6 +44,8 @@ public:
     bool     update_checkin_token(int64_t id, const std::string& token);
     std::optional<LugEvent> find_by_checkin_token(const std::string& token);
 
+    SqliteDatabase& db() { return db_; }
+
 private:
     SqliteDatabase& db_;
     static LugEvent row_to_event(Statement& stmt);

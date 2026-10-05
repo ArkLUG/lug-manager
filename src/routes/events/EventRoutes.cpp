@@ -1,5 +1,6 @@
 #include "routes/events/EventRoutes.hpp"
 #include "utils/web/CalendarLinks.hpp"
+#include "repositories/events/EventBlocks.hpp"
 #include "routes/ChatFormHelpers.hpp"
 #include "utils/text/HtmlText.hpp"
 #include "utils/LocalTime.hpp"
@@ -555,8 +556,18 @@ void register_event_routes(LugApp& app, EventService& events, AttendanceService&
         ctx["attendees"] = std::move(att_arr);
 
         res.add_header("Content-Type", "text/html; charset=utf-8");
-        cal_links::add_to(ctx, {ev->title, ev->description, ev->location, ev->start_time, ev->end_time,
-                                true, "/events/" + std::to_string(id) + "/calendar.ics"});
+        {
+            // One open block (a one-day show with hours): a timed entry; else the dates
+            int open = 0;
+            std::string bs, be;
+            for (const auto& b : event_blocks::list(events.repo().db(), ev->id))
+                if (b.is_public()) { ++open; bs = b.start_iso(); be = b.end_iso(); }
+            if (open == 1)
+                cal_links::add_to(ctx, {ev->title, ev->description, ev->location, bs, be, false, "/events/" + std::to_string(id) + "/calendar.ics"});
+            else
+                cal_links::add_to(ctx, {ev->title, ev->description, ev->location, ev->start_time, ev->end_time,
+                                        true, "/events/" + std::to_string(id) + "/calendar.ics"});
+        }
         auto content_tmpl = crow::mustache::load("events/_detail.html");
         std::string content = content_tmpl.render(ctx).dump();
         return html_page(req, app, content, ev->title, "active_events");

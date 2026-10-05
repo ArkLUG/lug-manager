@@ -2,6 +2,7 @@
 #include "config/Config.hpp"
 #include "repositories/events/MeetingRepository.hpp"
 #include "repositories/events/EventRepository.hpp"
+#include "repositories/events/EventBlocks.hpp"
 #include "repositories/members/ChapterRepository.hpp"
 #include <optional>
 #include <string>
@@ -42,7 +43,9 @@ public:
     std::optional<std::string> event_ics(int64_t id) const;
     std::string tz() const;
     static std::string ics_for(const Meeting& m, const std::string& timezone);
-    static std::string ics_for(const LugEvent& e, const std::string& timezone);
+    static std::string ics_for(const LugEvent& e, const std::string& timezone, const std::vector<EventBlock>& blocks = {});
+    static std::string event_vevents(const LugEvent& e, const std::string& uid, const std::string& title, bool hide,
+                                     const std::vector<EventBlock>& blocks, bool members, const std::string& timezone);
     static std::string single_ics(const std::string& uid, const std::string& summary, const std::string& description,
                                   const std::string& location, const std::string& start, const std::string& end,
                                   const std::string& status, const std::string& last_modified,

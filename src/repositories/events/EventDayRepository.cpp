@@ -1,4 +1,5 @@
 #include "repositories/events/EventDayRepository.hpp"
+#include "repositories/events/EventBlocks.hpp"
 #include <ctime>
 #include <sstream>
 
@@ -107,8 +108,11 @@ std::optional<EventDay> EventDayRepository::find_by_id(int64_t id) {
 void EventDayRepository::sync_for_event(int64_t event_id,
                                          const std::string& start_time,
                                          const std::string& end_time) {
-    std::string start_ymd = iso_date_part(start_time);
-    std::string end_ymd   = iso_date_part(end_time);
+    // Setup and teardown days (event_blocks) are days too, so members can
+    // check in for helping.
+    const auto range = event_blocks::day_range(db_, event_id, start_time, end_time);
+    std::string start_ymd = iso_date_part(range.first);
+    std::string end_ymd   = iso_date_part(range.second);
     auto wanted = expand_date_range(start_ymd, end_ymd);
     if (wanted.empty()) return;
 

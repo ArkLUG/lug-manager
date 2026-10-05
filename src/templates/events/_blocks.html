@@ -1,0 +1,45 @@
+<div id="blocks-panel-{{event_id}}" class="space-y-2">
+  {{#flash}}<p class="text-xs {{#flash_error}}text-red-600{{/flash_error}}{{^flash_error}}text-green-700{{/flash_error}}">{{flash}}</p>{{/flash}}
+  {{#has_blocks}}
+  <div class="space-y-2 text-sm">
+    {{#days}}
+    <div>
+      <div class="text-xs font-semibold uppercase tracking-wide text-gray-500">{{day}}</div>
+      <ul class="mt-1 space-y-1">
+        {{#blocks}}
+        <li class="flex items-center justify-between gap-2">
+          <span><span class="inline-block text-xs px-1.5 py-0.5 rounded mr-1 {{#public}}bg-green-100 text-green-800{{/public}}{{#setup}}bg-blue-100 text-blue-800{{/setup}}{{#teardown}}bg-gray-200 text-gray-700{{/teardown}}{{^public}}{{^setup}}{{^teardown}}bg-gray-100 text-gray-600{{/teardown}}{{/setup}}{{/public}}">{{kind_label}}</span>{{time}}{{#label}} <span class="text-gray-500">· {{label}}</span>{{/label}}</span>
+          {{#can_manage}}<button hx-post="/events/{{event_id}}/blocks/{{id}}/delete" hx-target="#blocks-panel-{{event_id}}" hx-swap="outerHTML" class="text-xs text-red-600 hover:text-red-800">Remove</button>{{/can_manage}}
+        </li>
+        {{/blocks}}
+      </ul>
+    </div>
+    {{/days}}
+  </div>
+  {{/has_blocks}}
+  {{^has_blocks}}<p class="text-xs text-gray-400">No hours set: it shows as all-day on its dates.</p>{{/has_blocks}}
+  {{#can_manage}}
+  <details class="border border-gray-200 rounded-lg">
+    <summary class="cursor-pointer px-3 py-2 text-xs font-medium text-gray-700">Set hours</summary>
+    <div class="px-3 pb-3 space-y-3 text-xs">
+      <form hx-post="/events/{{event_id}}/blocks/fill" hx-target="#blocks-panel-{{event_id}}" hx-swap="outerHTML" class="flex flex-wrap items-end gap-2">
+        <span class="w-full text-gray-600">Same public hours every day of the show:</span>
+        <label class="text-gray-600">Opens<input type="time" name="from" value="09:00" required class="mt-0.5 block border border-gray-300 rounded px-2 py-1"></label>
+        <label class="text-gray-600">Closes<input type="time" name="to" value="17:00" required class="mt-0.5 block border border-gray-300 rounded px-2 py-1"></label>
+        <button class="px-3 py-1.5 bg-gray-800 text-white rounded-lg">Set for every day</button>
+      </form>
+      <form hx-post="/events/{{event_id}}/blocks" hx-target="#blocks-panel-{{event_id}}" hx-swap="outerHTML" class="grid grid-cols-2 gap-2 border-t border-gray-100 pt-3">
+        <span class="col-span-2 text-gray-600">Or add one at a time (e.g. setup the day before, teardown after closing):</span>
+        <label class="text-gray-600">What<select name="kind" class="mt-0.5 w-full border border-gray-300 rounded px-2 py-1">
+          <option value="setup">Setup</option><option value="public">Open to the public</option><option value="teardown">Teardown</option><option value="other">Other</option>
+        </select></label>
+        <label class="text-gray-600">Day<input type="date" name="day" value="{{default_day}}" required class="mt-0.5 w-full border border-gray-300 rounded px-2 py-1"></label>
+        <label class="text-gray-600">From<input type="time" name="from" value="16:00" required class="mt-0.5 w-full border border-gray-300 rounded px-2 py-1"></label>
+        <label class="text-gray-600">To<input type="time" name="to" value="20:00" required class="mt-0.5 w-full border border-gray-300 rounded px-2 py-1"></label>
+        <label class="col-span-2 text-gray-600">Note <span class="text-gray-400">(optional)</span><input name="label" maxlength="80" placeholder="e.g. Load in at the back door" class="mt-0.5 w-full border border-gray-300 rounded px-2 py-1"></label>
+        <button class="col-span-2 py-1.5 bg-yellow-400 text-gray-900 rounded-lg font-semibold hover:bg-yellow-300">Add</button>
+      </form>
+    </div>
+  </details>
+  {{/can_manage}}
+</div>

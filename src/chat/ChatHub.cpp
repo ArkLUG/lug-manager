@@ -1,4 +1,5 @@
 #include "chat/ChatHub.hpp"
+#include "repositories/events/EventBlocks.hpp"
 #include "chat/Format.hpp"
 #include "integrations/discord/DiscordClient.hpp"
 #include "utils/text/Utf8.hpp"
@@ -6,6 +7,14 @@
 #include <iostream>
 
 namespace chat {
+
+// A show's listing on a chat service: from its first public block to its
+// last (event_blocks), or whole days when it has no hours.
+static ScheduledEvent show_event(SqliteDatabase& db, const LugEvent& e) {
+    if (auto span = event_blocks::public_span(event_blocks::list(db, e.id)))
+        return ScheduledEvent{e.title, e.description, e.location, span->first, span->second};
+    return event_days(e.title, e.description, e.location, e.start_time, e.end_time);
+}
 
 namespace {
 const std::set<std::string> kEventParts{"announce", "chapter_announce", "thread", "scheduled", "update_note"};
@@ -341,7 +350,7 @@ void ChatHub::publish_event(Provider& p, const LugEvent& e) {
     // 4. The scheduled event
     if (switch_on(p, "event_scheduled") && !skip.count("scheduled") && p.caps().scheduled_events &&
         may_create(p, "scheduled event", "event", e.id)) {
-        Result s = p.create_event(event_days(e.title, e.description, e.location, e.start_time, e.end_time));
+        Result s = p.create_event(show_event(db_, e));
         log(p, "event", "scheduled event", "event", e.id, s);
         if (s.ok) save_ref(p, "event", e.id, "scheduled", s.id);
     }
@@ -367,7 +376,7 @@ void ChatHub::update_event(Provider& p, const LugEvent& before, const LugEvent& 
     const std::string ann_ch = p.place(Place::Announcements);
 
     if (!r.scheduled.empty()) {
-        Result s = p.update_event(r.scheduled, event_days(after.title, after.description, after.location, after.start_time, after.end_time));
+        Result s = p.update_event(r.scheduled, show_event(db_, after));
         log(p, "edit", "scheduled event", "event", after.id, s);
     }
     // Our own thread: new name and first post. A thread someone picked isn't ours to change.

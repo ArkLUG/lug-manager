@@ -6,6 +6,7 @@ target_sources(lug_core PRIVATE
   DisplayRequestRepository.hpp
   EventDayAttendanceRepository.cpp
   EventDayAttendanceRepository.hpp
+  EventBlocks.hpp
   EventDayRepository.cpp
   EventDayRepository.hpp
   EventRepository.cpp

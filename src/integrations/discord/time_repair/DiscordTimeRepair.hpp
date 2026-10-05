@@ -18,6 +18,7 @@
 // (Discord refuses), so they're reported and left alone.
 #include "db/SqliteDatabase.hpp"
 #include "chat/Provider.hpp"
+#include "repositories/events/EventBlocks.hpp"
 #include "integrations/discord/DiscordClient.hpp"
 #include <nlohmann/json.hpp>
 #include <chrono>
@@ -65,9 +66,10 @@ public:
                                  st.col_text(2), st.col_text(3), st.col_text(4)});
         }
         for (auto s : sched) {
-            if (s.kind == "event") {                          // shows: whole days (chat/Provider.hpp)
+            if (s.kind == "event") {                          // shows: their hours, or whole days (ChatHub show_event)
                 if (s.start.size() < 10) continue;
-                std::tie(s.start, s.end) = chat::event_day_span(s.start, s.end);
+                if (auto span = event_blocks::public_span(event_blocks::list(db_, s.id))) std::tie(s.start, s.end) = *span;
+                else std::tie(s.start, s.end) = chat::event_day_span(s.start, s.end);
             } else if (s.start.size() < 16) continue;         // no time of day to get wrong
             TimeRepairItem it{s.kind, s.id, s.title, s.start, "scheduled event", "", ""};
             std::time_t right = DiscordClient::local_to_epoch(s.start, tz);

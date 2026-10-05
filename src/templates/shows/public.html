@@ -32,6 +32,7 @@
           {{#tentative}}<span class="text-xs px-2 py-0.5 rounded bg-amber-100 text-amber-800">Date to be confirmed</span>{{/tentative}}
         </div>
         <p class="text-sm text-gray-700 mt-1">{{when}}</p>
+        {{#has_hours}}<ul class="text-sm text-gray-700">{{#hours}}<li>{{text}}</li>{{/hours}}</ul>{{/has_hours}}
         {{#location}}<p class="text-sm text-gray-600">{{location}}</p>{{/location}}
         {{#fee}}<p class="text-sm text-gray-600">Admission: {{fee}}</p>{{/fee}}
         {{#description_html}}<div class="prose prose-sm max-w-none text-gray-700 mt-2">{{{description_html}}}</div>{{/description_html}}

@@ -1,5 +1,6 @@
 #include "routes/pages/ScheduleRoutes.hpp"
 #include "services/Features.hpp"
+#include "repositories/events/EventBlocks.hpp"
 #include "utils/LocalTime.hpp"
 #include "utils/text/UrlEncode.hpp"
 #include "utils/web/AssetVersion.hpp"
@@ -19,6 +20,7 @@ struct Item {
     int64_t id = 0;
     std::string title, start, end, location, scope, status, chapter;
     int64_t chapter_id = 0;
+    std::vector<EventBlock> blocks;   // shows' hours (event_blocks)
 };
 
 struct Filters {
@@ -83,10 +85,23 @@ std::string hm(const std::string& iso) {   // "19:00" -> "7:00 PM"
     return b;
 }
 
+// "9:00 AM – 5:00 PM" when every open block has the same hours, else "hours vary".
+std::string hours_text(const Item& it) {
+    std::string first, other;
+    for (const auto& b : it.blocks) {
+        if (!b.is_public()) continue;
+        std::string h = hm(b.start_iso()) + " – " + hm(b.end_iso());
+        if (first.empty()) first = h; else if (h != first) other = h;
+    }
+    if (first.empty()) return "";
+    return other.empty() ? first : "hours vary";
+}
+
 std::string when_text(const Item& it) {
     const std::string sd = it.start.substr(0, 10), ed = it.end.size() >= 10 ? it.end.substr(0, 10) : sd;
     const bool timed = it.start.size() >= 16 && it.start.substr(11, 5) != "00:00";
     std::string out = friendly_date(sd);
+    if (const std::string h = hours_text(it); !h.empty()) return out + (ed != sd ? " – " + friendly_date(ed) : "") + ", " + h;
     if (ed != sd) return out + " – " + friendly_date(ed);
     if (timed) {
         out += ", " + hm(it.start);
@@ -106,7 +121,8 @@ std::vector<Item> load(SqliteDatabase& db, const Filters& f, int64_t me, const s
                           "COALESCE(x.chapter_id,0), COALESCE(c.name,'') FROM " + t + " x LEFT JOIN chapters c ON c.id = x.chapter_id WHERE 1=1";
         std::vector<std::string> args;
         auto end_expr = std::string("COALESCE(NULLIF(x.end_time,''), x.start_time)");
-        if (!from.empty()) { sql += " AND " + end_expr + " >= ? AND x.start_time < ?"; args.push_back(from); args.push_back(to); }
+        // (a show's setup can come up to two weeks before its dates)
+        if (!from.empty()) { sql += " AND " + end_expr + " >= ? AND x.start_time < date(?, '+15 days')"; args.push_back(from); args.push_back(to); }
         else if (f.when == "upcoming") { sql += " AND " + end_expr + " >= ?"; args.push_back(now.substr(0, 10)); }
         else if (f.when == "past") { sql += " AND " + end_expr + " < ?"; args.push_back(now.substr(0, 10)); }
         if (f.status == "active") sql += " AND x.status <> 'cancelled'";
@@ -138,6 +154,7 @@ std::vector<Item> load(SqliteDatabase& db, const Filters& f, int64_t me, const s
             it.kind = kind; it.id = st.col_int(0); it.title = st.col_text(1); it.start = st.col_text(2); it.end = st.col_text(3);
             it.location = st.col_text(4); it.scope = st.col_text(5); it.status = st.col_text(6);
             it.chapter_id = st.col_int(7); it.chapter = st.col_text(8);
+            if (!meeting) it.blocks = event_blocks::list(db, it.id);
             items.push_back(std::move(it));
         }
     }
@@ -295,10 +312,17 @@ void register_schedule_routes(LugApp& app, SqliteDatabase& db, ChapterMemberRepo
                 crow::json::wvalue list = crow::json::wvalue::list();
                 int n = 0;
                 for (const auto& it : items) {
-                    std::string s = it.start.substr(0, 10), e = it.end.size() >= 10 ? it.end.substr(0, 10) : s;
+                    // Shows: their setup and teardown days count too
+                    auto [s, e] = event_blocks::day_range(it.blocks, it.start, it.end.empty() ? it.start : it.end);
                     if (date < s || date > e) continue;
                     auto j = item_json(it, chapters_on);
                     j["continues"] = date != s;
+                    // A day with only setup / teardown: say so
+                    bool open = it.blocks.empty() && date >= it.start.substr(0, 10) && date <= (it.end.size() >= 10 ? it.end.substr(0, 10) : it.start.substr(0, 10));
+                    std::string other;
+                    for (const auto& b : it.blocks) if (b.day == date) { if (b.is_public()) open = true; else if (other.empty()) other = event_blocks::kind_label(b.kind); }
+                    if (!it.blocks.empty() && !open && date >= it.start.substr(0, 10) && date <= it.end.substr(0, 10) && other.empty()) open = true;
+                    if (!open && !other.empty()) { j["prefix"] = other + ": "; j["continues"] = false; }
                     list[n++] = std::move(j);
                 }
                 d["items"] = std::move(list);

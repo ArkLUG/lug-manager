@@ -3,6 +3,8 @@ target_sources(lug_core PRIVATE
   DisplayRoutes.cpp
   DisplayRoutes.hpp
   EventAccess.hpp
+  EventBlockRoutes.cpp
+  EventBlockRoutes.hpp
   EventRoutes.cpp
   EventRoutes.hpp
   RsvpRoutes.cpp
