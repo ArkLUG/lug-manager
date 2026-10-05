@@ -1,4 +1,5 @@
 #pragma once
+#include "utils/text/Plural.hpp"
 // Dashboard sections built from the database:
 //   coming_up        - the member's next meetings/events (their chapters + LUG-wide),
 //                      RSVPs, volunteer shifts, items to return, dues running out
@@ -115,27 +116,30 @@ inline void add_needs_attention(crow::mustache::context& ctx, SqliteDatabase& db
     };
     crow::json::wvalue arr = crow::json::wvalue::list();
     int i = 0;
+    // text: "one|many" (the number goes in front)
     auto add = [&](int64_t n, const std::string& text, const std::string& url) {
         if (n <= 0) return;
-        arr[i]["count"] = n; arr[i]["text"] = text; arr[i]["url"] = url;
+        const auto bar = text.find('|');
+        arr[i]["count"] = n; arr[i]["url"] = url;
+        arr[i]["text"] = bar == std::string::npos ? text : plural(n, text.substr(0, bar), text.substr(bar + 1));
         ++i;
     };
     if (Features::on("displays"))
         add(count("SELECT COUNT(*) FROM event_display_requests r JOIN lug_events e ON e.id=r.event_id "
                   "WHERE r.status='pending' AND substr(COALESCE(NULLIF(e.end_time,''), e.start_time),1,10)>=?"),
-            "display request(s) waiting for an answer", "/events");
+            "display request waiting for an answer|display requests waiting for an answer", "/events");
     if (Features::on("inventory"))
         add(count("SELECT COUNT(*) FROM inventory_loans WHERE returned_at IS NULL AND due_on<>'' AND due_on<?"),
-            "borrowed item(s) overdue", "/inventory");
+            "borrowed item overdue|borrowed items overdue", "/inventory");
     add(count("SELECT COUNT(*) FROM lug_events WHERE is_private=0 AND status<>'cancelled' "
               "AND substr(COALESCE(NULLIF(end_time,''), start_time),1,10) < ? AND start_time >= date('now','-90 days') "
               "AND public_kids+public_teens+public_adults=0"),
-        "recent public event(s) without visitor numbers (they feed your reports)", "/events");
+        "recent public event without visitor numbers (they feed your reports)|recent public events without visitor numbers (they feed your reports)", "/events");
     if (Features::on("discord")) {
         auto st = db.prepare("SELECT COUNT(*) FROM pending_discord_matches WHERE resolved_at IS NULL");
-        if (st.step()) add(st.col_int(0), "new Discord member(s) to match up", "/settings/discord-matches");
+        if (st.step()) add(st.col_int(0), "new Discord member to match up|new Discord members to match up", "/settings/discord-matches");
         auto f = db.prepare("SELECT COUNT(*) FROM chat_activity WHERE ok=0 AND created_at > datetime('now','-7 days')");
-        if (f.step()) add(f.col_int(0), "Discord post(s) failed this week", "/settings/chat-activity?failed=1");
+        if (f.step()) add(f.col_int(0), "Discord post failed this week|Discord posts failed this week", "/settings/chat-activity?failed=1");
     }
     {
         auto st = db.prepare("SELECT value FROM lug_settings WHERE key='auth_require_2fa'");
@@ -143,14 +147,14 @@ inline void add_needs_attention(crow::mustache::context& ctx, SqliteDatabase& db
         if (req == "staff" || req == "everyone") {
             auto n = db.prepare(std::string("SELECT COUNT(*) FROM members WHERE totp_enabled_at IS NULL") +
                                 (req == "staff" ? " AND role<>'member'" : ""));
-            if (n.step()) add(n.col_int(0), "member(s) still need to set up two-factor", "/settings/sign-in");
+            if (n.step()) add(n.col_int(0), "member still needs to set up two-factor|members still need to set up two-factor", "/settings/sign-in");
         }
     }
     if (Features::on("fancolab")) {
         auto st = db.prepare("SELECT value FROM lug_settings WHERE key='fan_colab_recognized'");
         if (st.step() && st.col_text(0) == "1") {
             auto [done, total] = fan_colab_todo(db, local_year());
-            add(total - done, "thing(s) left on this year's LEGO Fan CoLab to-do list", "/fancolab");
+            add(total - done, "thing left on this year's LEGO Fan CoLab to-do list|things left on this year's LEGO Fan CoLab to-do list", "/fancolab");
         }
     }
     ctx["attention"] = std::move(arr);

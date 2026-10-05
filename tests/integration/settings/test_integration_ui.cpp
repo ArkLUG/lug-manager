@@ -291,7 +291,7 @@ TEST_F(IntegrationTest, AlmostThereListsMembersNearNextTier) {
     perk_level_repo->create(p);
     auto r = GET("/dashboard", admin_token);
     EXPECT_EQ(r.code, 200);
-    expect_contains(r, "Almost There");
+    expect_contains(r, "Almost at the next perk level");
     expect_contains(r, "Silver Test Tier");
 }
 

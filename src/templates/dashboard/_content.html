@@ -123,7 +123,7 @@
   {{#has_perks}}
   <!-- Perk Progress -->
   <div class="bg-white rounded-xl border border-gray-200 p-6">
-    <h3 class="font-semibold text-gray-800 mb-3">Attendance Progress ({{perk_year}})</h3>
+    <h3 class="font-semibold text-gray-800 mb-3">Your attendance in {{perk_year}}</h3>
     <div class="flex gap-6 mb-3">
       <div class="text-center">
         <div class="text-2xl font-bold text-gray-800">{{perk_meeting_count}}</div>
@@ -166,8 +166,8 @@
   {{#has_dues_expiring}}
   <!-- Chapter leads+: dues expiring soon -->
   <div class="bg-white rounded-xl border border-gray-200 p-6">
-    <h3 class="font-semibold text-gray-800 mb-1">Dues Expiring Soon</h3>
-    <p class="text-xs text-gray-500 mb-3">{{dues_expiring_count}} member(s) in the next 30 days.</p>
+    <h3 class="font-semibold text-gray-800 mb-1">Dues running out</h3>
+    <p class="text-xs text-gray-500 mb-3">{{dues_expiring_text}} in the next 30 days.</p>
     <ul class="divide-y divide-gray-100 text-sm">
       {{#dues_expiring}}
       <li class="flex items-center justify-between py-1.5">
@@ -183,7 +183,7 @@
   {{#has_close_to_tier}}
   <!-- Admin: members close to their next perk tier -->
   <div class="bg-white rounded-xl border border-gray-200 p-6">
-    <h3 class="font-semibold text-gray-800 mb-1">Almost There ({{perk_year}})</h3>
+    <h3 class="font-semibold text-gray-800 mb-1">Almost at the next perk level ({{perk_year}})</h3>
     <p class="text-xs text-gray-500 mb-3">Members within two check-ins of their next perk tier.</p>
     <ul class="divide-y divide-gray-100 text-sm">
       {{#close_to_tier}}

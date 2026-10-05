@@ -1,3 +1,4 @@
+#include "utils/text/Plural.hpp"
 #include "routes/pages/CalendarRoutes.hpp"
 #include "auth/SessionStore.hpp"
 #include "utils/Crypto.hpp"
@@ -227,11 +228,12 @@ void register_calendar_routes(LugApp& app, CalendarGenerator& cal,
             for (size_t i = 0; i < rows.size() && i < 15; ++i) {
                 arr[i]["id"]         = rows[i].member_id;
                 arr[i]["name"]       = rows[i].display_name;
-                arr[i]["paid_until"] = rows[i].paid_until;
+                arr[i]["paid_until"] = friendly_date(rows[i].paid_until);
             }
             ctx["dues_expiring"]       = std::move(arr);
             ctx["has_dues_expiring"]   = !rows.empty();
             ctx["dues_expiring_count"] = static_cast<int>(rows.size());
+            ctx["dues_expiring_text"]  = count_of(static_cast<int64_t>(rows.size()), "member's dues run out", "members' dues run out");
         }
         if (auto* st = app.get_middleware<AuthMiddleware>().settings;
             st && auth_ctx.auth.is_admin() && st->get("setup_completed", "") != "1")

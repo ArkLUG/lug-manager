@@ -139,7 +139,7 @@ TEST_F(IntegrationTest, BulkMemberActions) {
 
     auto r = POST("/members/bulk", "ids=" + ids + "&action=paid&value=2099-01-31", chapter_lead_token);
     EXPECT_EQ(r.code, 200);
-    expect_contains(r, "2 member(s)");
+    expect_contains(r, "2 members");
     EXPECT_EQ(member_repo->find_by_id(regular_member_id)->paid_until, "2099-01-31");
 
     POST("/members/bulk", "ids=" + std::to_string(regular_member_id) + "&action=fol&value=kfol", chapter_lead_token);

@@ -1,3 +1,4 @@
+#include "utils/text/Plural.hpp"
 #include "routes/events/ShowsRoutes.hpp"
 #include "live/LiveHub.hpp"
 #include "utils/web/ClientIp.hpp"
@@ -240,8 +241,8 @@ void register_shows_routes(LugApp& app, SqliteDatabase& db, SettingsRepository& 
         st.bind(1, static_cast<int64_t>(id));
         int64_t n = st.step() ? st.col_int(0) : 0;
         res.add_header("Content-Type", "text/html; charset=utf-8");
-        if (n > 0) res.write("<span class=\"text-xs text-gray-500\">" + std::to_string(n) +
-                             " visitor(s) said they plan to come (public shows page)</span>");
+        if (n > 0) res.write("<span class=\"text-xs text-gray-500\">" + count_of(n, "visitor", "visitors") +
+                             (n == 1 ? " said they plan" : " said they plan") + " to come (public shows page)</span>");
         return res;
     });
 

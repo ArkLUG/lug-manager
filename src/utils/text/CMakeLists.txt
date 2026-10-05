@@ -9,6 +9,7 @@ target_sources(lug_core PRIVATE
   Money.hpp
   NameMatch.cpp
   NameMatch.hpp
+  Plural.hpp
   UrlEncode.hpp
   Utf8.hpp
 )

@@ -35,7 +35,7 @@ TEST_F(IntegrationTest, DashboardComingUpAndNeedsAttention) {
 
     auto a = GET("/dashboard", admin_token);
     expect_contains(a, "Needs attention");
-    expect_contains(a, "display request(s) waiting for an answer");
-    expect_contains(a, "recent public event(s) without visitor numbers");
+    expect_contains(a, "display request waiting for an answer");
+    expect_contains(a, "recent public event without visitor numbers");
     expect_contains(a, "+ New meeting");
 }

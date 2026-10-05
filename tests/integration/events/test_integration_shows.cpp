@@ -100,7 +100,7 @@ TEST_F(IntegrationTest, ShowsInterestAndVolunteerLink) {
     expect_not_contains(GET("/shows"), "volunteer at this show");
     POST("/events/" + id + "/shifts", "title=Setup&day=2099-09-05&from=08:00&to=09:00&slots=2", admin_token);
     expect_contains(GET("/shows"), "volunteer at this show");
-    expect_contains(GET("/events/" + id + "/public-interest", member_token), "1 visitor(s)");
+    expect_contains(GET("/events/" + id + "/public-interest", member_token), "1 visitor said they plan");
     expect_contains(GET("/events/" + id + "/report", admin_token), "Said they'd come");
     EXPECT_NE(GET("/events/" + id + "/public-interest").code, 200);
 

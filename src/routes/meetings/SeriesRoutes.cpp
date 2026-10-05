@@ -1,3 +1,4 @@
+#include "utils/text/Plural.hpp"
 #include "routes/meetings/SeriesRoutes.hpp"
 #include "services/events/AttendanceService.hpp"
 #include "utils/LocalTime.hpp"
@@ -109,9 +110,9 @@ void register_series_routes(LugApp& app, std::shared_ptr<SeriesService> series,
         s.id = id;
         int made = series->materialize(AttendanceService::today_ymd());
         audit.log(req, app, "meeting.series_create", "meeting_series", id, s.title,
-                  SeriesService::describe(s) + "; created " + std::to_string(made) + " meeting(s)");
+                  SeriesService::describe(s) + "; created " + count_of(made, "meeting", "meetings"));
         res.write(render(req, app, *series, chapters, chapter_members,
-                         "Series created - " + std::to_string(made) + " upcoming meeting(s) scheduled."));
+                         "Series created - " + count_of(made, "upcoming meeting", "upcoming meetings") + " scheduled."));
         return res;
     });
 
@@ -127,10 +128,10 @@ void register_series_routes(LugApp& app, std::shared_ptr<SeriesService> series,
         }
         int removed = series->stop(id, local_iso_now());
         audit.log(req, app, "meeting.series_stop", "meeting_series", id, s->title,
-                  "Stopped; removed " + std::to_string(removed) + " future meeting(s)");
+                  "Stopped; removed " + count_of(removed, "future meeting", "future meetings"));
         res.add_header("Content-Type", "text/html; charset=utf-8");
         res.write(render(req, app, *series, chapters, chapter_members,
-                         "Series stopped - " + std::to_string(removed) + " future meeting(s) removed."));
+                         "Series stopped - " + count_of(removed, "future meeting", "future meetings") + " removed."));
         return res;
     });
 }

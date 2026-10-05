@@ -1,3 +1,4 @@
+#include "utils/text/Plural.hpp"
 #include "routes/accounts/SessionRoutes.hpp"
 #include <crow/mustache.h>
 
@@ -50,7 +51,7 @@ void register_session_routes(LugApp& app, AuthService& auth, AuditService& audit
         auto& a = app.get_context<AuthMiddleware>(req).auth;
         int n = auth.sessions().remove_all_for_member(a.member_id, get_cookie(req, "session"));
         audit.log(req, app, "auth.sessions_revoked", "member", a.member_id, a.display_name,
-                  "Signed out " + std::to_string(n) + " other session(s)");
+                  "Signed out " + count_of(n, "other session", "other sessions"));
         res.add_header("Content-Type", "text/html; charset=utf-8");
         res.write(render(req, app, auth, "Signed out of " + std::to_string(n) + " other device(s)."));
         return res;
@@ -61,9 +62,9 @@ void register_session_routes(LugApp& app, AuthService& auth, AuditService& audit
         if (!require_auth(req, res, app, "admin")) return res;
         int n = auth.sessions().remove_all_for_member(id);
         audit.log(req, app, "auth.sessions_revoked", "member", id, "",
-                  "Admin signed member out of " + std::to_string(n) + " session(s)");
+                  "Admin signed member out of " + count_of(n, "session", "sessions"));
         res.add_header("Content-Type", "text/html; charset=utf-8");
-        res.write("<span class=\"text-xs text-green-700\">Signed out of " + std::to_string(n) + " session(s).</span>");
+        res.write("<span class=\"text-xs text-green-700\">Signed out of " + count_of(n, "session", "sessions") + ".</span>");
         return res;
     });
 }

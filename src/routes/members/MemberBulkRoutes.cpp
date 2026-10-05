@@ -1,3 +1,4 @@
+#include "utils/text/Plural.hpp"
 #include "routes/members/MemberBulkRoutes.hpp"
 #include "utils/web/ParseId.hpp"
 #include "utils/text/HtmlEscape.hpp"
@@ -67,7 +68,7 @@ void register_member_bulk_routes(LugApp& app, MemberService& members, AuditServi
         }
         res.add_header("HX-Trigger", "membersUpdated"); // members table reloads on this
         res.write("<span class=\"text-green-700 text-sm\">" + html_escape(summary) + " for " +
-                  std::to_string(changed) + " member(s).</span>");
+                  count_of(changed, "member", "members") + ".</span>");
         return res;
     });
 }

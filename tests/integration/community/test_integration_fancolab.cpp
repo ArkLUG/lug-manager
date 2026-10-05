@@ -107,7 +107,7 @@ TEST_F(IntegrationTest, FanCoLabYearlyTodo) {
     // Reminder only for recognized groups, only for admins
     expect_not_contains(GET("/dashboard", admin_token), "LEGO Fan CoLab to-do list");
     settings_repo->set("fan_colab_recognized", "1");
-    expect_contains(GET("/dashboard", admin_token), ">3</span>thing(s) left on this year&#39;s LEGO Fan CoLab to-do list");
+    expect_contains(GET("/dashboard", admin_token), ">3</span>things left on this year&#39;s LEGO Fan CoLab to-do list");
     expect_not_contains(GET("/dashboard", member_token), "LEGO Fan CoLab to-do list");
 
     int64_t first = one_int(*db, "SELECT id FROM fan_colab_tasks ORDER BY sort_order LIMIT 1");
@@ -117,7 +117,7 @@ TEST_F(IntegrationTest, FanCoLabYearlyTodo) {
     EXPECT_EQ(t.code, 200);
     expect_contains(t, "1 of 3 done");
     EXPECT_EQ(one_int(*db, "SELECT done_by FROM fan_colab_task_done WHERE task_id=" + std::to_string(first)), admin_member_id);
-    expect_contains(GET("/dashboard", admin_token), ">2</span>thing(s) left on this year&#39;s LEGO Fan CoLab");
+    expect_contains(GET("/dashboard", admin_token), ">2</span>things left on this year&#39;s LEGO Fan CoLab");
     // Ticks are per year
     expect_contains(GET("/fancolab?year=" + std::to_string(year + 1), admin_token), "0 of 3 done");
     // Untick
