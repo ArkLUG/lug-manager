@@ -22,11 +22,11 @@
         <span class="block text-xs text-gray-500">Someone joining part-way through pays for the months left, counting the month they join, rounded up to whole dollars. For example $20 a year, joining in July: 6 of 12 months, $10. Someone already paid for this year is offered the next full year instead.</span>
       </span>
     </label>
+    {{#example}}<p class="ml-7 -mt-2 text-xs text-gray-600 bg-gray-50 border border-gray-200 rounded-lg px-3 py-2" id="dues-example">{{example}}</p>{{/example}}
     <label class="block text-gray-700" for="dues-grace">Grace period
       <span class="flex items-center gap-2 mt-1"><input id="dues-grace" type="number" name="dues_grace_days" min="0" max="365" value="{{grace_days}}" class="w-24 border border-gray-300 rounded-lg px-2 py-1"> days</span>
       <span class="block text-xs text-gray-400 mt-1">How long members stay counted as paid after their dues run out, before they're marked unpaid. 0 = no grace period. Members in their grace period show "Grace period" on their Dues panel and in the members list.</span>
     </label>
-    {{#example}}<p class="text-xs text-gray-500" id="dues-example">{{example}}</p>{{/example}}
     <div class="flex items-center gap-3 pt-2">
       <button class="px-4 py-2 bg-gray-800 text-white rounded-lg font-medium hover:bg-gray-700">Save</button>
       {{#flash}}<span class="text-green-700">{{flash}}</span>{{/flash}}

@@ -27,6 +27,7 @@ TEST(Breadcrumbs, SettingsPagesShowTheirGroup) {
 TEST(Breadcrumbs, NoSettingsTrailForNonAdminsOrTheAuditLog) {
     EXPECT_TRUE(breadcrumbs_for("/settings/discord-matches", "Discord Matches", false).empty());
     EXPECT_TRUE(breadcrumbs_for("/audit", "Audit Log", true).empty());
+    EXPECT_TRUE(breadcrumbs_for("/fancolab", "LEGO Fan CoLab", true).empty());
     EXPECT_TRUE(breadcrumbs_for("/settings/overview", "Settings", true).empty());
 }
 
@@ -41,6 +42,10 @@ TEST(Breadcrumbs, DetailPagesLeadBackToTheirSection) {
               "Build Challenges(/challenges) > Spooky builds");
     EXPECT_EQ(labels(breadcrumbs_for("/account/security", "Password & two-factor", false)),
               "My Account(/account) > Password & two-factor");
+    EXPECT_EQ(labels(breadcrumbs_for("/chapters/4/members", "NWA — Members", false)),
+              "Chapters(/chapters) > NWA(/chapters/4) > Members");
+    EXPECT_EQ(labels(breadcrumbs_for("/events/all", "All events", false)),
+              "Schedule(/schedule) > Events(/events) > All events");
     // Top-level pages need no trail
     EXPECT_TRUE(breadcrumbs_for("/chapters", "Chapters", false).empty());
     EXPECT_TRUE(breadcrumbs_for("/dashboard", "Dashboard", false).empty());

@@ -12,6 +12,7 @@ const std::vector<SettingsGroup>& settings_groups() {
             {"/settings/branding", "Logo and colours", "Your club logo and the default colour theme.", ""},
             {"/settings/about", "Public pages", "The About page and the upcoming shows page anyone can see.", ""},
             {"/settings/sign-in", "Sign-in", "Passwords, emailed links, two-factor and Discord sign-in.", ""},
+            {"/fancolab", "LEGO Fan CoLab", "Recognized LEGO Fan Community status, the Community Ambassador and this year's to-do list.", "f-fancolab"},
         }},
         {"Messages", "", {
             {"/settings/site", "Email and address", "This site's address and the email server.", ""},
@@ -71,8 +72,7 @@ std::vector<Crumb> breadcrumbs_for(const std::string& raw_path, const std::strin
     const auto seg = segments(path);
     if (seg.empty()) return {};
 
-    // Settings: Settings > group > page [> deeper page]. The Audit log has its
-    // own place in the sidebar, so it gets no trail.
+    // Settings: Settings > group > page [> deeper page].
     if (is_admin) {
         const SettingsGroup* best_group = nullptr;
         const SettingsLink* best = nullptr;
@@ -84,7 +84,9 @@ std::vector<Crumb> breadcrumbs_for(const std::string& raw_path, const std::strin
                 bool hit = path == href || (href != "/settings" && starts_with(path, href + "/"));
                 if (hit && (!best || href.size() > std::string(best->href).size())) { best = &l; best_group = &g; }
             }
-        if (best && std::string(best->href) != "/audit") {
+        // The Audit log and LEGO Fan CoLab also have their own place in the
+        // sidebar, so they get no trail.
+        if (best && std::string(best->href) != "/audit" && std::string(best->href) != "/fancolab") {
             std::vector<Crumb> t = {{"Settings", "/settings/overview"}, {best_group->title, ""}};
             if (path != best->href && !deeper_title.empty()) {
                 t.push_back({best->label, best->href});
@@ -106,6 +108,15 @@ std::vector<Crumb> breadcrumbs_for(const std::string& raw_path, const std::strin
         t.push_back({list, "/" + top});
         t.push_back({deeper_title, ""});
         return t;
+    }
+    // A chapter's members page: Chapters > <chapter> > Members (its title is
+    // "<chapter> — Members").
+    if (top == "chapters" && seg.size() == 3 && is_number(seg[1]) && seg[2] == "members" && !deeper_title.empty()) {
+        static const std::string suffix = " — Members";
+        std::string chapter = deeper_title;
+        if (chapter.size() > suffix.size() && chapter.compare(chapter.size() - suffix.size(), suffix.size(), suffix) == 0)
+            chapter.erase(chapter.size() - suffix.size());
+        return {{"Chapters", "/chapters"}, {chapter, "/chapters/" + seg[1]}, {"Members", ""}};
     }
     // Detail pages one step below a sidebar page.
     struct Section { const char* top; const char* label; };

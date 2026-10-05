@@ -1,4 +1,5 @@
 #include "integration_test_base.hpp"
+#include "utils/web/Breadcrumbs.hpp"
 
 // Settings is split into separate pages (Discord / Calendar / Google Calendar /
 // Discord Matches), each its own route + template + save endpoint, so a save
@@ -327,4 +328,24 @@ TEST_F(IntegrationTest, SettingsPagesHaveABreadcrumb) {
     expect_contains(r, "aria-current=\"page\" class=\"font-medium text-gray-800 truncate max-w-[16rem] sm:max-w-md\">Reminders</span>");
     expect_not_contains(GET_HTMX("/settings/reminders", admin_token), "<nav aria-label=\"Breadcrumb\"");
     expect_not_contains(GET("/settings/overview", admin_token), "<nav aria-label=\"Breadcrumb\"");
+}
+
+// Every page on the Settings overview has the breadcrumb, whether loaded whole,
+// swapped into the main area, or restored by the browser's Back button.
+TEST_F(IntegrationTest, EverySettingsPageHasABreadcrumb) {
+    for (const auto& g : settings_groups())
+        for (const auto& l : g.links) {
+            const std::string href = l.href;
+            if (href == "/audit" || href == "/fancolab") continue;   // own sidebar items
+            SCOPED_TRACE(href);
+            auto full = GET(href, admin_token);
+            EXPECT_EQ(full.code, 200);
+            expect_contains(full, "<nav aria-label=\"Breadcrumb\"");
+            expect_contains(full, std::string(">") + l.label + "</span>");
+            expect_contains(http("GET", href, "", admin_token, true, "", false, {"HX-Target: main-content"}), "<nav aria-label=\"Breadcrumb\"");
+            auto restore = http("GET", href, "", admin_token, true, "", false, {"HX-History-Restore-Request: true"});
+            expect_contains(restore, "<!DOCTYPE html>");
+            expect_contains(restore, "<nav aria-label=\"Breadcrumb\"");
+        }
+    expect_contains(GET("/settings/overview", admin_token), "LEGO Fan CoLab");
 }

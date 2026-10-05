@@ -13,7 +13,11 @@
 #include <string>
 
 // True for requests made by htmx (they want a fragment, not a whole page).
-inline bool is_htmx(const crow::request& req) { return req.get_header_value("HX-Request") == "true"; }
+// A history restore (browser Back after htmx's page cache was dropped) wants
+// the whole page: htmx swaps it in place of the body.
+inline bool is_htmx(const crow::request& req) {
+    return req.get_header_value("HX-Request") == "true" && req.get_header_value("HX-History-Restore-Request") != "true";
+}
 
 // Returns the value of cookie `name` from the Cookie header, or "" if absent.
 // Matches whole cookie names only (a bare find("session=") also matched e.g.
