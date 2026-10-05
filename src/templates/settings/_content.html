@@ -123,6 +123,8 @@
       </div>
 
       <h3 class="text-base font-semibold text-gray-900 border-b border-gray-200 pb-1 pt-2">What to post</h3>
+      <p class="text-xs text-gray-500">The wording of every post, DM and email is shared by all chat connections and email:
+        <a hx-get="/settings/messages" hx-target="#main-content" hx-push-url="true" hx-swap="innerHTML" class="underline cursor-pointer">change it under Message wording</a>.</p>
       <label class="flex items-start gap-3 cursor-pointer rounded-lg bg-amber-50 border border-amber-200 p-3">
         <input type="checkbox" name="chat_quiet" value="1" {{#quiet}}checked{{/quiet}} class="mt-0.5 w-4 h-4 accent-yellow-400 rounded">
         <div><span class="text-sm font-medium text-gray-800">Quiet mode</span>

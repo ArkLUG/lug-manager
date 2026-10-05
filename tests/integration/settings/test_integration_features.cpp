@@ -146,7 +146,7 @@ TEST_F(IntegrationTest, FeaturesStopBackgroundWorkAndHideNotifications) {
 TEST_F(IntegrationTest, FeaturesChapterLeadRoleWithChaptersOff) {
     // On: the role is offered
     expect_contains(GET_HTMX("/members/new", admin_token), ">Chapter Lead</option>");
-    expect_contains(GET("/help", chapter_lead_token), "Chapter Lead &amp; Moderator Guide");
+    expect_contains(GET("/help", chapter_lead_token), "Chapter lead and moderator guide");
     expect_contains(GET("/dashboard", chapter_lead_token), "Chapter Tools");
 
     Features::set("chapters", false);
@@ -166,18 +166,18 @@ TEST_F(IntegrationTest, FeaturesChapterLeadRoleWithChaptersOff) {
     POST("/members/" + std::to_string(chapter_lead_member_id), "first_name=Lead&last_name=User&role=chapter_lead", admin_token);
     EXPECT_EQ(member_repo->find_by_id(chapter_lead_member_id)->role, "chapter_lead");
     // Wording follows
-    expect_contains(GET("/help", chapter_lead_token), "Moderator Guide");
-    expect_not_contains(GET("/help", chapter_lead_token), "Chapter Lead &amp; Moderator Guide");
+    expect_contains(GET("/help", chapter_lead_token), "Moderator guide");
+    expect_not_contains(GET("/help", chapter_lead_token), "Chapter lead and moderator guide");
     expect_contains(GET("/dashboard", chapter_lead_token), "Moderator Tools");
 
     // Features page offers to convert the remaining Chapter Leads
     auto page = GET("/settings/features", admin_token);
-    expect_contains(page, "still have the Chapter Lead role");
+    expect_contains(page, "1 member still has the Chapter Lead role");
     EXPECT_EQ(POST("/settings/features/leads-to-moderators", "", chapter_lead_token).code, 403);
     auto conv = POST("/settings/features/leads-to-moderators", "", admin_token);
     EXPECT_EQ(conv.code, 200);
-    expect_contains(conv, "are now Moderators");
-    expect_not_contains(conv, "still have the Chapter Lead role");
+    expect_contains(conv, "1 Chapter Lead is now a Moderator.");
+    expect_not_contains(conv, "still has the Chapter Lead role");
     auto m = member_repo->find_by_id(chapter_lead_member_id);
     EXPECT_EQ(m->role, "moderator");
     auto a = db->prepare("SELECT COUNT(*) FROM audit_log WHERE details LIKE 'role: chapter_lead -> moderator%'");
@@ -188,7 +188,7 @@ TEST_F(IntegrationTest, FeaturesChapterLeadRoleWithChaptersOff) {
 
     // With chapters on again, conversion is a no-op and the role is offered again
     Features::set("chapters", true);
-    expect_contains(POST("/settings/features/leads-to-moderators", "", admin_token), "0 Chapter Lead(s)");
+    expect_contains(POST("/settings/features/leads-to-moderators", "", admin_token), "0 Chapter Leads are now Moderators.");
     expect_contains(GET_HTMX("/members/new", admin_token), ">Chapter Lead</option>");
 }
 

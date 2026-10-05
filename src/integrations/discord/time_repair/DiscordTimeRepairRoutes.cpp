@@ -1,4 +1,5 @@
 #include "integrations/discord/time_repair/DiscordTimeRepairRoutes.hpp"
+#include "utils/text/Plural.hpp"
 #include "integrations/discord/time_repair/DiscordTimeRepair.hpp"
 #include <crow/mustache.h>
 #include <map>
@@ -36,6 +37,7 @@ std::string render_table(const std::vector<TimeRepairItem>& items, bool applied,
     ctx["include_past"] = include_past;
     ctx["summary"] = summary(counts);
     ctx["wrong"] = counts["wrong"];
+    ctx["wrong_text"] = count_of(counts["wrong"], "item", "items");
     ctx["has_wrong"] = counts["wrong"] > 0;
     return crow::mustache::load("settings/_discord_times_result.html").render(ctx).dump();
 }

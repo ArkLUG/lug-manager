@@ -1,4 +1,5 @@
 #include "routes/settings/BackupRoutes.hpp"
+#include "utils/text/Plural.hpp"
 #include "utils/web/ParseId.hpp"
 #include <crow/mustache.h>
 #include <fstream>
@@ -29,6 +30,7 @@ std::string render_page(BackupService& backups, SettingsRepository& settings, co
     if (!flash.empty()) ctx["flash"] = flash;
     auto up = backups.upload_stats();
     ctx["upload_files"] = up.files;
+    ctx["upload_files_text"] = count_of(up.files, "file", "files");
     ctx["upload_size"]  = human_size(up.bytes);
     ctx["has_uploads"]  = up.files > 0;
     return crow::mustache::load("settings/_backups.html").render(ctx).dump();

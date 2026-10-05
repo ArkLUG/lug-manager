@@ -1,4 +1,5 @@
 #include "routes/community/GalleryRoutes.hpp"
+#include "utils/text/Plural.hpp"
 #include "live/LiveHub.hpp"
 #include "utils/LocalTime.hpp"
 #include "routes/events/EventAccess.hpp"
@@ -105,6 +106,7 @@ std::string render_challenge(const crow::request& req, LugApp& app, SqliteDataba
         arr[i]["by"] = st.col_text(4);
         // Vote counts stay hidden until voting closes (no bandwagoning).
         arr[i]["votes"] = ph.results ? st.col_int(5) : 0;
+        arr[i]["votes_text"] = count_of(ph.results ? st.col_int(5) : 0, "vote", "votes");
         arr[i]["show_votes"] = ph.results;
         arr[i]["winner"] = ph.results && i == 0 && st.col_int(5) > 0;
         arr[i]["can_vote"] = ph.vote && !mine;

@@ -46,7 +46,7 @@
 
   <section class="bg-white rounded-xl border border-gray-200 p-5 space-y-2">
     <h3 class="font-semibold text-gray-800">{{#roles_done}}&#10003; {{/roles_done}}4. Who gets in</h3>
-    <p class="text-sm text-gray-600">Anyone in your Discord server can sign in as a member. Map Discord roles to Admin so your other organisers get admin automatically{{#roles_done}} ({{mapped_roles}} role(s) mapped){{/roles_done}}.</p>
+    <p class="text-sm text-gray-600">Anyone in your Discord server can sign in as a member. Map Discord roles to Admin or Moderator so your other organisers get them automatically{{#roles_done}} ({{mapped_roles_text}} mapped){{/roles_done}}. What moderators and others may do is under <a hx-get="/settings/permissions" hx-target="#main-content" hx-push-url="true" class="underline cursor-pointer">Roles and permissions</a>.</p>
     <a hx-get="/settings/roles" hx-target="#main-content" hx-push-url="true" class="inline-block px-4 py-2 border border-gray-300 rounded-lg text-sm text-gray-700 hover:bg-gray-50 cursor-pointer">Map Discord roles</a>
   </section>
 

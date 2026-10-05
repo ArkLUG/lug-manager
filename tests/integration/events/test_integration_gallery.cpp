@@ -124,7 +124,9 @@ TEST_F(IntegrationTest, ChallengeLifecycle) {
     EXPECT_EQ(vc2.col_int(0), 0);
 
     // Results not out yet: counts hidden, can't announce
-    expect_not_contains(GET(base, member_token), "vote(s)");
+    auto hidden = GET(base, member_token);
+    expect_not_contains(hidden, " vote<");
+    expect_not_contains(hidden, " votes<");
     EXPECT_EQ(POST(base + "/announce", "", member_token).code, 403);
     EXPECT_EQ(POST(base + "/announce", "", admin_token).code, 409);
 
@@ -151,7 +153,7 @@ TEST_F(IntegrationTest, ChallengeClosedPhases) {
     EXPECT_EQ(POST_FILE(base + "/entries", "photo", "a.png", kTinyPng, chapter_lead_token, {{"title", "Late"}}).code, 409);
     EXPECT_EQ(POST(base + "/entries/" + std::to_string(eid) + "/vote", "", chapter_lead_token).code, 409);
     auto page = GET(base, member_token);
-    expect_contains(page, "1 vote(s)");
+    expect_contains(page, "· 1 vote<");
     expect_contains(GET("/challenges", member_token), "Finished");
     // Owner can't remove after entries close; admin can
     EXPECT_EQ(POST(base + "/entries/" + std::to_string(eid) + "/delete", "", member_token).code, 403);

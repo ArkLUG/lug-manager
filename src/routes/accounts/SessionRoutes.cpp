@@ -53,7 +53,7 @@ void register_session_routes(LugApp& app, AuthService& auth, AuditService& audit
         audit.log(req, app, "auth.sessions_revoked", "member", a.member_id, a.display_name,
                   "Signed out " + count_of(n, "other session", "other sessions"));
         res.add_header("Content-Type", "text/html; charset=utf-8");
-        res.write(render(req, app, auth, "Signed out of " + std::to_string(n) + " other device(s)."));
+        res.write(render(req, app, auth, "Signed out of " + count_of(n, "other device", "other devices") + "."));
         return res;
     });
 

@@ -46,7 +46,7 @@ void register_help_routes(LugApp& app, ChapterMemberRepository& chapter_members)
         bool ch = Features::on("chapters");
         ctx["leads_and_mods"] = ch ? "Chapter leads, moderators" : "Moderators";
         ctx["lead_power_title"] = ch ? "Chapter Lead Powers" : "Moderator Powers";
-        ctx["lead_guide_title"] = Features::on("chapters") ? "Chapter Lead & Moderator Guide" : "Moderator Guide";
+        ctx["lead_guide_title"] = Features::on("chapters") ? "Chapter lead and moderator guide" : "Moderator guide";
 
         res.add_header("Content-Type", "text/html; charset=utf-8");
         auto content_tmpl = crow::mustache::load("help/_content.html");

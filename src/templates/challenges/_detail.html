@@ -19,7 +19,7 @@
       <a href="/uploads/{{file}}" target="_blank" rel="noopener"><img src="/uploads/{{file}}" alt="{{title}}" loading="lazy" class="w-full h-48 object-cover"></a>
       <div class="p-3 space-y-1">
         <div class="font-medium text-gray-900">{{#winner}}&#127942; {{/winner}}{{title}}</div>
-        <div class="text-xs text-gray-500">by {{by}}{{#show_votes}} · {{votes}} vote(s){{/show_votes}}</div>
+        <div class="text-xs text-gray-500">by {{by}}{{#show_votes}} · {{votes_text}}{{/show_votes}}</div>
         <div class="flex items-center gap-2 pt-1">
           {{#can_vote}}
           <button hx-post="/challenges/{{challenge_id}}/entries/{{id}}/vote" hx-target="#challenge-{{challenge_id}}" hx-swap="outerHTML"

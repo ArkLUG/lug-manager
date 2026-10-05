@@ -11,7 +11,7 @@
   {{#has_my_locations}}
   <div class="rounded-xl border border-yellow-300 bg-yellow-50 px-4 py-3 text-sm text-gray-800">
     You look after:
-    {{#my_locations}}<span class="mr-3 whitespace-nowrap"><a hx-get="/inventory?location={{id}}" hx-target="#main-content" hx-push-url="true" class="font-medium underline cursor-pointer">{{name}}</a> ({{units}} items)</span>{{/my_locations}}
+    {{#my_locations}}<span class="mr-3 whitespace-nowrap"><a hx-get="/inventory?location={{id}}" hx-target="#main-content" hx-push-url="true" class="font-medium underline cursor-pointer">{{name}}</a> ({{units_text}})</span>{{/my_locations}}
   </div>
   {{/has_my_locations}}
 
@@ -84,7 +84,7 @@
           <a hx-get="/inventory?location={{id}}" hx-target="#main-content" hx-push-url="true" class="font-medium text-gray-900 hover:underline cursor-pointer">{{name}}</a>
           <span class="text-xs px-2 py-0.5 rounded bg-gray-100 text-gray-600 whitespace-nowrap">{{kind_label}}</span>
         </div>
-        <div class="text-xs text-gray-500">{{units}} item(s){{#owner_member}} · owned by {{owner}}{{/owner_member}}{{#keeper}} · looked after by {{keeper}}{{/keeper}}</div>
+        <div class="text-xs text-gray-500">{{units_text}}{{#owner_member}} · owned by {{owner}}{{/owner_member}}{{#keeper}} · looked after by {{keeper}}{{/keeper}}</div>
         {{#address}}<div class="text-xs text-gray-500">{{address}}</div>{{/address}}
         {{#notes}}<div class="text-xs text-gray-500">{{notes}}</div>{{/notes}}
         {{#can_manage}}

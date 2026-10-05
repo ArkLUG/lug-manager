@@ -7,6 +7,7 @@
 #include "auth/AccountSecurity.hpp"
 #include "auth/SessionStore.hpp"
 #include "utils/text/HtmlEscape.hpp"
+#include "utils/text/Plural.hpp"
 #include <crow/mustache.h>
 #include <iostream>
 #include <mutex>
@@ -76,6 +77,7 @@ std::string render_checklist(SettingsRepository& settings, SqliteDatabase& db, c
     ctx["discord_done"] = discord;
     ctx["roles_done"] = roles;
     ctx["mapped_roles"] = mapped;
+    ctx["mapped_roles_text"] = count_of(mapped, "Discord role", "Discord roles");
     ctx["guild_id"] = settings.get("discord_guild_id", "");
     ctx["lug_channel"] = settings.get("discord_announcements_channel_id", "");
     ctx["done_count"] = static_cast<int>(basics) + features + discord + roles;

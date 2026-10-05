@@ -1,4 +1,5 @@
 #include "routes/community/InventoryRoutes.hpp"
+#include "utils/text/Plural.hpp"
 #include "live/LiveHub.hpp"
 #include "utils/web/FormBody.hpp"
 #include "services/events/AttendanceService.hpp"
@@ -154,7 +155,7 @@ std::string render(const crow::request& req, LugApp& app, SqliteDatabase& db, co
             l["id"] = id; l["name"] = st.col_text(1); l["kind"] = st.col_text(2); l["kind_label"] = kind_label(st.col_text(2));
             l["address"] = st.col_text(3); l["notes"] = st.col_text(4);
             l["keeper_id"] = st.col_int(5); l["keeper"] = st.col_text(6);
-            l["units"] = st.col_int(10); l["item_kinds"] = st.col_int(11);
+            l["units"] = st.col_int(10); l["units_text"] = count_of(st.col_int(10), "item", "items"); l["item_kinds"] = st.col_int(11);
             const int64_t lowner = st.col_int(7);
             l["owner"] = owner_label(lowner, st.col_text(9), st.col_text(8));
             l["owner_member"] = lowner > 0 || !st.col_text(8).empty();
@@ -176,7 +177,7 @@ std::string render(const crow::request& req, LugApp& app, SqliteDatabase& db, co
             }
             loc_opts[nl]["id"] = id; loc_opts[nl]["name"] = st.col_text(1);
             if (st.col_int(5) == a.member_id) {
-                mine[nmine]["id"] = id; mine[nmine]["name"] = st.col_text(1); mine[nmine]["units"] = st.col_int(10); ++nmine;
+                mine[nmine]["id"] = id; mine[nmine]["name"] = st.col_text(1); mine[nmine]["units"] = st.col_int(10); mine[nmine]["units_text"] = count_of(st.col_int(10), "item", "items"); ++nmine;
             }
             ++nl;
         }

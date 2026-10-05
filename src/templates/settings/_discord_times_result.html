@@ -20,7 +20,7 @@
   {{/has_items}}
   {{#has_wrong}}{{^applied}}
   <form hx-post="/settings/discord-times/fix" hx-target="#discord-times-result" hx-swap="innerHTML"
-        hx-confirm="Edit {{wrong}} item(s) on Discord in place? Nothing new is posted and nobody is pinged.">
+        hx-confirm="Edit {{wrong_text}} on Discord in place? Nothing new is posted and nobody is pinged.">
     {{#include_past}}<input type="hidden" name="include_past" value="1">{{/include_past}}
     <button class="px-4 py-2 bg-yellow-400 text-gray-900 rounded-lg font-semibold hover:bg-yellow-300">Fix {{wrong}} on Discord (silently)</button>
   </form>

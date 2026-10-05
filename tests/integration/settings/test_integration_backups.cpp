@@ -71,7 +71,7 @@ TEST_F(IntegrationTest, BackupMirrorsUploadsAndOffersArchive) {
     std::string name = up.body.substr(p + 9, up.body.find('"', p) - p - 9);
 
     auto page = POST("/settings/backups", "", admin_token);
-    expect_contains(page, "1 file(s)");
+    expect_contains(page, "1 file,");
     std::string mirrored = data_dir + "/backups/uploads/" + name;
     EXPECT_TRUE(std::filesystem::exists(mirrored));
 

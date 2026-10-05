@@ -5,7 +5,7 @@
   </div>
   {{#stray_leads}}
   <div class="text-sm rounded-lg px-4 py-3 border border-amber-200 bg-amber-50 text-amber-800 flex flex-wrap items-center justify-between gap-3">
-    <span>Chapters are off, but {{stray_leads}} member(s) still have the Chapter Lead role. It's no longer offered; Moderator is offered instead (what each can do is on Settings › Roles and permissions).</span>
+    <span>Chapters are off, but {{stray_leads_text}} the Chapter Lead role. It's no longer offered; Moderator is offered instead (what each can do is on Settings › Roles and permissions).</span>
     <button hx-post="/settings/features/leads-to-moderators" hx-target="#features-page" hx-swap="outerHTML"
             class="px-3 py-1.5 bg-amber-600 text-white rounded-lg text-xs font-medium hover:bg-amber-700">Make them Moderators</button>
   </div>

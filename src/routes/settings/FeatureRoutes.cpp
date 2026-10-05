@@ -1,4 +1,5 @@
 #include "routes/settings/FeatureRoutes.hpp"
+#include "utils/text/Plural.hpp"
 #include "services/Features.hpp"
 #include <crow/mustache.h>
 
@@ -12,7 +13,7 @@ std::string render(SettingsRepository& settings, const std::string& flash = "") 
     crow::mustache::context ctx;
     if (!Features::on("chapters")) {
         int n = chapter_lead_count(settings);
-        if (n > 0) ctx["stray_leads"] = n;
+        if (n > 0) { ctx["stray_leads"] = n; ctx["stray_leads_text"] = count_of(n, "member still has", "members still have"); }
     }
     crow::json::wvalue arr = crow::json::wvalue::list();
     int i = 0;
@@ -53,7 +54,7 @@ void register_feature_routes(LugApp& app, SettingsRepository& settings, AuditSer
             n = static_cast<int>(changed.size());
         }
         res.add_header("Content-Type", "text/html; charset=utf-8");
-        res.write(render(settings, std::to_string(n) + " Chapter Lead(s) are now Moderators."));
+        res.write(render(settings, n == 1 ? "1 Chapter Lead is now a Moderator." : std::to_string(n) + " Chapter Leads are now Moderators."));
         return res;
     });
 
