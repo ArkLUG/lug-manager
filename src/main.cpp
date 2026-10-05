@@ -186,6 +186,14 @@ int main(int argc, char** argv) {
         app.get_middleware<AuthMiddleware>().settings     = &settings_repo;
         app.get_middleware<ApiKeyMiddleware>().api_keys = &api_key_repo;
 
+        // One-time repair (2.0.11): Discord sign-ins and member syncs used to put
+        // the Discord name back over display names made from first + last name.
+        if (settings_repo.get("display_names_repaired_2_0_11") != "1") {
+            auto r = member_service.regenerate_all_nicknames();
+            settings_repo.set("display_names_repaired_2_0_11", "1");
+            std::cout << "[members] display names repaired from first/last name: " << r.updated << " changed\n";
+        }
+
         // Wire up all route handlers
         Services svc{
             chapter_service,

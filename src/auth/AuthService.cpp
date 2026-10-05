@@ -103,7 +103,11 @@ Member AuthService::discord_member(const std::string& code, const std::string& r
         member.discord_username = user_info.username;
         needs_update = true;
     }
-    if (!user_info.global_name.empty() && member.display_name != user_info.global_name) {
+    // Their Discord name is only the display name while we don't know their
+    // real name: once first and last name are set, the display name is made
+    // from those ("Ann B.") and signing in mustn't put the Discord name back.
+    const bool has_real_name = !member.first_name.empty() && !member.last_name.empty();
+    if (!has_real_name && !user_info.global_name.empty() && member.display_name != user_info.global_name) {
         member.display_name = user_info.global_name;
         needs_update = true;
     }

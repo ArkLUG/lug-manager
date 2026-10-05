@@ -62,6 +62,10 @@ SyncResult MemberSyncService::sync_from_guild() {
                                 :                           gm.username;
 
             auto existing = member_repo_.find_by_discord_id(gm.discord_user_id);
+            // Members with a first and last name keep the display name made from
+            // them; the Discord name only stands in while we don't know it.
+            if (existing && !existing->first_name.empty() && !existing->last_name.empty())
+                display = existing->display_name;
             // Discord-sourced roles follow the mapping; manual grants are only
             // ever raised, never wiped (they used to be reset to "member").
             std::string source   = existing ? member_repo_.get_role_source(existing->id) : "discord";

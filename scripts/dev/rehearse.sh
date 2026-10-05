@@ -23,6 +23,7 @@ for _ in $(seq 1 90); do curl -s -o /dev/null "localhost:$PORT/login" && break; 
 grep -q "LUG_OFFLINE=1" "$W/new.log" || { echo "ABORT: server not in offline mode"; exit 1; }
 echo "== upgrade: $(grep -c 'Applied version' "$W/new.log") migrations; now schema $(sqlite3 "$W/lug.db" 'SELECT MAX(version) FROM _schema_migrations'); $(sqlite3 "$W/lug.db" 'PRAGMA integrity_check' | head -1); fk problems: $(sqlite3 "$W/lug.db" 'PRAGMA foreign_key_check' | wc -l)"
 grep -iE "migration.*(fail|error)" "$W/new.log" | head
+grep -E "^\[members\]" "$W/new.log" | head -3
 counts > "$W/after.txt"
 # Tables that existed before keep their row counts (new tables are fine)
 CHANGED=$(diff <(sort "$W/before.txt") <(grep -F -f <(cut -d= -f1 "$W/before.txt" | sed 's/$/=/') "$W/after.txt" | sort) | grep '^[<>]' || true)

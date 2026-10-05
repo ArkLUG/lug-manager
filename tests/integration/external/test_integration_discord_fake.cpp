@@ -267,3 +267,18 @@ TEST_F(DiscordFakeTest, DiscordSignInFillsMissingEmail) {
     sign_in("100000000000000032", "bob@example.org", true);
     EXPECT_EQ(email_of("100000000000000032"), "bob@example.org");
 }
+
+// A member with a first and last name keeps the display name made from them
+// ("Regular U."); a sync only uses the Discord name while we don't know theirs.
+TEST_F(DiscordFakeTest, MemberSyncKeepsDisplayNamesMadeFromRealNames) {
+    auto before = member_repo->find_by_id(regular_member_id);
+    ASSERT_TRUE(before.has_value());
+    ASSERT_FALSE(before->first_name.empty());
+    ASSERT_FALSE(before->last_name.empty());
+    fake->add_member("member-test-001", "regular_renamed", {MEMBER_ROLE}, false, "Soapy Nickname");
+    fake->add_member("100000000000000002", "noname", {MEMBER_ROLE}, false, "Only Discord");
+    member_sync_svc->sync_from_guild();
+    EXPECT_EQ(member_repo->find_by_id(regular_member_id)->display_name, before->display_name);
+    EXPECT_EQ(member_repo->find_by_id(regular_member_id)->discord_username, "regular_renamed");
+    EXPECT_EQ(member_repo->find_by_discord_id("100000000000000002")->display_name, "Only Discord");
+}

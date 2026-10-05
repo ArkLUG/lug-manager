@@ -130,7 +130,7 @@ void register_calendar_routes(LugApp& app, CalendarGenerator& cal,
             ctx["member_has_chapter"]   = !member_info->chapter_name.empty();
             ctx["member_chapter_id"]    = member_info->chapter_id;
             ctx["member_is_paid"]       = member_info->is_paid;
-            ctx["member_paid_until"]    = member_info->paid_until;
+            ctx["member_paid_until"]    = friendly_date(member_info->paid_until);
             ctx["member_fol_status"]    = member_info->fol_status.empty() ? "afol" : member_info->fol_status;
             ctx["member_fol_label"]     = member_info->fol_status == "kfol" ? "KFOL"
                                         : member_info->fol_status == "tfol" ? "TFOL" : "AFOL";
