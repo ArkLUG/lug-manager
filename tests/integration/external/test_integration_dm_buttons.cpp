@@ -205,6 +205,8 @@ TEST_F(DmButtonsTest, ImGoingFromAnAnnouncement) {
     // Cancelling moves the waitlist up
     expect_contains(click("member-test-001", id), "no longer going");
     EXPECT_EQ(query_int(*db, "SELECT COUNT(*) FROM event_rsvps WHERE event_id=? AND member_id=? AND status='going'", ev, chapter_lead_member_id), 1);
+    // (the promoted member's message is sent in the background: let it finish before the test ends)
+    EXPECT_TRUE(fake->wait_for("POST /api/v10/channels/dmlead-test-001/messages"));
     // Closed after the deadline
     { auto u = db->prepare("UPDATE lug_events SET signup_deadline='2020-01-01' WHERE id=?"); u.bind(1, ev); u.step(); }
     expect_contains(click("member-test-001", id), "closed");
