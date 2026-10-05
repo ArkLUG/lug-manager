@@ -37,8 +37,10 @@ RUN mkdir -p src/static && \
 ARG LUG_VERSION=dev
 RUN cmake -B build -S . -DCMAKE_BUILD_TYPE=Release -DBUILD_TESTS=ON -DLUG_VERSION="${LUG_VERSION}" && cmake --build build -j"$(nproc)"
 
-# Run tests inside the build (skip integration tests that need a running server)
-RUN ctest --test-dir build --output-on-failure
+# Run the tests inside the build, offline (LUG_OFFLINE blocks Discord/Google/
+# email). A test that hangs fails after 5 minutes and gets one retry, instead
+# of stalling the image build (one did, for ~40 minutes, in the release builds).
+RUN LUG_OFFLINE=1 ctest --test-dir build --output-on-failure -j"$(nproc)" --timeout 300 --repeat until-pass:2
 
 # --- Runtime stage ---
 FROM ubuntu:24.04

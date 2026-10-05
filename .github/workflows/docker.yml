@@ -88,6 +88,7 @@ jobs:
   # ── Build, test & push Docker image ───────────────────────────────────────
   build:
     runs-on: ubuntu-latest
+    timeout-minutes: 45
     permissions:
       contents: read
       packages: write
@@ -165,7 +166,7 @@ jobs:
           cmake --build build -j"$(nproc)"
 
       - name: Run tests
-        run: ctest --test-dir build --output-on-failure -j"$(nproc)"
+        run: LUG_OFFLINE=1 ctest --test-dir build --output-on-failure -j"$(nproc)" --timeout 300
 
       - name: Generate coverage report
         run: |
