@@ -158,8 +158,8 @@ void register_calendar_routes(LugApp& app, CalendarGenerator& cal,
             ctx["perk_has_next"]         = !pp.next.empty();
             ctx["perk_next_name"]        = pp.next;
             ctx["perk_next_desc"]        = pp.next_desc;
-            ctx["perk_next_meetings"]    = pp.meetings_needed;
-            ctx["perk_next_events"]      = pp.events_needed;
+            ctx["perk_next_meetings"]    = count_of(pp.meetings_needed, "more meeting", "more meetings");
+            ctx["perk_next_events"]      = count_of(pp.events_needed, "more event", "more events");
             ctx["perk_show_meetings"]    = pp.meetings_needed > 0;
             ctx["perk_show_events"]      = pp.events_needed > 0;
             ctx["perk_next_needs_dues"]  = pp.needs_dues;
@@ -206,8 +206,8 @@ void register_calendar_routes(LugApp& app, CalendarGenerator& cal,
                 for (size_t i = 0; i < close.size(); ++i) {
                     arr[i]["name"]     = close[i].name;
                     arr[i]["tier"]     = close[i].tier;
-                    arr[i]["meetings"] = close[i].m;
-                    arr[i]["events"]   = close[i].e;
+                    arr[i]["meetings"] = count_of(close[i].m, "meeting", "meetings");
+                    arr[i]["events"]   = count_of(close[i].e, "event", "events");
                     arr[i]["show_m"]   = close[i].m > 0;
                     arr[i]["show_e"]   = close[i].e > 0;
                     arr[i]["extra"]    = i >= 5;   // past the first five: folded away

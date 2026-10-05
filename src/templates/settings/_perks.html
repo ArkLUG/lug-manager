@@ -2,7 +2,8 @@
 
     <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
         <div>
-            <h2 class="text-xl font-semibold text-gray-800">Perk Levels &mdash; {{selected_year}}</h2>
+            <a hx-get="/settings/overview" hx-target="#main-content" hx-push-url="true" class="text-xs text-gray-500 hover:text-gray-800 cursor-pointer">&larr; Settings</a>
+            <h2 class="text-xl font-semibold text-gray-800">Perk levels &mdash; {{selected_year}}</h2>
             <p class="text-sm text-gray-500 mt-0.5">Attendance tiers members earn each year<span class="f-discord">, optionally with a Discord role</span>.</p>
         </div>
         <div class="flex items-center gap-2">
@@ -30,11 +31,11 @@
                 <tr>
                     <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase hidden sm:table-cell">Order</th>
                     <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Name</th>
-                    <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Mtg</th>
-                    <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Evt</th>
-                    <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase hidden md:table-cell">Paid Dues</th>
-                    <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase hidden md:table-cell">Min Age</th>
-                    <th class="f-discord px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase hidden lg:table-cell">Discord Role</th>
+                    <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Meetings</th>
+                    <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Events</th>
+                    <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase hidden md:table-cell">Needs paid dues</th>
+                    <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase hidden md:table-cell">Youngest age</th>
+                    <th class="f-discord px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase hidden lg:table-cell">Discord role</th>
                     <th class="px-4 py-3"></th>
                 </tr>
             </thead>
@@ -87,7 +88,7 @@
     {{/has_other_years}}
 
     <div class="bg-white rounded-xl border border-gray-200 p-6">
-        <h3 class="text-lg font-semibold text-gray-800 mb-4">Add Perk Level for {{selected_year}}</h3>
+        <h3 class="text-lg font-semibold text-gray-800 mb-4">Add a perk level for {{selected_year}}</h3>
         <form hx-post="/perks" hx-swap="none" class="space-y-4">
             <input type="hidden" name="year" value="{{selected_year}}">
             <div class="grid grid-cols-2 gap-4">
@@ -98,7 +99,7 @@
                            placeholder="e.g. Bronze, Silver, Gold">
                 </div>
                 <div>
-                    <label class="block text-sm font-medium text-gray-700" for="settings-perks-sort-order">Sort Order</label>
+                    <label class="block text-sm font-medium text-gray-700" for="settings-perks-sort-order">Order in the list</label>
                     <input id="settings-perks-sort-order" type="number" name="sort_order" value="0"
                            class="mt-1 block w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-yellow-400">
                 </div>
@@ -111,19 +112,19 @@
             </div>
             <div class="grid grid-cols-2 gap-4">
                 <div>
-                    <label class="block text-sm font-medium text-gray-700" for="settings-perks-meeting-attendance-required">Meetings Required</label>
+                    <label class="block text-sm font-medium text-gray-700" for="settings-perks-meeting-attendance-required">Meetings needed</label>
                     <input id="settings-perks-meeting-attendance-required" type="number" name="meeting_attendance_required" value="0" min="0"
                            class="mt-1 block w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-yellow-400">
                 </div>
                 <div>
-                    <label class="block text-sm font-medium text-gray-700" for="settings-perks-event-attendance-required">Events Required</label>
+                    <label class="block text-sm font-medium text-gray-700" for="settings-perks-event-attendance-required">Events needed</label>
                     <input id="settings-perks-event-attendance-required" type="number" name="event_attendance_required" value="0" min="0"
                            class="mt-1 block w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-yellow-400">
                 </div>
             </div>
             <div class="grid grid-cols-2 gap-4">
                 <div class="f-discord">
-                    <label class="block text-sm font-medium text-gray-700" for="perk-role-select">Discord Role</label>
+                    <label class="block text-sm font-medium text-gray-700" for="perk-role-select">Discord role</label>
                     <select name="discord_role_id" id="perk-role-select"
                             hx-get="/api/discord/role-options?selected=" hx-trigger="load" hx-swap="innerHTML"
                             data-tomselect="single"
@@ -135,13 +136,13 @@
                 <div class="flex flex-col justify-end gap-2 pb-1">
                     <label class="flex items-center gap-2 text-sm text-gray-700">
                         <input type="checkbox" name="requires_paid_dues" class="rounded border-gray-300">
-                        Requires Paid Dues
+                        Needs paid dues
                     </label>
                 </div>
             </div>
             <div class="grid grid-cols-2 gap-4">
                 <div>
-                    <label class="block text-sm font-medium text-gray-700" for="settings-perks-min-fol-status">Minimum Age Range</label>
+                    <label class="block text-sm font-medium text-gray-700" for="settings-perks-min-fol-status">Youngest age range</label>
                     <select id="settings-perks-min-fol-status" name="min_fol_status"
                             class="mt-1 w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-yellow-400">
                         <option value="kfol">KFOL — Kids and up (any age)</option>
@@ -162,7 +163,7 @@
     <div class="bg-blue-50 border border-blue-200 rounded-xl p-4 text-sm text-blue-800">
         <strong>How it works:</strong> Attendance is tracked separately for meetings and events per calendar year (Jan–Dec).
         Members qualify for a tier when they meet <em>both</em> the meeting and event thresholds.
-        If "Requires Paid Dues" is checked, the member must also have active dues.
+        If "Needs paid dues" is ticked, the member must also have active dues.
         <span class="f-discord">Use "Sync Discord roles" to give everyone the role for the tier they have reached.</span>
     </div>
 </div>

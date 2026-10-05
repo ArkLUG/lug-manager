@@ -9,7 +9,7 @@
 
   {{#is_admin}}
   <div class="bg-white rounded-xl border border-gray-200 p-6">
-    <h2 class="text-xl font-bold text-gray-900 mb-1">Notification Settings</h2>
+    <h2 class="text-xl font-bold text-gray-900 mb-1">Notification settings</h2>
     <p class="text-sm text-gray-500 mb-4">
       When a Discord member sync can't confidently match a guild member, post a Resolve button to
       this channel for anyone with an authorized role to act on directly in Discord.
@@ -88,7 +88,7 @@
                       hx-post="/settings/discord-matches/{{id}}/create-new"
                       hx-target="#pending-match-{{id}}" hx-swap="outerHTML"
                       hx-confirm="Create a new member for {{discord_display_name}}?"
-                      class="text-green-600 hover:text-green-800 font-medium text-xs">Create New</button>
+                      class="text-green-600 hover:text-green-800 font-medium text-xs">Create new</button>
             </td>
           </tr>
           {{/pending}}

@@ -8,7 +8,7 @@
       </div>
 <script type="application/json" id="tour-members-content">[
         {"element":"#members-table", "popover":{"title":"Members Table", "description":"All registered LUG members. Click column headers to sort. Use View to see shared contact info."}},
-        {"element":"button[hx-get=\"/members/me\"]", "popover":{"title":"Edit My Profile", "description":"Update your own name, contact info, and per-field privacy settings."}},
+        {"element":"button[hx-get=\"/members/me\"]", "popover":{"title":"Edit my profile", "description":"Update your own name, contact info, and per-field privacy settings."}},
         {{#can_see_dues}}{"element":"button[hx-get=\"/members/new\"]", "popover":{"title":"Add Member", "description":"Manually add a new member. Useful for people who haven't logged in via Discord yet."}},{{/can_see_dues}}
         {"popover":{"title":"Privacy", "description":"Each member controls who sees their contact info. Fields can be set to Don't share, Verified members only, or All members."}}
       ]</script>
@@ -20,7 +20,7 @@
       <button hx-get="/members/me" hx-target="#modal" hx-swap="innerHTML"
               class="inline-flex items-center gap-2 px-4 py-2 whitespace-nowrap bg-yellow-400 text-gray-900 rounded-lg text-sm font-semibold hover:bg-yellow-300 transition-colors shadow-sm">
         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/></svg>
-        Edit My Profile
+        Edit my profile
       </button>
       {{#is_admin}}
       <button hx-get="/members/merge" hx-target="#modal" hx-swap="innerHTML"
@@ -92,7 +92,7 @@
 <!-- Dues management modal -->
 <div id="dues-modal" class="fixed inset-0 bg-black/50 z-50 hidden flex items-center justify-center p-4">
   <div class="bg-white rounded-xl shadow-2xl w-full max-w-sm p-6">
-    <h3 class="font-semibold text-gray-800 mb-1">Manage Dues</h3>
+    <h3 class="font-semibold text-gray-800 mb-1">Manage dues</h3>
     <p class="text-sm text-gray-500 mb-4" id="dues-member-name"></p>
     <form id="dues-form" hx-post="" hx-swap="none">
       <label class="block text-sm font-medium text-gray-700 mb-1" for="dues-date">Paid Until</label>

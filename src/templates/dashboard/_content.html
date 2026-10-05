@@ -108,7 +108,7 @@
           <span class="min-w-0 flex-1"><span class="text-sm font-medium text-gray-800">{{title}}</span>
             {{#is_event}}<span class="ml-1 text-xs px-1.5 py-0.5 rounded bg-purple-100 text-purple-700">event</span>{{/is_event}}
             {{#is_shift}}<span class="ml-1 text-xs px-1.5 py-0.5 rounded bg-blue-100 text-blue-700">your shift</span>{{/is_shift}}
-            {{#going}}<span class="ml-1 text-xs px-1.5 py-0.5 rounded bg-green-100 text-green-800">&#10003; you're going</span>{{/going}}
+            {{#going}}<span class="ml-1 text-xs px-1.5 py-0.5 rounded bg-green-100 text-green-800 whitespace-nowrap">&#10003; you're going</span>{{/going}}
             {{#waitlist}}<span class="ml-1 text-xs px-1.5 py-0.5 rounded bg-amber-100 text-amber-800">waitlist</span>{{/waitlist}}
             {{#tentative}}<span class="ml-1 text-xs px-1.5 py-0.5 rounded bg-gray-100 text-gray-600">date to be confirmed</span>{{/tentative}}
             {{#place}}<span class="block text-xs text-gray-500 truncate">{{place}}</span>{{/place}}</span>
@@ -154,8 +154,8 @@
     {{#perk_has_next}}
     <p class="text-sm text-gray-500">
       Next: <span class="font-medium text-gray-700">{{perk_next_name}}</span>{{#perk_next_desc}} <span class="text-gray-400">&mdash; {{perk_next_desc}}</span>{{/perk_next_desc}}
-      {{#perk_show_meetings}} &mdash; {{perk_next_meetings}} more meeting(s){{/perk_show_meetings}}
-      {{#perk_show_events}} &mdash; {{perk_next_events}} more event(s){{/perk_show_events}}
+      {{#perk_show_meetings}} &mdash; {{perk_next_meetings}}{{/perk_show_meetings}}
+      {{#perk_show_events}} &mdash; {{perk_next_events}}{{/perk_show_events}}
       {{#perk_next_needs_dues}} &mdash; <span class="text-red-600 font-medium">dues required</span>{{/perk_next_needs_dues}}
       {{#perk_next_needs_fol}} &mdash; <span class="text-gray-500">age requirement not met</span>{{/perk_next_needs_fol}}
     </p>
@@ -191,7 +191,7 @@
         <span class="text-gray-800">{{name}}</span>
         <span class="text-xs text-gray-500">
           <span class="font-medium text-gray-700">{{tier}}</span>:
-          {{#show_m}}{{meetings}} meeting(s){{/show_m}}{{#show_m}}{{#show_e}} + {{/show_e}}{{/show_m}}{{#show_e}}{{events}} event(s){{/show_e}} to go
+          {{#show_m}}{{meetings}}{{/show_m}}{{#show_m}}{{#show_e}} + {{/show_e}}{{/show_m}}{{#show_e}}{{events}}{{/show_e}} to go
         </span>
       </li>
       {{/close_to_tier}}

@@ -28,12 +28,12 @@ TEST_F(IntegrationTest, DiscordMatchesPageAllowsAdmin) {
 TEST_F(IntegrationTest, DiscordMatchesPageShowsConfigFormForAdminOnly) {
     auto r_admin = GET_HTMX("/settings/discord-matches", admin_token);
     EXPECT_EQ(r_admin.code, 200);
-    expect_contains(r_admin, "Notification Settings");
+    expect_contains(r_admin, "Notification settings");
     expect_contains(r_admin, "Match Notification Channel");
 
     auto r_lead = GET_HTMX("/settings/discord-matches", chapter_lead_token);
     EXPECT_EQ(r_lead.code, 200);
-    expect_not_contains(r_lead, "Notification Settings");
+    expect_not_contains(r_lead, "Notification settings");
 }
 
 // Its own dedicated section endpoint - saving it must not depend on or
