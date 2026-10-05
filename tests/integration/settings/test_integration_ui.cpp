@@ -294,3 +294,25 @@ TEST_F(IntegrationTest, AlmostThereListsMembersNearNextTier) {
     expect_contains(r, "Almost There");
     expect_contains(r, "Silver Test Tier");
 }
+
+TEST_F(IntegrationTest, SidebarGroupsAndSettingsOverview) {
+    auto admin = GET("/dashboard", admin_token);
+    expect_contains(admin, ">Community</div>");
+    expect_contains(admin, ">Admin</div>");
+    expect_contains(admin, "hx-get=\"/settings/overview\"");
+    expect_not_contains(admin, "hx-get=\"/settings/api-keys\"");          // settings pages live on the overview now
+    auto member = GET("/dashboard", member_token);
+    expect_not_contains(member, ">Admin</div>");
+    expect_not_contains(member, "/settings/overview");
+    EXPECT_NE(GET("/settings/overview", member_token).code, 200);
+    auto ov = GET("/settings/overview", admin_token);
+    EXPECT_EQ(ov.code, 200);
+    for (const char* p : {"setup", "settings&#x2F;features", "settings&#x2F;site", "settings&#x2F;dues", "settings&#x2F;treasury",
+                          "settings&#x2F;backups", "settings&#x2F;api-keys", "audit", "perks", "settings&#x2F;branding"})
+        expect_contains(ov, std::string("&#x2F;") + p);
+    // Any settings page highlights Settings in the sidebar
+    auto dues = GET("/settings/dues", admin_token);
+    const auto at = dues.body.find("hx-get=\"/settings/overview\"");
+    ASSERT_NE(at, std::string::npos);
+    EXPECT_NE(dues.body.substr(at, 800).find("nav-active"), std::string::npos);
+}

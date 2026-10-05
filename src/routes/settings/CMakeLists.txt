@@ -12,6 +12,8 @@ target_sources(lug_core PRIVATE
   FeatureRoutes.hpp
   ReminderSettingsRoutes.cpp
   ReminderSettingsRoutes.hpp
+  SettingsOverviewRoutes.cpp
+  SettingsOverviewRoutes.hpp
   SettingsRoutes.cpp
   SettingsRoutes.hpp
   SetupRoutes.cpp

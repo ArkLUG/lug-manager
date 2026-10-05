@@ -30,7 +30,9 @@ TEST_F(IntegrationTest, FeaturesPageAdminOnlyAndDefaults) {
     for (const auto& f : Features::all()) expect_contains(r, std::string("name=\"") + f.key + "\"");
     EXPECT_TRUE(Features::on("chapters"));
     EXPECT_FALSE(Features::on("public_shows"));       // opt-in
-    expect_contains(GET("/dashboard", admin_token), "hx-get=\"/settings/features\"");
+    // Reached from Settings (the sidebar's single Settings link)
+    expect_contains(GET("/dashboard", admin_token), "hx-get=\"/settings/overview\"");
+    expect_contains(GET("/settings/overview", admin_token), "&#x2F;settings&#x2F;features");
 }
 
 TEST_F(IntegrationTest, FeaturesChaptersOff) {

@@ -1,0 +1,23 @@
+<div class="max-w-5xl space-y-6" data-page-title="Settings">
+  <div>
+    <h2 class="text-xl font-semibold text-gray-800">Settings</h2>
+    <p class="text-sm text-gray-500">Everything an admin can set up, grouped. Parts you've switched off under Features are hidden.</p>
+  </div>
+  <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+    {{#groups}}
+    <section class="bg-white rounded-xl border border-gray-200 p-5 {{feature_class}}">
+      <h3 class="font-semibold text-gray-800 mb-3">{{title}}</h3>
+      <ul class="space-y-2">
+        {{#links}}
+        <li class="{{feature_class}}">
+          <a hx-get="{{href}}" hx-target="#main-content" hx-push-url="true" hx-swap="innerHTML" class="group block rounded-lg -mx-2 px-2 py-1.5 hover:bg-gray-50 cursor-pointer">
+            <span class="text-sm font-medium text-gray-800 group-hover:underline">{{label}}</span>
+            <span class="block text-xs text-gray-500">{{help}}</span>
+          </a>
+        </li>
+        {{/links}}
+      </ul>
+    </section>
+    {{/groups}}
+  </div>
+</div>

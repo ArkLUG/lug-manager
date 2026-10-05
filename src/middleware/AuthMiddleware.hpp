@@ -8,6 +8,7 @@
 #include "services/Palettes.hpp"
 #include "utils/web/AssetVersion.hpp"
 #include <crow.h>
+#include <set>
 #include <string>
 
 // True for requests made by htmx (they want a fragment, not a whole page).
@@ -224,8 +225,11 @@ inline void set_layout_auth(const crow::request& req, App& app,
     auto& mw = app.template get_middleware<AuthMiddleware>();
     layout_ctx["lug_name"] = mw.settings ? mw.settings->get("lug_name", "LEGO fan community") : "LEGO fan community";
     // Treasury link: anyone allowed to see some part of it (Settings > Treasury)
-    layout_ctx["can_see_treasury"] = treasury::view_for(mw.settings, ctx.auth.can_treasury(), ctx.auth.is_chapter_lead(),
-                                                        ctx.auth.authenticated).any();
+    const bool see_treasury = treasury::view_for(mw.settings, ctx.auth.can_treasury(), ctx.auth.is_chapter_lead(),
+                                                 ctx.auth.authenticated).any();
+    layout_ctx["can_see_treasury"] = see_treasury;
+    // The sidebar's "Community" heading, when something is under it
+    layout_ctx["nav_community"] = Features::on("challenges") || Features::on("inventory") || (see_treasury && Features::on("treasury"));
     {
         // Colour theme: theirs, else the LUG default (services/Palettes.hpp).
         std::string mine;
@@ -270,6 +274,13 @@ inline std::string render_in_layout(const crow::request& req, App& app,
     layout_ctx[active_key]   = true;
     // Meetings and events live under Schedule in the sidebar
     if (active_key == "active_meetings" || active_key == "active_events") layout_ctx["active_schedule"] = true;
+    // Every settings page lives under Settings in the sidebar
+    static const std::set<std::string> settings_pages = {
+        "active_settings_overview", "active_settings", "active_setup", "active_features", "active_messages", "active_reminders",
+        "active_dues_settings", "active_treasury_settings", "active_site", "active_sign_in", "active_about", "active_calendar",
+        "active_google_calendar", "active_branding", "active_backups", "active_api_keys", "active_perks"};
+    if (settings_pages.count(active_key) || (active_key == "active_discord_matches" && app.template get_context<AuthMiddleware>(req).auth.is_admin()))
+        layout_ctx["active_settings_group"] = true;
     set_layout_auth(req, app, layout_ctx);
     return crow::mustache::load("layout.html").render(layout_ctx).dump();
 }

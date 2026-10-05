@@ -118,6 +118,7 @@
     html[data-theme-pref="dark"]   .theme-btn[data-v="dark"] { color: #111827; background-color: #FFD700; }
 
     /* Nav accordion (Settings, Chapter Tools) */
+    .nav-heading { color: #6b7280; }
     .nav-accordion-toggle {
       width: 100%;
       background: none;
@@ -235,23 +236,6 @@
         Members
       </a>
 
-      <!-- My Attendance -->
-      <a hx-get="/attendance"
-         hx-target="#main-content"
-         hx-push-url="true"
-         hx-swap="innerHTML"
-         hx-indicator="#nav-spinner"
-         class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm cursor-pointer transition-colors
-                {{#active_attendance}}nav-active{{/active_attendance}}
-                {{^active_attendance}}nav-inactive{{/active_attendance}}">
-        <svg class="w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9
-                   5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4"/>
-        </svg>
-        My Attendance
-      </a>
-
       {{#f_chapters}}
       <!-- Chapters (all authenticated users) -->
       <a hx-get="/chapters"
@@ -269,7 +253,25 @@
         Chapters
       </a>
       {{/f_chapters}}
+      <!-- My Attendance -->
+      <a hx-get="/attendance"
+         hx-target="#main-content"
+         hx-push-url="true"
+         hx-swap="innerHTML"
+         hx-indicator="#nav-spinner"
+         class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm cursor-pointer transition-colors
+                {{#active_attendance}}nav-active{{/active_attendance}}
+                {{^active_attendance}}nav-inactive{{/active_attendance}}">
+        <svg class="w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9
+                   5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4"/>
+        </svg>
+        My Attendance
+      </a>
 
+
+      {{#nav_community}}<div class="nav-heading px-3 pt-4 pb-1 text-[11px] font-semibold uppercase tracking-wider">Community</div>{{/nav_community}}
       {{#f_challenges}}
       <!-- Build Challenges -->
       <a hx-get="/challenges"
@@ -286,7 +288,6 @@
         Build Challenges
       </a>
       {{/f_challenges}}
-
       {{#f_inventory}}
       <!-- Inventory -->
       <a hx-get="/inventory"
@@ -303,7 +304,6 @@
         Inventory
       </a>
       {{/f_inventory}}
-
       {{#can_see_treasury}}
       {{#f_treasury}}
       <!-- Treasury (admin or treasurer) -->
@@ -324,6 +324,7 @@
       {{/can_see_treasury}}
 
       {{#is_admin}}
+      {{#is_admin}}<div class="nav-heading px-3 pt-4 pb-1 text-[11px] font-semibold uppercase tracking-wider">Admin</div>{{/is_admin}}
       <!-- Attendance Overview (admin) -->
       <a hx-get="/attendance/overview"
          hx-target="#main-content"
@@ -356,7 +357,6 @@
         Annual Report
       </a>
       {{/f_reports}}
-
       {{#f_fancolab}}
       <!-- LEGO Fan CoLab (admin) -->
       <a hx-get="/fancolab"
@@ -373,25 +373,6 @@
         LEGO Fan CoLab
       </a>
       {{/f_fancolab}}
-
-      {{#f_perks}}
-      <!-- Perk Levels (admin) -->
-      <a hx-get="/perks"
-         hx-target="#main-content"
-         hx-push-url="true"
-         hx-swap="innerHTML"
-         hx-indicator="#nav-spinner"
-         class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm cursor-pointer transition-colors
-                {{#active_perks}}nav-active{{/active_perks}}
-                {{^active_perks}}nav-inactive{{/active_perks}}">
-        <svg class="w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                d="M5 3v4M3 5h4M6 17v4m-2-2h4m5-16l2.286 6.857L21 12l-5.714 2.143L13 21l-2.286-6.857L5 12l5.714-2.143L13 3z"/>
-        </svg>
-        Perk Levels
-      </a>
-      {{/f_perks}}
-
       <!-- Audit Log (admin) -->
       <a hx-get="/audit"
          hx-target="#main-content"
@@ -408,184 +389,23 @@
         Audit Log
       </a>
 
-      <!-- Settings accordion (admin): API Keys, Settings, Discord Matches -->
-      <div class="nav-accordion" data-open="false">
-        <button type="button" data-action="toggle-accordion"
-                class="nav-accordion-toggle flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm
-                       transition-colors nav-inactive">
-          <svg class="w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                  d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/>
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
-          </svg>
-          Settings
-          <svg class="nav-accordion-chevron w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
-          </svg>
-        </button>
-        <div class="nav-accordion-children space-y-1 mt-1">
-          <a hx-get="/settings"
-             hx-target="#main-content"
-             hx-push-url="true"
-             hx-swap="innerHTML"
-             hx-indicator="#nav-spinner"
-             class="block px-3 py-2 rounded-lg text-sm cursor-pointer transition-colors
-                    {{#active_settings}}nav-active{{/active_settings}}
-                    {{^active_settings}}nav-inactive{{/active_settings}}">
-            Discord
-          </a>
-          <a hx-get="/setup"
-             hx-target="#main-content"
-             hx-push-url="true"
-             hx-swap="innerHTML"
-             hx-indicator="#nav-spinner"
-             class="block px-3 py-2 rounded-lg text-sm cursor-pointer transition-colors
-                    {{#active_setup}}nav-active{{/active_setup}}
-                    {{^active_setup}}nav-inactive{{/active_setup}}">
-            Setup
-          </a>
-          <a hx-get="/settings/features"
-             hx-target="#main-content"
-             hx-push-url="true"
-             hx-swap="innerHTML"
-             hx-indicator="#nav-spinner"
-             class="block px-3 py-2 rounded-lg text-sm cursor-pointer transition-colors
-                    {{#active_features}}nav-active{{/active_features}}
-                    {{^active_features}}nav-inactive{{/active_features}}">
-            Features
-          </a>
-          <a hx-get="/settings/messages"
-             hx-target="#main-content"
-             hx-push-url="true"
-             hx-swap="innerHTML"
-             hx-indicator="#nav-spinner"
-             class="block px-3 py-2 rounded-lg text-sm cursor-pointer transition-colors
-                    {{#active_messages}}nav-active{{/active_messages}}
-                    {{^active_messages}}nav-inactive{{/active_messages}}">
-            Message wording
-          </a>
-          <a hx-get="/settings/reminders"
-             hx-target="#main-content"
-             hx-push-url="true"
-             hx-swap="innerHTML"
-             hx-indicator="#nav-spinner"
-             class="block px-3 py-2 rounded-lg text-sm cursor-pointer transition-colors
-                    {{#active_reminders}}nav-active{{/active_reminders}}
-                    {{^active_reminders}}nav-inactive{{/active_reminders}}">
-            Reminders
-          </a>
-          <a hx-get="/settings/dues"
-             hx-target="#main-content"
-             hx-push-url="true"
-             hx-swap="innerHTML"
-             hx-indicator="#nav-spinner"
-             class="f-dues block px-3 py-2 rounded-lg text-sm cursor-pointer transition-colors
-                    {{#active_dues_settings}}nav-active{{/active_dues_settings}}
-                    {{^active_dues_settings}}nav-inactive{{/active_dues_settings}}">
-            Dues
-          </a>
-          <a hx-get="/settings/treasury"
-             hx-target="#main-content"
-             hx-push-url="true"
-             hx-swap="innerHTML"
-             hx-indicator="#nav-spinner"
-             class="f-treasury block px-3 py-2 rounded-lg text-sm cursor-pointer transition-colors
-                    {{#active_treasury_settings}}nav-active{{/active_treasury_settings}}
-                    {{^active_treasury_settings}}nav-inactive{{/active_treasury_settings}}">
-            Treasury
-          </a>
-          <a hx-get="/settings/site"
-             hx-target="#main-content"
-             hx-push-url="true"
-             hx-swap="innerHTML"
-             hx-indicator="#nav-spinner"
-             class="block px-3 py-2 rounded-lg text-sm cursor-pointer transition-colors
-                    {{#active_site}}nav-active{{/active_site}}
-                    {{^active_site}}nav-inactive{{/active_site}}">
-            Email &amp; address
-          </a>
-          <a hx-get="/settings/sign-in"
-             hx-target="#main-content"
-             hx-push-url="true"
-             hx-swap="innerHTML"
-             hx-indicator="#nav-spinner"
-             class="block px-3 py-2 rounded-lg text-sm cursor-pointer transition-colors
-                    {{#active_sign_in}}nav-active{{/active_sign_in}}
-                    {{^active_sign_in}}nav-inactive{{/active_sign_in}}">
-            Sign-in
-          </a>
-          <a hx-get="/settings/about"
-             hx-target="#main-content"
-             hx-push-url="true"
-             hx-swap="innerHTML"
-             hx-indicator="#nav-spinner"
-             class="block px-3 py-2 rounded-lg text-sm cursor-pointer transition-colors
-                    {{#active_about}}nav-active{{/active_about}}
-                    {{^active_about}}nav-inactive{{/active_about}}">
-            Public pages
-          </a>
-          <a hx-get="/settings/calendar"
-             hx-target="#main-content"
-             hx-push-url="true"
-             hx-swap="innerHTML"
-             hx-indicator="#nav-spinner"
-             class="block px-3 py-2 rounded-lg text-sm cursor-pointer transition-colors
-                    {{#active_calendar}}nav-active{{/active_calendar}}
-                    {{^active_calendar}}nav-inactive{{/active_calendar}}">
-            iCal Calendar
-          </a>
-          <a hx-get="/settings/google-calendar"
-             hx-target="#main-content"
-             hx-push-url="true"
-             hx-swap="innerHTML"
-             hx-indicator="#nav-spinner"
-             class="block px-3 py-2 rounded-lg text-sm cursor-pointer transition-colors
-                    {{#active_google_calendar}}nav-active{{/active_google_calendar}}
-                    {{^active_google_calendar}}nav-inactive{{/active_google_calendar}}">
-            Google Calendar
-          </a>
-          <a hx-get="/settings/branding"
-             hx-target="#main-content"
-             hx-push-url="true"
-             hx-swap="innerHTML"
-             hx-indicator="#nav-spinner"
-             class="block px-3 py-2 rounded-lg text-sm cursor-pointer transition-colors
-                    {{#active_branding}}nav-active{{/active_branding}}
-                    {{^active_branding}}nav-inactive{{/active_branding}}">
-            Branding
-          </a>
-          <a hx-get="/settings/backups"
-             hx-target="#main-content"
-             hx-push-url="true"
-             hx-swap="innerHTML"
-             hx-indicator="#nav-spinner"
-             class="block px-3 py-2 rounded-lg text-sm cursor-pointer transition-colors
-                    {{#active_backups}}nav-active{{/active_backups}}
-                    {{^active_backups}}nav-inactive{{/active_backups}}">
-            Backups
-          </a>
-          <a hx-get="/settings/api-keys"
-             hx-target="#main-content"
-             hx-push-url="true"
-             hx-swap="innerHTML"
-             hx-indicator="#nav-spinner"
-             class="block px-3 py-2 rounded-lg text-sm cursor-pointer transition-colors
-                    {{#active_api_keys}}nav-active{{/active_api_keys}}
-                    {{^active_api_keys}}nav-inactive{{/active_api_keys}}">
-            API Keys
-          </a>
-          <a hx-get="/settings/discord-matches"
-             hx-target="#main-content"
-             hx-push-url="true"
-             hx-swap="innerHTML"
-             hx-indicator="#nav-spinner"
-             class="f-discord block px-3 py-2 rounded-lg text-sm cursor-pointer transition-colors
-                    {{#active_discord_matches}}nav-active{{/active_discord_matches}}
-                    {{^active_discord_matches}}nav-inactive{{/active_discord_matches}}">
-            Discord Matches
-          </a>
-        </div>
-      </div>
+      <!-- Settings: one page with every setting, grouped (settings/_overview.html) -->
+      <a hx-get="/settings/overview"
+         data-nav-also="/settings /setup /perks"
+         hx-target="#main-content"
+         hx-push-url="true"
+         hx-swap="innerHTML"
+         hx-indicator="#nav-spinner"
+         class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm cursor-pointer transition-colors
+                {{#active_settings_group}}nav-active{{/active_settings_group}}
+                {{^active_settings_group}}nav-inactive{{/active_settings_group}}">
+        <svg class="w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/>
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
+        </svg>
+        Settings
+      </a>
       {{/is_admin}}
 
       <!-- Chapter Tools accordion (chapter lead / moderator, non-admin): Discord Matches -->
@@ -644,6 +464,7 @@
         <img src="/static/logo.svg?v={{asset_v}}" alt="" class="w-5 h-5 flex-shrink-0">
         About LUG Manager
       </a>
+
 
     </nav>
 
