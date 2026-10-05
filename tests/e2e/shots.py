@@ -17,7 +17,7 @@ o = Options(); o.add_argument("-headless")
 d = webdriver.Firefox(options=o)
 d.get(base + "/login"); d.add_cookie({"name": "session", "value": token, "path": "/"})
 if dark:
-    d.execute_script("try{localStorage.setItem('theme','dark')}catch(e){}")
+    d.execute_script("try{localStorage.setItem('lm-theme','dark')}catch(e){}")
 HOOK = """window.__errs=[];window.addEventListener('error',e=>window.__errs.push('error: '+e.message));
 document.addEventListener('securitypolicyviolation',e=>window.__errs.push('csp: '+e.violatedDirective+' '+(e.blockedURI||'')));"""
 problems = 0
