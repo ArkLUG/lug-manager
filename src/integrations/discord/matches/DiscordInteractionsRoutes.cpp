@@ -163,8 +163,10 @@ void register_discord_interactions_routes(LugApp& app,
         // 0. Cheap limits first: Discord's interaction payloads are a few KB;
         //    a client that keeps failing the signature check gets slowed down.
         if (req.body.size() > kMaxInteractionBytes) return plain_status(413);
+        // Failures are counted per address (the last X-Forwarded-For entry,
+        // i.e. what Traefik saw). Requests that pass the signature check are
+        // never refused by this, so a burst of junk can't lock Discord out.
         const std::string ip = client_ip(req);
-        if (failures().blocked(ip)) return plain_status(429);
 
         // 1. Raw body, captured before any parsing — the signature covers these
         //    exact bytes, so re-serializing (even losslessly) would break verification.
@@ -180,13 +182,13 @@ void register_discord_interactions_routes(LugApp& app,
             !verify_discord_signature(discord_public_key.empty() ? discord_interactions_key(settings) : discord_public_key,
                                       signature, timestamp, raw_body)) {
             failures().add(ip);
-            return unauthorized();
+            return failures().blocked(ip) ? plain_status(429) : unauthorized();
         }
         // 3b. Replay window: Discord's timestamp (unix seconds) must be within
         //     5 minutes of now. The signature covers it, so it can't be edited.
         if (!fresh_timestamp(timestamp)) {
             failures().add(ip);
-            return unauthorized();
+            return failures().blocked(ip) ? plain_status(429) : unauthorized();
         }
 
         // 4. Only now parse.

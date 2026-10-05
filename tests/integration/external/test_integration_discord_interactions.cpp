@@ -327,7 +327,9 @@ TEST_F(DiscordInteractionsTest, ReplayWindowSizeCapAndRateLimit) {
     // Too many bad signatures from one address: 429 for the rest of the minute
     reset_discord_interaction_limits();
     for (int i = 0; i < 21; ++i) post_interaction_wrong_key(ping);
-    EXPECT_EQ(post_interaction(ping).code, 429);
-    reset_discord_interaction_limits();
+    EXPECT_EQ(post_interaction_wrong_key(ping).code, 429);
+    // ...but a genuinely signed request from the same address still gets through
     EXPECT_EQ(post_interaction(ping).code, 200);
+    reset_discord_interaction_limits();
+    EXPECT_EQ(post_interaction_wrong_key(ping).code, 401);
 }
