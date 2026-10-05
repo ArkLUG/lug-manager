@@ -109,6 +109,11 @@ void register_calendar_routes(LugApp& app, CalendarGenerator& cal,
         ctx["role"]       = auth_ctx.auth.role;
         ctx["is_admin"]   = auth_ctx.auth.is_admin();
         ctx["is_chapter_lead"] = auth_ctx.auth.is_chapter_lead();
+        // Quick "+ New ..." buttons: what they may create everywhere
+        const bool add_sched = auth_ctx.auth.can("schedule.all_chapters"), add_mem = auth_ctx.auth.can("members.edit");
+        ctx["can_add_schedule"] = add_sched;
+        ctx["can_add_members"]  = add_mem;
+        ctx["has_quick_add"]    = add_sched || add_mem;
         ctx["is_member"]  = auth_ctx.auth.role == "member" || auth_ctx.auth.role == "admin";
 
         // Member profile info

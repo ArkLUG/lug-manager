@@ -39,3 +39,15 @@ TEST_F(IntegrationTest, DashboardComingUpAndNeedsAttention) {
     expect_contains(a, "recent public event without visitor numbers");
     expect_contains(a, "+ New meeting");
 }
+
+// The dashboard's quick "+ New ..." buttons follow Roles and permissions.
+TEST_F(IntegrationTest, DashboardQuickAddFollowsPermissions) {
+    auto lead = GET("/dashboard", chapter_lead_token);
+    expect_contains(lead, "+ Add member");
+    expect_not_contains(lead, "+ New meeting");
+    expect_not_contains(GET("/dashboard", member_token), "+ Add member");
+    POST("/settings/permissions", "grant=member|schedule.all_chapters", admin_token);
+    auto mem = GET("/dashboard", member_token);
+    expect_contains(mem, "+ New meeting");
+    expect_not_contains(mem, "+ Add member");
+}
