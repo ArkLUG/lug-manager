@@ -65,6 +65,7 @@ void register_perk_routes(LugApp& app, PerkLevelRepository& perks,
         ctx["is_admin"]       = true;
         ctx["title"]          = "Perk Levels";
         ctx["selected_year"]  = selected_year;
+        ctx["virtual_counts"] = attendance.virtual_counts();
 
         crow::json::wvalue year_arr;
         for (size_t i = 0; i < perk_years.size(); ++i) {
@@ -75,6 +76,25 @@ void register_perk_routes(LugApp& app, PerkLevelRepository& perks,
         ctx["has_other_years"] = perk_years.size() > 1;
 
         return html_page(req, app, crow::mustache::load("settings/_perks.html").render(ctx).dump(), "Perk Levels", "active_perks");
+    });
+
+    // POST /perks/virtual - whether virtual meeting attendance counts toward perk levels
+    CROW_ROUTE(app, "/perks/virtual").methods("POST"_method)([&](const crow::request& req) {
+        crow::response res;
+        if (!require_auth(req, res, app, "admin")) return res;
+        const bool on = crow::query_string("?" + req.body).get("perks_count_virtual") != nullptr;
+        const bool was = attendance.virtual_counts();
+        if (on != was) {
+            auto st = attendance.db().prepare("INSERT INTO lug_settings(key, value) VALUES('perks_count_virtual', ?) "
+                                              "ON CONFLICT(key) DO UPDATE SET value=excluded.value");
+            st.bind(1, std::string(on ? "1" : "0"));
+            st.step();
+            audit.log(req, app, "settings.perks", "settings", 0, "Perk levels",
+                      std::string("virtual meeting attendance ") + (on ? "counts" : "doesn't count") + " toward perk levels");
+        }
+        res.add_header("Content-Type", "text/html; charset=utf-8");
+        res.write(on == was ? "No changes." : "Saved.");
+        return res;
     });
 
     // POST /perks — create perk level

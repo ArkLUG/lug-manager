@@ -192,7 +192,7 @@ void register_calendar_routes(LugApp& app, CalendarGenerator& cal,
                         op.year = year;
                         op.limit = 100000;
                         for (const auto& s : attendance_repo.get_overview_paginated(op)) {
-                            int in_person = s.meeting_count - s.meeting_virtual_count;
+                            int in_person = attendance_repo.perk_meetings(s.meeting_count, s.meeting_virtual_count);
                             auto mp = compute_perk_progress(levels, in_person, s.event_count, s.is_paid, s.fol_status);
                             if (mp.next.empty() || mp.needs_dues || !mp.needs_fol.empty()) continue;
                             if (mp.gap() < 1 || mp.gap() > 2) continue;

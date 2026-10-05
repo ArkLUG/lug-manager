@@ -23,6 +23,16 @@
     </div>
     <span id="sync-result"></span>
 
+    <form hx-post="/perks/virtual" hx-target="#perks-virtual-result" hx-swap="innerHTML" hx-trigger="change"
+          class="bg-white rounded-xl border border-gray-200 px-5 py-4 flex flex-wrap items-center justify-between gap-3">
+        <label class="flex items-start gap-3 cursor-pointer">
+            <input type="checkbox" name="perks_count_virtual" value="1" {{#virtual_counts}}checked{{/virtual_counts}} class="mt-0.5 w-4 h-4 accent-yellow-400">
+            <span><span class="text-sm font-medium text-gray-800">Virtual meetings count toward perk levels</span>
+                <span class="block text-xs text-gray-500">When ticked, joining a meeting online counts the same as being there in person for every perk level, the attendance overview and the dashboard. When off, only in-person meetings count. Attendance lists still show who was virtual either way.</span></span>
+        </label>
+        <span id="perks-virtual-result" role="status" class="text-sm text-green-700"></span>
+    </form>
+
     {{#has_perks}}
     <div class="bg-white rounded-xl border border-gray-200 overflow-x-auto">
         <table class="min-w-full divide-y divide-gray-200">

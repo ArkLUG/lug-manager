@@ -57,7 +57,7 @@ void register_export_routes(LugApp& app, MemberRepository& members, AttendanceRe
                "Events,Total,Last attendance,Dues paid,Perk tier (" << year << ")\r\n";
         for (const auto& s : attendance.get_overview_paginated(p)) {
             int in_person = s.meeting_count - s.meeting_virtual_count;
-            auto pp = compute_perk_progress(levels, in_person, s.event_count, s.is_paid, s.fol_status);
+            auto pp = compute_perk_progress(levels, attendance.perk_meetings(s.meeting_count, s.meeting_virtual_count), s.event_count, s.is_paid, s.fol_status);
             csv << csv_field(s.display_name) << ',' << csv_field(s.first_name) << ','
                 << csv_field(s.last_name) << ',' << csv_field(s.discord_username) << ','
                 << in_person << ',' << s.meeting_virtual_count << ',' << s.event_count << ','

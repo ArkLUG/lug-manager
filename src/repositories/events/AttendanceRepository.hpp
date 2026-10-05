@@ -63,6 +63,12 @@ public:
     // Count attendance for a member in a calendar year, by entity type
     int count_member_by_year(int64_t member_id, int year, const std::string& entity_type);
 
+    // Settings > Perk levels: whether virtual meeting attendance counts toward
+    // perk levels (setting perks_count_virtual; off = in person only, the default).
+    bool virtual_counts();
+    // Meetings that count toward perk levels, from a total and its virtual part.
+    int perk_meetings(int total, int virtual_part) { return virtual_counts() ? total : total - virtual_part; }
+
     // Paginated member attendance detail (with event/meeting title joined)
     struct AttendanceDetail {
         std::string entity_type;    // "meeting" or "event"

@@ -376,13 +376,13 @@ int AttendanceRepository::count_member_by_year(int64_t member_id, int year,
         if (stmt.step()) return static_cast<int>(stmt.col_int(0));
         return 0;
     }
-    // Meetings: excludes_perks exclusion, plus virtual attendance never counts
-    // toward perk tiers (only in-person attendance does - same rule as
-    // "verified member" status, just enforced separately here).
+    // Meetings: excludes_perks exclusion, and virtual attendance only counts
+    // toward perk tiers when Settings > Perk levels says so (default: in
+    // person only). "Verified member" status stays in-person only regardless.
     auto stmt = db_.prepare(
-        "SELECT COUNT(*) FROM attendance a "
+        std::string("SELECT COUNT(*) FROM attendance a "
         "JOIN meetings mt ON mt.id = a.entity_id "
-        "WHERE a.member_id=? AND a.entity_type=? AND mt.excludes_perks=0 AND a.is_virtual=0 "
+        "WHERE a.member_id=? AND a.entity_type=? AND mt.excludes_perks=0 ") + (virtual_counts() ? "" : "AND a.is_virtual=0 ") +
         "  AND mt.start_time >= ? AND mt.start_time < ?");
     stmt.bind(1, member_id);
     stmt.bind(2, entity_type);
@@ -482,4 +482,9 @@ bool AttendanceRepository::is_checked_in(int64_t member_id, const std::string& e
         return stmt.col_int(0) > 0;
     }
     return false;
+}
+
+bool AttendanceRepository::virtual_counts() {
+    auto st = db_.prepare("SELECT value FROM lug_settings WHERE key='perks_count_virtual'");
+    return st.step() && st.col_text(0) == "1";
 }
