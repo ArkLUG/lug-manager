@@ -148,3 +148,13 @@ TEST_F(IntegrationTest, BulkMemberActions) {
     EXPECT_EQ(POST("/members/bulk", "ids=" + ids + "&action=paid&value=bogus", chapter_lead_token).code, 400);
     EXPECT_EQ(POST("/members/bulk", "ids=&action=unpaid", chapter_lead_token).code, 400);
 }
+
+// The member view shows the chapter's name (it showed the "Chapter" label with nothing after it).
+TEST_F(IntegrationTest, MemberViewShowsTheChapterName) {
+    Chapter c; c.name = "Central Arkansas"; c.shorthand = "CA";
+    auto ch = chapter_repo->create(c);
+    chapter_member_repo->upsert(regular_member_id, ch.id, "member", 0);
+    auto r = GET_HTMX("/members/" + std::to_string(regular_member_id) + "/view", admin_token);
+    EXPECT_EQ(r.code, 200);
+    expect_contains(r, "Central Arkansas</dd>");
+}

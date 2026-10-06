@@ -108,7 +108,9 @@
     <div class="grid grid-cols-3 gap-1 pt-2 border-t border-gray-100">
       <dt class="text-gray-500 font-medium">Guardian</dt>
       <dd class="col-span-2 text-gray-800">
-        {{#guardian_name}}{{guardian_name}}{{#guardian_phone}} · {{guardian_phone}}{{/guardian_phone}}{{#guardian_email}} · {{guardian_email}}{{/guardian_email}}<br>{{/guardian_name}}
+        {{#guardian_member_id}}<a hx-get="/members/{{guardian_member_id}}/view" hx-target="#modal" hx-swap="innerHTML" class="underline cursor-pointer">{{guardian_name}}</a>{{#guardian_phone}} · {{guardian_phone}}{{/guardian_phone}}{{#guardian_email}} · {{guardian_email}}{{/guardian_email}}<br>{{/guardian_member_id}}
+        {{#guardian_unlinked}}{{guardian_name}}{{#guardian_phone}} · {{guardian_phone}}{{/guardian_phone}}{{#guardian_email}} · {{guardian_email}}{{/guardian_email}} <span class="text-xs text-amber-700">(not linked to a member yet)</span><br>{{/guardian_unlinked}}
+        {{^guardian_member_id}}{{^guardian_unlinked}}<span class="text-xs text-amber-700">No guardian set</span><br>{{/guardian_unlinked}}{{/guardian_member_id}}
         {{#consent_on_file}}<span class="text-xs text-green-700">Consent on file{{#consent_date}} ({{consent_date}}){{/consent_date}}</span>{{/consent_on_file}}
         {{^consent_on_file}}<span class="text-xs text-amber-700">No signed consent on file</span>{{/consent_on_file}}
         · {{#photo_release}}<span class="text-xs text-green-700">photo release given</span>{{/photo_release}}{{^photo_release}}<span class="text-xs text-red-700">no photos</span>{{/photo_release}}

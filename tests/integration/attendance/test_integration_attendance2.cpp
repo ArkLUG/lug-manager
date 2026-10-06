@@ -344,3 +344,27 @@ TEST_F(IntegrationTest, AttendancePersonalHtmx) {
     EXPECT_EQ(r.code, 200);
     expect_contains(r, "My Attendance");
 }
+
+// The attendance overview sorts by the year's perk tier (highest first, then by name).
+TEST_F(IntegrationTest, AttendanceOverviewSortsByTier) {
+    std::time_t now = std::time(nullptr);
+    int year = std::localtime(&now)->tm_year + 1900;
+    PerkLevel lvl;
+    lvl.name = "Bronze"; lvl.meeting_attendance_required = 1; lvl.year = year; lvl.sort_order = 1;
+    perk_level_repo->create(lvl);
+    Meeting m;
+    m.title = "Tier Mtg"; m.scope = "lug_wide";
+    m.start_time = std::to_string(year) + "-03-01T19:00:00"; m.end_time = std::to_string(year) + "-03-01T21:00:00";
+    auto mtg = meeting_svc->create(m);
+    attendance_svc->check_in(regular_member_id, "meeting", mtg.id, "", false);
+    const std::string base = "/attendance/overview?year=" + std::to_string(year);
+
+    auto byname = GET_HTMX(base, admin_token).body;
+    EXPECT_LT(byname.find("Admin U."), byname.find("Regular U."));
+    auto desc = GET_HTMX(base + "&sort=tier&dir=desc", admin_token);
+    EXPECT_EQ(desc.code, 200);
+    EXPECT_LT(desc.body.find("Regular U."), desc.body.find("Admin U."));
+    expect_contains(desc, "sort=tier&dir=asc");
+    auto asc = GET_HTMX(base + "&sort=tier&dir=asc", admin_token).body;
+    EXPECT_LT(asc.find("Admin U."), asc.find("Regular U."));
+}

@@ -55,6 +55,8 @@
   }
   </script>
   <style>
+    /* Member form: guardian & consent only for KFOL/TFOL (follows the age range picked) */
+    form:has(select[name="fol_status"] option[value="afol"]:checked) .guardian-section { display: none; }
     /* Settings > Features: elements of a switched-off feature carry f-<key> */
     [data-features-off~="chapters"] .f-chapters, [data-features-off~="dues"] .f-dues,
     [data-features-off~="perks"] .f-perks, [data-features-off~="rsvps"] .f-rsvps,

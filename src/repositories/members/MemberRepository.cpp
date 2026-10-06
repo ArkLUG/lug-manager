@@ -450,22 +450,29 @@ std::vector<Member> MemberRepository::search_names(const std::string& q, int lim
 }
 
 MemberRepository::Guardian MemberRepository::get_guardian(int64_t id) {
-    auto st = db_.prepare("SELECT guardian_name, guardian_phone, guardian_email, consent_on_file, consent_date, "
-                          "photo_release FROM members WHERE id=?");
+    auto st = db_.prepare("SELECT m.guardian_name, m.guardian_phone, m.guardian_email, m.consent_on_file, m.consent_date, "
+                          "m.photo_release, COALESCE(m.guardian_member_id,0), COALESCE(g.display_name,''), "
+                          "COALESCE(g.phone,''), COALESCE(g.email,'') "
+                          "FROM members m LEFT JOIN members g ON g.id = m.guardian_member_id WHERE m.id=?");
     st.bind(1, id);
     Guardian g;
     if (st.step()) {
         g.name = st.col_text(0); g.phone = st.col_text(1); g.email = st.col_text(2);
         g.consent_on_file = st.col_bool(3); g.consent_date = st.col_text(4); g.photo_release = st.col_bool(5);
+        g.member_id = st.col_int(6); g.member_name = st.col_text(7);
+        g.member_phone = st.col_text(8); g.member_email = st.col_text(9);
     }
     return g;
 }
 
 void MemberRepository::set_guardian(int64_t id, const Guardian& g) {
     auto st = db_.prepare("UPDATE members SET guardian_name=?, guardian_phone=?, guardian_email=?, "
-                          "consent_on_file=?, consent_date=?, photo_release=?, updated_at=datetime('now') WHERE id=?");
+                          "consent_on_file=?, consent_date=?, photo_release=?, guardian_member_id=?, "
+                          "updated_at=datetime('now') WHERE id=?");
     st.bind(1, g.name); st.bind(2, g.phone); st.bind(3, g.email); st.bind(4, g.consent_on_file);
-    st.bind(5, g.consent_date); st.bind(6, g.photo_release); st.bind(7, id);
+    st.bind(5, g.consent_date); st.bind(6, g.photo_release);
+    if (g.member_id > 0) st.bind(7, g.member_id); else st.bind_null(7);
+    st.bind(8, id);
     st.step();
 }
 

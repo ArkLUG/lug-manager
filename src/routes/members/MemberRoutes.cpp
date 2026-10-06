@@ -58,6 +58,7 @@ static crow::mustache::context member_to_ctx(const Member& m) {
     ctx["zip"]               = m.zip;
     ctx["chapter_id"]        = m.chapter_id;
     ctx["chapter_id_str"]    = m.chapter_id > 0 ? std::to_string(m.chapter_id) : "";
+    ctx["chapter_name"]      = m.chapter_name;
     ctx["created_at"]        = m.created_at;
     return ctx;
 }
@@ -90,18 +91,62 @@ static std::string render_members_page(const crow::request& req,
     return render_in_layout(req, app, content, "Members", "active_members");
 }
 
+// Guardian and consent are for KFOL/TFOL members only, and the guardian is
+// another adult member of the club (picked from the members list).
+static bool is_minor(const std::string& fol) { return fol == "kfol" || fol == "tfol"; }
+
 // Reads the guardian/consent block of the member form (only when it was on the form).
 template <typename GetParam>
 static std::optional<MemberRepository::Guardian> guardian_from_form(GetParam get_param) {
     if (get_param("guardian_form") != "1") return std::nullopt;
     MemberRepository::Guardian g;
-    g.name            = get_param("guardian_name").substr(0, 100);
-    g.phone           = get_param("guardian_phone").substr(0, 40);
-    g.email           = get_param("guardian_email").substr(0, 200);
+    g.member_id       = parse_id(get_param("guardian_member_id"));
     g.consent_on_file = get_param("consent_on_file") == "1";
     g.consent_date    = get_param("consent_date").substr(0, 10);
     g.photo_release   = get_param("photo_release") == "1";
     return g;
+}
+
+// "" when `guardian_id` may be `self_id`'s guardian, else why not.
+static std::string guardian_problem(MemberRepository& repo, int64_t self_id, int64_t guardian_id) {
+    if (guardian_id <= 0) return "";
+    if (guardian_id == self_id) return "A member can't be their own guardian.";
+    auto st = repo.db().prepare("SELECT COALESCE(fol_status,'afol') FROM members WHERE id=?");
+    st.bind(1, guardian_id);
+    if (!st.step()) return "Pick the guardian from the members list.";
+    if (is_minor(st.col_text(0))) return "The guardian has to be an adult member, not a KFOL or TFOL.";
+    return "";
+}
+
+// Saves the guardian block: cleared for adults; picking a member replaces the
+// details typed in before guardians were members; otherwise those stay.
+static void save_guardian(MemberRepository& repo, int64_t id, const std::string& fol, MemberRepository::Guardian g) {
+    if (!is_minor(fol)) {
+        g = MemberRepository::Guardian{};
+    } else if (g.member_id <= 0) {
+        auto old = repo.get_guardian(id);
+        g.name = old.name; g.phone = old.phone; g.email = old.email;
+    }
+    repo.set_guardian(id, g);
+}
+
+// The member form's guardian picker: every adult member but themselves.
+static crow::json::wvalue guardian_options(MemberRepository& repo, int64_t self_id, int64_t selected) {
+    crow::json::wvalue arr = crow::json::wvalue::list();
+    auto st = repo.db().prepare("SELECT id, display_name FROM members WHERE id<>? AND COALESCE(fol_status,'afol') "
+                                "NOT IN ('kfol','tfol') ORDER BY display_name COLLATE NOCASE");
+    st.bind(1, self_id);
+    int i = 0;
+    while (st.step()) {
+        arr[i]["id"] = st.col_int(0); arr[i]["name"] = st.col_text(1);
+        arr[i]["selected"] = st.col_int(0) == selected;
+        ++i;
+    }
+    return arr;
+}
+
+static std::string error_box(const std::string& msg) {
+    return R"(<div class="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded">)" + html_escape(msg) + "</div>";
 }
 
 void register_member_routes(LugApp& app, MemberService& members, AttendanceRepository& attendance_repo, AuditService& audit,
@@ -346,11 +391,18 @@ void register_member_routes(LugApp& app, MemberService& members, AttendanceRepos
         ctx["viewer_is_admin"] = auth.is_admin() && !is_self;
         if (privileged || is_self) {
             auto g = member_repo.get_guardian(m->id);
-            bool minor = m->fol_status == "kfol" || m->fol_status == "tfol";
-            ctx["show_guardian"]   = (minor || !g.name.empty()) && Features::on("guardians");
-            ctx["guardian_name"]   = g.name;
-            ctx["guardian_phone"]  = g.phone;
-            ctx["guardian_email"]  = g.email;
+            ctx["show_guardian"]   = is_minor(m->fol_status) && Features::on("guardians");
+            if (g.member_id > 0) {
+                ctx["guardian_member_id"] = g.member_id;
+                ctx["guardian_name"]  = g.member_name;
+                ctx["guardian_phone"] = g.member_phone;
+                ctx["guardian_email"] = g.member_email;
+            } else {
+                ctx["guardian_name"]  = g.name;      // typed in before guardians were members
+                ctx["guardian_phone"] = g.phone;
+                ctx["guardian_email"] = g.email;
+                ctx["guardian_unlinked"] = !g.name.empty();
+            }
             ctx["consent_on_file"] = g.consent_on_file;
             ctx["consent_date"]    = g.consent_date;
             ctx["photo_release"]   = g.photo_release;
@@ -374,6 +426,7 @@ void register_member_routes(LugApp& app, MemberService& members, AttendanceRepos
         ctx["action"] = "/members";
         ctx["title"]  = "Add Member";
         ctx["is_new"] = true;
+        ctx["guardian_options"] = guardian_options(member_repo, 0, 0);
         ctx["show_chapter_lead"] = Features::on("chapters");
         ctx["is_admin"] = app.get_context<AuthMiddleware>(req).auth.is_admin();
         res.write(tmpl.render(ctx).dump());
@@ -398,10 +451,12 @@ void register_member_routes(LugApp& app, MemberService& members, AttendanceRepos
         auto ctx  = member_to_ctx(*m);
         {
             auto g = member_repo.get_guardian(m->id);
-            ctx["guardian_name"] = g.name; ctx["guardian_phone"] = g.phone; ctx["guardian_email"] = g.email;
+            ctx["guardian_options"] = guardian_options(member_repo, m->id, g.member_id);
+            if (g.member_id <= 0 && !g.name.empty()) {
+                ctx["guardian_legacy"] = g.name + (g.phone.empty() ? "" : ", " + g.phone) + (g.email.empty() ? "" : ", " + g.email);
+            }
             ctx["consent_on_file"] = g.consent_on_file; ctx["consent_date"] = g.consent_date;
             ctx["photo_release"] = g.photo_release;
-            ctx["guardian_open"] = m->fol_status == "kfol" || m->fol_status == "tfol" || !g.name.empty();
         }
         ctx["action"]   = "/members/" + std::to_string(id);
         ctx["title"]    = "Edit Member";
@@ -452,9 +507,14 @@ void register_member_routes(LugApp& app, MemberService& members, AttendanceRepos
         // PII sharing defaults to "none" — only the member can change via self-edit
 
         res.add_header("Content-Type", "text/html; charset=utf-8");
+        auto guardian = guardian_from_form(get_param);
+        if (guardian && is_minor(m.fol_status)) {
+            std::string why = guardian_problem(member_repo, 0, guardian->member_id);
+            if (!why.empty()) { res.code = 400; res.write(error_box(why)); return res; }
+        }
         try {
             auto created = members.create(m);
-            if (auto g = guardian_from_form(get_param)) member_repo.set_guardian(created.id, *g);
+            if (guardian) save_guardian(member_repo, created.id, m.fol_status, *guardian);
             audit.log(req, app, "member.create", "member", created.id, created.display_name,
                       "Created member: " + created.first_name + " " + created.last_name);
             res.add_header("HX-Trigger", "{\"closeModal\":true,\"membersUpdated\":true}");
@@ -516,13 +576,18 @@ void register_member_routes(LugApp& app, MemberService& members, AttendanceRepos
         updates.is_paid    = !paid_until.empty();
 
         res.add_header("Content-Type", "text/html; charset=utf-8");
+        auto guardian = guardian_from_form(get_param);
+        if (guardian && is_minor(updates.fol_status)) {
+            std::string why = guardian_problem(member_repo, id, guardian->member_id);
+            if (!why.empty()) { res.code = 400; res.write(error_box(why)); return res; }
+        }
         auto before = members.get(static_cast<int64_t>(id));
         try {
             members.update(static_cast<int64_t>(id), updates);
             std::string chapter_str = get_param("chapter_id");
             int64_t new_chapter_id = parse_id(chapter_str);
             members.set_chapter(static_cast<int64_t>(id), new_chapter_id);
-            if (auto g = guardian_from_form(get_param)) member_repo.set_guardian(static_cast<int64_t>(id), *g);
+            if (guardian) save_guardian(member_repo, id, updates.fol_status, *guardian);
             if (caller_is_admin && get_param("treasurer_form") == "1") {
                 bool want = get_param("is_treasurer") == "1";
                 auto t = member_repo.db().prepare("UPDATE members SET is_treasurer=? WHERE id=? AND is_treasurer<>? RETURNING display_name");

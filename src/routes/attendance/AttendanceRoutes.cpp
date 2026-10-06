@@ -199,15 +199,42 @@ void register_attendance_routes(LugApp& app, AttendanceService& attendance,
         params.limit = per_page;
         params.offset = (page - 1) * per_page;
 
-        auto summaries = attendance.get_overview_paginated(params);
+        // Perk levels for tier computation (year-specific)
+        auto perk_levels = perks.find_by_year(params.year);
+        // The highest perk level a member reaches this year: its index in
+        // perk_levels (lowest first), -1 for none. Meetings count in person,
+        // plus virtual ones when Settings > Perk levels says they count.
+        auto tier_of = [&](const AttendanceRepository::MemberAttendanceSummary& s) {
+            int meetings = attendance.repo().perk_meetings(s.meeting_count, s.meeting_virtual_count);
+            int best = -1;
+            for (size_t i = 0; i < perk_levels.size(); ++i)
+                if (meets_perk_level(perk_levels[i], meetings, s.event_count, s.is_paid, s.fol_status)) best = static_cast<int>(i);
+            return best;
+        };
+
+        std::vector<AttendanceRepository::MemberAttendanceSummary> summaries;
+        if (params.sort_col == "tier") {
+            // Tiers come from the perk levels, not a column: rank everyone
+            // (by name within a tier), then take this page.
+            auto all = params;
+            all.sort_col = "display_name"; all.sort_dir = "asc"; all.limit = 1000000; all.offset = 0;
+            auto rows = attendance.get_overview_paginated(all);
+            std::vector<std::pair<int, size_t>> ranked;
+            for (size_t i = 0; i < rows.size(); ++i) ranked.push_back({tier_of(rows[i]), i});
+            const bool desc = params.sort_dir == "desc";
+            std::stable_sort(ranked.begin(), ranked.end(), [desc](const auto& a, const auto& b) {
+                return desc ? a.first > b.first : a.first < b.first;
+            });
+            for (size_t i = params.offset; i < ranked.size() && summaries.size() < static_cast<size_t>(per_page); ++i)
+                summaries.push_back(rows[ranked[i].second]);
+        } else {
+            summaries = attendance.get_overview_paginated(params);
+        }
 
         // Year dropdown
         auto years = attendance.get_attendance_years();
         if (std::find(years.begin(), years.end(), current_year) == years.end())
             years.insert(years.begin(), current_year);
-
-        // Perk levels for tier computation (year-specific)
-        auto perk_levels = perks.find_by_year(params.year);
 
         crow::mustache::context ctx;
         ctx["is_admin"]       = true;
@@ -223,6 +250,7 @@ void register_attendance_routes(LugApp& app, AttendanceService& attendance,
         ctx["sort_evt_asc"]   = (params.sort_col == "event_count" && params.sort_dir == "asc");
         ctx["sort_tot_asc"]   = (params.sort_col == "total" && params.sort_dir == "asc");
         ctx["sort_last_asc"]  = (params.sort_col == "last_attendance" && params.sort_dir == "asc");
+        ctx["sort_tier_desc"] = (params.sort_col == "tier" && params.sort_dir == "desc");
         ctx["page"]           = page;
         ctx["total_pages"]    = total_pages;
         ctx["total_count"]    = total_count;
@@ -255,16 +283,8 @@ void register_attendance_routes(LugApp& app, AttendanceService& attendance,
         for (size_t i = 0; i < summaries.size(); ++i) {
             auto& s = summaries[i];
             int total = s.meeting_count + s.event_count;
-            // Perk eligibility counts in-person meetings, plus virtual ones
-            // when Settings > Perk levels says they count.
-            int meeting_count_in_person = attendance.repo().perk_meetings(s.meeting_count, s.meeting_virtual_count);
-
-            std::string tier_name;
-            for (const auto& lvl : perk_levels) {
-                if (meets_perk_level(lvl, meeting_count_in_person, s.event_count, s.is_paid, s.fol_status)) {
-                    tier_name = lvl.name;
-                }
-            }
+            const int tier = tier_of(s);
+            std::string tier_name = tier >= 0 ? perk_levels[tier].name : "";
 
             arr[i]["member_id"]             = s.member_id;
             arr[i]["display_name"]          = s.display_name;

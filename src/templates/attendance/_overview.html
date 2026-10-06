@@ -78,7 +78,11 @@
                  class="cursor-pointer hover:text-gray-800">Last</a>
             </th>
             <th class="px-3 py-2 text-center hidden md:table-cell">Dues</th>
-            {{#has_perks}}<th class="px-3 py-2 hidden lg:table-cell">Tier</th>{{/has_perks}}
+            {{#has_perks}}<th class="px-3 py-2 hidden lg:table-cell">
+              <a hx-get="/attendance/overview?sort=tier&dir={{#sort_tier_desc}}asc{{/sort_tier_desc}}{{^sort_tier_desc}}desc{{/sort_tier_desc}}"
+                 hx-target="#main-content" hx-swap="innerHTML" hx-push-url="true" hx-include="#overview-filters"
+                 class="cursor-pointer hover:text-gray-800">Tier</a>
+            </th>{{/has_perks}}
             <th class="px-3 py-2"></th>
           </tr>
         </thead>

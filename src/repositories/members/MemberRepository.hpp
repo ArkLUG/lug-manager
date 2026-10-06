@@ -30,10 +30,14 @@ public:
     // members.role_source: "manual" | "discord" - see services/RoleSync.hpp
     std::string get_role_source(int64_t id);
 
-    // Guardian / consent details for young members (migration 056).
+    // Guardian / consent details for young members (migrations 056, 076). The
+    // guardian is another member (member_id); name/phone/email are the free
+    // text typed in before that, kept until a member is picked.
     struct Guardian {
         std::string name, phone, email, consent_date;
         bool consent_on_file = false, photo_release = false;
+        int64_t member_id = 0;
+        std::string member_name, member_phone, member_email;   // read only: the guardian member's details
     };
     Guardian get_guardian(int64_t id);
     void     set_guardian(int64_t id, const Guardian& g);

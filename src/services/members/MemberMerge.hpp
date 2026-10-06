@@ -57,6 +57,7 @@ public:
             {"treasury_entries", "recorded_by"}, {"storage_locations", "keeper_id"},
             {"storage_locations", "owner_member_id"}, {"inventory_items", "owner_member_id"},
             {"community_ambassador_terms", "member_id"}, {"fan_colab_task_done", "done_by"},
+            {"members", "guardian_member_id"},
         };
         for (const auto& r : refs)
             exec(std::string("UPDATE ") + r[0] + " SET " + r[1] + "=?1 WHERE " + r[1] + "=?2", keep_id, drop_id);
@@ -71,6 +72,10 @@ public:
         for (const char* c : text_cols)
             exec(std::string("UPDATE members SET ") + c + " = COALESCE(NULLIF(" + c + ",''), (SELECT " + c +
                  " FROM members WHERE id=?2)) WHERE id=?1", keep_id, drop_id);
+        exec("UPDATE members SET guardian_member_id = COALESCE(guardian_member_id, "
+             "(SELECT guardian_member_id FROM members WHERE id=?2)) WHERE id=?1", keep_id, drop_id);
+        // Nobody is their own guardian (the duplicate may have been the guardian)
+        exec("UPDATE members SET guardian_member_id=NULL WHERE guardian_member_id=id AND id IN (?1, ?2)", keep_id, drop_id);
         exec("UPDATE members SET "
              "is_paid = MAX(is_paid, (SELECT is_paid FROM members WHERE id=?2)), "
              "paid_until = CASE WHEN COALESCE((SELECT paid_until FROM members WHERE id=?2),'') > COALESCE(paid_until,'') "
