@@ -295,13 +295,42 @@ Values ChatHub::meeting_values(const Meeting& m, const Provider& p) const {
 
 // ── Events ──
 
-void ChatHub::event_published(const LugEvent& e) {
-    for (auto& p : providers_) if (p->ready()) publish_event(*p, e);
+// Private meetings and events on a chat service (setting chat.<provider>.private):
+// "post" as usual (default), "redact" (no title, place or description), or
+// "skip" (not posted at all, like "Don't post to Discord").
+std::string ChatHub::private_mode(const Provider& p) const {
+    const std::string m = setting("chat." + p.id() + ".private", "post");
+    return m == "redact" || m == "skip" ? m : "post";
 }
 
-void ChatHub::event_changed(const LugEvent& before, const LugEvent& after, bool notify) {
+LugEvent ChatHub::view(const Provider& p, LugEvent e) const {
+    if (!e.is_private) return e;
+    const std::string mode = private_mode(p);
+    if (mode == "skip") e.suppress_discord = true;
+    else if (mode == "redact") { e.title = "Private LUG event"; e.description = ""; e.location = ""; e.notes = ""; e.entrance_fee = ""; }
+    return e;
+}
+
+Meeting ChatHub::view(const Provider& p, Meeting m) const {
+    if (!m.is_private) return m;
+    const std::string mode = private_mode(p);
+    if (mode == "skip") m.suppress_discord = true;
+    else if (mode == "redact") { m.title = "Private LUG meeting"; m.description = ""; m.location = ""; m.notes = ""; }
+    return m;
+}
+
+void ChatHub::event_published(const LugEvent& ev) {
     for (auto& p : providers_) {
         if (!p->ready()) continue;
+        const LugEvent e = view(*p, ev);
+        if (!e.suppress_discord) publish_event(*p, e);
+    }
+}
+
+void ChatHub::event_changed(const LugEvent& before_, const LugEvent& after_, bool notify) {
+    for (auto& p : providers_) {
+        if (!p->ready()) continue;
+        const LugEvent before = view(*p, before_), after = view(*p, after_);
         if (!before.suppress_discord && after.suppress_discord) remove_event(*p, before, refs(*p, "event", before.id));
         else if (before.suppress_discord && !after.suppress_discord) publish_event(*p, after);
         else if (!after.suppress_discord) update_event(*p, before, after, notify);
@@ -544,13 +573,18 @@ std::string ChatHub::start_event_thread(const LugEvent& e) {
 
 // ── Meetings ──
 
-void ChatHub::meeting_published(const Meeting& m) {
-    for (auto& p : providers_) if (p->ready()) publish_meeting(*p, m);
-}
-
-void ChatHub::meeting_changed(const Meeting& before, const Meeting& after) {
+void ChatHub::meeting_published(const Meeting& mt) {
     for (auto& p : providers_) {
         if (!p->ready()) continue;
+        const Meeting m = view(*p, mt);
+        if (!m.suppress_discord) publish_meeting(*p, m);
+    }
+}
+
+void ChatHub::meeting_changed(const Meeting& before_, const Meeting& after_) {
+    for (auto& p : providers_) {
+        if (!p->ready()) continue;
+        const Meeting before = view(*p, before_), after = view(*p, after_);
         if (!before.suppress_discord && after.suppress_discord) remove_meeting(*p, before, refs(*p, "meeting", before.id));
         else if (before.suppress_discord && !after.suppress_discord) publish_meeting(*p, after);
         else if (!after.suppress_discord) update_meeting(*p, before, after);
@@ -868,10 +902,12 @@ void ChatHub::keep_reminder(const Provider& p, const std::string& entity_type, i
     st.step();
 }
 
-int ChatHub::remind_meeting(const Meeting& m) {
+int ChatHub::remind_meeting(const Meeting& mt) {
     int sent = 0;
     for (auto& p : providers_) {
         if (!p->ready()) continue;
+        const Meeting m = view(*p, mt);
+        if (m.suppress_discord) continue;
         std::string ch = m.scope == "chapter" && m.chapter_id > 0 ? p->chapter_channel(m.chapter_id) : p->place(Place::Announcements);
         if (ch.empty()) continue;
         Result r = post_in(*p, ch, "reminder.meeting", meeting_values(m, *p), "meeting", m.id);
@@ -880,10 +916,12 @@ int ChatHub::remind_meeting(const Meeting& m) {
     return sent;
 }
 
-int ChatHub::remind_event(const LugEvent& e) {
+int ChatHub::remind_event(const LugEvent& ev) {
     int sent = 0;
     for (auto& p : providers_) {
         if (!p->ready()) continue;
+        const LugEvent e = view(*p, ev);
+        if (e.suppress_discord) continue;
         std::string ch = refs(*p, "event", e.id).thread;
         if (ch.empty()) ch = p->place(Place::Announcements);
         if (ch.empty()) continue;

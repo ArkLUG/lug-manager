@@ -149,6 +149,12 @@
         <label class="flex items-center gap-2"><input type="checkbox" name="chat_dms" value="1" {{#sw_dms}}checked{{/sw_dms}} class="accent-yellow-400"> Send members direct messages (otherwise email)</label>
         <label class="flex items-center gap-2"><input type="checkbox" name="chat_challenges" value="1" {{#sw_challenges}}checked{{/sw_challenges}} class="accent-yellow-400"> Announce build challenge winners</label>
       </fieldset>
+      <label class="block text-sm">Private meetings and events
+        <select name="private_mode" class="mt-1 w-full sm:w-auto px-3 py-2 border border-gray-300 rounded-lg text-sm">
+          <option value="post" {{#private_post}}selected{{/private_post}}>Post them like any other</option>
+          <option value="redact" {{#private_redact}}selected{{/private_redact}}>Post them without details ("Private LUG meeting", no place or description)</option>
+          <option value="skip" {{#private_skip}}selected{{/private_skip}}>Don't post them on Discord</option>
+        </select></label>
       <p class="text-xs text-gray-400">Each meeting and event can also turn parts off for itself (in its form, under Discord). Changing these doesn't remove anything already posted.</p>
 
       <p class="text-xs text-gray-400">Reminders before meetings and events are under <a hx-get="/settings/reminders" hx-target="#main-content" hx-push-url="true" hx-swap="innerHTML" class="underline cursor-pointer">Settings &gt; Reminders</a>.</p>

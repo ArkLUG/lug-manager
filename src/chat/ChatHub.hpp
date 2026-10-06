@@ -142,6 +142,10 @@ private:
     std::vector<std::string> event_ping_roles(const Provider& p, const LugEvent& e, const std::string& main_role) const;
 
     std::string setting(const std::string& key, const std::string& def = "") const;
+    std::string private_mode(const Provider& p) const;
+    // How a private meeting/event looks to a chat service (private_mode)
+    LugEvent view(const Provider& p, LugEvent e) const;
+    Meeting view(const Provider& p, Meeting m) const;
 
     SqliteDatabase& db_;
     std::string public_url_;

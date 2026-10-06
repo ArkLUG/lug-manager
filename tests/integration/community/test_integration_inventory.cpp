@@ -346,3 +346,31 @@ TEST_F(IntegrationTest, InventoryOwners) {
     expect_contains(GET("/inventory", admin_token), "Regular U. (left - reassign)");
     EXPECT_GE(query_int(*db, "SELECT COUNT(*) FROM audit_log WHERE action='inventory.update' AND details LIKE '%owned by Regular U.%'"), 1);
 }
+
+// Owners lend their own things (and mark them returned) without the
+// inventory permission; nothing else.
+TEST_F(IntegrationTest, OwnersLendTheirOwnItems) {
+    EXPECT_EQ(POST("/inventory", "name=Big+Baseplate&quantity=3", admin_token).code, 200);
+    EXPECT_EQ(POST("/inventory", "name=Club+Banner&quantity=1", admin_token).code, 200);
+    const int64_t mine = query_int(*db, "SELECT id FROM inventory_items WHERE name='Big Baseplate'");
+    const int64_t lugs = query_int(*db, "SELECT id FROM inventory_items WHERE name='Club Banner'");
+    { auto u = db->prepare("UPDATE inventory_items SET owner_member_id=? WHERE id=?"); u.bind(1, regular_member_id); u.bind(2, mine); u.step(); }
+
+    auto page = GET("/inventory", member_token);
+    expect_contains(page, "Lend something of yours");
+    expect_contains(page, "Big Baseplate (3 available)");
+    expect_not_contains(page, "Club Banner (1 available)");
+    // Not the LUG's things
+    EXPECT_EQ(POST("/inventory/checkout", "item_id=" + std::to_string(lugs) + "&member_id=" + std::to_string(chapter_lead_member_id) + "&quantity=1", member_token).code, 403);
+    // Their own: yes
+    EXPECT_EQ(POST("/inventory/checkout", "item_id=" + std::to_string(mine) + "&member_id=" + std::to_string(chapter_lead_member_id) + "&quantity=2", member_token).code, 200);
+    const int64_t loan = query_int(*db, "SELECT id FROM inventory_loans WHERE item_id=? AND returned_at IS NULL", mine);
+    ASSERT_GT(loan, 0);
+    expect_contains(GET("/inventory", member_token), "Lead U.");   // they see who has it
+    // Someone else can't mark it returned; the owner can
+    EXPECT_EQ(POST("/inventory/loans/" + std::to_string(loan) + "/return", "", event_manager_token).code, 403);
+    EXPECT_LT(POST("/inventory/loans/" + std::to_string(loan) + "/return", "", member_token).code, 400);
+    EXPECT_EQ(query_int(*db, "SELECT COUNT(*) FROM inventory_loans WHERE id=? AND returned_at IS NOT NULL", loan), 1);
+    // A member who owns nothing gets no lending form
+    expect_not_contains(GET("/inventory", event_manager_token), "Lend something of yours");
+}

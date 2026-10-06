@@ -126,8 +126,12 @@ std::string render(const crow::request& req, LugApp& app, SqliteDatabase& db, co
     ctx["owner_lug"] = owner_filter == "lug";
     ctx["owner_all"] = owner_filter.empty();
 
+    // Owners lend their own things (and mark them returned) without the
+    // inventory permission.
+    const bool owns_items = !manage && a.member_id > 0 &&
+        query_int(db, "SELECT COUNT(*) FROM inventory_items WHERE owner_member_id=? AND archived=0", a.member_id) > 0;
     std::vector<std::pair<int64_t, std::string>> people;
-    if (manage) {
+    if (manage || owns_items) {
         auto ms = db.prepare("SELECT id, display_name FROM members ORDER BY display_name COLLATE NOCASE");
         while (ms.step()) people.emplace_back(ms.col_int(0), ms.col_text(1));
     }
@@ -265,7 +269,7 @@ std::string render(const crow::request& req, LugApp& app, SqliteDatabase& db, co
         it["locations"] = crow::json::wvalue::list();
         int k = 0;
         for (const auto& [lid, lname] : loc_names) { it["locations"][k]["id"] = lid; it["locations"][k]["name"] = lname; ++k; }
-        if (qty - out > 0) {
+        if (qty - out > 0 && (manage || owner == a.member_id)) {
             options[n_opt]["id"] = id;
             options[n_opt]["label"] = st.col_text(1) + " (" + std::to_string(qty - out) + " available)";
             ++n_opt;
@@ -276,14 +280,14 @@ std::string render(const crow::request& req, LugApp& app, SqliteDatabase& db, co
     ctx["item_options"] = std::move(options);
     ctx["has_item_options"] = n_opt > 0;
 
-    // ── Open loans: managers see all, members see their own ──
+    // ── Open loans: managers see all; members their own, plus their things lent out ──
     crow::json::wvalue loans = crow::json::wvalue::list();
     int nloan = 0;
     auto ls = db.prepare(std::string(
         "SELECT l.id, i.name, COALESCE(m.display_name,''), l.quantity, l.due_on, l.notes, substr(l.checked_out_at,1,10), "
-        "l.member_id, COALESCE(l.from_location_id, 0) "
+        "l.member_id, COALESCE(l.from_location_id, 0), COALESCE(i.owner_member_id,0) "
         "FROM inventory_loans l JOIN inventory_items i ON i.id=l.item_id LEFT JOIN members m ON m.id=l.member_id "
-        "WHERE l.returned_at IS NULL") + (manage ? "" : " AND l.member_id=?") +
+        "WHERE l.returned_at IS NULL") + (manage ? "" : " AND (l.member_id=?1 OR i.owner_member_id=?1)") +
         " ORDER BY CASE WHEN l.due_on='' THEN 1 ELSE 0 END, l.due_on, l.id");
     if (!manage) ls.bind(1, a.member_id);
     while (ls.step()) {
@@ -300,6 +304,7 @@ std::string render(const crow::request& req, LugApp& app, SqliteDatabase& db, co
         l["overdue"] = !due.empty() && due < today;
         l["mine"] = ls.col_int(7) == a.member_id;
         l["can_manage"] = manage;
+        l["can_return"] = manage || (ls.col_int(9) == a.member_id && a.member_id > 0);   // the item's owner
         if (from > 0 && loc_names.count(from)) l["from"] = loc_names[from];
         l["return_options"] = crow::json::wvalue::list();
         int k = 0;
@@ -311,7 +316,9 @@ std::string render(const crow::request& req, LugApp& app, SqliteDatabase& db, co
     ctx["loans"] = std::move(loans);
     ctx["has_loans"] = nloan > 0;
 
-    if (manage) {
+    ctx["can_lend"] = manage || owns_items;
+    ctx["show_who"] = manage || owns_items;
+    if (manage || owns_items) {
         crow::json::wvalue members = crow::json::wvalue::list();
         int nm = 0;
         for (const auto& [pid, pname] : people) { members[nm]["id"] = pid; members[nm]["name"] = pname; ++nm; }
@@ -752,7 +759,7 @@ void register_inventory_routes(LugApp& app, SqliteDatabase& db, AuditService& au
     // POST /inventory/checkout - lend an item to a member, taken from a location (or from what isn't placed)
     CROW_ROUTE(app, "/inventory/checkout").methods("POST"_method)([&app, &db, &audit](const crow::request& req) {
         crow::response res;
-        if (!require_auth(req, res, app, "perm:inventory.manage")) return res;
+        if (!require_auth(req, res, app)) return res;
         Form f(req);
         int64_t item = f.num("item_id"), member = f.num("member_id"), qty = f.num("quantity", 1);
         int64_t from = f.num("from_location_id");
@@ -761,10 +768,14 @@ void register_inventory_routes(LugApp& app, SqliteDatabase& db, AuditService& au
             return fragment(req, app, db, 400, "Pick an item, a member and a quantity.");
         std::string name, who;
         {
-            auto st = db.prepare("SELECT name FROM inventory_items WHERE id=? AND archived=0");
+            auto st = db.prepare("SELECT name, COALESCE(owner_member_id,0) FROM inventory_items WHERE id=? AND archived=0");
             st.bind(1, item);
             if (!st.step()) return fragment(req, app, db, 404, "That item doesn't exist.");
             name = st.col_text(0);
+            // The inventory permission, or it's their own item to lend
+            auto& a = app.get_context<AuthMiddleware>(req).auth;
+            if (!a.can("inventory.manage") && (st.col_int(1) != a.member_id || a.member_id <= 0))
+                return fragment(req, app, db, 403, "You can only lend things you own.");
         }
         {
             auto st = db.prepare("SELECT display_name FROM members WHERE id=?");
@@ -809,7 +820,17 @@ void register_inventory_routes(LugApp& app, SqliteDatabase& db, AuditService& au
     // POST /inventory/loans/<id>/return - back to where it came from, or to the chosen location
     CROW_ROUTE(app, "/inventory/loans/<int>/return").methods("POST"_method)([&app, &db, &audit](const crow::request& req, int id) {
         crow::response res;
-        if (!require_auth(req, res, app, "perm:inventory.manage")) return res;
+        if (!require_auth(req, res, app)) return res;
+        {
+            // The inventory permission, or the owner of the item that's out
+            auto& who_asks = app.get_context<AuthMiddleware>(req).auth;
+            if (!who_asks.can("inventory.manage") &&
+                query_int(db, "SELECT COUNT(*) FROM inventory_loans l JOIN inventory_items i ON i.id=l.item_id "
+                              "WHERE l.id=? AND i.owner_member_id=?", static_cast<int64_t>(id), who_asks.member_id) == 0) {
+                res.code = 403;
+                return res;
+            }
+        }
         Form f(req);
         int64_t to = f.num("to_location_id", -1);
         int64_t item = 0, qty = 0, from = 0;

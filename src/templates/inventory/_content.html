@@ -17,29 +17,29 @@
 
   <!-- Loans -->
   <section class="bg-white rounded-xl border border-gray-200 p-5">
-    <h3 class="font-semibold text-gray-800 mb-3">{{#can_manage}}Checked out now{{/can_manage}}{{^can_manage}}Checked out to you{{/can_manage}}</h3>
+    <h3 class="font-semibold text-gray-800 mb-3">{{#can_manage}}Checked out now{{/can_manage}}{{^can_manage}}{{#can_lend}}Out on loan: yours and to you{{/can_lend}}{{^can_lend}}Checked out to you{{/can_lend}}{{/can_manage}}</h3>
     {{#has_loans}}
     <div class="overflow-x-auto">
     <table class="w-full text-sm">
       <thead><tr class="text-left text-xs text-gray-500 border-b border-gray-200">
-        <th class="py-2 pr-3">Item</th>{{#can_manage}}<th class="py-2 pr-3">Who</th>{{/can_manage}}<th class="py-2 pr-3">Qty</th><th class="py-2 pr-3 hidden sm:table-cell">Since</th><th class="py-2 pr-3">Due</th><th class="py-2"></th>
+        <th class="py-2 pr-3">Item</th>{{#show_who}}<th class="py-2 pr-3">Who</th>{{/show_who}}<th class="py-2 pr-3">Qty</th><th class="py-2 pr-3 hidden sm:table-cell">Since</th><th class="py-2 pr-3">Due</th><th class="py-2"></th>
       </tr></thead>
       <tbody class="divide-y divide-gray-100">
       {{#loans}}
         <tr>
           <td class="py-2 pr-3 text-gray-900">{{item}}{{#from}}<div class="text-xs text-gray-500">from {{from}}</div>{{/from}}{{#notes}}<div class="text-xs text-gray-500">{{notes}}</div>{{/notes}}</td>
-          {{#can_manage}}<td class="py-2 pr-3">{{who}}</td>{{/can_manage}}
+          {{#show_who}}<td class="py-2 pr-3">{{who}}</td>{{/show_who}}
           <td class="py-2 pr-3">{{quantity}}</td>
           <td class="py-2 pr-3 text-gray-500 hidden sm:table-cell">{{since}}</td>
           <td class="py-2 pr-3">{{#overdue}}<span class="text-red-600 font-medium">{{due_on}} (overdue)</span>{{/overdue}}{{^overdue}}{{due_on}}{{^due_on}}<span class="text-gray-400">-</span>{{/due_on}}{{/overdue}}</td>
-          <td class="py-2 text-right">{{#can_manage}}
+          <td class="py-2 text-right">{{#can_return}}
             <form hx-post="/inventory/loans/{{id}}/return" hx-target="#inventory-page" hx-swap="outerHTML" class="flex flex-wrap items-center justify-end gap-1">
               <select name="to_location_id" aria-label="Return to" class="text-xs border border-gray-300 rounded-lg px-1.5 py-1 max-w-[10rem]">
                 <option value="0">not placed</option>
                 {{#return_options}}<option value="{{id}}" {{#selected}}selected{{/selected}}>{{name}}</option>{{/return_options}}
               </select>
               <button class="text-xs px-2.5 py-1 border border-gray-300 rounded-lg hover:bg-gray-50">Returned</button>
-            </form>{{/can_manage}}</td>
+            </form>{{/can_return}}</td>
         </tr>
       {{/loans}}
       </tbody>
@@ -48,7 +48,8 @@
     {{/has_loans}}
     {{^has_loans}}<p class="text-sm text-gray-400">Nothing checked out.</p>{{/has_loans}}
 
-    {{#can_manage}}{{#has_item_options}}
+    {{#can_lend}}{{#has_item_options}}
+    {{^can_manage}}<p class="mt-4 pt-4 border-t border-gray-200 text-sm text-gray-600">Lend something of yours:</p>{{/can_manage}}
     <form hx-post="/inventory/checkout" hx-target="#inventory-page" hx-swap="outerHTML"
           class="mt-4 pt-4 border-t border-gray-200 grid grid-cols-1 md:grid-cols-6 gap-2 text-sm items-end">
       <label class="md:col-span-2">Item
@@ -70,7 +71,7 @@
       <label class="md:col-span-3">Notes <span class="text-gray-400">(optional)</span><input name="notes" maxlength="500" placeholder="e.g. for which show" class="mt-1 w-full border border-gray-300 rounded-lg px-2 py-1.5"></label>
       <button class="px-4 py-2 bg-yellow-400 text-gray-900 rounded-lg font-semibold hover:bg-yellow-300">Check out</button>
     </form>
-    {{/has_item_options}}{{/can_manage}}
+    {{/has_item_options}}{{/can_lend}}
   </section>
 
   <!-- Storage locations -->

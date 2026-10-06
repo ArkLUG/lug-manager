@@ -503,6 +503,10 @@ void register_settings_routes(LugApp& app, SettingsRepository& settings,
             mctx["nick_display"] = nick != "full" && nick != "off";
             mctx["nick_full"] = nick == "full";
             mctx["nick_off"] = nick == "off";
+            std::string priv = settings.get("chat.discord.private", "post");
+            mctx["private_redact"] = priv == "redact";
+            mctx["private_skip"] = priv == "skip";
+            mctx["private_post"] = priv != "redact" && priv != "skip";
             auto st = settings.db().prepare("SELECT COUNT(*) FROM chat_activity WHERE ok=0 AND created_at > datetime('now','-7 days')");
             int64_t failed = st.step() ? st.col_int(0) : 0;
             if (failed > 0) mctx["recent_failures"] = failed;
@@ -607,6 +611,8 @@ void register_settings_routes(LugApp& app, SettingsRepository& settings,
         {
             std::string nick = get_param("nicknames");
             settings.set("chat.discord.nicknames", nick == "full" || nick == "off" ? nick : "display");
+            std::string priv = get_param("private_mode");
+            settings.set("chat.discord.private", priv == "redact" || priv == "skip" ? priv : "post");
         }
         std::string ev_reports  = get_param("discord_event_reports_forum_channel_id");
         std::string mtg_reports = get_param("discord_meeting_reports_forum_channel_id");

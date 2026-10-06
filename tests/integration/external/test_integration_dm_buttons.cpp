@@ -296,3 +296,30 @@ TEST_F(DmButtonsTest, DeletingAMeetingCleansUpDiscord) {
     EXPECT_GE(fake->matching("DELETE /api/v10/channels/700000000000000001/messages/").size(), 2u);   // announcement + reminder
     EXPECT_EQ(query_int(*db, "SELECT COUNT(*) FROM chat_posts WHERE entity_type='meeting' AND entity_id=?", mt.id), 0);
 }
+
+// Settings › Discord › Private meetings and events: post / without details / don't post.
+TEST_F(DmButtonsTest, PrivateMeetingsOnDiscordFollowTheSetting) {
+    settings_repo->set("discord_announcements_channel_id", "700000000000000001");
+    discord_client->reconfigure(fake->guild_id, "700000000000000001");
+    auto make = [&](const std::string& title) {
+        Meeting m;
+        m.title = title; m.scope = "lug_wide"; m.location = "Secret Basement"; m.is_private = true;
+        m.start_time = local_in(3 * 86400).substr(0, 19); m.end_time = local_in(3 * 86400 + 7200).substr(0, 19);
+        return meeting_svc->create(m).id;
+    };
+    const std::string posts = "POST /api/v10/channels/700000000000000001/messages";
+
+    settings_repo->set("chat.discord.private", "redact");
+    make("Board Night");
+    ASSERT_TRUE(fake->wait_for(posts));
+    const auto body = fake->matching(posts).back().body;
+    EXPECT_NE(body.find("Private LUG meeting"), std::string::npos);
+    EXPECT_EQ(body.find("Board Night"), std::string::npos);
+    EXPECT_EQ(body.find("Secret Basement"), std::string::npos);
+
+    settings_repo->set("chat.discord.private", "skip");
+    const size_t before = fake->matching(posts).size();
+    make("Hidden Night");
+    std::this_thread::sleep_for(std::chrono::milliseconds(500));
+    EXPECT_EQ(fake->matching(posts).size(), before);
+}
