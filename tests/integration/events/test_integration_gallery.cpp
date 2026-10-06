@@ -206,3 +206,23 @@ TEST_F(IntegrationTest, FormsWarnWhenPingsAreOff) {
     discord_client->set_suppress_pings(false);
     expect_not_contains(GET_HTMX("/meetings/new", admin_token), "Discord pings are off");
 }
+
+// The sweep: only top-level files in uploads/, a missing folder is a no-op,
+// dry run removes nothing, receipts (a subfolder) are never touched.
+TEST_F(IntegrationTest, UploadSweepStaysInItsFolder) {
+    namespace fs = std::filesystem;
+    const std::string root = data_dir + "/sweeptest";
+    PhotoStore missing(root);
+    EXPECT_EQ(missing.sweep({}, std::chrono::seconds(-1)), 0);          // no uploads/ folder
+    fs::create_directories(root + "/uploads/receipts");
+    for (const char* f : {"/logo.png", "/secret.key", "/uploads/old.jpg", "/uploads/keep.jpg", "/uploads/receipts/r.pdf"})
+        std::ofstream(root + f) << "x";
+    PhotoStore store(root);
+    EXPECT_EQ(store.sweep({"keep.jpg"}, std::chrono::seconds(-1), /*dry_run=*/true), 1);
+    EXPECT_TRUE(fs::exists(root + "/uploads/old.jpg"));
+    EXPECT_EQ(store.sweep({"keep.jpg"}, std::chrono::seconds(-1)), 1);
+    EXPECT_FALSE(fs::exists(root + "/uploads/old.jpg"));
+    for (const char* f : {"/logo.png", "/secret.key", "/uploads/keep.jpg", "/uploads/receipts/r.pdf"})
+        EXPECT_TRUE(fs::exists(root + f)) << f;
+    fs::remove_all(root);
+}

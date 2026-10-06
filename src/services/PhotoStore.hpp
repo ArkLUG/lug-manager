@@ -61,7 +61,9 @@ public:
     // e.g. photos of a deleted event or member. Only files older than
     // `min_age`: a file saved a moment ago may not have its row yet.
     // Subfolders (receipts) are left alone. Returns how many went.
-    int sweep(const std::set<std::string>& in_use, std::chrono::seconds min_age = std::chrono::hours(1)) const {
+    // dry_run: count what would go, remove nothing.
+    int sweep(const std::set<std::string>& in_use, std::chrono::seconds min_age = std::chrono::hours(1),
+              bool dry_run = false) const {
         namespace fs = std::filesystem;
         std::error_code ec;
         if (!fs::is_directory(dir_, ec)) return 0;
@@ -71,7 +73,7 @@ public:
             if (!f.is_regular_file(ec)) continue;
             const std::string name = f.path().filename().string();
             if (in_use.count(name) || f.last_write_time(ec) > cutoff) continue;
-            if (fs::remove(f.path(), ec)) ++n;
+            if (dry_run || fs::remove(f.path(), ec)) ++n;
         }
         return n;
     }

@@ -330,9 +330,15 @@ int main(int argc, char** argv) {
                         std::cout << "[inventory] Reminded " << n << " borrower(s)\n";
                     if (int n = digest_service.run_once())
                         std::cout << "[digest] Sent " << n << " weekly digest(s)\n";
-                    // Photos left behind by deleted events, members and entries
-                    if (int n = uploads->sweep(uploads_in_use(db)))
-                        std::cout << "[uploads] Removed " << n << " photo(s) nothing uses any more\n";
+                    // Photos left behind by deleted events, members and entries.
+                    // Setting uploads_sweep: on (default) | dry_run (only log) | off.
+                    const std::string sweep = settings_repo.get("uploads_sweep", "on");
+                    if (sweep != "off") {
+                        const bool dry = sweep == "dry_run";
+                        if (int n = uploads->sweep(uploads_in_use(db), std::chrono::hours(1), dry))
+                            std::cout << "[uploads] " << (dry ? "Would remove " : "Removed ") << n
+                                      << " file(s) nothing uses any more (data/uploads, older than 1 hour)\n";
+                    }
                     if (int n = notifier->send_snoozed())
                         std::cout << "[reminders] Sent " << n << " snoozed reminder(s) again\n";
                     auto r = reminder_service.run_once();
