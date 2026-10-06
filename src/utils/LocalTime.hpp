@@ -67,8 +67,9 @@ inline std::string local_iso(std::time_t t) {
 }
 inline std::string local_iso_now() { return local_iso(std::time(nullptr)); }
 
-// "2026-06-06..." -> "Sat Jun 6, 2026" ("" stays "").
-inline std::string friendly_date(const std::string& iso) {
+// "2026-06-06..." -> "Sat Jun 6, 2026" ("" stays ""); without the weekday
+// ("Jun 6, 2026") for dates like birthdays.
+inline std::string friendly_date(const std::string& iso, bool weekday = true) {
     if (iso.size() < 10) return iso;
     std::tm t{};
     if (!strptime(iso.substr(0, 10).c_str(), "%Y-%m-%d", &t)) return iso.substr(0, 10);
@@ -76,8 +77,9 @@ inline std::string friendly_date(const std::string& iso) {
     t.tm_isdst = -1;
     std::mktime(&t);
     char b[32];
-    std::strftime(b, sizeof(b), "%a %b %d, %Y", &t);
+    std::strftime(b, sizeof(b), weekday ? "%a %b %d, %Y" : "%b %d, %Y", &t);
     std::string s = b;
-    if (s.size() > 8 && s[8] == '0') s.erase(8, 1);   // "Jun 06" -> "Jun 6"
+    const size_t day = weekday ? 8 : 4;
+    if (s.size() > day && s[day] == '0') s.erase(day, 1);   // "Jun 06" -> "Jun 6"
     return s;
 }

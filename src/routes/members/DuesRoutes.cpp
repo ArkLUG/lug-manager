@@ -61,10 +61,12 @@ std::string render_panel(const crow::request& req, LugApp& app, const Member& m,
     ctx["flash"]      = flash;
     ctx["is_paid"]    = m.is_paid;
     ctx["paid_until"] = m.paid_until;
+    ctx["paid_until_text"] = friendly_date(m.paid_until);
     {
         const std::string g = m.is_paid ? dues::grace_until(m.paid_until, dues_config(settings).grace_days, today_ymd()) : "";
         ctx["in_grace"] = !g.empty();
         ctx["grace_until"] = g;
+        ctx["grace_until_text"] = friendly_date(g);
         ctx["lapsed"] = !m.is_paid && !m.paid_until.empty();
     }
     auto hist = dues.history(m.id);
@@ -73,9 +75,11 @@ std::string render_panel(const crow::request& req, LugApp& app, const Member& m,
         arr[i]["id"]           = hist[i].id;
         arr[i]["member_id"]    = m.id;
         arr[i]["paid_on"]      = hist[i].paid_on;
+        arr[i]["paid_on_text"] = friendly_date(hist[i].paid_on);
         arr[i]["amount"]       = hist[i].amount_cents > 0 ? money(hist[i].amount_cents) : "";
         arr[i]["method"]       = hist[i].method;
         arr[i]["covers_until"] = hist[i].covers_until;
+        arr[i]["covers_until_text"] = friendly_date(hist[i].covers_until);
         arr[i]["note"]         = hist[i].note;
         arr[i]["recorded_by"]  = hist[i].recorded_by_name;
         arr[i]["can_delete"]   = a.can_treasury();

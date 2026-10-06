@@ -1,5 +1,6 @@
 // Dues ledger + expiry.
 #include "integration_test_base.hpp"
+#include "utils/LocalTime.hpp"
 #include "services/members/DuesService.hpp"
 
 TEST_F(IntegrationTest, RecordingPaymentExtendsPaidUntil) {
@@ -122,13 +123,13 @@ TEST_F(IntegrationTest, DuesGracePeriod) {
     EXPECT_TRUE(member_repo->find_by_id(regular_member_id)->is_paid);
     auto panel = GET("/members/" + std::to_string(regular_member_id) + "/dues", chapter_lead_token);
     expect_contains(panel, "Grace period");
-    expect_contains(panel, "still counted as paid until " + DuesService::ymd(now - 10 * 86400 + 30 * 86400));
+    expect_contains(panel, "still counted as paid until " + friendly_date(DuesService::ymd(now - 10 * 86400 + 30 * 86400)));
 
     // 5-day grace: past it, so they lapse
     POST("/settings/dues", "dues_amount=20&dues_year_end_month=12&dues_prorate=1&dues_grace_days=5", admin_token);
     svc.run_once(now);
     EXPECT_FALSE(member_repo->find_by_id(regular_member_id)->is_paid);
-    expect_contains(GET("/members/" + std::to_string(regular_member_id) + "/dues", chapter_lead_token), "Lapsed: paid until " + ran_out);
+    expect_contains(GET("/members/" + std::to_string(regular_member_id) + "/dues", chapter_lead_token), "Lapsed: paid until " + friendly_date(ran_out));
     // Junk values fall back to 0
     POST("/settings/dues", "dues_amount=20&dues_year_end_month=12&dues_grace_days=-4", admin_token);
     EXPECT_EQ(settings_repo->get("dues_grace_days"), "0");

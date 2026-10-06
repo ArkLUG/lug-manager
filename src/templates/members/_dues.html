@@ -1,8 +1,8 @@
 <div id="dues-panel-{{member_id}}" class="space-y-2">
   {{#flash}}<p class="text-xs text-gray-500">{{flash}}</p>{{/flash}}
   {{#paid_until}}<p class="text-xs" data-dues-status>
-    {{#in_grace}}<span class="px-1.5 py-0.5 rounded bg-amber-100 text-amber-800 font-medium">Grace period</span> <span class="text-gray-600">Paid until {{paid_until}}; still counted as paid until {{grace_until}}.</span>{{/in_grace}}
-    {{^in_grace}}{{#is_paid}}<span class="text-gray-600">Paid until {{paid_until}}.</span>{{/is_paid}}{{#lapsed}}<span class="text-red-700">Lapsed: paid until {{paid_until}}.</span>{{/lapsed}}{{/in_grace}}
+    {{#in_grace}}<span class="px-1.5 py-0.5 rounded bg-amber-100 text-amber-800 font-medium">Grace period</span> <span class="text-gray-600">Paid until {{paid_until_text}}; still counted as paid until {{grace_until_text}}.</span>{{/in_grace}}
+    {{^in_grace}}{{#is_paid}}<span class="text-gray-600">Paid until {{paid_until_text}}.</span>{{/is_paid}}{{#lapsed}}<span class="text-red-700">Lapsed: paid until {{paid_until_text}}.</span>{{/lapsed}}{{/in_grace}}
   </p>{{/paid_until}}
   {{#has_payments}}
   <table class="w-full text-xs">
@@ -10,10 +10,10 @@
     <tbody class="divide-y divide-gray-100">
       {{#payments}}
       <tr class="text-gray-700">
-        <td class="py-1">{{paid_on}}</td>
+        <td class="py-1">{{paid_on_text}}</td>
         <td>{{amount}}</td>
         <td>{{method}}</td>
-        <td>{{covers_until}}</td>
+        <td>{{covers_until_text}}</td>
         <td class="text-right">
           {{#can_edit}}<button hx-get="/members/{{member_id}}/dues/{{id}}/edit" hx-target="#dues-panel-{{member_id}}" hx-swap="outerHTML" class="text-gray-700 hover:text-gray-900 mr-2">Edit</button>{{/can_edit}}
           {{#can_delete}}

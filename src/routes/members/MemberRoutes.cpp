@@ -1,3 +1,4 @@
+#include "utils/LocalTime.hpp"
 #include "routes/members/MemberRoutes.hpp"
 #include "routes/accounts/AccountSecurityRoutes.hpp"
 #include "auth/AccountSecurity.hpp"
@@ -27,6 +28,7 @@ static crow::mustache::context member_to_ctx(const Member& m) {
     ctx["email"]            = m.email;
     ctx["is_paid"]          = m.is_paid;
     ctx["paid_until"]       = m.paid_until;
+    ctx["paid_until_text"]  = friendly_date(m.paid_until);
     ctx["role"]             = m.role;
     ctx["role_admin"]        = m.role == "admin";
     ctx["role_chapter_lead"] = m.role == "chapter_lead";
@@ -35,6 +37,7 @@ static crow::mustache::context member_to_ctx(const Member& m) {
     ctx["role_moderator"]    = m.role == "moderator";
     ctx["role_member"]       = m.role == "member" || m.role.empty();
     ctx["birthday"]          = m.birthday;
+    ctx["birthday_text"]     = friendly_date(m.birthday, false);
     ctx["fol_status"]        = m.fol_status;
     ctx["fol_kfol"]          = m.fol_status == "kfol";
     ctx["fol_tfol"]          = m.fol_status == "tfol";
