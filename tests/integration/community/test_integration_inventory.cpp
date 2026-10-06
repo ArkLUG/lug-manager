@@ -365,6 +365,8 @@ TEST_F(IntegrationTest, OwnersLendTheirOwnItems) {
     // Their own: yes
     EXPECT_EQ(POST("/inventory/checkout", "item_id=" + std::to_string(mine) + "&member_id=" + std::to_string(chapter_lead_member_id) + "&quantity=2", member_token).code, 200);
     const int64_t loan = query_int(*db, "SELECT id FROM inventory_loans WHERE item_id=? AND returned_at IS NULL", mine);
+    // The audit entry names who lent it
+    EXPECT_EQ(query_int(*db, "SELECT COUNT(*) FROM audit_log WHERE action='inventory.checkout' AND actor_id=?", regular_member_id), 1);
     ASSERT_GT(loan, 0);
     expect_contains(GET("/inventory", member_token), "Lead U.");   // they see who has it
     // Someone else can't mark it returned; the owner can
