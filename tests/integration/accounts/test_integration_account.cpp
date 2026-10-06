@@ -63,7 +63,7 @@ TEST_F(IntegrationTest, NotificationPrefsSaveAndApply) {
     EXPECT_EQ(dr[0].member_id, admin_member_id);
 
     // Ticking everything back on clears the opt-outs
-    POST("/account/notifications", "event_reminder=1&shift_reminder=1&waitlist=1&dues_reminder=1&loan_reminder=1&email=1", member_token);
+    POST("/account/notifications", "event_reminder=1&meeting_reminder=1&shift_reminder=1&waitlist=1&dues_reminder=1&loan_reminder=1&email=1", member_token);
     EXPECT_TRUE(prefs.optouts(regular_member_id).empty());
 }
 

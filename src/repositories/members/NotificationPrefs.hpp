@@ -13,6 +13,7 @@ public:
     static const std::vector<Kind>& kinds() {
         static const std::vector<Kind> k = {
             {"event_reminder", "Event reminders", "Before events you RSVP'd to.", "rsvps"},
+            {"meeting_reminder", "Meeting reminders", "Before meetings you said you're going to.", "rsvps"},
             {"shift_reminder", "Volunteer shift reminders", "Before a volunteer shift you signed up for.", "shifts"},
             {"waitlist",       "Waitlist spot opened", "When you move off an event waitlist.", "rsvps"},
             {"dues_reminder",  "Dues renewal reminders", "Shortly before your dues run out.", "dues"},

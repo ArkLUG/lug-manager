@@ -9,15 +9,20 @@
 //   lm:shift_off:<id>  Can't make my shift (leave the shift)
 //   lm:rsvp:<event>    "I'm going" on an event announcement: RSVP, or cancel it (anyone with
 //                      a member record linked to their Discord account; answered privately)
+//   lm:mrsvp:<meeting> "I'm going" on a meeting announcement (click again to take it back)
+//   lm:mno:<meeting>   "Can't make it" on a meeting announcement (same)
+//   lm:mrsvp_off:<id>  Can't make it, on a meeting reminder DM
 // <id> is the reminder_dms row the DM was recorded as; it only works for the
 // member it was sent to.
 #include "db/SqliteDatabase.hpp"
 #include "integrations/discord/DiscordClient.hpp"
 #include "integrations/ical/CalendarGenerator.hpp"
+#include "repositories/events/MeetingRsvps.hpp"
 #include "repositories/events/RsvpRepository.hpp"
 #include "repositories/events/ShiftRepository.hpp"
 #include "repositories/members/NotificationPrefs.hpp"
 #include "services/AuditService.hpp"
+#include "services/Features.hpp"
 #include "services/notifications/Notifier.hpp"
 #include "utils/LocalTime.hpp"
 #include <ctime>
@@ -45,6 +50,7 @@ public:
         int64_t id = 0;
         try { id = std::stoll(action.substr(c2 + 1)); } catch (...) {}
         if (verb == "rsvp") return rsvp_toggle(chat_user, id, now);
+        if (verb == "mrsvp" || verb == "mno") return meeting_answer(chat_user, id, verb == "mrsvp", now);
         Row r;
         if (!load(id, r)) return Reply{"This button doesn't work any more.", {}, true};
         if (member_for(chat_user) != r.member) return Reply{"This button is for someone else.", {}, true};
@@ -64,6 +70,15 @@ public:
         }
         if (verb == "rsvp_off") return rsvp_off(r, links, now);
         if (verb == "shift_off") return shift_off(r, links, now);
+        if (verb == "mrsvp_off") {
+            int64_t meeting = 0;
+            try { meeting = std::stoll(r.ref); } catch (...) {}
+            std::string title;
+            if (!meeting_open(meeting, now, title)) return Reply{"That meeting has started or is no longer on.", links};
+            MeetingRsvps(db_).set(meeting, r.member, false);
+            audit_.log_system("meeting.rsvp", "meeting", meeting, title, "Can't make it, from a Discord DM (member " + std::to_string(r.member) + ")");
+            return Reply{"✅ Got it, you can't make " + title + ". Thanks for letting us know.", links};
+        }
         return Reply{"This button doesn't work any more.", {}, true};
     }
 
@@ -181,6 +196,38 @@ private:
         if (s == "waitlist")
             return Reply{"It's full, so you're on the waitlist for " + title + ". You'll get a message if a spot opens. Click again to leave the list.", {}, true};
         return Reply{"✅ You're going to " + title + ". Click again to cancel.", {}, true};
+    }
+
+    // A meeting that's on and hasn't ended yet; its title in `title`.
+    bool meeting_open(int64_t meeting, std::time_t now, std::string& title) {
+        auto st = db_.prepare("SELECT title, start_time, COALESCE(end_time,''), COALESCE(status,'') FROM meetings WHERE id=?");
+        st.bind(1, meeting);
+        if (!st.step()) return false;
+        title = st.col_text(0);
+        const std::string end = st.col_text(2).empty() ? st.col_text(1) : st.col_text(2);
+        return st.col_text(3) != "cancelled" && local_epoch(end.substr(0, 16) + ":00") > now;
+    }
+
+    // "I'm going" / "Can't make it" on a meeting announcement; clicking the
+    // same answer again takes it back.
+    Reply meeting_answer(const std::string& chat_user, int64_t meeting, bool going, std::time_t now) {
+        if (!Features::on("rsvps")) return Reply{"RSVPs are switched off.", {}, true};
+        const int64_t member = member_for(chat_user);
+        if (member <= 0) return Reply{"Your Discord account isn't linked to a member yet. Sign in to LUG Manager with Discord once, then try again.", {}, true};
+        std::string title;
+        if (!meeting_open(meeting, now, title)) return Reply{"That meeting is over or no longer on.", {}, true};
+        MeetingRsvps rs(db_);
+        const std::string was = rs.status_of(meeting, member);
+        if (was == (going ? "going" : "not_going")) {
+            rs.clear(meeting, member);
+            audit_.log_system("meeting.rsvp", "meeting", meeting, title, "Took back their answer, from Discord (member " + std::to_string(member) + ")");
+            return Reply{"Okay, no answer for " + title + " any more.", {}, true};
+        }
+        rs.set(meeting, member, going);
+        audit_.log_system("meeting.rsvp", "meeting", meeting, title,
+                          std::string(going ? "Going" : "Can't make it") + ", from Discord (member " + std::to_string(member) + ")");
+        return Reply{going ? "✅ You're going to " + title + ". Click again to take it back."
+                           : "Got it, you can't make " + title + ". Click again to take it back.", {}, true};
     }
 
     Reply shift_off(const Row& r, const std::vector<chat::Button>& links, std::time_t now) {

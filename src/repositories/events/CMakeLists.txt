@@ -14,6 +14,7 @@ target_sources(lug_core PRIVATE
   MeetingRepository.cpp
   MeetingRepository.hpp
   RsvpRepository.cpp
+  MeetingRsvps.hpp
   RsvpRepository.hpp
   ShiftRepository.cpp
   ShiftRepository.hpp

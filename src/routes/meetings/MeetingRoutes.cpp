@@ -1,4 +1,6 @@
 #include "routes/meetings/MeetingRoutes.hpp"
+#include "utils/text/Plural.hpp"
+#include "repositories/events/MeetingRsvps.hpp"
 #include "utils/web/CalendarLinks.hpp"
 #include "routes/ChatFormHelpers.hpp"
 #include "utils/text/HtmlText.hpp"
@@ -221,9 +223,60 @@ static std::string render_meeting_page(const crow::request& req,
     return render_in_layout(req, app, content, "Meetings", "active_meetings");
 }
 
+// The "Who's coming" panel on a meeting page (meetings/_rsvp.html):
+// going / can't make it, no capacity (migration 077).
+static std::string meeting_rsvp_panel(SqliteDatabase& db, const Meeting& m, int64_t member_id, const std::string& tz) {
+    if (!Features::on("rsvps")) return "";
+    MeetingRsvps rs(db);
+    auto counts = rs.counts(m.id);
+    auto going = rs.going(m.id);
+    const std::string mine = member_id > 0 ? rs.status_of(m.id, member_id) : "";
+    std::string end = m.end_time.empty() ? m.start_time : m.end_time;
+    const bool open = m.status != "cancelled" && DiscordClient::local_to_epoch(end.substr(0, 16), tz) > std::time(nullptr);
+    crow::mustache::context c;
+    c["id"] = m.id;
+    c["going_text"] = counts.going ? count_of(counts.going, "going", "going") : "Nobody's said they're going yet";
+    c["not_going_count"] = counts.not_going;
+    c["not_going_text"] = count_of(counts.not_going, "can't make it", "can't make it");
+    c["can_answer"] = open && member_id > 0;
+    c["my_going"] = mine == "going";
+    c["my_not_going"] = mine == "not_going";
+    std::string names;
+    for (const auto& [id, name] : going) names += (names.empty() ? "" : ", ") + name;
+    c["has_going"] = !names.empty();
+    c["going_names"] = names;
+    if (!open && counts.going == 0 && counts.not_going == 0) return "";
+    return crow::mustache::load("meetings/_rsvp.html").render(c).dump();
+}
+
 void register_meeting_routes(LugApp& app, MeetingService& meetings, AttendanceService& attendance,
                               ChapterMemberRepository& chapter_members, ChapterService& chapters,
                               DiscordClient& discord, AuditService& audit) {
+
+    // POST /meetings/<id>/rsvp - answer=going|not_going|clear; returns the panel
+    CROW_ROUTE(app, "/meetings/<int>/rsvp").methods("POST"_method)([&](const crow::request& req, int id) {
+        crow::response res;
+        if (!require_auth(req, res, app)) return res;
+        if (!Features::on("rsvps")) { res.code = 404; return res; }
+        auto m = meetings.get(static_cast<int64_t>(id));
+        if (!m) { res.code = 404; return res; }
+        const int64_t member = app.get_context<AuthMiddleware>(req).auth.member_id;
+        const std::string tz = discord.get_timezone();
+        const std::string end = m->end_time.empty() ? m->start_time : m->end_time;
+        if (m->status == "cancelled" || DiscordClient::local_to_epoch(end.substr(0, 16), tz) <= std::time(nullptr)) {
+            res.code = 409; res.write("<div class=\"text-sm text-red-600\">That meeting is over or cancelled.</div>"); return res;
+        }
+        const std::string answer = crow::query_string("?" + req.body).get("answer") ? crow::query_string("?" + req.body).get("answer") : "";
+        MeetingRsvps rs(attendance.repo().db());
+        if (answer == "going" || answer == "not_going") rs.set(id, member, answer == "going");
+        else if (answer == "clear") rs.clear(id, member);
+        else { res.code = 400; return res; }
+        audit.log(req, app, "meeting.rsvp", "meeting", id, m->title,
+                  answer == "going" ? "Going" : answer == "not_going" ? "Can't make it" : "Took back their answer");
+        res.add_header("Content-Type", "text/html; charset=utf-8");
+        res.write(meeting_rsvp_panel(attendance.repo().db(), *m, member, tz));
+        return res;
+    });
 
     // GET /meetings - list meetings (paginated + searchable)
     CROW_ROUTE(app, "/meetings")([&](const crow::request& req) {
@@ -423,6 +476,7 @@ void register_meeting_routes(LugApp& app, MeetingService& meetings, AttendanceSe
         }
         ctx["attendees"]         = std::move(att_arr);
         ctx["attendance_count"]  = static_cast<int>(attendees.size());
+        ctx["rsvp_panel"]        = meeting_rsvp_panel(attendance.repo().db(), *m, mbr_id, discord.get_timezone());
 
         cal_links::add_to(ctx, {m->title, m->description, m->location, m->start_time, m->end_time,
                                 false, "/meetings/" + std::to_string(id) + "/calendar.ics"});
@@ -685,7 +739,7 @@ void register_meeting_routes(LugApp& app, MeetingService& meetings, AttendanceSe
         try {
             meetings.cancel(static_cast<int64_t>(id));
             audit.log(req, app, "meeting.delete", "meeting", static_cast<int64_t>(id), cancel_mtg_title, "Cancelled meeting");
-            res.add_header("HX-Redirect", "/meetings");
+            res.add_header("HX-Redirect", "/schedule");
             res.code = 200;
         } catch (const std::exception& e) {
             res.code = 400;

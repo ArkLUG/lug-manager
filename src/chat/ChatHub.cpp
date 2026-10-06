@@ -114,6 +114,8 @@ ChatHub::Refs ChatHub::refs(const Provider& p, const std::string& entity_type, i
         else if (k == "thread") r.thread = v;
         else if (k == "scheduled") r.scheduled = v;
         else if (k == "thread_owned") r.thread_owned = v != "0";
+        else if (k == "report") r.report = v;
+        else if (k == "reminder") r.reminder = v;
     }
     return r;
 }
@@ -142,6 +144,18 @@ void ChatHub::save_ref(const Provider& p, const std::string& entity_type, int64_
     st.step();
 }
 
+std::string ChatHub::extra_ref(const Provider& p, const std::string& entity_type, int64_t id, const std::string& purpose) const {
+    auto st = db_.prepare("SELECT ref FROM chat_posts WHERE provider=? AND entity_type=? AND entity_id=? AND purpose=?");
+    st.bind(1, p.id()); st.bind(2, entity_type); st.bind(3, id); st.bind(4, purpose);
+    return st.step() ? st.col_text(0) : "";
+}
+
+void ChatHub::forget_posts(const Provider& p, const std::string& entity_type, int64_t id) {
+    auto st = db_.prepare("DELETE FROM chat_posts WHERE provider=? AND entity_type=? AND entity_id=?");
+    st.bind(1, p.id()); st.bind(2, entity_type); st.bind(3, id);
+    st.step();
+}
+
 void ChatHub::save_owned(const Provider& p, const std::string& entity_type, int64_t id, bool owned) {
     if (p.id() == "discord") {
         if (entity_type != "event") return;
@@ -162,15 +176,20 @@ Message ChatHub::message(const Provider& p, const std::string& key, const Values
     if (const TemplateDef* d = find_template(key); d && d->max_len) m.text = utf8_truncate(m.text, d->max_len);
     m.roles = std::move(roles);
     m.users = std::move(users);
-    // Buttons under announcements: open it on the site, and for events
-    // "I'm going" (RSVP from Discord, see ReminderActions "lm:rsvp").
+    // Buttons under announcements: open it on the site, and "I'm going" (events:
+    // the RSVP, "lm:rsvp"; meetings: going / can't make it, "lm:mrsvp" / "lm:mno").
     if (p.caps().buttons && (key == "event.announcement" || key == "event.thread_starter" || key == "meeting.announcement")) {
         auto link = v.find("link");
         if (link != v.end() && !link->second.empty()) {
             const bool event = key != "meeting.announcement";
-            if (event && actions_available() && Features::on("rsvps")) {
-                const std::string id = link->second.substr(link->second.rfind('/') + 1);
-                m.buttons.push_back({"I'm going", "", "lm:rsvp:" + id, "success"});
+            const std::string id = link->second.substr(link->second.rfind('/') + 1);
+            if (actions_available() && Features::on("rsvps")) {
+                if (event) {
+                    m.buttons.push_back({"I'm going", "", "lm:rsvp:" + id, "success"});
+                } else {
+                    m.buttons.push_back({"I'm going", "", "lm:mrsvp:" + id, "success"});
+                    m.buttons.push_back({"Can't make it", "", "lm:mno:" + id, "secondary"});
+                }
             }
             m.buttons.push_back({event ? "View event" : "View meeting", link->second, "", ""});
         }
@@ -293,9 +312,13 @@ void ChatHub::event_removed(const LugEvent& e, bool thread_owned) {
     for (auto& p : providers_) {
         if (!p->ready()) continue;
         Refs r = refs(*p, "event", e.id);
-        if (p->id() == "discord")   // the row may already be gone: use the ids it had
+        if (p->id() == "discord") {  // the row may already be gone: use the ids it had
             r = Refs{e.discord_lug_message_id, e.discord_chapter_message_id, e.discord_thread_id, e.discord_event_id, thread_owned};
+            r.report = e.notes_discord_post_id;
+            r.reminder = extra_ref(*p, "event", e.id, "reminder");
+        }
         remove_event(*p, e, r);
+        forget_posts(*p, "event", e.id);
     }
 }
 
@@ -483,7 +506,22 @@ void ChatHub::remove_event(Provider& p, const LugEvent& e, const Refs& r) {
         std::string ch = p.chapter_channel(e.chapter_id);
         if (!ch.empty()) log(p, "delete", "event.announcement", "event", e.id, p.remove(ch, r.chapter_announce), ch);
     }
+    remove_extras(p, "event", e.id, r);
     for (const char* k : {"scheduled", "thread", "announce", "chapter_announce"}) save_ref(p, "event", e.id, k, "");
+}
+
+// The report thread and the reminder post, when deleting an event or meeting.
+void ChatHub::remove_extras(Provider& p, const std::string& entity_type, int64_t id, const Refs& r) {
+    if (!r.report.empty())
+        log(p, "delete", "report thread", entity_type, id, p.remove_thread(r.report), r.report);
+    if (!r.reminder.empty()) {
+        const auto bar = r.reminder.find('|');
+        const std::string ch = r.reminder.substr(0, bar), msg = bar == std::string::npos ? "" : r.reminder.substr(bar + 1);
+        // A reminder in the event's own thread went with the thread
+        const bool gone_with_thread = !r.thread.empty() && r.thread_owned && ch == r.thread;
+        if (!msg.empty() && !gone_with_thread)
+            log(p, "delete", "reminder", entity_type, id, p.remove(ch, msg), ch);
+    }
 }
 
 std::string ChatHub::start_event_thread(const LugEvent& e) {
@@ -523,8 +561,13 @@ void ChatHub::meeting_removed(const Meeting& m) {
     for (auto& p : providers_) {
         if (!p->ready()) continue;
         Refs r = refs(*p, "meeting", m.id);
-        if (p->id() == "discord") r = Refs{m.discord_lug_message_id, m.discord_chapter_message_id, "", m.discord_event_id, true};
+        if (p->id() == "discord") {
+            r = Refs{m.discord_lug_message_id, m.discord_chapter_message_id, "", m.discord_event_id, true};
+            r.report = m.notes_discord_post_id;
+            r.reminder = extra_ref(*p, "meeting", m.id, "reminder");
+        }
         remove_meeting(*p, m, r);
+        forget_posts(*p, "meeting", m.id);
     }
 }
 
@@ -624,6 +667,7 @@ void ChatHub::remove_meeting(Provider& p, const Meeting& m, const Refs& r) {
         std::string ch = p.chapter_channel(m.chapter_id);
         if (!ch.empty()) log(p, "delete", "meeting.announcement", "meeting", m.id, p.remove(ch, r.chapter_announce), ch);
     }
+    remove_extras(p, "meeting", m.id, r);
     for (const char* k : {"scheduled", "announce", "chapter_announce"}) save_ref(p, "meeting", m.id, k, "");
 }
 
@@ -815,13 +859,23 @@ bool ChatHub::retry(int64_t activity_id) {
     return r.ok;
 }
 
+// Remember the reminder post so deleting the meeting/event removes it too.
+void ChatHub::keep_reminder(const Provider& p, const std::string& entity_type, int64_t id, const std::string& channel,
+                            const std::string& message) {
+    if (message.empty()) return;
+    auto st = db_.prepare("INSERT OR REPLACE INTO chat_posts (provider, entity_type, entity_id, purpose, ref) VALUES (?,?,?,'reminder',?)");
+    st.bind(1, p.id()); st.bind(2, entity_type); st.bind(3, id); st.bind(4, channel + "|" + message);
+    st.step();
+}
+
 int ChatHub::remind_meeting(const Meeting& m) {
     int sent = 0;
     for (auto& p : providers_) {
         if (!p->ready()) continue;
         std::string ch = m.scope == "chapter" && m.chapter_id > 0 ? p->chapter_channel(m.chapter_id) : p->place(Place::Announcements);
         if (ch.empty()) continue;
-        if (post_in(*p, ch, "reminder.meeting", meeting_values(m, *p), "meeting", m.id).ok) ++sent;
+        Result r = post_in(*p, ch, "reminder.meeting", meeting_values(m, *p), "meeting", m.id);
+        if (r.ok) { ++sent; keep_reminder(*p, "meeting", m.id, ch, r.id); }
     }
     return sent;
 }
@@ -833,7 +887,8 @@ int ChatHub::remind_event(const LugEvent& e) {
         std::string ch = refs(*p, "event", e.id).thread;
         if (ch.empty()) ch = p->place(Place::Announcements);
         if (ch.empty()) continue;
-        if (post_in(*p, ch, "reminder.event", event_values(e, *p), "event", e.id).ok) ++sent;
+        Result r = post_in(*p, ch, "reminder.event", event_values(e, *p), "event", e.id);
+        if (r.ok) { ++sent; keep_reminder(*p, "event", e.id, ch, r.id); }
     }
     return sent;
 }

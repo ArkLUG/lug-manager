@@ -226,3 +226,73 @@ TEST_F(DmButtonsTest, AnnouncementsGetButtons) {
     EXPECT_NE(post.find("I'm going"), std::string::npos);
     EXPECT_NE(post.find("/events/" + std::to_string(created.id)), std::string::npos);
 }
+
+// Meetings: "I'm going" / "Can't make it" on the announcement, the meeting
+// page and the reminder DM (meeting_rsvps, migration 077).
+TEST_F(DmButtonsTest, MeetingRsvpsFromDiscordAndTheSite) {
+    chat_hub->set_actions_available([] { return true; });
+    settings_repo->set("discord_announcements_channel_id", "700000000000000001");
+    discord_client->reconfigure(fake->guild_id, "700000000000000001");
+    Meeting m;
+    m.title = "Club Night"; m.scope = "lug_wide"; m.location = "Library";
+    m.start_time = local_in(3 * 86400).substr(0, 19); m.end_time = local_in(3 * 86400 + 7200).substr(0, 19);
+    auto mt = meeting_svc->create(m);
+    const std::string mid = std::to_string(mt.id);
+    ASSERT_TRUE(fake->wait_for("POST /api/v10/channels/700000000000000001/messages"));
+    const auto post = fake->matching("POST /api/v10/channels/700000000000000001/messages")[0].body;
+    EXPECT_NE(post.find("lm:mrsvp:" + mid), std::string::npos);
+    EXPECT_NE(post.find("lm:mno:" + mid), std::string::npos);
+
+    // From Discord: going, privately answered; clicking again takes it back
+    expect_contains(click("stranger-999", "lm:mrsvp:" + mid), "isn't linked to a member");
+    expect_contains(click("member-test-001", "lm:mrsvp:" + mid), "You're going to Club Night");
+    EXPECT_EQ(query_int(*db, "SELECT COUNT(*) FROM meeting_rsvps WHERE meeting_id=? AND member_id=? AND going=1", mt.id, regular_member_id), 1);
+    expect_contains(click("lead-test-001", "lm:mno:" + mid), "can't make Club Night");
+    expect_contains(click("lead-test-001", "lm:mno:" + mid), "no answer");
+
+    // The meeting page shows who's going; answering there works too
+    auto page = GET("/meetings/" + mid, admin_token);
+    expect_contains(page, "1 going");
+    expect_contains(page, "Regular U.");
+    auto panel = POST("/meetings/" + mid + "/rsvp", "answer=going", chapter_lead_token);
+    EXPECT_EQ(panel.code, 200);
+    expect_contains(panel, "2 going");
+    EXPECT_EQ(POST("/meetings/" + mid + "/rsvp", "answer=maybe", chapter_lead_token).code, 400);
+    POST("/meetings/" + mid + "/rsvp", "answer=clear", chapter_lead_token);
+    EXPECT_EQ(query_int(*db, "SELECT COUNT(*) FROM meeting_rsvps WHERE meeting_id=? AND member_id=?", mt.id, chapter_lead_member_id), 0);
+
+    // The reminder DM goes to those going, with Can't make it
+    ASSERT_TRUE(n->notify(regular_member_id, "meeting_reminder", "dm.meeting_reminder",
+                          {{"title", "Club Night"}, {"when", "soon"}}, false, "", Notifier::about_for("meeting_reminder", mid)));
+    auto dm = last_dm("member-test-001").dump();
+    EXPECT_NE(dm.find("/meetings/" + mid), std::string::npos);
+    const std::string off = action_id(last_dm("member-test-001"), "lm:mrsvp_off:");
+    ASSERT_FALSE(off.empty());
+    expect_contains(click("member-test-001", off), "can't make Club Night");
+    EXPECT_EQ(query_int(*db, "SELECT COUNT(*) FROM meeting_rsvps WHERE meeting_id=? AND member_id=? AND going=0", mt.id, regular_member_id), 1);
+
+    // Over: no more answers
+    { auto u = db->prepare("UPDATE meetings SET start_time='2020-01-01T10:00:00', end_time='2020-01-01T12:00:00' WHERE id=?"); u.bind(1, mt.id); u.step(); }
+    expect_contains(click("member-test-001", "lm:mrsvp:" + mid), "over");
+    EXPECT_EQ(POST("/meetings/" + mid + "/rsvp", "answer=going", member_token).code, 409);
+}
+
+// Deleting a meeting removes everything it put on Discord: the announcement,
+// the reminder post and the report thread.
+TEST_F(DmButtonsTest, DeletingAMeetingCleansUpDiscord) {
+    settings_repo->set("discord_announcements_channel_id", "700000000000000001");
+    discord_client->reconfigure(fake->guild_id, "700000000000000001");
+    Meeting m;
+    m.title = "Gone Night"; m.scope = "lug_wide"; m.location = "Library";
+    m.start_time = local_in(86400).substr(0, 19); m.end_time = local_in(86400 + 7200).substr(0, 19);
+    auto mt = meeting_svc->create(m);
+    ASSERT_TRUE(fake->wait_for("POST /api/v10/channels/700000000000000001/messages"));
+    ASSERT_GT(chat_hub->remind_meeting(*meeting_repo->find_by_id(mt.id)), 0);
+    EXPECT_EQ(query_int(*db, "SELECT COUNT(*) FROM chat_posts WHERE entity_type='meeting' AND entity_id=? AND purpose='reminder'", mt.id), 1);
+    { auto u = db->prepare("UPDATE meetings SET notes_discord_post_id='900000000000000123' WHERE id=?"); u.bind(1, mt.id); u.step(); }
+    auto r = POST("/meetings/" + std::to_string(mt.id) + "/cancel", "", admin_token);
+    EXPECT_LT(r.code, 400);
+    ASSERT_TRUE(fake->wait_for("DELETE /api/v10/channels/900000000000000123"));
+    EXPECT_GE(fake->matching("DELETE /api/v10/channels/700000000000000001/messages/").size(), 2u);   // announcement + reminder
+    EXPECT_EQ(query_int(*db, "SELECT COUNT(*) FROM chat_posts WHERE entity_type='meeting' AND entity_id=?", mt.id), 0);
+}

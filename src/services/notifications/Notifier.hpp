@@ -115,7 +115,8 @@ public:
 
     // Kinds whose DMs offer "Remind me later" (the rest: digest, waitlist).
     static bool snoozable(const std::string& kind) {
-        return kind == "event_reminder" || kind == "shift_reminder" || kind == "dues_reminder" || kind == "loan_reminder";
+        return kind == "event_reminder" || kind == "meeting_reminder" || kind == "shift_reminder" ||
+               kind == "dues_reminder" || kind == "loan_reminder";
     }
 
     // Buttons for a reminder DM (row = its reminder_dms id, 0 = links only).
@@ -127,6 +128,7 @@ public:
         if (row <= 0 || !actions_available()) return b;
         const std::string id = std::to_string(row);
         if (kind == "event_reminder") b.push_back({"Can't make it", "", "lm:rsvp_off:" + id, "danger"});
+        if (kind == "meeting_reminder") b.push_back({"Can't make it", "", "lm:mrsvp_off:" + id, "danger"});
         if (kind == "waitlist")       b.push_back({"Give up my spot", "", "lm:rsvp_off:" + id, "danger"});
         if (kind == "shift_reminder") b.push_back({"Can't make my shift", "", "lm:shift_off:" + id, "danger"});
         if (snoozable(kind))          b.push_back({"Remind me later", "", "lm:snooze:" + id, "secondary"});
@@ -170,6 +172,7 @@ public:
             const auto colon = ref.find(':');   // shift refs are "<signup>:<event>"
             return {ref, "/events/" + (colon == std::string::npos ? ref : ref.substr(colon + 1)), "View event"};
         }
+        if (kind == "meeting_reminder" && !ref.empty()) return {ref, "/meetings/" + ref, "View meeting"};
         if (kind == "dues_reminder") return {ref, "/account", "My dues"};
         if (kind == "loan_reminder") return {ref, "/inventory", "LUG inventory"};
         if (kind == "digest") return {ref, "/schedule", "Schedule"};

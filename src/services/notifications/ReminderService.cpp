@@ -1,4 +1,5 @@
 #include "services/notifications/ReminderService.hpp"
+#include "repositories/events/MeetingRsvps.hpp"
 #include "integrations/ical/CalendarGenerator.hpp"
 #include "repositories/members/NotificationPrefs.hpp"
 #include "services/Features.hpp"
@@ -45,6 +46,16 @@ ReminderService::Result ReminderService::run_once(std::time_t now) {
         if (m.status == "cancelled" || m.suppress_discord || !due(m.start_time)) continue;
         if (!hub || !claim("meetings", m.id)) continue;
         if (hub->remind_meeting(m) > 0) ++r.meetings;
+        // Members who said they're going get a DM too (same opt-in as events)
+        if (dm_rsvps && Features::on("rsvps")) {
+            const std::string when = DiscordClient::friendly_time(m.start_time, tz);
+            for (const auto& [member, name] : MeetingRsvps(db_).going(m.id)) {
+                if (notifier().notify(member, "meeting_reminder", "dm.meeting_reminder",
+                                      {{"title", m.title}, {"when", when}, {"when_at", m.start_time}, {"location", m.location}},
+                                      false, "", Notifier::about_for("meeting_reminder", std::to_string(m.id))))
+                    ++r.dms;
+            }
+        }
     }
 
     for (const auto& e : events_.find_upcoming()) {

@@ -112,7 +112,17 @@ public:
     std::string timezone() const;
 
 private:
-    struct Refs { std::string announce, chapter_announce, thread, scheduled; bool thread_owned = true; };
+    struct Refs {
+        std::string announce, chapter_announce, thread, scheduled; bool thread_owned = true;
+        std::string report;     // the report thread ("Post report to ...")
+        std::string reminder;   // "<channel>|<message>" of the reminder post
+    };
+    // A post kept only in chat_posts (any provider), e.g. "reminder".
+    std::string extra_ref(const Provider& p, const std::string& entity_type, int64_t id, const std::string& purpose) const;
+    void forget_posts(const Provider& p, const std::string& entity_type, int64_t id);
+    void remove_extras(Provider& p, const std::string& entity_type, int64_t id, const Refs& r);
+    void keep_reminder(const Provider& p, const std::string& entity_type, int64_t id, const std::string& channel,
+                       const std::string& message);
     Refs refs(const Provider& p, const std::string& entity_type, int64_t id) const;
     void save_ref(const Provider& p, const std::string& entity_type, int64_t id, const std::string& purpose, const std::string& value);
     void save_owned(const Provider& p, const std::string& entity_type, int64_t id, bool owned);

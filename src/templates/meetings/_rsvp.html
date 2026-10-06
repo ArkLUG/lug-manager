@@ -1,0 +1,16 @@
+<div id="mtg-rsvp-{{id}}" class="mb-4 rounded-lg border border-gray-200 px-3 py-2.5">
+  <div class="flex flex-wrap items-center justify-between gap-2">
+    <div class="text-sm">
+      <span class="font-medium text-gray-800">{{going_text}}</span>{{#not_going_count}}<span class="text-gray-500"> · {{not_going_text}}</span>{{/not_going_count}}
+    </div>
+    {{#can_answer}}
+    <div class="flex items-center gap-2">
+      <button hx-post="/meetings/{{id}}/rsvp" hx-vals='{"answer":"{{#my_going}}clear{{/my_going}}{{^my_going}}going{{/my_going}}"}' hx-target="#mtg-rsvp-{{id}}" hx-swap="outerHTML"
+              class="px-3 py-1.5 rounded-lg text-xs font-medium {{#my_going}}bg-green-600 text-white hover:bg-green-700{{/my_going}}{{^my_going}}border border-green-300 text-green-700 hover:bg-green-50{{/my_going}}">{{#my_going}}✓ {{/my_going}}I'm going</button>
+      <button hx-post="/meetings/{{id}}/rsvp" hx-vals='{"answer":"{{#my_not_going}}clear{{/my_not_going}}{{^my_not_going}}not_going{{/my_not_going}}"}' hx-target="#mtg-rsvp-{{id}}" hx-swap="outerHTML"
+              class="px-3 py-1.5 rounded-lg text-xs font-medium {{#my_not_going}}bg-gray-700 text-white hover:bg-gray-600{{/my_not_going}}{{^my_not_going}}border border-gray-300 text-gray-700 hover:bg-gray-50{{/my_not_going}}">Can't make it</button>
+    </div>
+    {{/can_answer}}
+  </div>
+  {{#has_going}}<p class="mt-1.5 text-xs text-gray-500">{{going_names}}</p>{{/has_going}}
+</div>

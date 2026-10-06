@@ -138,7 +138,7 @@
                 {{#can_manage}}{{^is_cancelled}}
                 <button hx-get="/events/{{id}}/edit" hx-target="#modal" hx-swap="innerHTML"
                         class="text-xs px-2 py-1 text-gray-600 border border-gray-300 rounded hover:bg-gray-50">Edit</button>
-                <button hx-post="/events/{{id}}/cancel" hx-confirm="Delete this event?" hx-swap="none"
+                <button hx-post="/events/{{id}}/cancel" hx-confirm="Delete this event? Its Discord posts and calendar entries are removed too." hx-swap="none"
                         class="text-xs px-2 py-1 text-red-500 border border-red-300 rounded hover:bg-red-50">Delete</button>
                 {{/is_cancelled}}{{/can_manage}}
               </div>

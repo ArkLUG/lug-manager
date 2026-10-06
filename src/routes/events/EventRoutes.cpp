@@ -905,7 +905,7 @@ void register_event_routes(LugApp& app, EventService& events, AttendanceService&
         try {
             events.cancel(static_cast<int64_t>(id));
             audit.log(req, app, "event.delete", "event", static_cast<int64_t>(id), cancel_title, "Cancelled event");
-            res.add_header("HX-Redirect", "/events");
+            res.add_header("HX-Redirect", "/schedule");
             res.code = 200;
         } catch (const std::exception& ex) {
             res.code = 400;

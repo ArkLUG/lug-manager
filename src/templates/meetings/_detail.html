@@ -7,6 +7,19 @@
     </button>
   </div>
 
+  <!-- Edit / cancel (organisers) -->
+  {{#can_manage}}{{^is_cancelled}}
+  <div class="flex flex-wrap items-center gap-2 mb-4">
+    <button hx-get="/meetings/{{id}}/edit" hx-target="#modal" hx-swap="innerHTML"
+            class="inline-flex items-center gap-1.5 px-3 py-1.5 bg-gray-800 text-white rounded-lg text-xs font-medium hover:bg-gray-700">Edit meeting</button>
+    <button hx-post="/meetings/{{id}}/cancel" hx-swap="none"
+            hx-confirm="Delete this meeting? It's removed from the schedule along with its Discord posts, Discord event, reminders, report and Google Calendar entry. This can't be undone."
+            class="px-3 py-1.5 border border-red-300 text-red-600 rounded-lg text-xs font-medium hover:bg-red-50">Delete meeting</button>
+  </div>
+  {{/is_cancelled}}{{/can_manage}}
+
+  {{{rsvp_panel}}}
+
   <!-- Badges -->
   <div class="flex flex-wrap items-center gap-2 mb-4">
     {{#is_scheduled}}<span class="px-2 py-0.5 rounded text-xs font-medium bg-blue-100 text-blue-700">Scheduled</span>{{/is_scheduled}}

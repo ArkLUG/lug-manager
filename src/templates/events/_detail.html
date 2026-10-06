@@ -7,6 +7,17 @@
     </button>
   </div>
 
+  <!-- Edit / cancel (organisers) -->
+  {{#can_manage}}{{^is_cancelled}}
+  <div class="flex flex-wrap items-center gap-2 mb-4">
+    <button hx-get="/events/{{id}}/edit" hx-target="#modal" hx-swap="innerHTML"
+            class="inline-flex items-center gap-1.5 px-3 py-1.5 bg-gray-800 text-white rounded-lg text-xs font-medium hover:bg-gray-700">Edit event</button>
+    <button hx-post="/events/{{id}}/cancel" hx-swap="none"
+            hx-confirm="Delete this event? It's removed from the schedule along with its Discord posts, Discord event, reminders, report and Google Calendar entry. This can't be undone."
+            class="px-3 py-1.5 border border-red-300 text-red-600 rounded-lg text-xs font-medium hover:bg-red-50">Delete event</button>
+  </div>
+  {{/is_cancelled}}{{/can_manage}}
+
   <!-- Badges -->
   <div class="flex flex-wrap items-center gap-2 mb-4">
     {{^scope_non_lug}}
