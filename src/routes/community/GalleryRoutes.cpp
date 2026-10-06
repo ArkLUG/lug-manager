@@ -80,6 +80,7 @@ std::string render_challenge(const crow::request& req, LugApp& app, SqliteDataba
     crow::mustache::context ctx;
     ctx["id"] = c.id; ctx["title"] = c.title; ctx["description"] = c.description;
     ctx["starts_on"] = friendly_date(c.starts_on); ctx["ends_on"] = friendly_date(c.ends_on); ctx["vote_until"] = friendly_date(ph.vote_until);
+    ctx["starts_iso"] = c.starts_on; ctx["ends_iso"] = c.ends_on;
     ctx["submit_open"] = ph.submit; ctx["vote_open"] = ph.vote; ctx["results"] = ph.results;
     ctx["is_admin"] = a.can("challenges.manage"); ctx["announced"] = c.announced; ctx["flash"] = flash;
 
@@ -234,6 +235,46 @@ void register_gallery_routes(LugApp& app, SqliteDatabase& db, std::shared_ptr<Ph
         ctx["is_admin"] = app.get_context<AuthMiddleware>(req).auth.can("challenges.manage");
         ctx["today"] = AttendanceService::today_ymd();
         return page(req, app, crow::mustache::load("challenges/_list.html").render(ctx).dump(), "Build Challenges");
+    });
+
+    // POST /challenges/<id>/edit - change the name, rules or dates
+    CROW_ROUTE(app, "/challenges/<int>/edit").methods("POST"_method)([&app, &db, &audit](const crow::request& req, int id) {
+        crow::response res;
+        if (!require_auth(req, res, app, "perm:challenges.manage")) return res;
+        auto c = get_challenge(db, id);
+        if (!c) { res.code = 404; return res; }
+        auto p = crow::query_string("?" + req.body);
+        auto gp = [&](const char* k) { const char* v = p.get(k); return v ? std::string(v) : ""; };
+        static const std::regex ymd(R"(\d{4}-\d{2}-\d{2})");
+        std::string title = gp("title").substr(0, 150), s = gp("starts_on"), e = gp("ends_on");
+        res.add_header("Content-Type", "text/html; charset=utf-8");
+        if (title.empty() || !std::regex_match(s, ymd) || !std::regex_match(e, ymd) || e < s) {
+            res.code = 400;
+            res.write("<p class=\"text-sm text-red-600\">Give it a title and a start/end date (end after start).</p>");
+            return res;
+        }
+        auto up = db.prepare("UPDATE challenges SET title=?, description=?, starts_on=?, ends_on=? WHERE id=?");
+        up.bind(1, title); up.bind(2, gp("description").substr(0, 2000)); up.bind(3, s); up.bind(4, e); up.bind(5, (int64_t)id);
+        up.step();
+        audit.log(req, app, "challenge.update", "challenge", id, title,
+                  (c->title != title ? "title: " + c->title + " -> " + title + "; " : std::string()) + s + " to " + e);
+        res.add_header("HX-Redirect", "/challenges/" + std::to_string(id));
+        return res;
+    });
+
+    // POST /challenges/<id>/delete - the challenge and its entries and votes
+    // (their photos are cleared out by the uploads sweep)
+    CROW_ROUTE(app, "/challenges/<int>/delete").methods("POST"_method)([&app, &db, &audit](const crow::request& req, int id) {
+        crow::response res;
+        if (!require_auth(req, res, app, "perm:challenges.manage")) return res;
+        auto c = get_challenge(db, id);
+        if (!c) { res.code = 404; return res; }
+        auto del = db.prepare("DELETE FROM challenges WHERE id=?");
+        del.bind(1, (int64_t)id);
+        del.step();
+        audit.log(req, app, "challenge.delete", "challenge", id, c->title, "Deleted with its entries and votes");
+        res.add_header("HX-Redirect", "/challenges");
+        return res;
     });
 
     CROW_ROUTE(app, "/challenges").methods("POST"_method)([&app, &db, &audit](const crow::request& req) {

@@ -5,6 +5,26 @@
       <p class="text-xs text-gray-500">Entries {{starts_on}} &ndash; {{ends_on}} · voting until {{vote_until}}</p>
       {{#description}}<p class="text-sm text-gray-700 whitespace-pre-line mt-1">{{description}}</p>{{/description}}
     </div>
+    {{#is_admin}}
+    <div class="flex flex-wrap items-center gap-2">
+      <details class="relative">
+        <summary class="list-none cursor-pointer px-3 py-1.5 border border-gray-300 text-gray-700 rounded-lg text-sm hover:bg-gray-50">Edit</summary>
+        <form hx-post="/challenges/{{id}}/edit" hx-target="#challenge-edit-result-{{id}}" hx-swap="innerHTML"
+              class="absolute right-0 z-10 mt-1 w-80 max-w-[90vw] bg-white border border-gray-200 rounded-xl shadow-lg p-4 space-y-2 text-sm">
+          <label class="block text-gray-700">Challenge name<input name="title" value="{{title}}" maxlength="150" required class="mt-1 w-full border border-gray-300 rounded-lg px-3 py-2"></label>
+          <label class="block text-gray-700">Rules and details<textarea name="description" rows="3" maxlength="2000" class="mt-1 w-full border border-gray-300 rounded-lg px-3 py-2">{{description}}</textarea></label>
+          <div class="grid grid-cols-2 gap-2">
+            <label class="block text-gray-700">Entries open<input type="date" name="starts_on" value="{{starts_iso}}" required class="mt-1 w-full border border-gray-300 rounded-lg px-2 py-1.5"></label>
+            <label class="block text-gray-700">until<input type="date" name="ends_on" value="{{ends_iso}}" required class="mt-1 w-full border border-gray-300 rounded-lg px-2 py-1.5"></label>
+          </div>
+          <div class="flex items-center gap-2"><button class="px-4 py-2 bg-gray-800 text-white rounded-lg font-medium hover:bg-gray-700">Save</button><span id="challenge-edit-result-{{id}}"></span></div>
+        </form>
+      </details>
+      <button hx-post="/challenges/{{id}}/delete" hx-swap="none"
+              hx-confirm="Delete this challenge with all its entries, photos and votes? This can't be undone."
+              class="px-3 py-1.5 border border-red-300 text-red-600 rounded-lg text-sm hover:bg-red-50">Delete</button>
+    </div>
+    {{/is_admin}}
     {{#is_admin}}{{#results}}{{^announced}}
     <button hx-post="/challenges/{{id}}/announce" hx-target="#challenge-{{id}}" hx-swap="outerHTML"
             class="px-3 py-1.5 bg-indigo-600 text-white rounded-lg text-sm hover:bg-indigo-700">Announce winner on Discord</button>

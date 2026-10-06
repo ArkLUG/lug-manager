@@ -7,6 +7,7 @@ target_sources(lug_core PRIVATE
   Features.hpp
   Palettes.hpp
   PhotoStore.hpp
+  UploadsInUse.hpp
   SiteSettings.hpp
   TreasuryAccess.hpp
 )

@@ -321,6 +321,9 @@ void register_event_routes(LugApp& app, EventService& events, AttendanceService&
         res.add_header("Content-Type", "text/html; charset=utf-8");
         auto tmpl = crow::mustache::load("events/_form.html");
         crow::mustache::context mctx;
+        // Discord pings are switched off: say so where the announcement is set up
+        mctx["pings_off"]    = discord.get_suppress_pings();
+        mctx["viewer_admin"] = app.get_context<AuthMiddleware>(req).auth.is_admin();
         {
             auto member_list = members.list_all();
             std::ostringstream opts;
@@ -371,6 +374,9 @@ void register_event_routes(LugApp& app, EventService& events, AttendanceService&
         res.add_header("Content-Type", "text/html; charset=utf-8");
         auto tmpl = crow::mustache::load("events/_form.html");
         crow::mustache::context mctx;
+        // Discord pings are switched off: say so where the announcement is set up
+        mctx["pings_off"]    = discord.get_suppress_pings();
+        mctx["viewer_admin"] = app.get_context<AuthMiddleware>(req).auth.is_admin();
 
         // Build member options with current lead pre-selected
         {

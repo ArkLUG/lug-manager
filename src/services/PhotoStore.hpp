@@ -1,6 +1,8 @@
 #pragma once
 #include "utils/web/ImageUpload.hpp"
+#include <chrono>
 #include <filesystem>
+#include <set>
 #include <fstream>
 #include <sstream>
 #include <string>
@@ -53,6 +55,25 @@ public:
         buf << in.rdbuf();
         bytes = buf.str();
         return true;
+    }
+
+    // Deletes the files in this folder that nothing uses any more (`in_use`),
+    // e.g. photos of a deleted event or member. Only files older than
+    // `min_age`: a file saved a moment ago may not have its row yet.
+    // Subfolders (receipts) are left alone. Returns how many went.
+    int sweep(const std::set<std::string>& in_use, std::chrono::seconds min_age = std::chrono::hours(1)) const {
+        namespace fs = std::filesystem;
+        std::error_code ec;
+        if (!fs::is_directory(dir_, ec)) return 0;
+        const auto cutoff = fs::file_time_type::clock::now() - min_age;
+        int n = 0;
+        for (const auto& f : fs::directory_iterator(dir_, ec)) {
+            if (!f.is_regular_file(ec)) continue;
+            const std::string name = f.path().filename().string();
+            if (in_use.count(name) || f.last_write_time(ec) > cutoff) continue;
+            if (fs::remove(f.path(), ec)) ++n;
+        }
+        return n;
     }
 
     void remove(const std::string& name) const {

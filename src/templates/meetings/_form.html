@@ -137,6 +137,8 @@
                 placeholder="Meeting notes, reports, follow-ups...">{{notes}}</textarea>
     </div>
 
+    {{#pings_off}}<p class="f-discord text-xs rounded-lg border border-amber-200 bg-amber-50 text-amber-800 px-3 py-2">Discord pings are off, so the announcement won't mention any roles.
+      {{#viewer_admin}}Turn them on under <a href="/settings" class="underline">Settings › Discord</a> ("Mention (ping) the announcement roles").{{/viewer_admin}}{{^viewer_admin}}An admin can turn them on under Settings › Discord.{{/viewer_admin}}</p>{{/pings_off}}
     <details class="f-discord text-sm border border-gray-200 rounded-lg px-3 py-2" {{#has_chat_skip}}open{{/has_chat_skip}}>
       <summary class="cursor-pointer text-gray-700">Discord: leave out parts of this meeting's posts</summary>
       <input type="hidden" name="chat_opts" value="1">

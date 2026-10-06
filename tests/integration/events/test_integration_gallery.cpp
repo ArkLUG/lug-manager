@@ -1,5 +1,7 @@
 // Event photo galleries and build challenges.
 #include "integration_test_base.hpp"
+#include "services/PhotoStore.hpp"
+#include "services/UploadsInUse.hpp"
 
 namespace {
 // Valid 1x1 PNG
@@ -159,4 +161,48 @@ TEST_F(IntegrationTest, ChallengeClosedPhases) {
     EXPECT_EQ(POST(base + "/entries/" + std::to_string(eid) + "/delete", "", member_token).code, 403);
     // Announce runs (Discord is stubbed in tests, so it reports a failed post rather than crashing)
     EXPECT_EQ(POST(base + "/announce", "", admin_token).code, 200);
+}
+
+// A challenge can be edited and deleted (with its entries); the entry photos
+// are then cleared out by the uploads sweep.
+TEST_F(IntegrationTest, ChallengeEditDeleteAndPhotoSweep) {
+    POST("/challenges", "title=Old+Name&starts_on=" + ymd_offset(-1) + "&ends_on=" + ymd_offset(3), admin_token);
+    auto q = db->prepare("SELECT id FROM challenges WHERE title='Old Name'");
+    ASSERT_TRUE(q.step());
+    const std::string base = "/challenges/" + std::to_string(q.col_int(0));
+    expect_contains(GET(base, admin_token), "hx-post=\"" + base + "/edit\"");
+    expect_not_contains(GET(base, member_token), base + "/delete");
+
+    EXPECT_EQ(POST(base + "/edit", "title=New+Name&starts_on=" + ymd_offset(-1) + "&ends_on=" + ymd_offset(5), member_token).code, 403);
+    EXPECT_EQ(POST(base + "/edit", "title=&starts_on=x&ends_on=y", admin_token).code, 400);
+    EXPECT_LT(POST(base + "/edit", "title=New+Name&description=Rules&starts_on=" + ymd_offset(-1) + "&ends_on=" + ymd_offset(5), admin_token).code, 400);
+    expect_contains(GET(base, admin_token), "New Name");
+
+    ASSERT_EQ(POST_FILE(base + "/entries", "photo", "a.png", kTinyPng, member_token, {{"title", "Tiny"}}).code, 200);
+    auto f = db->prepare("SELECT file FROM challenge_entries");
+    ASSERT_TRUE(f.step());
+    const std::string file = f.col_text(0);
+    f.reset();
+    PhotoStore store(data_dir);
+    std::string bytes;
+    ASSERT_TRUE(store.read(file, bytes));
+
+    EXPECT_EQ(POST(base + "/delete", "", member_token).code, 403);
+    EXPECT_LT(POST(base + "/delete", "", admin_token).code, 400);
+    EXPECT_EQ(query_int(*db, "SELECT COUNT(*) FROM challenge_entries"), 0);
+    expect_contains(GET("/audit", admin_token), "challenge.delete");
+    // The sweep only takes files nothing uses, and not brand-new ones
+    EXPECT_EQ(store.sweep(uploads_in_use(*db)), 0);
+    EXPECT_TRUE(store.read(file, bytes));
+    EXPECT_EQ(store.sweep(uploads_in_use(*db), std::chrono::seconds(-1)), 1);
+    EXPECT_FALSE(store.read(file, bytes));
+}
+
+// Making a meeting or event says when Discord pings are switched off.
+TEST_F(IntegrationTest, FormsWarnWhenPingsAreOff) {
+    discord_client->set_suppress_pings(true);
+    expect_contains(GET_HTMX("/meetings/new", admin_token), "Discord pings are off");
+    expect_contains(GET_HTMX("/events/new", admin_token), "Discord pings are off");
+    discord_client->set_suppress_pings(false);
+    expect_not_contains(GET_HTMX("/meetings/new", admin_token), "Discord pings are off");
 }

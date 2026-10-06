@@ -42,6 +42,8 @@
 #include "auth/AuthService.hpp"
 #include "auth/SessionStore.hpp"
 #include "middleware/AuthMiddleware.hpp"
+#include "services/PhotoStore.hpp"
+#include "services/UploadsInUse.hpp"
 #include "services/notifications/ReminderService.hpp"
 #include "services/members/DuesService.hpp"
 #include "services/notifications/LoanReminders.hpp"
@@ -303,8 +305,9 @@ int main(int argc, char** argv) {
         SeriesService  series_service(db, meeting_service);
         LoanReminders  loan_reminders(db, svc.notifier);
         DigestService  digest_service(db, settings_repo, svc.notifier);
+        auto uploads = std::make_shared<PhotoStore>(data_dir);
         std::thread reminder_thread([&reminder_service, &dues_service, &backup_service, &settings_repo, &series_service,
-                                     &loan_reminders, &digest_service, notifier = svc.notifier] {
+                                     &loan_reminders, &digest_service, notifier = svc.notifier, uploads, &db] {
             std::this_thread::sleep_for(std::chrono::seconds(60));
             while (true) {
                 try {
@@ -327,6 +330,9 @@ int main(int argc, char** argv) {
                         std::cout << "[inventory] Reminded " << n << " borrower(s)\n";
                     if (int n = digest_service.run_once())
                         std::cout << "[digest] Sent " << n << " weekly digest(s)\n";
+                    // Photos left behind by deleted events, members and entries
+                    if (int n = uploads->sweep(uploads_in_use(db)))
+                        std::cout << "[uploads] Removed " << n << " photo(s) nothing uses any more\n";
                     if (int n = notifier->send_snoozed())
                         std::cout << "[reminders] Sent " << n << " snoozed reminder(s) again\n";
                     auto r = reminder_service.run_once();

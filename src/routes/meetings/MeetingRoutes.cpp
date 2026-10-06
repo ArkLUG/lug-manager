@@ -309,6 +309,9 @@ void register_meeting_routes(LugApp& app, MeetingService& meetings, AttendanceSe
         res.add_header("Content-Type", "text/html; charset=utf-8");
         auto tmpl = crow::mustache::load("meetings/_form.html");
         crow::mustache::context mctx;
+        // Discord pings are switched off: say so where the announcement is set up
+        mctx["pings_off"]    = discord.get_suppress_pings();
+        mctx["viewer_admin"] = app.get_context<AuthMiddleware>(req).auth.is_admin();
         {
             auto ch_list = chapters.list_all();
             std::ostringstream opts;
@@ -356,6 +359,9 @@ void register_meeting_routes(LugApp& app, MeetingService& meetings, AttendanceSe
         res.add_header("Content-Type", "text/html; charset=utf-8");
         auto tmpl = crow::mustache::load("meetings/_form.html");
         crow::mustache::context mctx;
+        // Discord pings are switched off: say so where the announcement is set up
+        mctx["pings_off"]    = discord.get_suppress_pings();
+        mctx["viewer_admin"] = app.get_context<AuthMiddleware>(req).auth.is_admin();
         mctx["action"]            = "/meetings/" + std::to_string(m->id);
         mctx["title"]             = "Edit Meeting";
         mctx["is_edit"]           = true;

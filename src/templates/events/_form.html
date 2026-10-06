@@ -33,6 +33,8 @@
       </select>
     </div>
 
+    {{#pings_off}}<p class="f-discord text-xs rounded-lg border border-amber-200 bg-amber-50 text-amber-800 px-3 py-2">Discord pings are off, so the announcement won't mention any roles.
+      {{#viewer_admin}}Turn them on under <a href="/settings" class="underline">Settings › Discord</a> ("Mention (ping) the announcement roles").{{/viewer_admin}}{{^viewer_admin}}An admin can turn them on under Settings › Discord.{{/viewer_admin}}</p>{{/pings_off}}
     <div class="f-discord">
       <label class="block text-sm font-medium text-gray-700 mb-1" for="events-form-discord-ping-role-ids">Extra Role Pings <span class="text-gray-400">(optional)</span></label>
       <select id="events-form-discord-ping-role-ids" name="discord_ping_role_ids" multiple
