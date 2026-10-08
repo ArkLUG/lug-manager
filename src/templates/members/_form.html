@@ -147,17 +147,19 @@
     <fieldset class="f-guardians guardian-section border border-gray-200 rounded-lg px-3 pb-3">
       <legend class="px-1 text-sm font-medium text-gray-700">Guardian &amp; consent <span class="text-xs text-gray-400">(KFOL/TFOL members)</span></legend>
       <div class="grid grid-cols-1 md:grid-cols-3 gap-2">
-        <label class="md:col-span-3 text-xs text-gray-600" for="members-form-guardian">Guardian (a member of the club)
-          <select id="members-form-guardian" name="guardian_member_id" class="ts-search mt-0.5 w-full border border-gray-300 rounded-lg px-3 py-2 text-sm">
+        <label class="md:col-span-3 block text-sm font-medium text-gray-700" for="members-form-guardian">Guardian <span class="font-normal text-gray-400">(a member of the club)</span>
+          <select id="members-form-guardian" name="guardian_member_id" class="ts-search mt-1 w-full text-sm font-normal">
             <option value="">None yet</option>
             {{#guardian_options}}<option value="{{id}}" {{#selected}}selected{{/selected}}>{{name}}</option>{{/guardian_options}}
           </select>
-          <span class="block mt-0.5 text-gray-500">Their phone and email come from their own member record. Add them as a member first if they aren't one.</span>
-          {{#guardian_legacy}}<span class="block mt-0.5 text-amber-700">Recorded before guardians were members: {{guardian_legacy}}. Pick their member record to replace it.</span>{{/guardian_legacy}}
+          <span class="block mt-1 text-xs font-normal text-gray-500">Their phone and email come from their own member record. Add them as a member first if they aren't one.</span>
+          {{#guardian_legacy}}<span class="block mt-0.5 text-xs font-normal text-amber-700">Recorded before guardians were members: {{guardian_legacy}}. Pick their member record to replace it.</span>{{/guardian_legacy}}
         </label>
-        <label class="flex items-center gap-2 text-sm text-gray-700"><input type="checkbox" name="consent_on_file" value="1" {{#consent_on_file}}checked{{/consent_on_file}} class="accent-yellow-400"> Signed consent on file</label>
-        <label class="flex items-center gap-2 text-sm text-gray-700">dated <input type="date" name="consent_date" value="{{consent_date}}" class="border border-gray-300 rounded-lg px-2 py-1 text-sm"></label>
-        <label class="flex items-center gap-2 text-sm text-gray-700"><input type="checkbox" name="photo_release" value="1" {{#photo_release}}checked{{/photo_release}} class="accent-yellow-400"> Photo release given</label>
+        <div class="md:col-span-3 flex flex-wrap items-center gap-x-3 gap-y-2">
+          <label class="flex items-center gap-2 text-sm text-gray-700 whitespace-nowrap"><input type="checkbox" name="consent_on_file" value="1" {{#consent_on_file}}checked{{/consent_on_file}} class="accent-yellow-400"> Signed consent on file</label>
+          <label class="flex items-center gap-2 text-sm text-gray-700 whitespace-nowrap">signed on <input type="date" name="consent_date" value="{{consent_date}}" class="border border-gray-300 rounded-lg px-2 py-1 text-sm"></label>
+        </div>
+        <label class="md:col-span-3 flex items-center gap-2 text-sm text-gray-700"><input type="checkbox" name="photo_release" value="1" {{#photo_release}}checked{{/photo_release}} class="accent-yellow-400"> Photo release given</label>
         <input type="hidden" name="guardian_form" value="1">
       </div>
     </fieldset>

@@ -2,6 +2,7 @@
 any page that scrolls sideways on a phone, JS errors and CSP violations.
 
     python tests/e2e/shots.py <base-url> <session-token> <out-dir> [--dark] <paths...>
+    (a path "page>fragment" opens the fragment in the modal over the page, e.g. /members>/members/3)
 
 Prints SIDEWAYS / ERROR lines and ends with "PROBLEMS: n".
 """
@@ -24,9 +25,17 @@ problems = 0
 for w, h, tag in ((1300, 950, "d"), (390, 844, "m")):
     d.set_window_size(w, h)
     for p in paths:
-        d.get(base + p); d.execute_script(HOOK); time.sleep(1.2)
-        name = p.strip("/").replace("/", "_").replace("?", "_").replace("&", "_") or "root"
-        d.get_full_page_screenshot_as_file(f"{out}/{tag}_{name}.png")
+        # "page>fragment" opens the fragment in the modal over the page (e.g. /members>/members/3)
+        page, _, modal = p.partition(">")
+        d.get(base + page); d.execute_script(HOOK); time.sleep(1.2)
+        if modal:
+            modal, _, focus = modal.partition("@")   # "@<css selector>": scroll that into view
+            d.execute_script("htmx.ajax('GET', arguments[0], '#modal')", modal); time.sleep(1.2)
+            if focus:
+                d.execute_script("var e=document.querySelector(arguments[0]); if(e) e.scrollIntoView({block:'center'})", focus); time.sleep(0.3)
+        name = p.strip("/").replace("/", "_").replace("?", "_").replace("&", "_").replace(">", "__").replace("@", "_").replace(".", "").replace(" ", "") or "root"
+        if modal: d.save_screenshot(f"{out}/{tag}_{name}.png")
+        else: d.get_full_page_screenshot_as_file(f"{out}/{tag}_{name}.png")
         errs = d.execute_script("return window.__errs || []")
         for e in errs:
             print("ERROR", tag, p, e); problems += 1
