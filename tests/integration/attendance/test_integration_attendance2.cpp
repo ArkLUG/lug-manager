@@ -368,3 +368,19 @@ TEST_F(IntegrationTest, AttendanceOverviewSortsByTier) {
     auto asc = GET_HTMX(base + "&sort=tier&dir=asc", admin_token).body;
     EXPECT_LT(asc.find("Admin U."), asc.find("Regular U."));
 }
+
+// The attendance overview shows what each member came to, each linking to its page.
+TEST_F(IntegrationTest, OverviewShowsWhatSomeoneCameTo) {
+    std::time_t now = std::time(nullptr);
+    int year = std::localtime(&now)->tm_year + 1900;
+    Meeting m;
+    m.title = "Sort Night"; m.scope = "lug_wide";
+    m.start_time = std::to_string(year) + "-02-03T19:00:00"; m.end_time = std::to_string(year) + "-02-03T21:00:00";
+    auto mtg = meeting_svc->create(m);
+    attendance_svc->check_in(regular_member_id, "meeting", mtg.id, "", false);
+    expect_contains(GET_HTMX("/attendance/overview?year=" + std::to_string(year), admin_token), "What they came to");
+    auto d = GET_HTMX("/attendance/member/" + std::to_string(regular_member_id) + "/detail?year=" + std::to_string(year), admin_token);
+    EXPECT_EQ(d.code, 200);
+    expect_contains(d, "Sort Night");
+    expect_contains(d, "hx-get=\"/meetings/" + std::to_string(mtg.id) + "\"");
+}
