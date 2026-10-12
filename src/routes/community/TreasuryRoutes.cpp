@@ -5,6 +5,7 @@
 #include "repositories/members/DuesRepository.hpp"
 #include "services/TreasuryAccess.hpp"
 #include "services/Features.hpp"
+#include "services/ChapterMoney.hpp"
 #include <crow/mustache.h>
 #include <map>
 #include <regex>
@@ -19,7 +20,12 @@ int year_param(const crow::request& req) {
     return y;
 }
 
-struct Line { std::string on, kind, category, description, event, who, receipt; int64_t cents = 0, id = 0, member_id = 0, event_id = 0; bool dues = false; };
+struct Line {
+    std::string on, kind, category, description, event, who, receipt;
+    std::string chapter;   // what it's for: a chapter's name, or "" for the whole LUG (dues: the chapter's share)
+    int64_t cents = 0, id = 0, member_id = 0, event_id = 0, chapter_id = 0, chapter_cents = 0, chapter_pct = 0;
+    bool dues = false;
+};
 
 // Form fields from either a urlencoded or a multipart (file upload) body.
 struct Fields {
@@ -45,13 +51,24 @@ struct Fields {
     std::unique_ptr<crow::multipart::message> mp;
 };
 
+// The "For" field: a chapter that exists, or 0 for the whole LUG.
+int64_t chapter_param(SqliteDatabase& db, const std::string& v) {
+    int64_t id = 0;
+    try { id = std::stoll(v); } catch (...) {}
+    if (id <= 0) return 0;
+    auto st = db.prepare("SELECT 1 FROM chapters WHERE id=?");
+    st.bind(1, id);
+    return st.step() ? id : 0;
+}
+
 // `names`: show who paid each dues line (Settings > Treasury).
 std::vector<Line> ledger(SqliteDatabase& db, const std::string& from, const std::string& to, bool names = true) {
     std::vector<Line> out;
     auto st = db.prepare(
         "SELECT t.id, t.entry_on, t.kind, t.category, t.amount_cents, t.description, COALESCE(e.title,''), COALESCE(m.display_name,''), t.receipt_file, "
-        "COALESCE(t.event_id,0) "
+        "COALESCE(t.event_id,0), COALESCE(t.chapter_id,0), COALESCE(c.name,'') "
         "FROM treasury_entries t LEFT JOIN lug_events e ON e.id=t.event_id LEFT JOIN members m ON m.id=t.recorded_by "
+        "LEFT JOIN chapters c ON c.id=t.chapter_id "
         "WHERE t.entry_on >= ? AND t.entry_on < ?");
     st.bind(1, from); st.bind(2, to);
     while (st.step()) {
@@ -59,17 +76,26 @@ std::vector<Line> ledger(SqliteDatabase& db, const std::string& from, const std:
         l.id = st.col_int(0); l.on = st.col_text(1); l.kind = st.col_text(2); l.category = st.col_text(3);
         l.cents = st.col_int(4); l.description = st.col_text(5); l.event = st.col_text(6); l.who = st.col_text(7);
         l.receipt = st.col_text(8); l.event_id = st.col_int(9);
+        l.chapter_id = st.col_int(10); l.chapter = st.col_text(11);
         out.push_back(std::move(l));
     }
     auto ds = db.prepare(
-        "SELECT d.paid_on, d.amount_cents, COALESCE(m.display_name,''), d.method, d.member_id FROM dues_payments d "
-        "LEFT JOIN members m ON m.id=d.member_id WHERE d.amount_cents > 0 AND d.paid_on >= ? AND d.paid_on < ?");
+        "SELECT d.paid_on, d.amount_cents, COALESCE(m.display_name,''), d.method, d.member_id, "
+        "COALESCE(d.chapter_id,0), COALESCE(c.name,''), d.amount_cents * COALESCE(d.chapter_pct,0) / 100, COALESCE(d.chapter_pct,0) "
+        "FROM dues_payments d LEFT JOIN members m ON m.id=d.member_id LEFT JOIN chapters c ON c.id=d.chapter_id "
+        "WHERE d.amount_cents > 0 AND d.paid_on >= ? AND d.paid_on < ?");
     ds.bind(1, from); ds.bind(2, to);
     while (ds.step()) {
         Line l;
         l.on = ds.col_text(0); l.kind = "income"; l.category = "Dues"; l.cents = ds.col_int(1);
         l.description = names ? "Dues - " + ds.col_text(2) + (ds.col_text(3).empty() ? "" : " (" + ds.col_text(3) + ")") : "Dues payment";
         l.member_id = names ? ds.col_int(4) : 0;
+        l.chapter_id = ds.col_int(5);
+        if (l.chapter_id > 0) {
+            l.chapter_cents = ds.col_int(7);
+            l.chapter = ds.col_text(6);
+            l.chapter_pct = ds.col_int(8);
+        }
         l.dues = true;
         out.push_back(std::move(l));
     }
@@ -165,6 +191,8 @@ std::string render(SqliteDatabase& db, int year, const Show& show, const std::st
         auto& r = rows[i++];
         r["id"] = l.id; r["on"] = l.on; r["category"] = l.category; r["description"] = l.description;
         r["event"] = l.event; r["who"] = l.who;
+        if (!l.chapter.empty())
+            r["chapter"] = l.dues ? money(l.chapter_cents) + " (" + std::to_string(l.chapter_pct) + "%) to " + l.chapter : "For " + l.chapter;
         r["amount"] = (l.kind == "income" ? "+" : "-") + money(l.cents);
         r["income"] = l.kind == "income";
         r["can_delete"] = v.edit && !l.dues;
@@ -192,6 +220,25 @@ std::string render(SqliteDatabase& db, int year, const Show& show, const std::st
     while (ks.step()) known[i++]["name"] = ks.col_text(0);
     ctx["known_categories"] = std::move(known);
 
+    // By chapter: each chapter's share of dues and what was marked for it; the rest is the LUG's
+    {
+        auto bs = chapter_money::buckets(db, from, to);
+        crow::json::wvalue rows_c = crow::json::wvalue::list();
+        crow::json::wvalue ch_opts = crow::json::wvalue::list();
+        int k = 0, o = 0;
+        for (const auto& b : bs) {
+            auto& r = rows_c[k++];
+            r["name"] = b.name; r["general"] = b.chapter_id == 0;
+            r["dues"] = money(b.dues); r["income"] = money(b.income); r["expense"] = money(b.expense);
+            r["net"] = money(b.net()); r["net_negative"] = b.net() < 0;
+            r["closing"] = money(b.closing()); r["closing_negative"] = b.closing() < 0;
+            if (b.chapter_id > 0) { ch_opts[o]["id"] = b.chapter_id; ch_opts[o]["name"] = b.name; ++o; }
+        }
+        ctx["by_chapter"] = std::move(rows_c);
+        ctx["has_chapters"] = o > 0 && Features::on("chapters");
+        ctx["chapter_options"] = std::move(ch_opts);
+    }
+
     crow::json::wvalue members = crow::json::wvalue::list();
     auto ms = db.prepare("SELECT id, display_name FROM members ORDER BY display_name COLLATE NOCASE");
     i = 0;
@@ -199,8 +246,8 @@ std::string render(SqliteDatabase& db, int year, const Show& show, const std::st
     ctx["members"] = std::move(members);
     ctx["year_end"] = std::to_string(year) + "-12-31";
     if (v.edit && show.editing > 0) {
-        auto st = db.prepare("SELECT entry_on, kind, category, amount_cents, description, COALESCE(event_id,0), receipt_file "
-                             "FROM treasury_entries WHERE id=?");
+        auto st = db.prepare("SELECT entry_on, kind, category, amount_cents, description, COALESCE(event_id,0), receipt_file, "
+                             "COALESCE(chapter_id,0) FROM treasury_entries WHERE id=?");
         st.bind(1, show.editing);
         if (st.step()) {
             crow::json::wvalue e;
@@ -211,6 +258,15 @@ std::string render(SqliteDatabase& db, int year, const Show& show, const std::st
             e["amount"] = money(st.col_int(3)).substr(1);
             e["description"] = st.col_text(4);
             e["has_receipt"] = !st.col_text(6).empty();
+            {
+                const int64_t ch = st.col_int(7);
+                crow::json::wvalue co = crow::json::wvalue::list();
+                auto cs = db.prepare("SELECT id, name FROM chapters ORDER BY name COLLATE NOCASE");
+                int k = 0;
+                while (cs.step()) { co[k]["id"] = cs.col_int(0); co[k]["name"] = cs.col_text(1); co[k]["selected"] = cs.col_int(0) == ch; ++k; }
+                e["chapter_options"] = std::move(co);
+                e["has_chapter_options"] = k > 0 && Features::on("chapters");
+            }
             const int64_t ev_id = st.col_int(5);
             crow::json::wvalue opts = crow::json::wvalue::list();
             auto eo = db.prepare("SELECT id, title, substr(start_time,1,10) FROM lug_events WHERE start_time >= ? AND start_time < ? "
@@ -357,13 +413,15 @@ void register_treasury_routes(LugApp& app, SqliteDatabase& db, SettingsRepositor
         if (!v.ledger) { res.code = 403; return res; }
         int year = year_param(req);
         auto lines = ledger(db, std::to_string(year) + "-01-01", std::to_string(year + 1) + "-01-01", v.dues_names);
-        std::string out = "Date,Type,Category,Amount,Description,Event,Recorded by\n";
+        std::string out = "Date,Type,Category,Amount,Description,Event,Recorded by,Chapter\n";
         for (auto it = lines.rbegin(); it != lines.rend(); ++it) {
             char amt[32];
             std::snprintf(amt, sizeof(amt), "%s%lld.%02lld", it->kind == "income" ? "" : "-",
                           static_cast<long long>(it->cents / 100), static_cast<long long>(it->cents % 100));
             out += csv_field(it->on) + "," + it->kind + "," + csv_field(it->category) + "," + amt + "," +
-                   csv_field(it->description) + "," + csv_field(it->event) + "," + csv_field(it->who) + "\n";
+                   csv_field(it->description) + "," + csv_field(it->event) + "," + csv_field(it->who) + "," +
+                   csv_field(it->dues && it->chapter_id > 0
+                             ? money(it->chapter_cents) + " (" + std::to_string(it->chapter_pct) + "%) to " + it->chapter : it->chapter) + "\n";
         }
         res.add_header("Content-Type", "text/csv; charset=utf-8");
         res.add_header("Content-Disposition", "attachment; filename=\"treasury-" + std::to_string(year) + ".csv\"");
@@ -391,8 +449,9 @@ void register_treasury_routes(LugApp& app, SqliteDatabase& db, SettingsRepositor
         }
         int64_t event_id = 0;
         try { event_id = std::stoll(gp("event_id", 20)); } catch (...) {}
-        auto ins = db.prepare("INSERT INTO treasury_entries (entry_on, kind, category, amount_cents, description, event_id, recorded_by, receipt_file) "
-                              "VALUES (?,?,?,?,?,?,?,?) RETURNING id");
+        const int64_t chapter = chapter_param(db, gp("chapter_id", 20));
+        auto ins = db.prepare("INSERT INTO treasury_entries (entry_on, kind, category, amount_cents, description, event_id, recorded_by, receipt_file, chapter_id) "
+                              "VALUES (?,?,?,?,?,?,?,?,?) RETURNING id");
         ins.bind(1, on); ins.bind(2, kind); ins.bind(3, category); ins.bind(4, cents);
         ins.bind(5, gp("description", 300));
         if (event_id > 0) {
@@ -404,11 +463,12 @@ void register_treasury_routes(LugApp& app, SqliteDatabase& db, SettingsRepositor
         }
         ins.bind(7, app.get_context<AuthMiddleware>(req).auth.member_id);
         ins.bind(8, receipt);
+        if (chapter > 0) ins.bind(9, chapter); else ins.bind_null(9);
         ins.step();
         int64_t id = ins.col_int(0);
         ins.reset();
         audit.log(req, app, "treasury.add", "treasury", id, category.empty() ? kind : category,
-                  (kind == "income" ? "+" : "-") + money(cents) + " on " + on);
+                  (kind == "income" ? "+" : "-") + money(cents) + " on " + on + (chapter > 0 ? " for chapter " + std::to_string(chapter) : ""));
         return fragment(db, year, 200, std::string(kind == "income" ? "Income" : "Expense") + " of " + money(cents) + " recorded.");
     });
 
@@ -418,14 +478,14 @@ void register_treasury_routes(LugApp& app, SqliteDatabase& db, SettingsRepositor
         crow::response res;
         if (!require_auth(req, res, app, "treasurer")) return res;
         std::string old_on, old_kind, old_cat, old_desc, old_receipt;
-        int64_t old_cents = 0, old_event = 0;
+        int64_t old_cents = 0, old_event = 0, old_chapter = 0;
         {
-            auto st = db.prepare("SELECT entry_on, kind, category, amount_cents, description, COALESCE(event_id,0), receipt_file "
-                                 "FROM treasury_entries WHERE id=?");
+            auto st = db.prepare("SELECT entry_on, kind, category, amount_cents, description, COALESCE(event_id,0), receipt_file, "
+                                 "COALESCE(chapter_id,0) FROM treasury_entries WHERE id=?");
             st.bind(1, (int64_t)id);
             if (!st.step()) return fragment(db, year_param(req), 404, "That entry doesn't exist.");
             old_on = st.col_text(0); old_kind = st.col_text(1); old_cat = st.col_text(2); old_cents = st.col_int(3);
-            old_desc = st.col_text(4); old_event = st.col_int(5); old_receipt = st.col_text(6);
+            old_desc = st.col_text(4); old_event = st.col_int(5); old_receipt = st.col_text(6); old_chapter = st.col_int(7);
         }
         Fields f(req);
         static const std::regex ymd(R"(\d{4}-\d{2}-\d{2})");
@@ -449,6 +509,7 @@ void register_treasury_routes(LugApp& app, SqliteDatabase& db, SettingsRepositor
             chk.bind(1, event_id);
             if (!chk.step()) event_id = 0;
         }
+        const int64_t chapter = chapter_param(db, f.get("chapter_id", 20));
         std::string receipt = old_receipt;
         bool receipt_changed = false;
         if (std::string bytes = f.file("receipt"); !bytes.empty()) {
@@ -462,10 +523,12 @@ void register_treasury_routes(LugApp& app, SqliteDatabase& db, SettingsRepositor
         }
         {
             auto up = db.prepare("UPDATE treasury_entries SET entry_on=?, kind=?, category=?, amount_cents=?, description=?, "
-                                 "event_id=?, receipt_file=? WHERE id=?");
+                                 "event_id=?, receipt_file=?, chapter_id=? WHERE id=?");
             up.bind(1, on); up.bind(2, kind); up.bind(3, category); up.bind(4, cents); up.bind(5, description);
             if (event_id > 0) up.bind(6, event_id); else up.bind_null(6);
-            up.bind(7, receipt); up.bind(8, (int64_t)id);
+            up.bind(7, receipt);
+            if (chapter > 0) up.bind(8, chapter); else up.bind_null(8);
+            up.bind(9, (int64_t)id);
             up.step();
         }
         if (receipt_changed && !old_receipt.empty() && old_receipt != receipt) receipts->remove(old_receipt);
@@ -476,6 +539,7 @@ void register_treasury_routes(LugApp& app, SqliteDatabase& db, SettingsRepositor
         note("date", old_on, on); note("type", old_kind, kind); note("amount", money(old_cents), money(cents));
         note("category", old_cat, category); note("description", old_desc, description);
         note("event", old_event ? std::to_string(old_event) : "", event_id ? std::to_string(event_id) : "");
+        note("chapter", old_chapter ? std::to_string(old_chapter) : "LUG", chapter ? std::to_string(chapter) : "LUG");
         if (receipt_changed) changes += std::string(changes.empty() ? "" : "; ") + (receipt.empty() ? "receipt removed" : "receipt replaced");
         audit.log(req, app, "treasury.edit", "treasury", id, category.empty() ? kind : category,
                   changes.empty() ? "No changes" : "Edited: " + changes);

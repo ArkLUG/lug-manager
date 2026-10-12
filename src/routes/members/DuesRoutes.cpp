@@ -238,6 +238,12 @@ void register_dues_routes(LugApp& app, MemberService& members, std::shared_ptr<D
         ctx["amount"] = c.amount_cents > 0 ? money(c.amount_cents).substr(1) : "";
         ctx["prorate"] = c.prorate;
         ctx["grace_days"] = c.grace_days;
+        {
+            int share = 50;
+            try { share = std::stoi(settings.get("dues_chapter_share", "50")); } catch (...) {}
+            ctx["chapter_share"] = share < 0 || share > 100 ? 50 : share;
+            ctx["show_chapter_share"] = Features::on("chapters");
+        }
         static const char* names[] = {"January", "February", "March", "April", "May", "June", "July",
                                       "August", "September", "October", "November", "December"};
         crow::json::wvalue months = crow::json::wvalue::list();
@@ -280,7 +286,13 @@ void register_dues_routes(LugApp& app, MemberService& members, std::shared_ptr<D
         int grace = 0;
         try { grace = std::stoi(f.get("dues_grace_days")); } catch (...) {}
         settings.set("dues_grace_days", std::to_string(grace < 0 ? 0 : grace > 365 ? 365 : grace));
-        audit.log(req, app, "settings.update", "settings", 0, "Dues", "Updated dues settings");
+        if (const std::string v = f.get("dues_chapter_share"); !v.empty()) {
+            int share = 50;
+            try { share = std::stoi(v); } catch (...) {}
+            settings.set("dues_chapter_share", std::to_string(share < 0 ? 0 : share > 100 ? 100 : share));
+        }
+        audit.log(req, app, "settings.update", "settings", 0, "Dues",
+                  "Updated dues settings (chapter share " + settings.get("dues_chapter_share", "50") + "%)");
         return html_page(req, app, settings_page("Saved."), "Dues", "active_dues_settings");
     });
 

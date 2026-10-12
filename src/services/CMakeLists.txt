@@ -6,6 +6,7 @@ target_sources(lug_core PRIVATE
   FanCoLab.hpp
   Features.hpp
   Palettes.hpp
+  ChapterMoney.hpp
   PhotoStore.hpp
   UploadsInUse.hpp
   SiteSettings.hpp

@@ -27,6 +27,12 @@
       <span class="flex items-center gap-2 mt-1"><input id="dues-grace" type="number" name="dues_grace_days" min="0" max="365" value="{{grace_days}}" class="w-24 border border-gray-300 rounded-lg px-2 py-1"> days</span>
       <span class="block text-xs text-gray-400 mt-1">How long members stay counted as paid after their dues run out, before they're marked unpaid. 0 = no grace period. Members in their grace period show "Grace period" on their Dues panel and in the members list.</span>
     </label>
+    {{#show_chapter_share}}
+    <label class="block text-gray-700" for="dues-chapter-share">Chapter's share of each payment
+      <span class="flex items-center gap-2 mt-1"><input id="dues-chapter-share" type="number" name="dues_chapter_share" min="0" max="100" value="{{chapter_share}}" class="w-24 border border-gray-300 rounded-lg px-2 py-1"> %</span>
+      <span class="block text-xs text-gray-400 mt-1">This part of a member's dues counts toward their chapter on the Treasury page; the rest goes to the LUG. Members without a chapter: all to the LUG. Each payment keeps the share it was recorded with, so changing this only affects payments from now on.</span>
+    </label>
+    {{/show_chapter_share}}
     <div class="flex items-center gap-3 pt-2">
       <button class="px-4 py-2 bg-gray-800 text-white rounded-lg font-medium hover:bg-gray-700">Save</button>
       {{#flash}}<span class="text-green-700">{{flash}}</span>{{/flash}}

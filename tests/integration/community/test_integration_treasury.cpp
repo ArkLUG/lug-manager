@@ -1,5 +1,6 @@
 // Treasury: income/expenses + dues, yearly totals.
 #include "integration_test_base.hpp"
+#include "services/ChapterMoney.hpp"
 #include <filesystem>
 
 TEST_F(IntegrationTest, TreasuryAdminOnly) {
@@ -216,4 +217,57 @@ TEST_F(IntegrationTest, TreasuryVisibilitySettings) {
     EXPECT_EQ(settings_repo->get("treasury_view_summary"), "treasurers");
     EXPECT_EQ(GET("/treasury", chapter_lead_token).code, 403);
     EXPECT_GE(query_int(*db, "SELECT COUNT(*) FROM audit_log WHERE action='settings.update' AND details LIKE 'Treasury visibility:%'"), 2);
+}
+
+// Chapter money (migration 078): part of each dues payment goes to the
+// member's chapter (Settings > Dues), income/expenses can be for a chapter,
+// and the chapters plus the LUG add up to the LUG-wide totals.
+TEST_F(IntegrationTest, DuesSplitAndChapterBalances) {
+    // The regular member joins the test chapter; the share is 40%
+    chapter_member_repo->upsert(regular_member_id, test_chapter_id, "member", admin_member_id);
+    EXPECT_EQ(POST("/settings/dues", "dues_amount=50&dues_year_end_month=12&dues_chapter_share=40", admin_token).code, 200);
+    EXPECT_EQ(settings_repo->get("dues_chapter_share"), "40");
+    POST("/members/" + std::to_string(regular_member_id) + "/dues",
+         "paid_on=2030-03-01&covers_until=2030-12-31&amount=50.00&method=cash", admin_token);
+    EXPECT_EQ(query_int(*db, "SELECT chapter_pct FROM dues_payments WHERE member_id=?", regular_member_id), 40);
+    EXPECT_EQ(query_int(*db, "SELECT chapter_id FROM dues_payments WHERE member_id=?", regular_member_id), test_chapter_id);
+    // A member without a chapter: all of it to the LUG
+    POST("/members/" + std::to_string(admin_member_id) + "/dues",
+         "paid_on=2030-03-02&covers_until=2030-12-31&amount=30.00&method=cash", admin_token);
+    EXPECT_EQ(query_int(*db, "SELECT COALESCE(chapter_id,0) FROM dues_payments WHERE member_id=?", admin_member_id), 0);
+    // Changing the share later doesn't touch earlier payments
+    POST("/settings/dues", "dues_amount=50&dues_year_end_month=12&dues_chapter_share=75", admin_token);
+    EXPECT_EQ(query_int(*db, "SELECT chapter_pct FROM dues_payments WHERE member_id=?", regular_member_id), 40);
+
+    // An expense for the chapter, and income for the whole LUG
+    const std::string ch = std::to_string(test_chapter_id);
+    EXPECT_EQ(POST("/treasury", "entry_on=2030-04-01&kind=expense&amount=5.00&category=Snacks&chapter_id=" + ch, admin_token).code, 200);
+    EXPECT_EQ(POST("/treasury", "entry_on=2030-04-02&kind=income&amount=10.00&category=Donation", admin_token).code, 200);
+    EXPECT_EQ(query_int(*db, "SELECT chapter_id FROM treasury_entries WHERE category='Snacks'"), test_chapter_id);
+    EXPECT_EQ(query_int(*db, "SELECT COALESCE(chapter_id,0) FROM treasury_entries WHERE category='Donation'"), 0);
+    // A chapter that doesn't exist counts as the whole LUG
+    POST("/treasury", "entry_on=2030-04-03&kind=expense&amount=1.00&category=Bogus&chapter_id=999999", admin_token);
+    EXPECT_EQ(query_int(*db, "SELECT COALESCE(chapter_id,0) FROM treasury_entries WHERE category='Bogus'"), 0);
+
+    auto b = chapter_money::buckets(*db, "2030-01-01", "2031-01-01");
+    ASSERT_GE(b.size(), 2u);
+    int64_t total = 0;
+    for (const auto& x : b) total += x.net();
+    EXPECT_EQ(total, 5000 + 3000 - 500 + 1000 - 100);          // the LUG-wide net, unchanged
+    EXPECT_EQ(b[0].chapter_id, 0);
+    EXPECT_EQ(b[0].dues, 3000 + 3000);                          // 60% of $50 + all of $30
+    for (const auto& x : b)
+        if (x.chapter_id == test_chapter_id) { EXPECT_EQ(x.dues, 2000); EXPECT_EQ(x.expense, 500); EXPECT_EQ(x.closing(), 1500); }
+
+    auto page = GET("/treasury?year=2030", admin_token);
+    expect_contains(page, "By chapter");
+    expect_contains(page, "LUG (general)");
+    auto ledger = GET("/treasury?year=2030&tab=ledger", admin_token);
+    expect_contains(ledger, "For ");
+    expect_contains(ledger, "$20.00 (40%) to ");
+    // Editing an entry can move it to the LUG
+    const int64_t snack = query_int(*db, "SELECT id FROM treasury_entries WHERE category='Snacks'");
+    EXPECT_EQ(POST("/treasury/" + std::to_string(snack), "entry_on=2030-04-01&kind=expense&amount=5.00&category=Snacks&chapter_id=", admin_token).code, 200);
+    EXPECT_EQ(query_int(*db, "SELECT COALESCE(chapter_id,0) FROM treasury_entries WHERE id=?", snack), 0);
+    expect_contains(GET("/audit", admin_token), "chapter: " + ch + " -&gt; LUG");
 }
