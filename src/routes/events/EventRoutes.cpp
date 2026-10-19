@@ -423,6 +423,7 @@ void register_event_routes(LugApp& app, EventService& events, AttendanceService&
 
         mctx["action"]             = "/events/" + std::to_string(ev->id);
         mctx["title"]              = "Edit Event";
+        mctx["edit_event_id"]      = ev->id;   // its days and hours are set right below the form
         mctx["is_edit"]            = true;
         mctx["title_val"]          = ev->title;
         mctx["description"]        = ev->description;

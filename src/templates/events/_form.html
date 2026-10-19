@@ -71,6 +71,17 @@
         <input id="events-form-end-time" type="date" name="end_time" value="{{end_time_input}}" required
                class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-yellow-400">
       </div>
+
+    {{#edit_event_id}}
+    <div class="col-span-full rounded-lg border border-gray-200 p-3">
+      <div class="text-sm font-medium text-gray-700">Days and hours <span class="text-gray-400 font-normal">(optional)</span></div>
+      <p class="text-xs text-gray-500 mb-2">Setup, public hours and teardown for each day. These save as you add or remove them.</p>
+      <div hx-get="/events/{{edit_event_id}}/blocks" hx-trigger="load" hx-target="this" hx-swap="outerHTML">
+        <p class="text-xs text-gray-400">Loading...</p>
+      </div>
+    </div>
+    {{/edit_event_id}}
+    {{#is_new}}<p class="col-span-full text-xs text-gray-500">Setup days and hours (setup, public, teardown) can be added once the event is saved: open it and choose Edit.</p>{{/is_new}}
     </div>
 
     <div>

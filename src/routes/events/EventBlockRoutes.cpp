@@ -37,7 +37,8 @@ std::vector<std::string> public_days(const LugEvent& ev) {
 
 std::string render(const crow::request& req, LugApp& app, SqliteDatabase& db, const LugEvent& ev,
                    ChapterMemberRepository& cm, const std::string& flash = "", bool error = false) {
-    const bool manage = can_manage_event(req, app, ev, cm);
+    // Changing hours is done in the event's Edit; its page (?view=1) only shows them
+    const bool manage = can_manage_event(req, app, ev, cm) && !req.url_params.get("view");
     auto blocks = event_blocks::list(db, ev.id);
     crow::mustache::context ctx;
     ctx["event_id"] = ev.id;

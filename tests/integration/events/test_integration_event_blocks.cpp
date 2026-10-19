@@ -79,3 +79,17 @@ TEST_F(IntegrationTest, ShowWithoutHoursStaysAllDay) {
     expect_not_contains(pub, "12:00 AM");                                  // dates only, no midnight times
     (void)ev;
 }
+
+// Days and hours are changed in the event's Edit; its page only shows them.
+TEST_F(IntegrationTest, HoursAreEditedInEditNotOnThePage) {
+    auto ev = event_svc->create(show("Edit Hours Show", "2099-11-20", "2099-11-21"));
+    const std::string id = std::to_string(ev.id);
+    POST("/events/" + id + "/blocks/fill", "from=09:00&to=17:00", admin_token);
+    expect_contains(GET_HTMX("/events/" + id + "/edit", admin_token), "hx-get=\"/events/" + id + "/blocks\"");
+    expect_contains(GET_HTMX("/events/" + id, admin_token), "/events/" + id + "/blocks?view=1");
+    auto view = GET_HTMX("/events/" + id + "/blocks?view=1", admin_token);
+    expect_contains(view, "9:00");
+    expect_not_contains(view, "/blocks/fill");
+    expect_not_contains(view, "/delete");
+    expect_contains(GET_HTMX("/events/" + id + "/blocks", admin_token), "/blocks/fill");
+}
