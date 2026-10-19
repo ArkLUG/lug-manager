@@ -172,7 +172,6 @@ jobs:
         run: |
           gcovr --root . --filter 'src/' \
             --exclude 'build/_deps' \
-            --branches \
             --cobertura coverage.xml \
             --print-summary \
             build
