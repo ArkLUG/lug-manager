@@ -55,6 +55,16 @@
   }
   </script>
   <style>
+    /* Error toasts (static/app.js showToast) */
+    #toasts { position: fixed; z-index: 60; bottom: 1rem; right: 1rem; left: 1rem; display: flex; flex-direction: column; gap: .5rem; pointer-events: none; }
+    @media (min-width: 640px) { #toasts { left: auto; width: 24rem; } }
+    .lm-toast { pointer-events: auto; display: flex; align-items: flex-start; gap: .75rem; border: 1px solid; border-radius: .5rem;
+                padding: .75rem 1rem; font-size: .875rem; line-height: 1.25rem; box-shadow: 0 10px 15px -3px rgba(0,0,0,.2); }
+    .lm-toast button { opacity: .6; font-size: 1.125rem; line-height: 1; } .lm-toast button:hover { opacity: 1; }
+    .lm-toast-error { background: #fef2f2; border-color: #fecaca; color: #991b1b; }
+    .lm-toast-info  { background: #ffffff; border-color: #e5e7eb; color: #1f2937; }
+    html[data-theme="dark"] .lm-toast-error { background: #450a0a; border-color: #7f1d1d; color: #fecaca; }
+    html[data-theme="dark"] .lm-toast-info  { background: #1f2937; border-color: #374151; color: #e5e7eb; }
     /* Member form: guardian & consent only for KFOL/TFOL (follows the age range picked) */
     form:has(select[name="fol_status"] option[value="afol"]:checked) .guardian-section { display: none; }
     /* Settings > Features: elements of a switched-off feature carry f-<key> */

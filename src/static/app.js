@@ -185,4 +185,56 @@
         htmx.ajax('GET', step.slice(7), { target: '#main-content', swap: 'innerHTML' });
     });
   });
+
+  // ── Error toasts ──
+  // htmx doesn't swap 4xx/5xx responses, so a failed save (a missing field,
+  // no permission, the server unreachable) used to look like nothing happened.
+  // Show the server's message as a toast instead; the form stays as it was.
+  function toastBox() {
+    var box = document.getElementById('toasts');
+    if (!box) {
+      box = document.createElement('div');
+      box.id = 'toasts';
+      box.setAttribute('aria-live', 'assertive');
+      document.body.appendChild(box);
+    }
+    return box;
+  }
+  window.showToast = function (message, kind) {
+    var t = document.createElement('div');
+    t.setAttribute('role', kind === 'error' ? 'alert' : 'status');
+    t.className = 'lm-toast ' + (kind === 'error' ? 'lm-toast-error' : 'lm-toast-info');   // styled in layout.html
+    var text = document.createElement('span');
+    text.style.flex = '1';
+    text.textContent = message;
+    var close = document.createElement('button');
+    close.type = 'button';
+    close.setAttribute('aria-label', 'Dismiss');
+    close.textContent = '\u00d7';
+    close.addEventListener('click', function () { t.remove(); });
+    t.appendChild(text); t.appendChild(close);
+    toastBox().appendChild(t);
+    setTimeout(function () { t.remove(); }, kind === 'error' ? 8000 : 4000);
+  };
+  // The readable part of an error response: JSON {"error": ...}, the alert or
+  // red message in an HTML fragment, or its text when short.
+  function errorText(xhr) {
+    var body = (xhr && xhr.responseText) || '';
+    try { var j = JSON.parse(body); if (j && (j.error || j.message)) return String(j.error && j.error.message || j.error || j.message); } catch (_) {}
+    if (body) {
+      var d = document.createElement('div');
+      d.innerHTML = body;
+      var el = d.querySelector('[role=alert], .text-red-600, .text-red-700, .bg-red-50, .text-red-500');
+      var t = ((el || d).textContent || '').replace(/\s+/g, ' ').trim();
+      if (t && t.length <= 300) return t;
+    }
+    if (xhr && xhr.status === 401) return 'Your session has ended. Sign in again.';
+    if (xhr && xhr.status === 403) return "You don't have permission to do that.";
+    if (xhr && xhr.status === 404) return "That isn't there any more. Refresh the page.";
+    if (xhr && xhr.status === 413) return 'That file is too big.';
+    return "That didn't work (error " + (xhr ? xhr.status : '?') + '). Please try again.';
+  }
+  document.addEventListener('htmx:responseError', function (e) { window.showToast(errorText(e.detail && e.detail.xhr), 'error'); });
+  document.addEventListener('htmx:sendError', function () { window.showToast("Couldn't reach the server. Check your connection and try again.", 'error'); });
+  document.addEventListener('htmx:timeout', function () { window.showToast('The server took too long to answer. Please try again.', 'error'); });
 })();

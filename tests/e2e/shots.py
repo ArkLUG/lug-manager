@@ -28,7 +28,10 @@ for w, h, tag in ((1300, 950, "d"), (390, 844, "m")):
         # "page>fragment" opens the fragment in the modal over the page (e.g. /members>/members/3)
         page, _, modal = p.partition(">")
         page, _, click = page.partition("!")   # "page!<css selector>": click the first match first
+        page, _, js = page.partition("~")      # "page~<js>": run that script on the page first
         d.get(base + page); d.execute_script(HOOK); time.sleep(1.2)
+        if js:
+            d.execute_script(js); time.sleep(1.5)
         if click:
             d.execute_script("var e=document.querySelector(arguments[0]); if(e){e.scrollIntoView({block:'center'}); e.click();}", click); time.sleep(1.5)
         if modal:
@@ -36,7 +39,7 @@ for w, h, tag in ((1300, 950, "d"), (390, 844, "m")):
             d.execute_script("htmx.ajax('GET', arguments[0], '#modal')", modal); time.sleep(1.2)
             if focus:
                 d.execute_script("var e=document.querySelector(arguments[0]); if(e) e.scrollIntoView({block:'center'})", focus); time.sleep(0.3)
-        name = p.strip("/").replace("/", "_").replace("?", "_").replace("&", "_").replace(">", "__").replace("!", "_").replace("[", "").replace("]", "").replace("=", "").replace("@", "_").replace(".", "").replace(" ", "") or "root"
+        name = p.strip("/").replace("/", "_").replace("?", "_").replace("&", "_").replace(">", "__").replace("!", "_").replace("[", "").replace("]", "").replace("=", "").replace("~", "_")[:80].replace("@", "_").replace(".", "").replace(" ", "") or "root"
         if modal: d.save_screenshot(f"{out}/{tag}_{name}.png")
         else: d.get_full_page_screenshot_as_file(f"{out}/{tag}_{name}.png")
         errs = d.execute_script("return window.__errs || []")
